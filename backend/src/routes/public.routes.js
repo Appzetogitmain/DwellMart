@@ -615,7 +615,14 @@ router.get('/campaigns', marketingCache, asyncHandler(async (req, res) => {
             { $or: [{ endDate: null }, { endDate: { $exists: false } }, { endDate: { $gte: now } }] }
         ]
     };
-    if (type) query.type = type;
+    if (type) {
+        const types = String(type).split(',').map(t => t.trim()).filter(Boolean);
+        if (types.length > 1) {
+            query.type = { $in: types };
+        } else if (types.length === 1) {
+            query.type = types[0];
+        }
+    }
 
     const campaigns = await Campaign.find(query)
         .select('name slug type route discountType discountValue startDate endDate bannerConfig')

@@ -108,7 +108,7 @@ const MobileOffers = () => {
     const loadLiveOffers = async () => {
       try {
         const campaignListResponse = await api.get("/campaigns", {
-          params: { type: "special_offer", limit: 20 },
+          params: { type: "flash_sale,daily_deal,special_offer,festival", limit: 20 },
         });
         const campaignsPayload = campaignListResponse?.data ?? campaignListResponse;
         const campaignSlugs = (Array.isArray(campaignsPayload) ? campaignsPayload : [])
