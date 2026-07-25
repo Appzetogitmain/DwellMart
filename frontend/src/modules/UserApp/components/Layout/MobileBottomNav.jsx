@@ -42,7 +42,7 @@ const MobileBottomNav = () => {
     },
     active: {
       scale: 1.1,
-      color: "#7C3AED", // Primary Buttons color
+      color: "#ffc101", // Golden accent theme
       transition: {
         duration: 0.3,
         ease: "easeOut",

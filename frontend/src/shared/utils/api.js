@@ -192,6 +192,15 @@ api.interceptors.response.use(
       error.response?.data?.message ||
       error.message ||
       'Something went wrong';
+
+    const errorCode = error.response?.data?.errorCode || error.errorCode;
+    if (errorCode === 'SUBSCRIPTION_INACTIVE' || errorCode === 'SUBSCRIPTION_EXPIRED') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vendor-subscription-expired', {
+          detail: { message }
+        }));
+      }
+    }
     
     // Auth components handle their own error UI (toasts)
     if (!isExcludedAuthRequest(scope, originalRequest.url)) {

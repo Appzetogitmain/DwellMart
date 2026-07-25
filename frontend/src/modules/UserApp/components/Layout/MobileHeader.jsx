@@ -9,6 +9,7 @@ import MobileMenu from "./MobileMenu";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import { appLogo } from "../../../../data/logos";
+import { loginLogo } from "../../../../shared/utils/imagePaths";
 import { motion } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import SearchBar from "../../../../shared/components/SearchBar";
@@ -306,33 +307,11 @@ const MobileHeader = ({ hideSellButton = false }) => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
               >
-                {appLogo.src ? (
-                  <img
-                    src={appLogo.src}
-                    alt={appLogo.alt}
-                    className="h-32 sm:h-36 w-auto max-w-[260px] sm:max-w-[320px] object-contain origin-left relative z-[10004] filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)] transition-all duration-300 scale-[1.35] sm:scale-[1.25]"
-                    onError={(e) => {
-                      // Hide image if logo doesn't exist
-                      e.target.style.display = "none";
-                      // Show text fallback
-                      const parent = e.target.parentElement;
-                      if (
-                        parent &&
-                        !parent.querySelector(".logo-text-fallback")
-                      ) {
-                        const fallback = document.createElement("span");
-                        fallback.className =
-                          "logo-text-fallback bg-gradient-to-r from-primary-600 via-primary-400 to-primary-600 bg-clip-text text-transparent font-extrabold text-2xl sm:text-3xl drop-shadow-sm";
-                        fallback.textContent = "Dwell Mart";
-                        parent.appendChild(fallback);
-                      }
-                    }}
-                  />
-                ) : (
-                  <span className="logo-text-fallback bg-gradient-to-r from-primary-600 via-primary-400 to-primary-600 bg-clip-text text-transparent font-extrabold text-2xl sm:text-3xl drop-shadow-sm">
-                    Dwell Mart
-                  </span>
-                )}
+                <img
+                  src={loginLogo}
+                  alt="DwellMart"
+                  className="h-9 sm:h-11 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-md relative z-[10004]"
+                />
               </motion.div>
             </Link>
           </div>

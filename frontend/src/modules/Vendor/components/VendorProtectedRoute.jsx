@@ -84,7 +84,7 @@ const VendorProtectedRoute = ({ children }) => {
     return (
       <>
         {children}
-        <SubscriptionExpiredOverlay />
+        <SubscriptionExpiredOverlay isOpen={false} />
       </>
     );
   }

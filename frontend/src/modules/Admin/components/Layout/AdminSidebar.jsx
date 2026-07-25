@@ -48,7 +48,6 @@ const iconMap = {
   "Analytics & Finance": FiBarChart2,
   Settings: FiSettings,
   Policies: FiShield,
-  Firebase: FiDatabase,
   "Sell on DwellMart": FiShoppingBag,
 };
 
@@ -133,10 +132,6 @@ const getChildRoute = (parentRoute, childName) => {
       "Shipping Policy": "/admin/policies/shipping-policy",
       "FAQs": "/admin/policies/faqs",
       "Become a Partner": "/admin/policies/become-partner",
-    },
-    "/admin/firebase": {
-      "Push Config": "/admin/firebase/push-config",
-      Authentication: "/admin/firebase/authentication",
     },
     "/admin/sell-on-dwellmart": {
       "Subscription Plans": "/admin/subscription-plans",

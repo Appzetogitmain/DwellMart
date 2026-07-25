@@ -3,6 +3,7 @@ import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import { appLogo } from "../../../../data/logos";
+import { loginLogo } from "../../../../shared/utils/imagePaths";
 import SearchBar from "../../../../shared/components/SearchBar";
 import LanguageSelector from "../../../../shared/components/LanguageSelector";
 import CurrencySelector from "../../../../shared/components/CurrencySelector";
@@ -57,142 +58,134 @@ const DesktopHeader = ({ hideSellButton = false }) => {
   };
 
   return (
-    <header className="hidden md:block sticky top-0 z-[999] bg-black shadow-lg border-b border-gray-800 overflow-visible">
-      <div className="max-w-[1920px] mx-auto px-4 md:px-5 lg:px-8 xl:px-12 h-20 flex items-center gap-3 lg:gap-4 xl:gap-6">
-        {/* Logo */}
-        <Link to="/home" className="flex-shrink-0 flex items-center gap-2 overflow-visible relative z-20">
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            transition={{
-              opacity: { duration: 0.6 },
-              y: { duration: 0.6, type: "spring", stiffness: 100 }
-            }}
-            className="flex items-center overflow-visible"
-          >
-            {appLogo.src ? (
+    <header className="hidden md:block sticky top-0 z-[999] bg-black shadow-lg border-b border-gray-800 w-full overflow-visible">
+      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 h-16 xl:h-20 flex items-center justify-between gap-2 lg:gap-3 xl:gap-4 overflow-visible">
+        {/* Left Section: Logo & Nav Links */}
+        <div className="flex items-center gap-3 lg:gap-4 xl:gap-6 shrink-0">
+          {/* Logo */}
+          <Link to="/home" className="shrink-0 flex items-center gap-2 relative z-20">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ opacity: { duration: 0.4 }, y: { duration: 0.4 } }}
+              className="flex items-center"
+            >
               <img
-                src={appLogo.src}
-                alt={appLogo.alt}
-                className="h-32 lg:h-40 xl:h-48 w-auto max-w-[260px] lg:max-w-[320px] xl:max-w-[380px] object-contain transition-all drop-shadow-lg scale-[1.35]"
+                src={loginLogo}
+                alt="DwellMart Logo"
+                className="h-8 sm:h-9 lg:h-11 xl:h-12 w-auto max-w-[130px] lg:max-w-[170px] xl:max-w-[210px] object-contain drop-shadow-md"
               />
-            ) : (
-              <span className="text-3xl lg:text-4xl font-extrabold bg-gradient-to-r from-primary-600 via-primary-400 to-primary-600 bg-clip-text text-transparent drop-shadow-sm">Dwell Mart</span>
-            )}
-          </motion.div>
-        </Link>
+            </motion.div>
+          </Link>
 
-        {/* Navigation Links */}
-        <nav className="flex min-w-0 items-center gap-2 lg:gap-3 xl:gap-4 whitespace-nowrap mr-auto">
-          <Link
-            to="/home"
-            className="text-gray-300 hover:text-primary-400 font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
-            {t("Home")}
-          </Link>
-          <Link
-            to="/shop"
-            className="text-gray-300 hover:text-primary-400 font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
-            <FiShoppingBag className="md:hidden lg:inline-block" /> {t("Shop")}
-          </Link>
-          <Link
-            to="/categories"
-            className="text-gray-300 hover:text-primary-400 font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
-            <FiGrid /> {t("Categories")}
-          </Link>
-          <Link
-            to="/offers"
-            className="text-gray-300 hover:text-primary-400 font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
-            {t("Offers")}
-          </Link>
-          <Link
-            to={isAuthenticated ? "/orders" : "/login"}
-            className="text-gray-300 hover:text-primary-400 font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
-            {t("Track Order")}
-          </Link>
-          {!hideSellButton && (
+          {/* Navigation Links */}
+          <nav className="flex items-center gap-2 lg:gap-3 xl:gap-4 whitespace-nowrap">
             <Link
-              to="/sell-on-dwellmart"
-              className="ml-1 rounded-lg border border-[#ffc101]/40 bg-[#ffc101]/12 px-2.5 lg:px-3 xl:px-4 py-2 text-[11px] lg:text-xs xl:text-sm font-semibold text-[#ffc101] transition-all hover:bg-[#ffc101] hover:text-black">
-              {t("Sell On DwellMart")}
+              to="/home"
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              {t("Home")}
             </Link>
-          )}
-        </nav>
+            <Link
+              to="/shop"
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
+              <FiShoppingBag className="hidden lg:inline-block text-xs lg:text-sm" /> {t("Shop")}
+            </Link>
+            <Link
+              to="/categories"
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
+              <FiGrid className="text-xs lg:text-sm" /> {t("Categories")}
+            </Link>
+            <Link
+              to="/offers"
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              {t("Offers")}
+            </Link>
+            <Link
+              to={isAuthenticated ? "/orders" : "/login"}
+              className="hidden lg:inline-block text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              {t("Track Order")}
+            </Link>
+            {!hideSellButton && (
+              <Link
+                to="/sell-on-dwellmart"
+                className="shrink-0 rounded-lg border border-[#ffc101]/60 bg-[#ffc101]/10 px-2 lg:px-3 py-1 lg:py-1.5 text-[11px] lg:text-xs xl:text-sm font-bold text-[#ffc101] transition-all hover:bg-[#ffc101] hover:text-black shadow-sm">
+                {t("Sell On DwellMart")}
+              </Link>
+            )}
+          </nav>
+        </div>
 
-        {/* Right Section: Search and Actions */}
-        <div className="flex-1 flex items-center justify-end min-w-0 ml-[44px] lg:ml-[68px] xl:ml-[84px]">
-          {/* Search Bar Wrapper */}
-          <div className="relative flex items-center mr-1 lg:mr-2 ml-2 sm:ml-4 lg:ml-6 group/search peer/search">
-            {/* Spacer to reserve space for the Search Bar when closed */}
-            <div className="w-[40px] shrink-0 pointer-events-none transition-all duration-500"></div>
+        {/* Center Section: Flexible Search Bar */}
+        <div className="flex-1 min-w-[140px] max-w-[180px] sm:max-w-[220px] lg:max-w-[280px] xl:max-w-[360px] z-20">
+          <SearchBar />
+        </div>
 
-            {/* Search Bar - Absolutely positioned overlay expanding to the right */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[40px] transition-all duration-500 ease-in-out group-focus-within/search:w-[280px] md:group-focus-within/search:w-[350px] lg:group-focus-within/search:w-[450px] xl:group-focus-within/search:w-[500px] 2xl:group-focus-within/search:w-[600px] z-[60] [&_input]:!h-[40px] [&_input]:!py-0 [&_input]:!rounded-full [&_input]:!px-0 group-focus-within/search:[&_input]:!pl-12 group-focus-within/search:[&_input]:!pr-4 [&_input]:!text-transparent [&_input]:placeholder:!text-transparent group-focus-within/search:[&_input]:!text-gray-700 group-focus-within/search:[&_input]:placeholder:!text-gray-400 [&_svg]:!left-1/2 [&_svg]:!-translate-x-1/2 group-focus-within/search:[&_svg]:!left-4 group-focus-within/search:[&_svg]:!translate-x-0">
-              <SearchBar />
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex shrink-0 items-center gap-1.5 lg:gap-2 xl:gap-3 transition-all duration-500 peer-focus-within/search:opacity-0 peer-focus-within/search:translate-x-4 peer-focus-within/search:pointer-events-none">
-          <div className="flex items-center gap-2 mr-2">
+        {/* Right Section: Selectors, Actions & Login/User */}
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0 relative z-30">
+          {/* Selectors (shown on 2xl screens) */}
+          <div className="hidden 2xl:flex items-center gap-1">
             <LanguageSelector variant="desktop" />
             <CurrencySelector variant="desktop" />
           </div>
 
-          {/* Wishlist */}
-          <Link
-            to="/wishlist"
-            className="relative p-2 text-gray-300 hover:text-primary-400 transition-colors">
-            <FiHeart className="text-lg lg:text-xl xl:text-2xl" />
-            {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                {wishlistCount > 9 ? "9+" : wishlistCount}
-              </span>
-            )}
-          </Link>
+          {/* Action Icons */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Wishlist */}
+            <Link
+              to="/wishlist"
+              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
+              title="Wishlist">
+              <FiHeart className="text-base lg:text-lg xl:text-xl" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {wishlistCount > 9 ? "9+" : wishlistCount}
+                </span>
+              )}
+            </Link>
 
-          {/* Cart */}
-          <button
-            onClick={toggleCart}
-            className="relative p-2 text-gray-300 hover:text-primary-400 transition-colors">
-            <FiShoppingBag className="text-lg lg:text-xl xl:text-2xl" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary-600 text-white text-xs font-bold flex items-center justify-center">
-                {itemCount > 9 ? "9+" : itemCount}
-              </span>
-            )}
-          </button>
+            {/* Cart */}
+            <button
+              onClick={toggleCart}
+              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
+              title="Shopping Cart">
+              <FiShoppingBag className="text-base lg:text-lg xl:text-xl" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#ffc101] text-black text-[10px] font-extrabold flex items-center justify-center">
+                  {itemCount > 9 ? "9+" : itemCount}
+                </span>
+              )}
+            </button>
 
-          {/* Notifications */}
-          <Link
-            to={isAuthenticated ? "/notifications" : "/login"}
-            className="relative p-2 text-gray-300 hover:text-primary-400 transition-colors">
-            <FiBell className="text-lg lg:text-xl xl:text-2xl" />
-            {isAuthenticated && unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </Link>
+            {/* Notifications */}
+            <Link
+              to={isAuthenticated ? "/notifications" : "/login"}
+              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
+              title="Notifications">
+              <FiBell className="text-base lg:text-lg xl:text-xl" />
+              {isAuthenticated && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
 
-          {/* User Menu */}
+          {/* User Menu / Login Button */}
           {isAuthenticated ? (
-            <div ref={userMenuRef} className="relative">
+            <div ref={userMenuRef} className="relative shrink-0 ml-1">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1 lg:p-1.5 hover:bg-gray-800 rounded-full transition-all border border-transparent hover:border-gray-700">
+                className="flex items-center gap-1.5 p-1 hover:bg-slate-800 rounded-full transition-all border border-transparent hover:border-slate-700">
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
                     alt={user.name}
-                    className="w-8 h-8 rounded-full object-cover"
+                    className="w-7 h-7 rounded-full object-cover"
                   />
                 ) : (
-                  <HiOutlineUserCircle className="text-gray-300 text-[26px] lg:text-[28px] xl:text-3xl" />
+                  <HiOutlineUserCircle className="text-gray-300 text-2xl lg:text-3xl" />
                 )}
-                <span className="text-xs lg:text-sm font-medium text-gray-200 max-w-[72px] lg:max-w-[84px] xl:max-w-[96px] truncate">
+                <span className="text-xs font-semibold text-gray-200 max-w-[64px] lg:max-w-[90px] truncate">
                   {user?.name || "User"}
                 </span>
               </button>
@@ -203,34 +196,34 @@ const DesktopHeader = ({ hideSellButton = false }) => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="absolute right-0 mt-2 bg-gray-900 rounded-xl shadow-xl border border-gray-800 p-2 z-[60] min-w-[200px]">
-                    <div className="px-3 py-2 border-b border-gray-800 mb-2">
-                      <p className="font-semibold text-gray-800 text-sm">
+                    className="absolute right-0 mt-2 bg-slate-900 rounded-xl shadow-2xl border border-slate-800 p-2 z-[60] min-w-[200px]">
+                    <div className="px-3 py-2 border-b border-slate-800 mb-2">
+                      <p className="font-bold text-white text-sm">
                         {user?.name || "User"}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-gray-400 truncate">
                         {user?.email || ""}
                       </p>
                     </div>
                     <Link
                       to="/profile"
                       onClick={() => setShowUserMenu(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-800 rounded-lg transition-colors text-left w-full">
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-lg transition-colors text-left w-full">
                       <FiUser className="text-gray-400" />
                       <span className="text-gray-200 text-sm">{t("Profile")}</span>
                     </Link>
                     <Link
                       to="/orders"
                       onClick={() => setShowUserMenu(false)}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-800 rounded-lg transition-colors text-left w-full">
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-lg transition-colors text-left w-full">
                       <FiShoppingBag className="text-gray-400" />
                       <span className="text-gray-200 text-sm">{t("Orders")}</span>
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-3 py-2 hover:bg-red-50 rounded-lg transition-colors text-left w-full text-red-600 mt-1">
-                      <FiLogOut className="text-red-500" />
-                      <span className="text-sm">{t("Logout")}</span>
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-red-950/40 rounded-lg transition-colors text-left w-full text-red-400 mt-1">
+                      <FiLogOut className="text-red-400" />
+                      <span className="text-sm font-semibold">{t("Logout")}</span>
                     </button>
                   </motion.div>
                 )}
@@ -239,15 +232,14 @@ const DesktopHeader = ({ hideSellButton = false }) => {
           ) : (
             <Link
               to="/login"
-              className="px-3 lg:px-3.5 xl:px-4 py-2.5 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors shadow-sm shadow-primary-200 text-xs lg:text-sm xl:text-base whitespace-nowrap">
+              className="shrink-0 whitespace-nowrap px-4 lg:px-5 py-1.5 lg:py-2 bg-[#ffc101] text-black border border-amber-400 rounded-xl font-extrabold hover:bg-[#e6ac00] transition-all shadow-md text-xs lg:text-sm shadow-amber-500/20 ml-1">
               {t("Login")}
             </Link>
           )}
         </div>
-        </div>
       </div>
     </header>
-  );
+);
 };
 
 export default DesktopHeader;

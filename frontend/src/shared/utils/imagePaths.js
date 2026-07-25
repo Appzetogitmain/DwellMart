@@ -47,6 +47,7 @@ import athleticsCategory from "../../../data/categories/Athletics.png";
 
 // Logo images
 import appLogo from "../../../data/logos/ChatGPT Image Dec 2, 2025, 03_01_19 PM.png";
+import loginLogo from "../../../data/logos/login_logo.png";
 
 // Hero images
 import heroSlide1 from "../../../data/hero/slide1.png";
@@ -213,5 +214,5 @@ export const promotionalImages = {
   kitchen: kitchenPromo,
 };
 
-export { appLogo as defaultLogo };
+export { appLogo as defaultLogo, loginLogo };
 

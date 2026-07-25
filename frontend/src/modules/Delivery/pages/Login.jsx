@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
 import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
+import { loginLogo } from '../../../shared/utils/imagePaths';
 
 const DeliveryLogin = () => {
   const navigate = useNavigate();
@@ -63,8 +64,14 @@ const DeliveryLogin = () => {
           <div className="glass-card rounded-2xl p-6 shadow-xl">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="w-16 h-16 gradient-green rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-glow-green">
-                <FiTruck className="text-white text-2xl" />
+              <div className="flex justify-center mb-4">
+                <div className="bg-slate-950 px-6 py-3.5 rounded-2xl border border-amber-500/30 shadow-xl inline-flex items-center justify-center">
+                  <img
+                    src={loginLogo}
+                    alt="DwellMart Logo"
+                    className="h-14 sm:h-16 w-auto object-contain drop-shadow-md"
+                  />
+                </div>
               </div>
               <h1 className="text-2xl font-bold text-gray-800 mb-2">Delivery Login</h1>
               <p className="text-gray-600 text-sm">Sign in to manage your deliveries</p>

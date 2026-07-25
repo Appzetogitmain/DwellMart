@@ -194,7 +194,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
         whileTap={{ scale: 0.98 }}
         whileHover={{ y: -4 }}
         style={{ willChange: "transform", transform: "translateZ(0)" }}
-        className={`glass-card rounded-xl overflow-hidden group cursor-pointer h-full flex flex-col hover:shadow-lg transition-all duration-300 ${isFlashSale ? "border border-red-100 bg-red-50/10" : ""
+        className={`glass-card rounded-xl overflow-hidden group cursor-pointer h-full flex flex-col hover:shadow-lg transition-all duration-300 ${isFlashSale ? "border border-[#ffc101]/40 bg-amber-50/10" : ""
           }`}
         {...longPressHandlers}>
         <div className="relative">
@@ -216,7 +216,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
           <Link to={productLink} className="block">
             <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden relative group-hover:bg-gray-200/50 transition-colors">
               {product.originalPrice && (
-                <div className={`absolute top-0 left-0 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-br-lg z-10 shadow-sm ${isFlashSale ? "bg-gradient-to-r from-red-600 to-orange-500" : "bg-red-500"}`}>
+                <div className={`absolute top-0 left-0 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-br-lg z-10 shadow-sm ${isFlashSale ? "bg-[#ffc101] text-black font-extrabold" : "bg-red-500"}`}>
                   {Math.round(
                     ((product.originalPrice - product.price) /
                       product.originalPrice) *
@@ -226,7 +226,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
               )}
               {isFlashSale && (
                 <div className="absolute top-0 right-0 p-1">
-                  <div className="bg-yellow-400 text-gray-900 text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-tighter">
+                  <div className="bg-black text-[#ffc101] border border-[#ffc101]/30 text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-tighter">
                     {t("Hot Deal")}
                   </div>
                 </div>
@@ -270,7 +270,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
               </div>
             )}
             {isFlashSale && (
-              <span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter hidden md:inline">
+              <span className="text-[9px] font-bold text-amber-700 uppercase tracking-tighter hidden md:inline">
                 {t("Ending Soon")}
               </span>
             )}
@@ -281,21 +281,21 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
             <div className="mb-1 space-y-0.5">
               <div className="flex justify-between text-[8px] md:text-[10px] font-bold">
                 <span className="text-gray-500 uppercase">{t("Available")}</span>
-                <span className="text-orange-600">{soldPercentage}% {t("Sold")}</span>
+                <span className="text-amber-800">{soldPercentage}% {t("Sold")}</span>
               </div>
               <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${soldPercentage}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-red-500 to-orange-400"
+                  className="h-full bg-gradient-to-r from-[#ffc101] to-amber-500"
                 />
               </div>
             </div>
           )}
 
           <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 mb-0.5 mt-auto leading-none">
-            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${isFlashSale ? "text-red-600" : "text-gray-900"}`} />
+            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${isFlashSale ? "text-[#b38600]" : "text-gray-900"}`} />
             {product.originalPrice && (
               <Price amount={product.originalPrice} className="text-[9px] md:text-xs text-gray-400 line-through font-medium leading-none mb-0.5" />
             )}
@@ -326,10 +326,10 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
                   : {}
               }
               style={{ willChange: "transform", transform: "translateZ(0)" }}
-              className={`w-full py-1 md:py-2.5 lg:py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${product.stock === "out_of_stock"
+              className={`w-full py-1 md:py-2.5 lg:py-2 rounded-xl font-extrabold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${product.stock === "out_of_stock"
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                 : isFlashSale
-                  ? "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg hover:shadow-red-200 hover:-translate-y-0.5"
+                  ? "bg-gradient-to-r from-[#ffc101] via-[#f5b800] to-[#e6ac00] text-black shadow-md hover:shadow-amber-200 hover:-translate-y-0.5"
                   : "gradient-green text-white shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 }`}>
               <motion.div

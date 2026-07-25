@@ -165,13 +165,5 @@
       "FAQs",
       "Become a Partner"
     ]
-  },
-  {
-    "title": "Firebase",
-    "route": "/admin/firebase",
-    "children": [
-      "Push Config",
-      "Authentication"
-    ]
   }
 ]

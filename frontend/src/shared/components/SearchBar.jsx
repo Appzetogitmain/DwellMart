@@ -227,7 +227,7 @@ const SearchBar = () => {
     <div className="w-full relative" ref={searchRef}>
       <form onSubmit={handleSubmit} className="w-full">
         <div className="relative group">
-          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors z-10" />
+          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-[#ffc101] transition-colors z-10 text-base" />
           <input
             ref={inputRef}
             type="text"
@@ -237,7 +237,7 @@ const SearchBar = () => {
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
             placeholder="Search products..."
-            className="w-full pl-12 pr-4 py-3 glass-card rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:shadow-glow transition-all duration-300 text-gray-700 placeholder:text-gray-400"
+            className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700/80 rounded-full focus:outline-none focus:ring-2 focus:ring-[#ffc101]/50 focus:border-[#ffc101] transition-all text-sm text-gray-100 placeholder:text-gray-400 shadow-inner"
           />
         </div>
       </form>
@@ -246,7 +246,7 @@ const SearchBar = () => {
       {showSuggestions && hasSuggestions && (
         <div
           ref={suggestionsRef}
-          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-96 overflow-y-auto"
+          className="absolute top-full left-0 mt-2 w-full min-w-[300px] sm:min-w-[360px] bg-white rounded-xl shadow-2xl border border-gray-200 z-[100] max-h-96 overflow-y-auto"
         >
           {/* Product Suggestions */}
           {searchQuery.trim() && suggestions.length > 0 && (

@@ -19,6 +19,7 @@ import Settings from '../models/Settings.model.js';
 import { calculateVendorShippingForGroups } from '../services/vendorShipping.service.js';
 import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
+import { sendEmail } from '../services/email.service.js';
 
 const router = Router();
 const listCache = cacheResponse({ ttlSeconds: 30, maxEntries: 1000 });
@@ -730,6 +731,87 @@ router.get('/pages/:slug', asyncHandler(async (req, res) => {
         content: setting?.value?.content || '',
         lastUpdated: setting?.updatedAt || null,
     }, 'Page fetched.'));
+}));
+
+// POST /api/contact (public — process Contact Us form and send inquiry email)
+router.post('/contact', asyncHandler(async (req, res) => {
+    const { name, email, phone, subject, message } = req.body || {};
+
+    if (!name || !String(name).trim()) {
+        throw new ApiError(400, 'Name is required.');
+    }
+    if (!email || !String(email).trim()) {
+        throw new ApiError(400, 'Email address is required.');
+    }
+    if (!message || !String(message).trim()) {
+        throw new ApiError(400, 'Message content is required.');
+    }
+
+    const recipientEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'support@dwellmart.com';
+    const emailSubject = `[DwellMart Inquiry] ${subject || 'New Contact Us Message'} from ${name.trim()}`;
+
+    const textContent = `
+New Contact Us Inquiry Received:
+----------------------------------
+Name: ${name.trim()}
+Email: ${email.trim()}
+Phone: ${phone ? String(phone).trim() : 'N/A'}
+Subject: ${subject || 'General Inquiry'}
+
+Message:
+${message.trim()}
+----------------------------------
+Sent from DwellMart Store Contact Form.
+    `;
+
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+            <div style="background-color: #0f172a; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+                <h2 style="color: #ffc101; margin: 0; font-size: 22px;">DwellMart Customer Inquiry</h2>
+            </div>
+            <div style="padding: 24px; color: #334155;">
+                <h3 style="margin-top: 0; color: #0f172a;">New Message Received</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="padding: 8px 0; font-weight: bold; width: 100px;">Name:</td>
+                        <td style="padding: 8px 0;">${name.trim()}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; font-weight: bold;">Email:</td>
+                        <td style="padding: 8px 0;"><a href="mailto:${email.trim()}" style="color: #2563eb;">${email.trim()}</a></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; font-weight: bold;">Phone:</td>
+                        <td style="padding: 8px 0;">${phone ? String(phone).trim() : 'Not provided'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; font-weight: bold;">Subject:</td>
+                        <td style="padding: 8px 0;">${subject || 'General Inquiry'}</td>
+                    </tr>
+                </table>
+                <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #ffc101;">
+                    <p style="margin: 0; font-weight: bold; color: #475569;">Message:</p>
+                    <p style="margin-top: 8px; white-space: pre-wrap; color: #1e293b;">${message.trim()}</p>
+                </div>
+            </div>
+            <div style="padding: 16px 24px; background-color: #f1f5f9; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; color: #64748b;">
+                Sent via DwellMart Official Contact Form.
+            </div>
+        </div>
+    `;
+
+    try {
+        await sendEmail({
+            to: recipientEmail,
+            subject: emailSubject,
+            text: textContent,
+            html: htmlContent,
+        });
+    } catch (err) {
+        console.error('Failed to send contact inquiry email via SMTP:', err.message);
+    }
+
+    res.status(200).json(new ApiResponse(200, null, 'Thank you! Your message has been sent successfully. We will get back to you soon.'));
 }));
 
 
