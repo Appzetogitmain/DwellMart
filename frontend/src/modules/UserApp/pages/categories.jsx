@@ -723,12 +723,22 @@ const MobileCategories = () => {
                                 setSelectedSubcategory(subcategory.id)
                               }
                               whileTap={{ scale: 0.97 }}
-                              className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap border ${isActive
-                                ? "bg-white text-primary-600 border-primary-200 shadow-sm"
+                              className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap border flex items-center gap-1.5 ${isActive
+                                ? "bg-white text-primary-600 border-primary-200 shadow-sm font-semibold"
                                 : "bg-gray-50 text-gray-600 border-gray-200 active:bg-gray-100"
                                 }`}
                               style={{ willChange: "transform" }}>
-                              {subcategory.name}
+                              {subcategory.image && (
+                                <img
+                                  src={subcategory.image}
+                                  alt={subcategory.name}
+                                  className="w-4 h-4 rounded-md object-cover flex-shrink-0"
+                                  onError={(e) => {
+                                    e.target.style.display = "none";
+                                  }}
+                                />
+                              )}
+                              <span>{subcategory.name}</span>
                             </motion.button>
                           );
                         })}

@@ -92,7 +92,6 @@ import RefundReports from "./modules/Admin/pages/finance/RefundReports";
 import GeneralSettings from "./modules/Admin/pages/settings/GeneralSettings";
 import PaymentShippingSettings from "./modules/Admin/pages/settings/PaymentShippingSettings";
 import OrdersCustomersSettings from "./modules/Admin/pages/settings/OrdersCustomersSettings";
-import ProductsInventorySettings from "./modules/Admin/pages/settings/ProductsInventorySettings";
 import ContentFeaturesSettings from "./modules/Admin/pages/settings/ContentFeaturesSettings";
 // Policies child pages
 import PrivacyPolicy from "./modules/Admin/pages/policies/PrivacyPolicy";
@@ -556,7 +555,6 @@ const AppRoutes = () => {
         <Route path="settings/general" element={<Settings />} />
         <Route path="settings/payment-shipping" element={<Settings />} />
         <Route path="settings/orders-customers" element={<Settings />} />
-        <Route path="settings/products-inventory" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
         <Route path="policies" element={<PrivacyPolicy />} />
         <Route path="policies/privacy-policy" element={<PrivacyPolicy />} />

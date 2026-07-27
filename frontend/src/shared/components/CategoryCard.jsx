@@ -13,7 +13,7 @@ const CategoryCard = ({ category }) => {
           <img
             src={category.image}
             alt={category.name}
-            className="w-full h-full object-contain scale-50 group-hover:scale-65 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
             onError={(e) => {
               e.target.src =
                 "https://via.placeholder.com/200x200?text=Category";
