@@ -94,7 +94,6 @@ import PaymentShippingSettings from "./modules/Admin/pages/settings/PaymentShipp
 import OrdersCustomersSettings from "./modules/Admin/pages/settings/OrdersCustomersSettings";
 import ProductsInventorySettings from "./modules/Admin/pages/settings/ProductsInventorySettings";
 import ContentFeaturesSettings from "./modules/Admin/pages/settings/ContentFeaturesSettings";
-import NotificationsSEOSettings from "./modules/Admin/pages/settings/NotificationsSEOSettings";
 // Policies child pages
 import PrivacyPolicy from "./modules/Admin/pages/policies/PrivacyPolicy";
 import RefundPolicy from "./modules/Admin/pages/policies/RefundPolicy";
@@ -558,7 +557,6 @@ const AppRoutes = () => {
         <Route path="settings/orders-customers" element={<Settings />} />
         <Route path="settings/products-inventory" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
-        <Route path="settings/notifications-seo" element={<Settings />} />
         <Route path="policies" element={<PrivacyPolicy />} />
         <Route path="policies/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="policies/refund-policy" element={<RefundPolicy />} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiSettings, FiCreditCard, FiShoppingBag, FiPackage, FiFileText, FiBell } from 'react-icons/fi';
+import { FiSettings, FiCreditCard, FiShoppingBag, FiPackage, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 import GeneralSettings from './settings/GeneralSettings';
@@ -8,7 +8,6 @@ import PaymentShippingSettings from './settings/PaymentShippingSettings';
 import OrdersCustomersSettings from './settings/OrdersCustomersSettings';
 import ProductsInventorySettings from './settings/ProductsInventorySettings';
 import ContentFeaturesSettings from './settings/ContentFeaturesSettings';
-import NotificationsSEOSettings from './settings/NotificationsSEOSettings';
 
 const Settings = () => {
   const { initialize } = useSettingsStore();
@@ -22,7 +21,6 @@ const Settings = () => {
     if (path.includes('/orders-customers')) return 'orders-customers';
     if (path.includes('/products-inventory')) return 'products-inventory';
     if (path.includes('/content-features')) return 'content-features';
-    if (path.includes('/notifications-seo')) return 'notifications-seo';
     return 'general';
   };
 
@@ -44,7 +42,6 @@ const Settings = () => {
     { id: 'orders-customers', label: 'Orders & Customers', icon: FiShoppingBag, component: OrdersCustomersSettings, route: '/admin/settings/orders-customers' },
     { id: 'products-inventory', label: 'Products & Inventory', icon: FiPackage, component: ProductsInventorySettings, route: '/admin/settings/products-inventory' },
     { id: 'content-features', label: 'Content & Features', icon: FiFileText, component: ContentFeaturesSettings, route: '/admin/settings/content-features' },
-    { id: 'notifications-seo', label: 'Notifications & SEO', icon: FiBell, component: NotificationsSEOSettings, route: '/admin/settings/notifications-seo' },
   ];
 
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab)?.component || GeneralSettings;
