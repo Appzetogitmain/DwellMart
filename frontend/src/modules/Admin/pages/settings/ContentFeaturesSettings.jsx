@@ -9,7 +9,6 @@ const ContentFeaturesSettings = () => {
   const { settings, updateSettings, initialize } = useSettingsStore();
   const [contentData, setContentData] = useState({});
   const [featuresData, setFeaturesData] = useState({});
-  const [homepageData, setHomepageData] = useState({});
   const [reviewsData, setReviewsData] = useState({});
   const [activeSection, setActiveSection] = useState('features');
 
@@ -18,7 +17,6 @@ const ContentFeaturesSettings = () => {
     if (settings) {
       if (settings.content) setContentData(settings.content);
       if (settings.features) setFeaturesData(settings.features);
-      if (settings.homepage) setHomepageData(settings.homepage);
       if (settings.reviews) setReviewsData(settings.reviews);
     }
   }, []);
@@ -27,7 +25,6 @@ const ContentFeaturesSettings = () => {
     if (settings) {
       if (settings.content) setContentData(settings.content);
       if (settings.features) setFeaturesData(settings.features);
-      if (settings.homepage) setHomepageData(settings.homepage);
       if (settings.reviews) setReviewsData(settings.reviews);
     }
   }, [settings]);
@@ -46,18 +43,7 @@ const ContentFeaturesSettings = () => {
     });
   };
 
-  const handleHomepageSectionToggle = (section) => {
-    setHomepageData({
-      ...homepageData,
-      sections: {
-        ...homepageData.sections,
-        [section]: {
-          ...homepageData.sections[section],
-          enabled: !homepageData.sections[section]?.enabled,
-        },
-      },
-    });
-  };
+
 
   const handleReviewsChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -78,18 +64,19 @@ const ContentFeaturesSettings = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateSettings('content', contentData);
-    updateSettings('features', featuresData);
-    updateSettings('homepage', homepageData);
-    updateSettings('reviews', reviewsData);
-    toast.success('Settings saved successfully');
+    try {
+      await updateSettings('features', featuresData);
+      await updateSettings('reviews', reviewsData);
+      toast.success('Settings saved successfully');
+    } catch (err) {
+      toast.error('Failed to save settings');
+    }
   };
 
   const sections = [
     { id: 'features', label: 'Feature Toggles', icon: FiToggleRight },
-    { id: 'homepage', label: 'Home Page', icon: FiHome },
     { id: 'reviews', label: 'Reviews & Ratings', icon: FiStar },
   ];
 
@@ -228,48 +215,6 @@ const ContentFeaturesSettings = () => {
             </div>
           )}
 
-          {/* Homepage Section */}
-          {activeSection === 'homepage' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 sm:p-4 border border-gray-200 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-gray-800">Hero Banner</h4>
-                  <p className="text-xs text-gray-600">Display hero banner on homepage</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 sm:ml-4">
-                  <input
-                    type="checkbox"
-                    checked={homepageData.heroBannerEnabled !== false}
-                    onChange={(e) => setHomepageData({ ...homepageData, heroBannerEnabled: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                </label>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Homepage Sections</h3>
-                <div className="space-y-3">
-                  {Object.entries(homepageData.sections || {}).map(([key, section]) => (
-                    <div key={key} className="flex items-center justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg">
-                      <span className="text-sm font-semibold text-gray-700 capitalize flex-1 min-w-0">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={section.enabled !== false}
-                          onChange={() => handleHomepageSectionToggle(key)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Reviews Section */}
           {activeSection === 'reviews' && (

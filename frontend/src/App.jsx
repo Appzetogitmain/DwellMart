@@ -91,7 +91,6 @@ import RefundReports from "./modules/Admin/pages/finance/RefundReports";
 // Consolidated Settings pages
 import GeneralSettings from "./modules/Admin/pages/settings/GeneralSettings";
 import PaymentShippingSettings from "./modules/Admin/pages/settings/PaymentShippingSettings";
-import OrdersCustomersSettings from "./modules/Admin/pages/settings/OrdersCustomersSettings";
 import ContentFeaturesSettings from "./modules/Admin/pages/settings/ContentFeaturesSettings";
 // Policies child pages
 import PrivacyPolicy from "./modules/Admin/pages/policies/PrivacyPolicy";
@@ -180,6 +179,7 @@ import VendorOrderDetail from "./modules/Vendor/pages/orders/OrderDetail";
 import VendorAnalytics from "./modules/Vendor/pages/Analytics";
 import VendorEarnings from "./modules/Vendor/pages/Earnings";
 import VendorSettings from "./modules/Vendor/pages/Settings";
+import ProfileSettings from "./modules/Vendor/pages/settings/ProfileSettings";
 import VendorStockManagement from "./modules/Vendor/pages/StockManagement";
 import VendorWalletHistory from "./modules/Vendor/pages/WalletHistory";
 import VendorChat from "./modules/Vendor/pages/Chat";
@@ -575,7 +575,6 @@ const AppRoutes = () => {
         />
         <Route path="settings/general" element={<Settings />} />
         <Route path="settings/payment-shipping" element={<Settings />} />
-        <Route path="settings/orders-customers" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
         <Route path="policies" element={<PrivacyPolicy />} />
         <Route path="policies/privacy-policy" element={<PrivacyPolicy />} />
@@ -709,7 +708,7 @@ const AppRoutes = () => {
         <Route path="settings/payment-settings" element={<VendorSettings />} />
         <Route path="settings/shipping" element={<VendorSettings />} />
         <Route path="settings/shipping-settings" element={<VendorSettings />} />
-        <Route path="profile" element={<VendorSettings />} />
+        <Route path="profile" element={<ProfileSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

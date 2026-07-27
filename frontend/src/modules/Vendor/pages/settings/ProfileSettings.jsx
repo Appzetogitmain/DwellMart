@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiSave, FiUser, FiLock, FiShield } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
+import { changeVendorPassword } from "../../services/vendorService";
 import toast from 'react-hot-toast';
 
 const ProfileSettings = () => {
@@ -65,7 +66,7 @@ const ProfileSettings = () => {
     }
 
     try {
-      // In a real app, this would be an API call to change password
+      await changeVendorPassword(formData.currentPassword, formData.newPassword);
       toast.success('Password changed successfully');
       setFormData({
         ...formData,
@@ -74,7 +75,7 @@ const ProfileSettings = () => {
         confirmPassword: '',
       });
     } catch (error) {
-      toast.error('Failed to change password');
+      toast.error(error?.response?.data?.message || 'Failed to change password');
     }
   };
 

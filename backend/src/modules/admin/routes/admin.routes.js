@@ -239,4 +239,8 @@ router.put('/pages/:slug', ...perm(PERMISSIONS.SETTINGS_EDIT), staticPagesContro
 router.get('/settings/general', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getGeneralSettings);
 router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateGeneralSettings);
 
+// ─── Dynamic Category Settings ───────────────────────────────────────────────
+router.get('/settings/:category', ...adminAuth, settingsController.getSettingsByCategory);
+router.put('/settings/:category', ...adminAuth, settingsController.updateSettingsByCategory);
+
 export default router;

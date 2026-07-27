@@ -65,7 +65,9 @@ export const getAllVendors = asyncHandler(async (req, res) => {
 
 // GET /api/admin/vendors/:id
 export const getVendorDetail = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.params.id).select('-password -otp -otpExpiry').lean();
+    const vendor = await Vendor.findById(req.params.id)
+        .select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.ifscCode +bankDetails.bankName')
+        .lean();
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, toApiVendor(vendor), 'Vendor detail fetched.'));
 });

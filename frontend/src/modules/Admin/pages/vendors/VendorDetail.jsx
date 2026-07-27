@@ -432,6 +432,32 @@ const VendorDetail = () => {
                     </div>
                   </div>
 
+                  {vendor.bankDetails && (
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-800 mb-3">Bank Details</h3>
+                      <div className="bg-gray-50/80 p-4 rounded-xl border border-gray-200/60 space-y-2">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider">Account Holder</p>
+                            <p className="font-medium text-gray-800">{vendor.bankDetails.accountName || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider">Account Number</p>
+                            <p className="font-medium text-gray-800">{vendor.bankDetails.accountNumber || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider">Bank Name</p>
+                            <p className="font-medium text-gray-800">{vendor.bankDetails.bankName || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider">IFSC Code</p>
+                            <p className="font-medium text-gray-800">{vendor.bankDetails.ifscCode || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {registrationDocument?.url && (
                     <div className="mt-8 pt-6 border-t border-gray-100">
                       <h3 className="text-sm font-bold text-gray-800 mb-3">Registration Documents</h3>

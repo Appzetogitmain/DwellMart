@@ -218,7 +218,6 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/settings": {
       General: "/admin/settings/general",
       "Payment & Shipping": "/admin/settings/payment-shipping",
-      "Orders & Customers": "/admin/settings/orders-customers",
       "Content & Features": "/admin/settings/content-features",
     },
     "/admin/policies": {

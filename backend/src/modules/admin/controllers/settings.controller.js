@@ -128,3 +128,39 @@ export const getPublicGeneralSettings = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, publicSettings, 'Public general settings fetched successfully.'));
 });
+
+/**
+ * GET /api/admin/settings/:category
+ * Fetch specific category settings
+ */
+export const getSettingsByCategory = asyncHandler(async (req, res) => {
+    const { category } = req.params;
+    
+    if (category === GENERAL_SETTINGS_KEY) {
+        return getGeneralSettings(req, res);
+    }
+    
+    const setting = await Settings.findOne({ key: category });
+    
+    res.status(200).json(new ApiResponse(200, setting?.value || {}, `${category} settings fetched successfully.`));
+});
+
+/**
+ * PUT /api/admin/settings/:category
+ * Update specific category settings
+ */
+export const updateSettingsByCategory = asyncHandler(async (req, res) => {
+    const { category } = req.params;
+    
+    if (category === GENERAL_SETTINGS_KEY) {
+        return updateGeneralSettings(req, res);
+    }
+    
+    const setting = await Settings.findOneAndUpdate(
+        { key: category },
+        { key: category, value: req.body },
+        { upsert: true, new: true }
+    );
+    
+    res.status(200).json(new ApiResponse(200, setting.value, `${category} settings updated successfully.`));
+});
