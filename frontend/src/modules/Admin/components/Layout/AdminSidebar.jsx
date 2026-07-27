@@ -543,8 +543,10 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
       {/* Sidebar - Desktop Fixed */}
       <div 
-        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-40 transition-transform duration-300 ease-in-out ${
-          showDesktop ? "translate-x-0" : "-translate-x-full"
+        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-40 transition-all duration-300 ease-in-out ${
+          showDesktop 
+            ? "translate-x-0 opacity-100 visible pointer-events-auto" 
+            : "-translate-x-full opacity-0 invisible pointer-events-none"
         }`}
       >
         {sidebarContent}

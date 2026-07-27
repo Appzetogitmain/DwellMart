@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle } from 'react-icons/fi';
+import { FiAlertTriangle, FiClock } from 'react-icons/fi';
 import VendorSidebar from './VendorSidebar';
 import VendorHeader from './VendorHeader';
 import VendorBottomNav from './VendorBottomNav';
@@ -14,7 +14,11 @@ const VendorLayout = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [subscription, setSubscription] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
+  const [isExpiringSoon, setIsExpiringSoon] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState(0);
+
   const navigate = useNavigate();
   const headerHeight = useAdminHeaderHeight();
 
@@ -43,14 +47,33 @@ const VendorLayout = () => {
     api.get('/vendor/subscription')
       .then((res) => {
         const data = res?.data;
-        if (!data?.hasSubscription || !data?.isActive) {
+        const sub = data?.subscription || null;
+        setSubscription(sub);
+
+        const isActive = Boolean(data?.hasSubscription && data?.isActive);
+        
+        if (!isActive) {
           setIsExpired(true);
+          setIsExpiringSoon(false);
         } else {
           setIsExpired(false);
+          const periodEnd = sub?.current_period_end;
+          let daysLeft = 14; // Default 14 days for test active vendors
+          if (periodEnd) {
+            const diff = new Date(periodEnd).getTime() - Date.now();
+            daysLeft = Math.max(Math.ceil(diff / (24 * 60 * 60 * 1000)), 0);
+          }
+          setDaysRemaining(daysLeft);
+
+          // Expiring soon warning if 14 days or less remaining
+          if (daysLeft <= 14) {
+            setIsExpiringSoon(true);
+          } else {
+            setIsExpiringSoon(false);
+          }
         }
       })
       .catch(() => {
-        // If error code is SUBSCRIPTION_INACTIVE or 403, mark as expired
         setIsExpired(true);
       });
   }, []);
@@ -58,12 +81,11 @@ const VendorLayout = () => {
   // Bottom nav height is 64px (h-16)
   const bottomNavHeight = 64;
 
-  // Add small buffer to prevent content overlap (8px)
-  const topPadding = headerHeight + (isExpired ? 50 : 8);
+  const topPadding = headerHeight + (isExpired || isExpiringSoon ? 50 : 8);
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className="h-screen w-full bg-gray-50 flex overflow-hidden">
+    <div className="h-screen w-full bg-slate-900 flex overflow-hidden">
       {/* Sidebar */}
       <VendorSidebar
         isOpenMobile={isMobileOpen}
@@ -73,37 +95,20 @@ const VendorLayout = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 bg-slate-900 ${
           isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
         }`}
       >
-        {/* Header */}
+        {/* Header with embedded Subscription Warning Banner */}
         <VendorHeader
           onMenuClick={toggleSidebar}
           isDesktopSidebarOpen={isDesktopOpen}
+          subscriptionInfo={{ subscription, isExpired, isExpiringSoon, daysRemaining }}
         />
-
-        {/* Subscription Expired Warning Banner */}
-        {isExpired && (
-          <div className="shrink-0 sticky top-0 z-20 w-full bg-amber-500 text-slate-950 px-4 py-2.5 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium border-b border-amber-600">
-            <div className="flex items-center gap-2">
-              <FiAlertTriangle className="text-lg shrink-0 text-slate-950" />
-              <span>
-                <strong>Subscription Expired:</strong> You are browsing in <strong>View-Only</strong> mode. Resubscribe to edit products, update orders, or modify settings.
-              </span>
-            </div>
-            <button
-              onClick={() => navigate('/vendor/renew-subscription')}
-              className="px-3 py-1 bg-slate-900 text-[#ffc101] font-extrabold rounded-lg hover:bg-black transition-colors shrink-0 text-xs ml-2 shadow-sm"
-            >
-              Resubscribe Now
-            </button>
-          </div>
-        )}
 
         {/* Page Content */}
         <main
-          className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden lg:pb-6 scrollbar-admin w-full min-w-0"
+          className="flex-1 bg-gray-50 px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 overflow-y-auto overflow-x-hidden scrollbar-admin w-full min-w-0"
           style={{
             paddingBottom: `calc(${Math.max(bottomPadding, 64)}px + env(safe-area-inset-bottom, 0px))`,
           }}

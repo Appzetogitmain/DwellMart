@@ -67,7 +67,7 @@ const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-3.5">
+      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-10 xl:px-12 py-4">
         {/* Left: Menu Button & Page Heading */}
         <div className="flex items-center gap-3 sm:gap-4">
           <button
