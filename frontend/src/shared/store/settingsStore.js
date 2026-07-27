@@ -54,14 +54,24 @@ export const useSettingsStore = create((set, get) => ({
       let features = {};
       let reviews = {};
       try {
-          const fRes = await api.get("/admin/settings/features");
-          features = fRes?.data?.data || {};
-      } catch(e) {}
-      
+        let fRes;
+        try {
+          fRes = await api.get("/admin/settings/features");
+        } catch (e) {
+          fRes = await api.get("/settings/features");
+        }
+        features = fRes?.data?.data || fRes?.data || {};
+      } catch (e) {}
+
       try {
-          const rRes = await api.get("/admin/settings/reviews");
-          reviews = rRes?.data?.data || {};
-      } catch(e) {}
+        let rRes;
+        try {
+          rRes = await api.get("/admin/settings/reviews");
+        } catch (e) {
+          rRes = await api.get("/settings/reviews");
+        }
+        reviews = rRes?.data?.data || rRes?.data || {};
+      } catch (e) {}
 
       set({
         settings: {

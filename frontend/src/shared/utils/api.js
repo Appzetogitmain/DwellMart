@@ -47,6 +47,9 @@ const EXCLUDED_AUTH_SUFFIXES = [
   '/auth/reset-password',
   '/auth/refresh',
   '/auth/logout',
+  '/settings/general',
+  '/settings/features',
+  '/settings/reviews',
 ];
 
 const refreshInFlight = {
