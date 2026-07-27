@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import { loginLogo } from '../../../shared/utils/imagePaths';
 
 const MobileLogin = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -135,6 +136,15 @@ const MobileLogin = () => {
 
               {/* Header */}
               <div className="text-center mb-8">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-slate-950 px-6 py-3.5 rounded-2xl border border-amber-500/30 shadow-xl inline-flex items-center justify-center">
+                    <img
+                      src={loginLogo}
+                      alt="DwellMart Logo"
+                      className="h-14 sm:h-16 w-auto object-contain drop-shadow-md"
+                    />
+                  </div>
+                </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('Welcome Back')}</h1>
                 <p className="text-sm text-gray-600">{t('Login to access your account')}</p>
               </div>

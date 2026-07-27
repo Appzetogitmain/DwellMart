@@ -61,7 +61,7 @@ const DailyDealsSection = ({ products = null }) => {
   }
 
   return (
-    <div className="relative my-4 rounded-2xl overflow-hidden shadow-xl border-2 border-red-200 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500">
+    <div className="relative my-4 rounded-2xl overflow-hidden shadow-xl border-2 border-[#ffc101]/40 bg-gradient-to-br from-[#ffc101] via-[#e6ac00] to-[#b38600]">
       {/* Decorative Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-3xl"></div>
@@ -74,21 +74,21 @@ const DailyDealsSection = ({ products = null }) => {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2 md:p-3">
-                <FiZap className="text-white text-lg md:text-2xl" />
+              <div className="bg-black/90 backdrop-blur-sm rounded-full p-2 md:p-3 shadow-md">
+                <FiZap className="text-[#ffc101] text-lg md:text-2xl" />
               </div>
               <div>
-                <h2 className="text-xl md:text-3xl font-extrabold text-white drop-shadow-lg uppercase tracking-tight">
+                <h2 className="text-xl md:text-3xl font-black text-black uppercase tracking-tight">
                   {t("Daily Deals")}
                 </h2>
-                <p className="text-xs md:text-sm text-white/90 font-medium">
+                <p className="text-xs md:text-sm text-black/90 font-bold">
                   {t("Limited time offers - Up to 70% OFF")}
                 </p>
               </div>
             </div>
             <Link
               to="/daily-deals"
-              className="bg-white/20 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all">
+              className="bg-black text-[#ffc101] text-sm font-extrabold px-3 py-1.5 rounded-lg hover:bg-gray-900 transition-all shadow-md">
               {t("See All")}
             </Link>
           </div>
@@ -99,33 +99,33 @@ const DailyDealsSection = ({ products = null }) => {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-xl p-4 shadow-2xl border-2 border-white/50">
             <div className="mb-2">
-              <p className="text-xs font-semibold text-gray-700 mb-2 ml-11">
+              <p className="text-xs font-bold text-gray-800 mb-2 ml-11">
                 {t("Deal ends in")}
               </p>
               <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-md p-1.5 shadow-md transform translate-y-[2px]">
-                  <FiClock className="text-white text-base" />
+                <div className="bg-black text-[#ffc101] rounded-md p-1.5 shadow-md transform translate-y-[2px]">
+                  <FiClock className="text-[#ffc101] text-base" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20">
+                  <div className="bg-black text-[#ffc101] rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-[#ffc101]/30">
                     <div className="text-base font-extrabold leading-tight">
                       {formatTime(timeLeft.hours)}
                     </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">{t("Hrs")}</div>
+                    <div className="text-[8px] text-[#ffc101]/80 font-bold uppercase">{t("Hrs")}</div>
                   </div>
-                  <span className="text-red-500 font-bold text-lg">:</span>
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20">
+                  <span className="text-black font-black text-lg">:</span>
+                  <div className="bg-black text-[#ffc101] rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-[#ffc101]/30">
                     <div className="text-base font-extrabold leading-tight">
                       {formatTime(timeLeft.minutes)}
                     </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">{t("Min")}</div>
+                    <div className="text-[8px] text-[#ffc101]/80 font-bold uppercase">{t("Min")}</div>
                   </div>
-                  <span className="text-red-500 font-bold text-lg">:</span>
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20 animate-pulse">
+                  <span className="text-black font-black text-lg">:</span>
+                  <div className="bg-black text-[#ffc101] rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-[#ffc101]/30 animate-pulse">
                     <div className="text-base font-extrabold leading-tight">
                       {formatTime(timeLeft.seconds)}
                     </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">{t("Sec")}</div>
+                    <div className="text-[8px] text-[#ffc101]/80 font-bold uppercase">{t("Sec")}</div>
                   </div>
                 </div>
               </div>

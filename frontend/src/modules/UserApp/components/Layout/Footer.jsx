@@ -8,7 +8,7 @@ import {
   FiChevronRight
 } from "react-icons/fi";
 import { motion } from "framer-motion";
-import { appLogo } from "../../../../data/logos";
+import { loginLogo } from "../../../../shared/utils/imagePaths";
 import api from "../../../../shared/utils/api";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
@@ -77,13 +77,9 @@ const Footer = () => {
       <div className="container mx-auto px-6 md:px-12 lg:px-24">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Identity */}
-          <div className="space-y-6">
-            <Link to="/home" className="flex items-center gap-2">
-              {appLogo.src ? (
-                <img src={appLogo.src} alt={appLogo.alt} className="h-28 w-auto object-contain -ml-4" />
-              ) : (
-                <span className="text-2xl font-black text-white">Dwell Mart</span>
-              )}
+          <div className="space-y-4">
+            <Link to="/home" className="inline-block">
+              <img src={loginLogo} alt="DwellMart Logo" className="h-14 sm:h-16 md:h-20 w-auto object-contain drop-shadow-md" />
             </Link>
             <p className="text-sm leading-relaxed text-gray-400">
               {t("Your one-stop destination for curated products from trusted vendors nationwide. We prioritize quality, security, and customer delight in every transaction.")}

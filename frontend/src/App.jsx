@@ -104,9 +104,6 @@ import ContactUs from "./modules/Admin/pages/policies/ContactUs";
 import ShippingPolicy from "./modules/Admin/pages/policies/ShippingPolicy";
 import FAQs from "./modules/Admin/pages/policies/FAQs";
 import BecomePartner from "./modules/Admin/pages/policies/BecomePartner";
-// Firebase child pages
-import PushConfig from "./modules/Admin/pages/firebase/PushConfig";
-import Authentication from "./modules/Admin/pages/firebase/Authentication";
 import RouteWrapper from "./shared/components/RouteWrapper";
 import ScrollToTop from "./shared/components/ScrollToTop";
 import AppBootstrap from "./shared/components/AppBootstrap";
@@ -136,6 +133,7 @@ import MobileDailyDeals from "./modules/UserApp/pages/DailyDeals";
 import MobileFlashSale from "./modules/UserApp/pages/FlashSale";
 import MobileNewArrivals from "./modules/UserApp/pages/NewArrivals";
 import MobileCampaignSale from "./modules/UserApp/pages/CampaignSale";
+import UserContactUs from "./modules/UserApp/pages/ContactUs";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
@@ -450,7 +448,7 @@ const AppRoutes = () => {
       />
       {/* Static content pages — powered by admin-editable content */}
       <Route path="/about" element={<RouteWrapper><StaticPage slug="about" /></RouteWrapper>} />
-      <Route path="/contact" element={<RouteWrapper><StaticPage slug="contact" /></RouteWrapper>} />
+      <Route path="/contact" element={<RouteWrapper><UserContactUs /></RouteWrapper>} />
       <Route path="/terms" element={<RouteWrapper><StaticPage slug="terms" /></RouteWrapper>} />
       <Route path="/privacy" element={<RouteWrapper><StaticPage slug="privacy" /></RouteWrapper>} />
       <Route path="/returns" element={<RouteWrapper><StaticPage slug="returns" /></RouteWrapper>} />
@@ -570,9 +568,6 @@ const AppRoutes = () => {
         <Route path="policies/shipping-policy" element={<ShippingPolicy />} />
         <Route path="policies/faqs" element={<FAQs />} />
         <Route path="policies/become-partner" element={<BecomePartner />} />
-        <Route path="firebase" element={<PushConfig />} />
-        <Route path="firebase/push-config" element={<PushConfig />} />
-        <Route path="firebase/authentication" element={<Authentication />} />
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="banners" element={<Banners />} />
         <Route path="testimonials" element={<Testimonials />} />

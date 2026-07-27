@@ -14,8 +14,8 @@ const SellOnDwellmart = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <DesktopHeader hideSellButton />
-      <MobileHeader hideSellButton />
+      <DesktopHeader />
+      <MobileHeader />
 
       <section className="bg-[linear-gradient(135deg,_#0f172a,_#134e4a_55%,_#ccfbf1)] px-4 py-16 text-white">
         <div className="mx-auto max-w-5xl">

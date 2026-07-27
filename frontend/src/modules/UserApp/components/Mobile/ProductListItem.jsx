@@ -156,11 +156,11 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
             <div className="mb-0.5 space-y-0.5 max-w-[200px]">
               <div className="flex justify-between text-[8px] font-bold">
                 <span className="text-gray-400 uppercase">Stock Left</span>
-                <span className="text-orange-600">{soldPercentage}% Sold</span>
+                <span className="text-amber-800">{soldPercentage}% Sold</span>
               </div>
               <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-red-500 to-orange-400 transition-all duration-1000"
+                  className="h-full bg-gradient-to-r from-[#ffc101] to-amber-500 transition-all duration-1000"
                   style={{ width: `${soldPercentage}%` }}
                 />
               </div>
@@ -194,8 +194,8 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className={`px-4 py-2 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95 whitespace-nowrap ${isFlashSale
-                  ? "bg-gradient-to-r from-red-500 to-orange-500 text-white hover:shadow-red-200"
+                className={`px-4 py-2 rounded-xl font-extrabold text-xs md:text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95 whitespace-nowrap ${isFlashSale
+                  ? "bg-gradient-to-r from-[#ffc101] via-[#f5b800] to-[#e6ac00] text-black shadow-sm hover:shadow-amber-200"
                   : "gradient-green text-white hover:shadow-glow-green"
                   }`}>
                 <FiShoppingBag className="text-xs md:text-base" />

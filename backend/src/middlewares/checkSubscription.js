@@ -12,8 +12,9 @@ const checkSubscription = async (req, res, next) => {
             && new Date(subscription.current_period_end) > new Date()
         );
 
-        if (!isActive) {
-            const error = new ApiError(403, 'Your subscription is inactive. Please update your plan to continue.');
+        // Allow GET (view-only) requests even if subscription is expired so vendor can view their panel
+        if (!isActive && req.method !== 'GET') {
+            const error = new ApiError(403, 'Your subscription is expired. Please resubscribe to make active store changes.');
             error.errorCode = 'SUBSCRIPTION_INACTIVE';
             return next(error);
         }
