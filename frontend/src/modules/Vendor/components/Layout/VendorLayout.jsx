@@ -9,10 +9,35 @@ import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 import api from '../../../../shared/utils/api';
 
 const VendorLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(() => {
+    const saved = localStorage.getItem('vendor_sidebar_open');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
   const navigate = useNavigate();
   const headerHeight = useAdminHeaderHeight();
+
+  const toggleSidebar = () => {
+    if (window.innerWidth >= 1024) {
+      setIsDesktopOpen((prev) => {
+        const next = !prev;
+        localStorage.setItem('vendor_sidebar_open', JSON.stringify(next));
+        return next;
+      });
+    } else {
+      setIsMobileOpen((prev) => !prev);
+    }
+  };
+
+  const closeSidebar = () => {
+    if (window.innerWidth >= 1024) {
+      setIsDesktopOpen(false);
+      localStorage.setItem('vendor_sidebar_open', JSON.stringify(false));
+    } else {
+      setIsMobileOpen(false);
+    }
+  };
 
   useEffect(() => {
     api.get('/vendor/subscription')
@@ -40,16 +65,31 @@ const VendorLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <VendorSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <VendorSidebar
+        isOpenMobile={isMobileOpen}
+        isOpenDesktop={isDesktopOpen}
+        onClose={closeSidebar}
+      />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 max-w-full overflow-x-hidden">
+      <div
+        className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${
+          isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
+        }`}
+      >
         {/* Header */}
-        <VendorHeader onMenuClick={() => setSidebarOpen(true)} />
+        <VendorHeader
+          onMenuClick={toggleSidebar}
+          isDesktopSidebarOpen={isDesktopOpen}
+        />
 
         {/* Subscription Expired Warning Banner */}
         {isExpired && (
-          <div className="fixed top-16 left-0 lg:left-64 right-0 z-[990] bg-amber-500 text-slate-950 px-4 py-2.5 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium border-b border-amber-600">
+          <div
+            className={`fixed top-16 left-0 right-0 z-[990] bg-amber-500 text-slate-950 px-4 py-2.5 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium border-b border-amber-600 transition-all duration-300 ${
+              isDesktopOpen ? 'lg:left-64' : 'lg:left-0'
+            }`}
+          >
             <div className="flex items-center gap-2">
               <FiAlertTriangle className="text-lg shrink-0 text-slate-950" />
               <span>

@@ -6,8 +6,33 @@ import AdminBottomNav from './AdminBottomNav';
 import useAdminHeaderHeight from '../../hooks/useAdminHeaderHeight';
 
 const AdminLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(() => {
+    const saved = localStorage.getItem('admin_sidebar_open');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const headerHeight = useAdminHeaderHeight();
+
+  const toggleSidebar = () => {
+    if (window.innerWidth >= 1024) {
+      setIsDesktopOpen((prev) => {
+        const next = !prev;
+        localStorage.setItem('admin_sidebar_open', JSON.stringify(next));
+        return next;
+      });
+    } else {
+      setIsMobileOpen((prev) => !prev);
+    }
+  };
+
+  const closeSidebar = () => {
+    if (window.innerWidth >= 1024) {
+      setIsDesktopOpen(false);
+      localStorage.setItem('admin_sidebar_open', JSON.stringify(false));
+    } else {
+      setIsMobileOpen(false);
+    }
+  };
   
   // Bottom nav height is 64px (h-16)
   const bottomNavHeight = 64;
@@ -19,12 +44,23 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar
+        isOpenMobile={isMobileOpen}
+        isOpenDesktop={isDesktopOpen}
+        onClose={closeSidebar}
+      />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 max-w-full overflow-x-hidden">
+      <div
+        className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${
+          isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
+        }`}
+      >
         {/* Header */}
-        <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+        <AdminHeader
+          onMenuClick={toggleSidebar}
+          isDesktopSidebarOpen={isDesktopOpen}
+        />
 
         {/* Page Content - with dynamic padding to account for fixed header and bottom nav */}
         <main 

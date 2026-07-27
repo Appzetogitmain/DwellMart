@@ -81,7 +81,9 @@ const getChildRoute = (parentRoute, childName) => {
   return routeMap[parentRoute]?.[childName] || parentRoute;
 };
 
-const VendorSidebar = ({ isOpen, onClose }) => {
+const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
+  const showMobile = isOpenMobile !== undefined ? isOpenMobile : isOpen;
+  const showDesktop = isOpenDesktop !== undefined ? isOpenDesktop : (isOpen ?? true);
   const location = useLocation();
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
@@ -274,12 +276,13 @@ const VendorSidebar = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Close Button - Mobile Only */}
+          {/* Close/Hide Button */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
-            aria-label="Close sidebar">
-            <FiX className="text-xl text-gray-300" />
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+            aria-label="Hide sidebar"
+            title="Hide sidebar">
+            <FiX className="text-xl text-gray-300 hover:text-white" />
           </button>
         </div>
       </div>
@@ -295,7 +298,7 @@ const VendorSidebar = ({ isOpen, onClose }) => {
     <>
       {/* Mobile: Overlay Backdrop */}
       <AnimatePresence>
-        {isOpen && (
+        {showMobile && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -308,7 +311,7 @@ const VendorSidebar = ({ isOpen, onClose }) => {
 
       {/* Sidebar - Mobile Drawer */}
       <AnimatePresence>
-        {isOpen && (
+        {showMobile && (
           <motion.div
             initial={{ x: -300 }}
             animate={{ x: 0 }}
@@ -321,7 +324,11 @@ const VendorSidebar = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       {/* Sidebar - Desktop Fixed */}
-      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20">
+      <div 
+        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20 transition-transform duration-300 ease-in-out ${
+          showDesktop ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         {sidebarContent}
       </div>
     </>

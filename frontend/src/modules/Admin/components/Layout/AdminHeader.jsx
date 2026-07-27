@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
 
-const AdminHeader = ({ onMenuClick }) => {
+const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAdminAuthStore();
@@ -58,7 +58,9 @@ const AdminHeader = ({ onMenuClick }) => {
 
   return (
     <header
-      className="bg-black border-b border-gray-800 fixed top-0 left-0 lg:left-64 right-0 z-30"
+      className={`bg-black border-b border-gray-800 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
+        isDesktopSidebarOpen ? 'lg:left-64' : 'lg:left-0'
+      }`}
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
@@ -69,8 +71,10 @@ const AdminHeader = ({ onMenuClick }) => {
           <Button
             onClick={onMenuClick}
             variant="icon"
-            className="lg:hidden text-gray-300"
+            className="text-gray-300 hover:text-white transition-colors"
             icon={FiMenu}
+            aria-label="Toggle Sidebar"
+            title="Toggle Sidebar"
           />
 
           {/* Page Heading - Desktop Only */}
