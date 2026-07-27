@@ -256,9 +256,9 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="h-full flex flex-col bg-slate-800 shadow-xl">
+    <div className="h-full flex flex-col bg-slate-900 shadow-xl">
       {/* Header Section */}
-      <div className="p-4 border-b border-slate-700 bg-slate-900">
+      <div className="p-4 border-b border-slate-800 bg-slate-900 shrink-0">
         {/* Header with Close Button and Vendor Info */}
         <div className="flex items-center justify-between gap-3">
           {/* Vendor User Info */}
@@ -270,7 +270,7 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
               <h2 className="font-semibold text-white text-sm truncate">
                 {vendor?.storeName || vendor?.name || "Vendor Store"}
               </h2>
-              <p className="text-xs text-gray-400 truncate">
+              <p className="text-xs text-slate-400 truncate">
                 {vendor?.email || "vendor@example.com"}
               </p>
             </div>
@@ -287,8 +287,8 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 overflow-y-auto p-3 scrollbar-admin lg:pb-3">
+      {/* Navigation Menu (with right border below top header) */}
+      <nav className="flex-1 overflow-y-auto p-3 scrollbar-admin lg:pb-3 border-r border-slate-800 bg-slate-900">
         {vendorMenu.map((item) => renderMenuItem(item))}
       </nav>
     </div>
@@ -325,8 +325,10 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
       {/* Sidebar - Desktop Fixed */}
       <div 
-        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20 transition-transform duration-300 ease-in-out ${
-          showDesktop ? "translate-x-0" : "-translate-x-full"
+        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20 transition-all duration-300 ease-in-out ${
+          showDesktop 
+            ? "translate-x-0 opacity-100 visible pointer-events-auto" 
+            : "-translate-x-full opacity-0 invisible pointer-events-none"
         }`}
       >
         {sidebarContent}

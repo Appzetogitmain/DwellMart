@@ -10,6 +10,8 @@ import {
   getVendorSubscriptionPlans,
 } from '../services/vendorService';
 
+import { useVendorAuthStore } from '../store/vendorAuthStore';
+
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 let razorpayScriptPromise = null;
 
@@ -46,6 +48,8 @@ const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const VendorRenewSubscription = () => {
   const navigate = useNavigate();
+  const { vendor } = useVendorAuthStore();
+  const isLoggedIn = Boolean(vendor || localStorage.getItem('vendor-token'));
   const [plans, setPlans] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -215,11 +219,11 @@ const VendorRenewSubscription = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/vendor/login')}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-10 py-3 font-semibold text-slate-600 transition hover:bg-slate-100"
+                onClick={() => navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login')}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-10 py-3 font-semibold text-slate-700 transition hover:bg-slate-100 shadow-2xs cursor-pointer"
               >
                 <FiArrowLeft />
-                Back to login
+                {isLoggedIn ? 'Back to Dashboard' : 'Back to Login'}
               </button>
             </div>
           ) : null}
