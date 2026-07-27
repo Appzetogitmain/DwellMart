@@ -11,6 +11,7 @@ import { formatPrice } from "../../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import api from "../../../../shared/utils/api";
 
 const ManageProducts = () => {
   const navigate = useNavigate();
@@ -58,6 +59,25 @@ const ManageProducts = () => {
 
     return filtered;
   }, [products, searchQuery, selectedStatus, selectedCategory]);
+
+  const handleActionClick = (targetPath) => {
+    api.get('/vendor/subscription')
+      .then((res) => {
+        const data = res?.data;
+        if (!data?.hasSubscription || !data?.isActive) {
+          window.dispatchEvent(new CustomEvent('vendor-subscription-expired', {
+            detail: { message: 'Your subscription has expired. Please resubscribe to add or edit products.' }
+          }));
+        }
+        navigate(targetPath);
+      })
+      .catch(() => {
+        window.dispatchEvent(new CustomEvent('vendor-subscription-expired', {
+          detail: { message: 'Your subscription has expired. Please resubscribe to add or edit products.' }
+        }));
+        navigate(targetPath);
+      });
+  };
 
   const columns = [
     {
@@ -122,7 +142,7 @@ const ManageProducts = () => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/vendor/products/${row._id ?? row.id}`);
+              handleActionClick(`/vendor/products/${row._id ?? row.id}`);
             }}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
             <FiEdit />
@@ -211,7 +231,7 @@ const ManageProducts = () => {
             />
 
             <button
-              onClick={() => navigate("/vendor/products/add-product")}
+              onClick={() => handleActionClick("/vendor/products/add-product")}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm sm:text-base whitespace-nowrap">
               <span>Add New Product</span>
             </button>
@@ -243,13 +263,13 @@ const ManageProducts = () => {
             columns={columns}
             pagination={true}
             itemsPerPage={10}
-            onRowClick={(row) => navigate(`/vendor/products/${row._id ?? row.id}`)}
+            onRowClick={(row) => handleActionClick(`/vendor/products/${row._id ?? row.id}`)}
           />
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">No products found</p>
             <button
-              onClick={() => navigate("/vendor/products/add-product")}
+              onClick={() => handleActionClick("/vendor/products/add-product")}
               className="px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold">
               Add Your First Product
             </button>

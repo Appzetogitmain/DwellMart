@@ -100,6 +100,9 @@ export const deleteCategory = (id) =>
 export const reorderCategories = (categoryIds) =>
     api.patch('/admin/categories/reorder', { categoryIds });
 
+export const seedCategoriesApi = () =>
+    api.post('/admin/categories/seed');
+
 // ─── Brands ───────────────────────────────────────────────────────────────────
 export const getAllBrands = () =>
     api.get('/admin/brands');

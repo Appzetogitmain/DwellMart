@@ -161,6 +161,7 @@ import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
 import VendorRenewSubscription from "./modules/Vendor/pages/VendorRenewSubscription";
 import VendorProtectedRoute from "./modules/Vendor/components/VendorProtectedRoute";
+import VendorActionRoute from "./modules/Vendor/components/VendorActionRoute";
 import VendorLayout from "./modules/Vendor/components/Layout/VendorLayout";
 import VendorDashboard from "./modules/Vendor/pages/Dashboard";
 import VendorProducts from "./modules/Vendor/pages/Products";
@@ -624,8 +625,22 @@ const AppRoutes = () => {
           path="products/manage-products"
           element={<VendorManageProducts />}
         />
-        <Route path="products/add-product" element={<VendorAddProduct />} />
-        <Route path="products/:id" element={<VendorProductForm />} />
+        <Route
+          path="products/add-product"
+          element={
+            <VendorActionRoute>
+              <VendorAddProduct />
+            </VendorActionRoute>
+          }
+        />
+        <Route
+          path="products/:id"
+          element={
+            <VendorActionRoute>
+              <VendorProductForm />
+            </VendorActionRoute>
+          }
+        />
         <Route path="orders" element={<VendorOrders />} />
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />

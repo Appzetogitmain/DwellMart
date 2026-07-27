@@ -59,9 +59,9 @@ const DesktopHeader = ({ hideSellButton = false }) => {
 
   return (
     <header className="hidden md:block sticky top-0 z-[999] bg-black shadow-lg border-b border-gray-800 w-full overflow-visible">
-      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 h-16 xl:h-20 flex items-center justify-between gap-2 lg:gap-3 xl:gap-4 overflow-visible">
+      <div className="w-full max-w-[1920px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-6 h-16 xl:h-20 flex items-center justify-between gap-1.5 lg:gap-2.5 xl:gap-3.5 overflow-visible">
         {/* Left Section: Logo & Nav Links */}
-        <div className="flex items-center gap-3 lg:gap-4 xl:gap-6 shrink-0">
+        <div className="flex items-center gap-2 lg:gap-3 xl:gap-4 shrink-0">
           {/* Logo */}
           <Link to="/home" className="shrink-0 flex items-center gap-2 relative z-20">
             <motion.div
@@ -73,42 +73,42 @@ const DesktopHeader = ({ hideSellButton = false }) => {
               <img
                 src={loginLogo}
                 alt="DwellMart Logo"
-                className="h-8 sm:h-9 lg:h-11 xl:h-12 w-auto max-w-[130px] lg:max-w-[170px] xl:max-w-[210px] object-contain drop-shadow-md"
+                className="h-8 sm:h-9 lg:h-10 xl:h-11 w-auto max-w-[120px] lg:max-w-[155px] xl:max-w-[185px] object-contain drop-shadow-md"
               />
             </motion.div>
           </Link>
 
           {/* Navigation Links */}
-          <nav className="flex items-center gap-2 lg:gap-3 xl:gap-4 whitespace-nowrap">
+          <nav className="flex items-center gap-1.5 lg:gap-2.5 xl:gap-3.5 whitespace-nowrap">
             <Link
               to="/home"
-              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] transition-colors">
               {t("Home")}
             </Link>
             <Link
               to="/shop"
-              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] flex items-center gap-1 transition-colors">
               <FiShoppingBag className="hidden lg:inline-block text-xs lg:text-sm" /> {t("Shop")}
             </Link>
             <Link
               to="/categories"
-              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] flex items-center gap-1 transition-colors">
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] flex items-center gap-1 transition-colors">
               <FiGrid className="text-xs lg:text-sm" /> {t("Categories")}
             </Link>
             <Link
               to="/offers"
-              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              className="text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] transition-colors">
               {t("Offers")}
             </Link>
             <Link
               to={isAuthenticated ? "/orders" : "/login"}
-              className="hidden lg:inline-block text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[15px] transition-colors">
+              className="hidden xl:inline-block text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] transition-colors">
               {t("Track Order")}
             </Link>
             {!hideSellButton && (
               <Link
                 to="/sell-on-dwellmart"
-                className="shrink-0 rounded-lg border border-[#ffc101]/60 bg-[#ffc101]/10 px-2 lg:px-3 py-1 lg:py-1.5 text-[11px] lg:text-xs xl:text-sm font-bold text-[#ffc101] transition-all hover:bg-[#ffc101] hover:text-black shadow-sm">
+                className="shrink-0 rounded-lg border border-[#ffc101]/60 bg-[#ffc101]/10 px-2 lg:px-2.5 py-1 lg:py-1.5 text-[11px] lg:text-xs xl:text-xs font-bold text-[#ffc101] transition-all hover:bg-[#ffc101] hover:text-black shadow-sm">
                 {t("Sell On DwellMart")}
               </Link>
             )}
@@ -116,14 +116,14 @@ const DesktopHeader = ({ hideSellButton = false }) => {
         </div>
 
         {/* Center Section: Flexible Search Bar */}
-        <div className="flex-1 min-w-[140px] max-w-[180px] sm:max-w-[220px] lg:max-w-[280px] xl:max-w-[360px] z-20">
+        <div className="flex-1 min-w-[100px] max-w-[140px] md:max-w-[170px] lg:max-w-[220px] xl:max-w-[280px] z-20">
           <SearchBar />
         </div>
 
         {/* Right Section: Selectors, Actions & Login/User */}
-        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0 relative z-30">
-          {/* Selectors (shown on 2xl screens) */}
-          <div className="hidden 2xl:flex items-center gap-1">
+        <div className="flex items-center gap-1 lg:gap-2 shrink-0 relative z-30">
+          {/* Selectors (shown on desktop header) */}
+          <div className="flex items-center gap-1">
             <LanguageSelector variant="desktop" />
             <CurrencySelector variant="desktop" />
           </div>
@@ -232,7 +232,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
           ) : (
             <Link
               to="/login"
-              className="shrink-0 whitespace-nowrap px-4 lg:px-5 py-1.5 lg:py-2 bg-[#ffc101] text-black border border-amber-400 rounded-xl font-extrabold hover:bg-[#e6ac00] transition-all shadow-md text-xs lg:text-sm shadow-amber-500/20 ml-1">
+              className="shrink-0 whitespace-nowrap px-3.5 lg:px-4 py-1.5 lg:py-2 bg-[#ffc101] text-black border border-amber-400 rounded-xl font-extrabold hover:bg-[#e6ac00] transition-all shadow-md text-xs lg:text-sm shadow-amber-500/20">
               {t("Login")}
             </Link>
           )}
