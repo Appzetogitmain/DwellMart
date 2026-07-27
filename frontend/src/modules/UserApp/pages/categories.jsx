@@ -450,11 +450,20 @@ const MobileCategories = () => {
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
                   <FiArrowLeft className="text-xl text-gray-700" />
                 </button>
+                {selectedCategory.image && (
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 shadow-xs">
+                    <img
+                      src={selectedCategory.image}
+                      alt={selectedCategory.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-gray-800">
+                  <h2 className="text-lg font-bold text-gray-800 tracking-tight">
                     {selectedCategory.name}
                   </h2>
-                   <p className="text-[10px] text-gray-500">
+                   <p className="text-xs text-gray-500 font-medium">
                     {filteredProducts.length} {filteredProducts.length !== 1 ? t("products") : t("product")} {t('available')}
                   </p>
                 </div>
@@ -639,11 +648,11 @@ const MobileCategories = () => {
             {/* Left Panel - Vertical Category Sidebar */}
             <div
               ref={categoryListRef}
-              className="w-16 md:w-20 bg-gray-50 border-r border-gray-200 overflow-y-auto scrollbar-hide flex-shrink-0"
+              className="w-20 sm:w-24 md:w-28 lg:w-32 bg-gray-50/90 border-r border-gray-200 overflow-y-auto scrollbar-hide flex-shrink-0"
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
-              <div className="pb-[190px]">
+              <div className="pb-[190px] py-1 space-y-1">
                  {translatedRootCategories.map((category) => {
                   const isActive =
                     normalizeId(category.id) === normalizeId(selectedCategoryId);
@@ -661,33 +670,34 @@ const MobileCategories = () => {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.2 }}
                         whileTap={{ scale: 0.95 }}
-                        className={`w-full px-2 py-1.5 text-left transition-all duration-200 relative ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100"
+                        className={`w-full py-2.5 px-1.5 text-left transition-all duration-200 relative flex flex-col items-center gap-1.5 ${isActive ? "bg-white shadow-sm" : "hover:bg-gray-100/80"
                           }`}
                         style={{ willChange: "transform" }}>
-                        <div className="flex flex-col items-center gap-0.5">
-                          <div
-                            className={`w-8 h-8 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 transition-all duration-200 ${isActive
-                              ? "ring-2 ring-primary-500 ring-offset-1 scale-105"
-                              : ""
-                              }`}
-                            style={{
-                              willChange: isActive ? "transform" : "auto",
-                            }}>
-                            <LazyImage
-                              src={category.image}
-                              alt={category.name}
-                              className="w-full h-full object-cover"
-                              placeholderWidth={48}
-                              placeholderHeight={48}
-                              placeholderText={category.name}
-                            />
-                          </div>
-                          <span
-                            className={`text-[9px] font-semibold text-center leading-tight transition-colors ${isActive ? "text-primary-600" : "text-gray-700"
-                              }`}>
-                            {category.name}
-                          </span>
+                        {isActive && (
+                          <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-emerald-600 shadow-sm" />
+                        )}
+                        <div
+                          className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 transition-all duration-200 shadow-xs border ${isActive
+                            ? "ring-2 ring-emerald-500 ring-offset-2 scale-105 border-emerald-400 shadow-md"
+                            : "border-gray-200/80 hover:border-emerald-300"
+                            }`}
+                          style={{
+                            willChange: isActive ? "transform" : "auto",
+                          }}>
+                          <LazyImage
+                            src={category.image}
+                            alt={category.name}
+                            className="w-full h-full object-cover"
+                            placeholderWidth={64}
+                            placeholderHeight={64}
+                            placeholderText={category.name}
+                          />
                         </div>
+                        <span
+                          className={`text-xs sm:text-xs md:text-sm font-semibold text-center leading-snug transition-colors line-clamp-2 px-1 ${isActive ? "text-emerald-700 font-bold" : "text-gray-700"
+                            }`}>
+                          {category.name}
+                        </span>
                       </motion.button>
                     </div>
                   );
@@ -701,17 +711,17 @@ const MobileCategories = () => {
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
-              <div className="p-0 md:p-3">
+              <div className="p-2 md:p-4">
                 {/* Subcategory Selector - Above product cards */}
                 {subcategories.length > 0 && (
-                  <div className="mb-3 pb-3 border-b border-gray-200">
+                  <div className="mb-4 pb-3 border-b border-gray-100">
                     <div
-                      className="overflow-x-auto scrollbar-hide px-2 pt-2 md:pt-0 md:-mx-3 md:px-3"
+                      className="overflow-x-auto scrollbar-hide px-1 pt-1 md:pt-0"
                       style={{
                         scrollBehavior: "smooth",
                         WebkitOverflowScrolling: "touch",
                       }}>
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-2 py-1">
                         {translatedSubcategories.map((subcategory) => {
                           const isActive =
                             normalizeId(selectedSubcategory) ===
@@ -723,16 +733,16 @@ const MobileCategories = () => {
                                 setSelectedSubcategory(subcategory.id)
                               }
                               whileTap={{ scale: 0.97 }}
-                              className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 whitespace-nowrap border flex items-center gap-1.5 ${isActive
-                                ? "bg-white text-primary-600 border-primary-200 shadow-sm font-semibold"
-                                : "bg-gray-50 text-gray-600 border-gray-200 active:bg-gray-100"
+                              className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs ${isActive
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-md scale-102"
+                                : "bg-gray-50 text-gray-700 border-gray-200/90 hover:bg-gray-100 hover:border-gray-300 active:bg-gray-200"
                                 }`}
                               style={{ willChange: "transform" }}>
                               {subcategory.image && (
                                 <img
                                   src={subcategory.image}
                                   alt={subcategory.name}
-                                  className="w-4 h-4 rounded-md object-cover flex-shrink-0"
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover flex-shrink-0 border border-white/40 shadow-xs"
                                   onError={(e) => {
                                     e.target.style.display = "none";
                                   }}
