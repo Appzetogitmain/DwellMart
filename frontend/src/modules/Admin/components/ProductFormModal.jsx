@@ -660,6 +660,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
 
   if (!isOpen) return null;
 
+  const isVendorProductEdit = isEdit && Boolean(formData.vendorId);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -755,7 +757,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           value={formData.name}
                           onChange={handleChange}
                           required
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          disabled={isVendorProductEdit}
+                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
                       </div>
 
@@ -769,7 +772,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           value={formData.unit}
                           onChange={handleChange}
                           placeholder="e.g., Piece, Kilogram, Gram"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          disabled={isVendorProductEdit}
+                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
                       </div>
 
@@ -782,6 +786,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           subcategoryId={formData.subcategoryId}
                           onChange={handleChange}
                           required
+                          disabled={isVendorProductEdit}
                         />
                       </div>
 
@@ -815,6 +820,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           value={formData.vendorId || ""}
                           onChange={handleChange}
                           placeholder="Select Vendor"
+                          disabled={isVendorProductEdit}
                           options={[
                             { value: "", label: "Select Vendor" },
                             ...vendors.map((vendor) => ({
@@ -859,7 +865,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           required
                           min="0"
                           step="0.01"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          disabled={isVendorProductEdit}
+                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
                       </div>
 
@@ -874,7 +881,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           onChange={handleChange}
                           min="0"
                           step="0.01"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          disabled={isVendorProductEdit}
+                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
                       </div>
                     </div>
@@ -1022,7 +1030,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           onChange={handleChange}
                           required
                           min="0"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          disabled={isVendorProductEdit}
+                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
                       </div>
 
@@ -1034,6 +1043,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           name="stock"
                           value={formData.stock}
                           onChange={handleChange}
+                          disabled={isVendorProductEdit}
                           options={[
                             { value: "in_stock", label: "In Stock" },
                             { value: "low_stock", label: "Low Stock" },
@@ -1144,8 +1154,9 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 {size}
                                 <button
                                   type="button"
+                                  disabled={isVendorProductEdit}
                                   onClick={() => removeVariantAxisValue("sizes", size)}
-                                  className="text-blue-700 hover:text-blue-900"
+                                  className={`text-blue-700 hover:text-blue-900 ${isVendorProductEdit ? 'hidden' : ''}`}
                                 >
                                   <FiX className="w-3 h-3" />
                                 </button>
@@ -1162,12 +1173,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                               onKeyDown={(e) => handleVariantAxisInputKeyDown("sizes", e)}
                               onBlur={() => addVariantAxisValues("sizes", variantAxisInput.sizes)}
                               placeholder="Type size and press Enter (e.g. S, M, L)"
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              disabled={isVendorProductEdit}
+                              className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                             />
                             <button
                               type="button"
+                              disabled={isVendorProductEdit}
                               onClick={() => addVariantAxisValues("sizes", variantAxisInput.sizes)}
-                              className="px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50"
+                              className={`px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               Add
                             </button>
@@ -1188,8 +1201,9 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 {color}
                                 <button
                                   type="button"
+                                  disabled={isVendorProductEdit}
                                   onClick={() => removeVariantAxisValue("colors", color)}
-                                  className="text-emerald-700 hover:text-emerald-900"
+                                  className={`text-emerald-700 hover:text-emerald-900 ${isVendorProductEdit ? 'hidden' : ''}`}
                                 >
                                   <FiX className="w-3 h-3" />
                                 </button>
@@ -1206,12 +1220,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                               onKeyDown={(e) => handleVariantAxisInputKeyDown("colors", e)}
                               onBlur={() => addVariantAxisValues("colors", variantAxisInput.colors)}
                               placeholder="Type color and press Enter (e.g. Red, Blue)"
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              disabled={isVendorProductEdit}
+                              className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                             />
                             <button
                               type="button"
+                              disabled={isVendorProductEdit}
                               onClick={() => addVariantAxisValues("colors", variantAxisInput.colors)}
-                              className="px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50"
+                              className={`px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                               Add
                             </button>
@@ -1225,8 +1241,9 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           </label>
                           <button
                             type="button"
+                            disabled={isVendorProductEdit}
                             onClick={addAttributeRow}
-                            className="px-2 py-1 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50"
+                            className={`px-2 py-1 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'hidden' : ''}`}
                           >
                             Add Attribute
                           </button>
@@ -1239,19 +1256,22 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 value={attribute?.name || ""}
                                 onChange={(e) => updateAttributeName(index, e.target.value)}
                                 placeholder="Attribute name"
-                                className="md:col-span-3 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                disabled={isVendorProductEdit}
+                                className={`md:col-span-3 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                               />
                               <input
                                 type="text"
                                 value={(attribute?.values || []).join(", ")}
                                 onChange={(e) => updateAttributeValues(index, e.target.value)}
                                 placeholder="Values (comma separated)"
-                                className="md:col-span-8 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                disabled={isVendorProductEdit}
+                                className={`md:col-span-8 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                               />
                               <button
                                 type="button"
+                                disabled={isVendorProductEdit}
                                 onClick={() => removeAttributeRow(index)}
-                                className="md:col-span-1 px-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600"
+                                className={`md:col-span-1 px-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 ${isVendorProductEdit ? 'hidden' : ''}`}
                                 aria-label="Remove attribute"
                               >
                                 <FiX className="w-4 h-4 mx-auto" />
@@ -1289,7 +1309,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                       },
                                     }));
                                   }}
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs"
+                                  disabled={isVendorProductEdit}
+                                  className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                                   placeholder="Price"
                                 />
                                 <input
@@ -1310,7 +1331,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                       },
                                     }));
                                   }}
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs"
+                                  disabled={isVendorProductEdit}
+                                  className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                                   placeholder="Stock"
                                 />
                                 <div className="flex items-center gap-2">

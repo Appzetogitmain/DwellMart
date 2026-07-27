@@ -9,6 +9,7 @@ const CategorySelector = ({
   onChange,
   required = false,
   className = "",
+  disabled = false,
 }) => {
   const {
     categories,
@@ -189,6 +190,7 @@ const CategorySelector = ({
       <button
         type="button"
         onClick={() => {
+          if (disabled) return;
           setIsOpen(!isOpen);
           // Clear any pending timeout when toggling
           if (closeTimeoutRef.current) {
@@ -199,9 +201,10 @@ const CategorySelector = ({
             setHoveredCategoryId(null);
           }
         }}
-        className={`w-full px-4 py-2.5 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white flex items-center justify-between transition-all duration-200 hover:border-primary-400 ${
-          !value ? "text-gray-500" : "text-gray-900"
-        }`}>
+        disabled={disabled}
+        className={`w-full px-4 py-2.5 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center justify-between transition-all duration-200 hover:border-primary-400 ${
+          disabled ? "bg-gray-100 cursor-not-allowed text-gray-400" : "bg-white"
+        } ${!value ? "text-gray-500" : "text-gray-900"}`}>
         <span className="truncate">{displayText}</span>
         <FiChevronDown
           className={`ml-2 text-gray-500 transition-transform ${
