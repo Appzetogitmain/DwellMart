@@ -59,7 +59,7 @@ export const assignDeliveryBoy = (id, deliveryBoyId) =>
 export const deleteOrder = (id) =>
     api.delete(`/admin/orders/${id}`);
 
-// ─── Products ─────────────────────────────────────────────────────────────────
+// ─── Products / Catalog ───────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
 
@@ -80,6 +80,55 @@ export const getTaxPricingRules = () =>
 
 export const updateTaxPricingRules = (data) =>
     api.put('/admin/products/tax-pricing-rules', data);
+
+// Bulk Product Upload & Export (Admin)
+export const validateBulkProductUpload = (formData) =>
+    api.post('/admin/products/bulk-upload/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+export const processBulkProductUpload = (payload) =>
+    api.post('/admin/products/bulk-upload/process', payload);
+
+export const getBulkProductJobProgress = (jobId) =>
+    api.get(`/admin/products/bulk-upload/job/${jobId}`);
+
+export const cancelBulkProductJob = (jobId) =>
+    api.post(`/admin/products/bulk-upload/job/${jobId}/cancel`);
+
+export const getBulkProductImportHistory = (params = {}) =>
+    api.get('/admin/products/bulk-upload/history', { params });
+
+export const downloadProductTemplate = async (format = 'excel') => {
+    const response = await api.get(`/admin/products/template/${format}`, { responseType: 'blob' });
+    const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([response], { type: mimeType });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `DwellMart_Bulk_Product_Template.${format === 'csv' ? 'csv' : 'xlsx'}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+};
+
+export const exportProductsCatalog = async (format = 'xlsx', vendorId = null) => {
+    const response = await api.get('/admin/products/export', {
+        params: { format, vendorId },
+        responseType: 'blob',
+    });
+    const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([response], { type: mimeType });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `DwellMart_Products_Export.${format === 'csv' ? 'csv' : 'xlsx'}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+};
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 export const getAllCategories = () =>

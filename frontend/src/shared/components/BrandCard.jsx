@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { getPlaceholderImage } from '../utils/helpers';
 
 const BrandCard = ({ brand }) => {
   return (
@@ -12,7 +13,8 @@ const BrandCard = ({ brand }) => {
           alt={brand.name}
           className="max-w-full max-h-full object-contain scale-60 group-hover:scale-75 transition-transform duration-300 filter group-hover:brightness-110"
           onError={(e) => {
-            e.target.src = 'https://via.placeholder.com/150x80?text=Brand';
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = getPlaceholderImage(150, 80, brand.name || 'Brand');
           }}
         />
       </div>

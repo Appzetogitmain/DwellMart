@@ -19,6 +19,17 @@ import * as termsController from '../controllers/termsAndConditions.controller.j
 import * as staticPagesController from '../controllers/staticPages.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
+import {
+    downloadExcelTemplate,
+    downloadCsvTemplate,
+    uploadMiddleware,
+    validateUpload,
+    processUpload,
+    checkJobStatus,
+    cancelJobHandler,
+    getImportHistory,
+    exportProducts,
+} from '../../../controllers/bulkUpload.controller.js';
 
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { enforceAccountStatus } from '../../../middlewares/authorize.js';
@@ -120,6 +131,14 @@ router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getAllProducts);
+router.get('/products/template/excel', ...perm(PERMISSIONS.PRODUCTS_VIEW), downloadExcelTemplate);
+router.get('/products/template/csv', ...perm(PERMISSIONS.PRODUCTS_VIEW), downloadCsvTemplate);
+router.post('/products/bulk-upload/validate', ...perm(PERMISSIONS.PRODUCTS_ADD), uploadMiddleware, validateUpload);
+router.post('/products/bulk-upload/process', ...perm(PERMISSIONS.PRODUCTS_ADD), processUpload);
+router.get('/products/bulk-upload/job/:jobId', ...perm(PERMISSIONS.PRODUCTS_VIEW), checkJobStatus);
+router.post('/products/bulk-upload/job/:jobId/cancel', ...perm(PERMISSIONS.PRODUCTS_ADD), cancelJobHandler);
+router.get('/products/bulk-upload/history', ...perm(PERMISSIONS.PRODUCTS_VIEW), getImportHistory);
+router.get('/products/export', ...perm(PERMISSIONS.PRODUCTS_VIEW), exportProducts);
 router.get('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getTaxPricingRules);
 router.get('/products/:id', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getProductById);
 router.post('/products', ...perm(PERMISSIONS.PRODUCTS_ADD), validate(createProductSchema), catalogController.createProduct);

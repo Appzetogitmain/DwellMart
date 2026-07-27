@@ -12,13 +12,19 @@ import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpe
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { getAllProducts, deleteProduct } from "../../services/adminService";
+import { getAllProducts, deleteProduct, exportProductsCatalog } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
 
+import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
+import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
+import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
+
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [searchQuery, setSearchQuery] = useState("");
@@ -207,15 +213,36 @@ const ManageProducts = () => {
             View, edit, and manage your product catalog
           </p>
         </div>
-        <PermissionGuard permission="products.add">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
-          >
-            <FiPlus />
-            Add Product
+            onClick={() => exportProductsCatalog('xlsx')}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+            <FiDownload />
+            Export Catalog
           </button>
-        </PermissionGuard>
+          <button
+            onClick={() => setIsHistoryModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+            <FiList />
+            Import History
+          </button>
+          <PermissionGuard permission="products.add">
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-semibold">
+              <FiUploadCloud />
+              Bulk Upload
+            </button>
+          </PermissionGuard>
+          <PermissionGuard permission="products.add">
+            <button
+              onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold">
+              <FiPlus />
+              Add Product
+            </button>
+          </PermissionGuard>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -320,6 +347,19 @@ const ManageProducts = () => {
         onSuccess={() => {
           loadProducts();
         }}
+      />
+
+      <BulkUploadModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        mode="admin"
+        onSuccess={() => loadProducts()}
+      />
+
+      <ImportHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        mode="admin"
       />
     </motion.div>
   );
