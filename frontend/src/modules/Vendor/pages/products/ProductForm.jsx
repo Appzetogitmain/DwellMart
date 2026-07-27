@@ -6,7 +6,7 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { uploadVendorImage, uploadVendorImages } from "../../services/vendorService";
+import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import toast from "react-hot-toast";
@@ -55,6 +55,7 @@ const ProductForm = () => {
     codAllowed: true,
     returnable: true,
     cancelable: true,
+    taxRate: 18,
     taxIncluded: false,
     description: "",
     tags: [],
@@ -74,6 +75,7 @@ const ProductForm = () => {
     relatedProducts: [],
     faqs: [],
   });
+  const [taxRules, setTaxRules] = useState([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
@@ -99,6 +101,20 @@ const ProductForm = () => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+  useEffect(() => {
+    const fetchTaxRules = async () => {
+      try {
+        const response = await getVendorTaxPricingRules();
+        if (response?.data?.taxRules) {
+          setTaxRules(response.data.taxRules);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tax rules", error);
+      }
+    };
+    fetchTaxRules();
+  }, []);
 
   useEffect(() => {
     if (!vendorId) {
@@ -168,6 +184,7 @@ const ProductForm = () => {
       codAllowed: product.codAllowed !== undefined ? product.codAllowed : true,
       returnable: product.returnable !== undefined ? product.returnable : true,
       cancelable: product.cancelable !== undefined ? product.cancelable : true,
+      taxRate: product.taxRate !== undefined ? product.taxRate : 18,
       taxIncluded: product.taxIncluded || false,
       description: product.description || "",
       tags: product.tags || [],
@@ -629,6 +646,42 @@ const ProductForm = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                 placeholder="0.00"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tax Bracket <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="taxRate"
+                value={formData.taxRate}
+                onChange={handleChange}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                {taxRules.map((rule) => (
+                  <option key={rule.id} value={rule.rate}>
+                    {rule.name} ({rule.rate}%)
+                  </option>
+                ))}
+                {taxRules.length === 0 && (
+                  <option value="18">Standard Tax (18%)</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tax Calculation <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="taxIncluded"
+                value={formData.taxIncluded}
+                onChange={(e) => setFormData(prev => ({...prev, taxIncluded: e.target.value === 'true'}))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="false">Tax Excluded (Net Price)</option>
+                <option value="true">Tax Included (Gross Price)</option>
+              </select>
             </div>
           </div>
         </div>

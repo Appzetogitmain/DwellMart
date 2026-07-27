@@ -229,6 +229,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
     // 1. Validate items and calculate subtotal
     let subtotal = 0;
+    let totalTaxReporting = 0;
+    let extraTaxToPay = 0;
     const enrichedItems = [];
     const vendorMap = {};
 
@@ -300,8 +302,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 freeShippingThreshold: vendor.freeShippingThreshold,
                 items: [],
                 subtotal: 0,
+                tax: 0,
             };
         }
+
+        const pTaxRate = Number(product.taxRate) || 0;
+        const pTaxIncluded = product.taxIncluded || false;
+        let itemTax = 0;
+        
+        if (pTaxRate > 0) {
+            if (pTaxIncluded) {
+                const basePrice = itemSubtotal / (1 + (pTaxRate / 100));
+                itemTax = itemSubtotal - basePrice;
+                totalTaxReporting += itemTax;
+                vendorMap[vid].tax += itemTax;
+            } else {
+                itemTax = itemSubtotal * (pTaxRate / 100);
+                totalTaxReporting += itemTax;
+                extraTaxToPay += itemTax;
+                vendorMap[vid].tax += itemTax;
+            }
+        }
+
         vendorMap[vid].items.push(enriched);
         vendorMap[vid].subtotal += itemSubtotal;
     }
@@ -341,9 +363,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
         couponType: appliedCoupon?.type || null,
     });
 
-    // 4. Calculate tax (18%)
-    const tax = parseFloat(((subtotal - couponDiscount) * 0.18).toFixed(2));
-    const total = parseFloat((subtotal - couponDiscount + shipping + tax).toFixed(2));
+    // 4. Calculate final totals (using dynamic tax)
+    const tax = parseFloat(totalTaxReporting.toFixed(2));
+    const total = parseFloat((subtotal - couponDiscount + shipping + extraTaxToPay).toFixed(2));
 
     // 5. Build vendor item groups
     const vendorItems = Object.values(vendorMap).map((v) => ({
@@ -352,7 +374,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
         items: v.items,
         subtotal: v.subtotal,
         shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
-        tax: parseFloat((v.subtotal * 0.18).toFixed(2)),
+        tax: parseFloat(v.tax.toFixed(2)),
         discount: 0,
         status: 'pending',
     }));

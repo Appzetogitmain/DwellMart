@@ -109,6 +109,9 @@ export const changeVendorPassword = (currentPassword, newPassword) =>
 export const getVendorProducts = (params = {}) =>
     api.get('/vendor/products', { params });
 
+export const getVendorTaxPricingRules = () =>
+    api.get('/vendor/products/tax-pricing-rules');
+
 /**
  * Get single product details for the authenticated vendor
  * @param {string} id - MongoDB _id

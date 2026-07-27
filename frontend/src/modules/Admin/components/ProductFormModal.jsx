@@ -10,6 +10,7 @@ import {
   updateProduct,
   getAllVendors,
   uploadAdminImage,
+  getTaxPricingRules,
 } from "../services/adminService";
 import CategorySelector from "./CategorySelector";
 import AnimatedSelect from "./AnimatedSelect";
@@ -30,6 +31,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     sizes: "",
     colors: "",
   });
+  const [taxRules, setTaxRules] = useState([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,6 +58,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     codAllowed: true,
     returnable: true,
     cancelable: true,
+    taxRate: 18,
     taxIncluded: false,
     description: "",
     tags: [],
@@ -100,6 +103,20 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     };
 
     fetchVendors();
+  }, []);
+
+  useEffect(() => {
+    const fetchTaxRules = async () => {
+      try {
+        const response = await getTaxPricingRules();
+        if (response?.data?.taxRules) {
+          setTaxRules(response.data.taxRules.filter(rule => rule.status === 'active'));
+        }
+      } catch (error) {
+        console.error("Failed to fetch tax rules", error);
+      }
+    };
+    fetchTaxRules();
   }, []);
 
   useEffect(() => {
@@ -151,6 +168,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               product.returnable !== undefined ? product.returnable : true,
             cancelable:
               product.cancelable !== undefined ? product.cancelable : true,
+            taxRate: product.taxRate !== undefined ? product.taxRate : 18,
             taxIncluded:
               product.taxIncluded !== undefined ? product.taxIncluded : false,
             description: product.description || "",
@@ -207,6 +225,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         codAllowed: true,
         returnable: true,
         cancelable: true,
+        taxRate: 18,
         taxIncluded: false,
         description: "",
         tags: [],
@@ -884,6 +903,44 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           disabled={isVendorProductEdit}
                           className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                         />
+                      </div>
+                    </div>
+
+                    {/* Tax Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Tax Bracket <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="taxRate"
+                          value={formData.taxRate}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          {taxRules.map((rule, idx) => (
+                            <option key={rule.id || idx} value={rule.rate}>
+                              {rule.name} ({rule.rate}%)
+                            </option>
+                          ))}
+                          {taxRules.length === 0 && (
+                            <option value="18">Standard Tax (18%)</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Tax Calculation <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="taxIncluded"
+                          value={formData.taxIncluded}
+                          onChange={(e) => setFormData(prev => ({...prev, taxIncluded: e.target.value === 'true'}))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="false">Tax Excluded (Net Price)</option>
+                          <option value="true">Tax Included (Gross Price)</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -1570,18 +1627,6 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                         />
                         <span className="text-sm font-semibold text-gray-700">
                           Cancelable
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="taxIncluded"
-                          checked={formData.taxIncluded}
-                          onChange={handleChange}
-                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                        />
-                        <span className="text-sm font-semibold text-gray-700">
-                          Tax Included in Prices
                         </span>
                       </label>
                     </div>

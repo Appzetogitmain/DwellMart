@@ -14,6 +14,7 @@ import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
+import { getTaxPricingRules } from '../../admin/controllers/catalog.controller.js';
 import {
     downloadExcelTemplate,
     downloadCsvTemplate,
@@ -104,6 +105,7 @@ router.post('/subscription/change-plan', ...vendorAuthOnly, validate(changePlanS
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);
+router.get('/products/tax-pricing-rules', ...vendorAuth, getTaxPricingRules);
 router.get('/products/template/excel', ...vendorAuth, downloadExcelTemplate);
 router.get('/products/template/csv', ...vendorAuth, downloadCsvTemplate);
 router.post('/products/bulk-upload/validate', ...vendorAuth, uploadMiddleware, validateUpload);

@@ -6,7 +6,7 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { uploadVendorImage, uploadVendorImages } from "../../services/vendorService";
+import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import toast from "react-hot-toast";
@@ -50,6 +50,7 @@ const AddProduct = () => {
     codAllowed: true,
     returnable: true,
     cancelable: true,
+    taxRate: 18,
     taxIncluded: false,
     description: "",
     tags: [],
@@ -69,6 +70,7 @@ const AddProduct = () => {
     relatedProducts: [],
     faqs: [],
   });
+  const [taxRules, setTaxRules] = useState([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
@@ -88,6 +90,20 @@ const AddProduct = () => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+  useEffect(() => {
+    const fetchTaxRules = async () => {
+      try {
+        const response = await getVendorTaxPricingRules();
+        if (response?.data?.taxRules) {
+          setTaxRules(response.data.taxRules.filter(rule => rule.status === 'active'));
+        }
+      } catch (error) {
+        console.error("Failed to fetch tax rules", error);
+      }
+    };
+    fetchTaxRules();
+  }, []);
 
   useEffect(() => {
     if (!vendorId) {
@@ -546,6 +562,42 @@ const AddProduct = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                 placeholder="0.00"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Tax Bracket <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="taxRate"
+                value={formData.taxRate}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              >
+                {taxRules.map((rule, idx) => (
+                  <option key={rule.id || idx} value={rule.rate}>
+                    {rule.name} ({rule.rate}%)
+                  </option>
+                ))}
+                {taxRules.length === 0 && (
+                  <option value="18">Standard Tax (18%)</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Tax Calculation <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="taxIncluded"
+                value={formData.taxIncluded}
+                onChange={(e) => setFormData(prev => ({...prev, taxIncluded: e.target.value === 'true'}))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              >
+                <option value="false">Tax Excluded (Net Price)</option>
+                <option value="true">Tax Included (Gross Price)</option>
+              </select>
             </div>
           </div>
         </div>
