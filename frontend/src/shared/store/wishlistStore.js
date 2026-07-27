@@ -76,7 +76,7 @@ export const useWishlistStore = create(
           set({ items: list, isLoading: false, hasFetched: true, ownerUserId: currentUserId || null });
           return list;
         } catch {
-          set({ isLoading: false });
+          set({ isLoading: false, hasFetched: true });
           return get().items;
         }
       },
