@@ -42,7 +42,7 @@ const AdminLayout = () => {
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen w-full bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <AdminSidebar
         isOpenMobile={isMobileOpen}
@@ -52,7 +52,7 @@ const AdminLayout = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 ${
           isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
         }`}
       >
@@ -62,14 +62,11 @@ const AdminLayout = () => {
           isDesktopSidebarOpen={isDesktopOpen}
         />
 
-        {/* Page Content - with dynamic padding to account for fixed header and bottom nav */}
+        {/* Page Content */}
         <main 
           className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden lg:pb-6 scrollbar-admin w-full min-w-0"
           style={{
-            // Mobile: Use calculated heights with safe area support
-            // Desktop: use the same computed top spacing for consistency
-            paddingTop: `${Math.max(topPadding, 80)}px`, // Use calculated height or 80px, whichever is larger
-            paddingBottom: `calc(${Math.max(bottomPadding, 80)}px + env(safe-area-inset-bottom, 0px))`, // Use calculated height + safe area or 80px + safe area, whichever is larger
+            paddingBottom: `calc(${Math.max(bottomPadding, 64)}px + env(safe-area-inset-bottom, 0px))`,
           }}
         >
           <div className="w-full max-w-full overflow-x-hidden min-w-0">

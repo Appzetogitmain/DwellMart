@@ -63,7 +63,7 @@ const VendorLayout = () => {
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen w-full bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <VendorSidebar
         isOpenMobile={isMobileOpen}
@@ -73,7 +73,7 @@ const VendorLayout = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 ${
           isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
         }`}
       >
@@ -85,11 +85,7 @@ const VendorLayout = () => {
 
         {/* Subscription Expired Warning Banner */}
         {isExpired && (
-          <div
-            className={`fixed top-16 left-0 right-0 z-[990] bg-amber-500 text-slate-950 px-4 py-2.5 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium border-b border-amber-600 transition-all duration-300 ${
-              isDesktopOpen ? 'lg:left-64' : 'lg:left-0'
-            }`}
-          >
+          <div className="shrink-0 sticky top-0 z-20 w-full bg-amber-500 text-slate-950 px-4 py-2.5 flex items-center justify-between shadow-md text-xs sm:text-sm font-medium border-b border-amber-600">
             <div className="flex items-center gap-2">
               <FiAlertTriangle className="text-lg shrink-0 text-slate-950" />
               <span>
@@ -109,8 +105,7 @@ const VendorLayout = () => {
         <main
           className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden lg:pb-6 scrollbar-admin w-full min-w-0"
           style={{
-            paddingTop: `${Math.max(topPadding, 80)}px`,
-            paddingBottom: `calc(${Math.max(bottomPadding, 80)}px + env(safe-area-inset-bottom, 0px))`,
+            paddingBottom: `calc(${Math.max(bottomPadding, 64)}px + env(safe-area-inset-bottom, 0px))`,
           }}
         >
           <div className="w-full max-w-full overflow-x-hidden min-w-0">

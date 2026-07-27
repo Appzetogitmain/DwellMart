@@ -1,212 +1,110 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import toast from "react-hot-toast";
+import api from "../utils/api";
 import logoImage from "../../../data/logos/ChatGPT Image Dec 2, 2025, 03_01_19 PM.png";
 
-const defaultSettings = {
-  general: {
-    storeName: "Dwell Mart",
-    storeLogo: logoImage,
-    favicon: logoImage,
-    contactEmail: "contact@example.com",
-    contactPhone: "+1234567890",
-    address: "",
-    businessHours: "Mon-Fri 9AM-6PM",
-    timezone: "UTC",
-    currency: "INR",
-    language: "en",
-    socialMedia: {
-      facebook: "",
-      instagram: "",
-      twitter: "",
-      linkedin: "",
-    },
-    accentColor: "#FFE11B",
-    storeDescription: "",
+const defaultGeneralSettings = {
+  storeName: "Dwell Mart",
+  storeLogo: logoImage,
+  storeDescription: "Your ultimate online shopping destination for premium quality products.",
+  contactEmail: "contact@dwellmart.com",
+  contactPhone: "+91 98765 43210",
+  address: "123 Commerce Street, Tech Park, New Delhi, India",
+  businessHours: "Mon-Sat 9AM-8PM",
+  language: "en",
+  socialMedia: {
+    facebook: "",
+    instagram: "",
+    twitter: "",
+    linkedin: "",
   },
-  payment: {
-    paymentMethods: ["cod", "card", "wallet"],
-    codEnabled: true,
-    cardEnabled: true,
-    walletEnabled: true,
-    upiEnabled: false,
-    paymentGateway: "stripe",
-    stripePublicKey: "",
-    stripeSecretKey: "",
-    paymentFees: {
-      cod: 0,
-      card: 2.5,
-      wallet: 1.5,
-      upi: 0.5,
-    },
-  },
-  shipping: {
-    shippingZones: [],
-    freeShippingThreshold: 100,
-    defaultShippingRate: 5,
-    shippingMethods: ["standard", "express"],
-  },
-  orders: {
-    cancellationTimeLimit: 24, // hours
-    minimumOrderValue: 0,
-    orderTrackingEnabled: true,
-    orderConfirmationEmail: true,
-    orderStatuses: [
-      "pending",
-      "processing",
-      "shipped",
-      "delivered",
-      "cancelled",
-    ],
-  },
-  customers: {
-    guestCheckoutEnabled: true,
-    registrationRequired: false,
-    emailVerificationRequired: false,
-    customerAccountFeatures: {
-      orderHistory: true,
-      wishlist: true,
-      addresses: true,
-    },
-  },
-  products: {
-    itemsPerPage: 12,
-    gridColumns: 4,
-    defaultSort: "popularity",
-    lowStockThreshold: 10,
-    outOfStockBehavior: "show", // 'hide' or 'show'
-    stockAlertsEnabled: true,
-  },
-  tax: {
-    defaultTaxRate: 18,
-    taxCalculationMethod: "exclusive", // 'inclusive' or 'exclusive'
-    priceDisplayFormat: "INR", // Currency format
-  },
-  content: {
-    privacyPolicy: "",
-    termsConditions: "",
-    refundPolicy: "",
-  },
-  features: {
-    wishlistEnabled: true,
-    reviewsEnabled: true,
-    flashSaleEnabled: true,
-    dailyDealsEnabled: true,
-    liveChatEnabled: true,
-    couponCodesEnabled: true,
-  },
-  homepage: {
-    heroBannerEnabled: true,
-    sections: {
-      mostPopular: { enabled: true, order: 1 },
-      trending: { enabled: true, order: 2 },
-      flashSale: { enabled: true, order: 3 },
-      dailyDeals: { enabled: true, order: 4 },
-      recommended: { enabled: true, order: 5 },
-    },
-  },
-  reviews: {
-    moderationMode: "manual", // 'auto' or 'manual'
-    purchaseRequired: true,
-    displaySettings: {
-      showAll: true,
-      verifiedOnly: false,
-      withPhotosOnly: false,
-    },
-  },
-  email: {
-    smtpHost: "",
-    smtpPort: 587,
-    smtpUser: "",
-    smtpPassword: "",
-    fromEmail: "noreply@example.com",
-    fromName: "Dwell Mart",
-  },
-  notifications: {
-    email: {
-      orderConfirmation: true,
-      shippingUpdate: true,
-      deliveryUpdate: true,
-    },
-    smsEnabled: false,
-    pushEnabled: false,
-    admin: {
-      newOrders: true,
-      lowStock: true,
-    },
-  },
-  seo: {
-    metaTitle: "Dwell Mart - Shop Online",
-    metaDescription: "Shop the latest trends and products",
-    metaKeywords: "ecommerce, shopping, online store",
-    ogImage: logoImage,
-    canonicalUrl: "",
-  },
-  theme: {
-    primaryColor: "#10B981",
-    secondaryColor: "#3B82F6",
-    fontFamily: "Inter",
-  },
+  defaultCommissionRate: 10,
 };
 
-export const useSettingsStore = create(
-  persist(
-    (set, get) => ({
-      settings: defaultSettings,
-      isLoading: false,
+export const useSettingsStore = create((set, get) => ({
+  settings: {
+    general: defaultGeneralSettings,
+  },
+  isLoading: false,
+  isInitialized: false,
 
-      // Initialize settings
-      initialize: () => {
-        const savedSettings = localStorage.getItem("admin-settings");
-        if (savedSettings) {
-          set({ settings: JSON.parse(savedSettings) });
-        } else {
-          set({ settings: defaultSettings });
-          localStorage.setItem(
-            "admin-settings",
-            JSON.stringify(defaultSettings)
-          );
-        }
-      },
+  // Initialize and fetch settings from API (with public fallback)
+  initialize: async () => {
+    if (get().isInitialized && get().settings?.general?.storeName) return;
+    set({ isLoading: true });
+    try {
+      // Try admin endpoint first, fallback to public endpoint
+      let res;
+      try {
+        res = await api.get("/admin/settings/general");
+      } catch (err) {
+        res = await api.get("/settings/general");
+      }
 
-      // Get settings
-      getSettings: () => {
-        const state = get();
-        if (!state.settings) {
-          state.initialize();
-        }
-        return get().settings;
-      },
+      const data = res?.data?.data || res?.data || {};
+      const mergedGeneral = {
+        ...defaultGeneralSettings,
+        ...data,
+        socialMedia: {
+          ...defaultGeneralSettings.socialMedia,
+          ...(data.socialMedia || {}),
+        },
+      };
 
-      // Update settings
-      updateSettings: (category, settingsData) => {
-        set({ isLoading: true });
-        try {
-          const currentSettings = get().settings;
-          const updatedSettings = {
-            ...currentSettings,
-            [category]: {
-              ...currentSettings[category],
-              ...settingsData,
-            },
-          };
-          set({ settings: updatedSettings, isLoading: false });
-          localStorage.setItem(
-            "admin-settings",
-            JSON.stringify(updatedSettings)
-          );
-          toast.success("Settings updated successfully");
-          return updatedSettings;
-        } catch (error) {
-          set({ isLoading: false });
-          toast.error("Failed to update settings");
-          throw error;
-        }
-      },
-    }),
-    {
-      name: "settings-storage",
-      storage: createJSONStorage(() => localStorage),
+      set({
+        settings: {
+          ...get().settings,
+          general: mergedGeneral,
+        },
+        isLoading: false,
+        isInitialized: true,
+      });
+    } catch (error) {
+      set({ isLoading: false, isInitialized: true });
     }
-  )
-);
+  },
+
+  // Save general settings via API
+  updateGeneralSettings: async (generalData) => {
+    set({ isLoading: true });
+    try {
+      const res = await api.put("/admin/settings/general", generalData);
+      const updatedData = res?.data?.data || res?.data || generalData;
+
+      const mergedGeneral = {
+        ...defaultGeneralSettings,
+        ...updatedData,
+        socialMedia: {
+          ...defaultGeneralSettings.socialMedia,
+          ...(updatedData.socialMedia || {}),
+        },
+      };
+
+      set((state) => ({
+        settings: {
+          ...state.settings,
+          general: mergedGeneral,
+        },
+        isLoading: false,
+      }));
+
+      toast.success("General settings updated successfully");
+      return mergedGeneral;
+    } catch (error) {
+      set({ isLoading: false });
+      const msg = error?.response?.data?.message || "Failed to update settings";
+      toast.error(msg);
+      throw error;
+    }
+  },
+
+  // Backward compatibility wrapper for updateSettings
+  updateSettings: async (category, settingsData) => {
+    if (category === "general" || category === "vendor") {
+      const currentGeneral = get().settings?.general || defaultGeneralSettings;
+      const merged = { ...currentGeneral, ...settingsData };
+      return await get().updateGeneralSettings(merged);
+    }
+    return get().settings;
+  },
+}));
