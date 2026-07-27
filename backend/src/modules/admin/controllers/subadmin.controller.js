@@ -129,9 +129,10 @@ export const createSubAdmin = asyncHandler(async (req, res) => {
             email: subAdmin.email,
             role: subAdmin.role,
             status: subAdmin.status,
+            permissions: subAdmin.permissions,
             permissionsCount: subAdmin.permissions.length,
         },
-        ipAddress: req.ip || '',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
     });
 
     const result = subAdmin.toObject();
@@ -157,7 +158,10 @@ export const updateSubAdmin = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'You cannot modify your own account permissions or status here.');
     }
 
+    const oldPermissions = admin.permissions || [];
     const sanitizedPermissions = sanitizePermissionsWithDependencies(permissions);
+    const addedPermissions = sanitizedPermissions.filter((p) => !oldPermissions.includes(p));
+    const removedPermissions = oldPermissions.filter((p) => !sanitizedPermissions.includes(p));
 
     admin.name = String(name || admin.name).trim();
     if (phone !== undefined) admin.phone = String(phone || '').trim();
@@ -176,10 +180,14 @@ export const updateSubAdmin = asyncHandler(async (req, res) => {
         action: 'subadmin_updated',
         details: {
             name: admin.name,
+            email: admin.email,
             status: admin.status,
+            permissions: admin.permissions,
             permissionsCount: admin.permissions.length,
+            addedPermissions,
+            removedPermissions,
         },
-        ipAddress: req.ip || '',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
     });
 
     const result = admin.toObject();
@@ -212,8 +220,8 @@ export const toggleSubAdminStatus = asyncHandler(async (req, res) => {
         performedBy: req.user.id,
         targetAdmin: admin._id,
         action: 'status_toggled',
-        details: { newStatus: admin.status },
-        ipAddress: req.ip || '',
+        details: { name: admin.name, email: admin.email, newStatus: admin.status },
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
     });
 
     res.status(200).json(
@@ -246,8 +254,8 @@ export const resetSubAdminPassword = asyncHandler(async (req, res) => {
         performedBy: req.user.id,
         targetAdmin: admin._id,
         action: 'password_reset',
-        details: { targetEmail: admin.email },
-        ipAddress: req.ip || '',
+        details: { name: admin.name, targetEmail: admin.email },
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
     });
 
     res.status(200).json(new ApiResponse(200, null, 'Sub Admin password reset successfully.'));
@@ -275,7 +283,7 @@ export const deleteSubAdmin = asyncHandler(async (req, res) => {
         targetAdmin: admin._id,
         action: 'subadmin_deleted',
         details: { deletedEmail: admin.email, name: admin.name },
-        ipAddress: req.ip || '',
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
     });
 
     res.status(200).json(new ApiResponse(200, null, 'Sub Admin deleted successfully.'));
@@ -283,13 +291,82 @@ export const deleteSubAdmin = asyncHandler(async (req, res) => {
 
 // GET /api/admin/subadmins/logs
 export const getActivityLogs = asyncHandler(async (req, res) => {
-    const { limit = 30 } = req.query;
-    const logs = await AdminActivityLog.find({})
+    const { page = 1, limit = 10, search = '', action = '', performedBy = '' } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
+
+    const filter = {};
+    if (action && action !== 'all') {
+        filter.action = action;
+    }
+    if (performedBy && performedBy !== 'all') {
+        filter.performedBy = performedBy;
+    }
+
+    const allLogsForFiltering = await AdminActivityLog.find(filter)
         .populate('performedBy', 'name email role')
         .populate('targetAdmin', 'name email role')
         .sort({ createdAt: -1 })
-        .limit(Number(limit) || 30)
         .lean();
 
-    res.status(200).json(new ApiResponse(200, logs, 'Activity logs fetched.'));
+    let filtered = allLogsForFiltering;
+
+    if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        filtered = filtered.filter((log) => {
+            const perfName = log.performedBy?.name?.toLowerCase() || '';
+            const perfEmail = log.performedBy?.email?.toLowerCase() || '';
+            const targName = log.targetAdmin?.name?.toLowerCase() || '';
+            const targEmail = log.targetAdmin?.email?.toLowerCase() || '';
+            const deletedEmail = log.details?.deletedEmail?.toLowerCase() || '';
+            const detailsStr = JSON.stringify(log.details || {}).toLowerCase();
+            return (
+                perfName.includes(q) ||
+                perfEmail.includes(q) ||
+                targName.includes(q) ||
+                targEmail.includes(q) ||
+                deletedEmail.includes(q) ||
+                detailsStr.includes(q)
+            );
+        });
+    }
+
+    const totalFiltered = filtered.length;
+    const totalPages = Math.ceil(totalFiltered / limitNum) || 1;
+    const startIndex = (pageNum - 1) * limitNum;
+    const paginatedLogs = filtered.slice(startIndex, startIndex + limitNum);
+
+    // Compute Stats
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const totalLogsCount = await AdminActivityLog.countDocuments({});
+    const todayActionsCount = await AdminActivityLog.countDocuments({ createdAt: { $gte: startOfToday } });
+    const createdCount = await AdminActivityLog.countDocuments({ action: 'subadmin_created' });
+    const updatedCount = await AdminActivityLog.countDocuments({ action: 'subadmin_updated' });
+    const deletedCount = await AdminActivityLog.countDocuments({ action: 'subadmin_deleted' });
+
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                logs: paginatedLogs,
+                pagination: {
+                    totalLogs: totalFiltered,
+                    page: pageNum,
+                    limit: limitNum,
+                    totalPages,
+                },
+                stats: {
+                    totalLogs: totalLogsCount,
+                    todayActions: todayActionsCount,
+                    createdCount,
+                    updatedCount,
+                    deletedCount,
+                },
+            },
+            'Activity logs fetched successfully.'
+        )
+    );
 });
