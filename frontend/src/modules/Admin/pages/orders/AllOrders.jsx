@@ -27,7 +27,7 @@ import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { formatCurrency, formatDateTime } from "../../utils/adminHelpers";
-import { getAllOrders, deleteOrder } from "../../services/adminService";
+import { getAllOrders, deleteOrder, getOrderStatusBreakdown } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 // OrderItemsDropdown component
@@ -380,6 +380,10 @@ const AllOrders = () => {
     startDate: "",
     endDate: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 10;
+  
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
@@ -387,6 +391,46 @@ const AllOrders = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [orderStats, setOrderStats] = useState({
+    awaiting: 0,
+    received: 0,
+    processed: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    returned: 0,
+    total: 0,
+  });
+
+  // Fetch stats once
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await getOrderStatusBreakdown();
+        const breakdown = response.data || [];
+        const stats = { awaiting: 0, received: 0, processed: 0, shipped: 0, delivered: 0, cancelled: 0, returned: 0, total: 0 };
+        
+        breakdown.forEach((item) => {
+          const count = item.count || 0;
+          stats.total += count;
+          const status = item.status?.toLowerCase() || "";
+          
+          if (status === "pending" || status === "awaiting") stats.awaiting += count;
+          else if (status === "received") stats.received += count;
+          else if (status === "processing" || status === "processed") stats.processed += count;
+          else if (status === "shipped") stats.shipped += count;
+          else if (status === "delivered") stats.delivered += count;
+          else if (status === "cancelled" || status === "canceled") stats.cancelled += count;
+          else if (status === "returned") stats.returned += count;
+        });
+        
+        setOrderStats(stats);
+      } catch (err) {
+        console.error("Failed to fetch order stats:", err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
@@ -396,7 +440,8 @@ const AllOrders = () => {
         search: searchQuery,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
-        limit: 100 // Fetch a larger set for the DataTable's internal pagination
+        limit: itemsPerPage,
+        page: currentPage,
       };
 
       const response = await getAllOrders(params);
@@ -414,101 +459,22 @@ const AllOrders = () => {
       }));
 
       setOrders(normalizedOrders);
+      setTotalItems(response.data.total || 0);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
       // adminService interceptor already handles error toasts
     } finally {
       setIsLoading(false);
     }
+  }, [selectedStatus, searchQuery, dateRange, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
   }, [selectedStatus, searchQuery, dateRange]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
-
-  // Calculate order status counts
-  const orderStats = useMemo(() => {
-    const stats = {
-      awaiting: 0,
-      received: 0,
-      processed: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-      returned: 0,
-      total: orders.length,
-    };
-
-    orders.forEach((order) => {
-      const status = order.status?.toLowerCase() || "";
-
-      // Map statuses to our categories
-      if (status === "pending" || status === "awaiting") {
-        stats.awaiting++;
-      } else if (status === "received") {
-        stats.received++;
-      } else if (status === "processing" || status === "processed") {
-        stats.processed++;
-      } else if (status === "shipped") {
-        stats.shipped++;
-      } else if (status === "delivered") {
-        stats.delivered++;
-      } else if (status === "cancelled" || status === "canceled") {
-        stats.cancelled++;
-      } else if (status === "returned") {
-        stats.returned++;
-      }
-    });
-
-    return stats;
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    let filtered = orders;
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (order) =>
-          (order.id || "").toLowerCase().includes(q) ||
-          (order.customer?.name || "").toLowerCase().includes(q) ||
-          (order.customer?.email || "").toLowerCase().includes(q)
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter(
-        (order) => (order.status || "").toLowerCase() === selectedStatus
-      );
-    }
-
-    // Filter by date range
-    if (dateRange.startDate || dateRange.endDate) {
-      filtered = filtered.filter((order) => {
-        const orderDate = new Date(order.date);
-        orderDate.setHours(0, 0, 0, 0);
-
-        if (dateRange.startDate && dateRange.endDate) {
-          const startDate = new Date(dateRange.startDate);
-          startDate.setHours(0, 0, 0, 0);
-          const endDate = new Date(dateRange.endDate);
-          endDate.setHours(23, 59, 59, 999);
-          return orderDate >= startDate && orderDate <= endDate;
-        } else if (dateRange.startDate) {
-          const startDate = new Date(dateRange.startDate);
-          startDate.setHours(0, 0, 0, 0);
-          return orderDate >= startDate;
-        } else if (dateRange.endDate) {
-          const endDate = new Date(dateRange.endDate);
-          endDate.setHours(23, 59, 59, 999);
-          return orderDate <= endDate;
-        }
-        return true;
-      });
-    }
-
-    return filtered;
-  }, [orders, searchQuery, selectedStatus, dateRange]);
 
   // Helper function to format payment method
   const formatPaymentMethod = (method) => {
@@ -830,7 +796,7 @@ const AllOrders = () => {
 
           <div className="w-full sm:w-auto">
             <ExportButton
-              data={filteredOrders}
+              data={orders}
               headers={[
                 { label: "Customer", accessor: (row) => row.customer.name },
                 { label: "Email", accessor: (row) => row.customer.email },
@@ -875,10 +841,15 @@ const AllOrders = () => {
         </div>
       ) : (
         <DataTable
-          data={filteredOrders}
+          data={orders}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          serverSidePagination={true}
+          totalItems={totalItems}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          onPageChange={(page) => setCurrentPage(page)}
+          sortable={false}
         />
       )}
 

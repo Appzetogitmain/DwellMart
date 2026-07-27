@@ -86,7 +86,20 @@ const OrderDetail = () => {
     );
   }
 
-  const statusOptions = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
+  // Allowed state transitions based on backend logic
+  const allowedTransitions = {
+    pending: ['processing', 'cancelled'],
+    processing: ['shipped', 'cancelled'],
+    shipped: ['delivered', 'cancelled', 'returned'],
+    delivered: ['returned'],
+    cancelled: [],
+    returned: [],
+  };
+
+  // The dropdown should only show the current status plus the valid transitions
+  const currentStatus = (order.status || 'pending').toLowerCase();
+  const validNextStates = allowedTransitions[currentStatus] || [];
+  const statusOptions = [currentStatus, ...validNextStates];
 
   // Handle items - could be a number or an array
   const itemsCount = Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0);
