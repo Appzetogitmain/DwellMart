@@ -14,10 +14,12 @@ import DataTable from "../../Admin/components/DataTable";
 import ExportButton from "../../Admin/components/ExportButton";
 import Badge from "../../../shared/components/Badge";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
-import { formatPrice } from "../../../shared/utils/helpers";
+import { formatPrice, getPlaceholderImage, getImageUrl } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
 import toast from "react-hot-toast";
+
+const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
 
 const StockManagement = () => {
   const { vendor } = useVendorAuthStore();
@@ -92,19 +94,23 @@ const StockManagement = () => {
       key: "name",
       label: "Product Name",
       sortable: true,
-      render: (value, row) => (
-        <div className="flex items-center gap-3">
-          <img
-            src={row.image || row.images?.[0]}
-            alt={value}
-            className="w-10 h-10 object-cover rounded-lg"
-            onError={(e) => {
-              e.target.src = "https://via.placeholder.com/50x50?text=Product";
-            }}
-          />
-          <span className="font-medium">{value}</span>
-        </div>
-      ),
+      render: (value, row) => {
+        const imgSrc = getImageUrl(row.image || row.images?.[0], PRODUCT_IMAGE_PLACEHOLDER);
+        return (
+          <div className="flex items-center gap-3">
+            <img
+              src={imgSrc}
+              alt={value}
+              className="w-10 h-10 object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
+              }}
+            />
+            <span className="font-medium">{value}</span>
+          </div>
+        );
+      },
     },
     {
       key: "price",
@@ -394,11 +400,12 @@ const StockUpdateModal = ({
                 </div>
                 <div className="flex items-center gap-3">
                   <img
-                    src={product.image || product.images?.[0] || "https://via.placeholder.com/100x100?text=Product"}
+                    src={getImageUrl(product.image || product.images?.[0], PRODUCT_IMAGE_PLACEHOLDER)}
                     alt={product.name}
                     className="w-16 h-16 object-cover rounded-lg"
                     onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/100x100?text=Product";
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
                     }}
                   />
                   <div>

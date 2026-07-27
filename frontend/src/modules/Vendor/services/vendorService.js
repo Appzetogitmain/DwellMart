@@ -145,6 +145,55 @@ export const deleteVendorProduct = (id) =>
 export const updateVendorStock = (productId, stockQuantity) =>
     api.patch(`/vendor/stock/${productId}`, { stockQuantity });
 
+// Bulk Product Upload & Export (Vendor)
+export const validateVendorBulkProductUpload = (formData) =>
+    api.post('/vendor/products/bulk-upload/validate', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+export const processVendorBulkProductUpload = (payload) =>
+    api.post('/vendor/products/bulk-upload/process', payload);
+
+export const getVendorBulkProductJobProgress = (jobId) =>
+    api.get(`/vendor/products/bulk-upload/job/${jobId}`);
+
+export const cancelVendorBulkProductJob = (jobId) =>
+    api.post(`/vendor/products/bulk-upload/job/${jobId}/cancel`);
+
+export const getVendorBulkProductImportHistory = (params = {}) =>
+    api.get('/vendor/products/bulk-upload/history', { params });
+
+export const downloadVendorProductTemplate = async (format = 'excel') => {
+    const response = await api.get(`/vendor/products/template/${format}`, { responseType: 'blob' });
+    const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([response], { type: mimeType });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `DwellMart_Vendor_Product_Template.${format === 'csv' ? 'csv' : 'xlsx'}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+};
+
+export const exportVendorProductsCatalog = async (format = 'xlsx') => {
+    const response = await api.get('/vendor/products/export', {
+        params: { format },
+        responseType: 'blob',
+    });
+    const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const blob = new Blob([response], { type: mimeType });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `DwellMart_Vendor_Products_Export.${format === 'csv' ? 'csv' : 'xlsx'}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+};
+
 
 // ─── ORDERS ────────────────────────────────────────────────────────────────────
 

@@ -14,6 +14,17 @@ import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
+import {
+    downloadExcelTemplate,
+    downloadCsvTemplate,
+    uploadMiddleware,
+    validateUpload,
+    processUpload,
+    checkJobStatus,
+    cancelJobHandler,
+    getImportHistory,
+    exportProducts,
+} from '../../../controllers/bulkUpload.controller.js';
 import checkSubscription from '../../../middlewares/checkSubscription.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
@@ -93,6 +104,14 @@ router.post('/subscription/change-plan', ...vendorAuthOnly, validate(changePlanS
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);
+router.get('/products/template/excel', ...vendorAuth, downloadExcelTemplate);
+router.get('/products/template/csv', ...vendorAuth, downloadCsvTemplate);
+router.post('/products/bulk-upload/validate', ...vendorAuth, uploadMiddleware, validateUpload);
+router.post('/products/bulk-upload/process', ...vendorAuth, processUpload);
+router.get('/products/bulk-upload/job/:jobId', ...vendorAuth, checkJobStatus);
+router.post('/products/bulk-upload/job/:jobId/cancel', ...vendorAuth, cancelJobHandler);
+router.get('/products/bulk-upload/history', ...vendorAuth, getImportHistory);
+router.get('/products/export', ...vendorAuth, exportProducts);
 router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
 router.post('/products', ...vendorAuth, validate(createProductSchema), productController.createProduct);
 router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), productController.updateProduct);

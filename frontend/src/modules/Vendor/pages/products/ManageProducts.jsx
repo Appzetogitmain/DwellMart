@@ -7,17 +7,27 @@ import ExportButton from "../../../Admin/components/ExportButton";
 import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../../Admin/components/ConfirmModal";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
-import { formatPrice } from "../../../../shared/utils/helpers";
+import { formatPrice, getPlaceholderImage, getImageUrl } from "../../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import { exportVendorProductsCatalog } from "../../services/vendorService";
 import api from "../../../../shared/utils/api";
+
+import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
+import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
+import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
+
+const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
 
 const ManageProducts = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
   const { categories, initialize: initCategories } = useCategoryStore();
+
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -90,19 +100,23 @@ const ManageProducts = () => {
       key: "name",
       label: "Product Name",
       sortable: true,
-      render: (value, row) => (
-        <div className="flex items-center gap-3">
-          <img
-            src={row.image || row.images?.[0]}
-            alt={value}
-            className="w-10 h-10 object-cover rounded-lg"
-            onError={(e) => {
-              e.target.src = "https://via.placeholder.com/50x50?text=Product";
-            }}
-          />
-          <span className="font-medium">{value}</span>
-        </div>
-      ),
+      render: (value, row) => {
+        const imgSrc = getImageUrl(row.image || row.images?.[0], PRODUCT_IMAGE_PLACEHOLDER);
+        return (
+          <div className="flex items-center gap-3">
+            <img
+              src={imgSrc}
+              alt={value}
+              className="w-10 h-10 object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
+              }}
+            />
+            <span className="font-medium">{value}</span>
+          </div>
+        );
+      },
     },
     {
       key: "price",
@@ -231,6 +245,27 @@ const ManageProducts = () => {
             />
 
             <button
+              onClick={() => exportVendorProductsCatalog('xlsx')}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
+              <FiDownload />
+              Export Catalog
+            </button>
+
+            <button
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
+              <FiList />
+              Import History
+            </button>
+
+            <button
+              onClick={() => setIsBulkModalOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm">
+              <FiUploadCloud />
+              Bulk Upload
+            </button>
+
+            <button
               onClick={() => handleActionClick("/vendor/products/add-product")}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm sm:text-base whitespace-nowrap">
               <span>Add New Product</span>
@@ -286,6 +321,19 @@ const ManageProducts = () => {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      <BulkUploadModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        mode="vendor"
+        onSuccess={() => fetchProducts({ fetchAll: true, limit: 200 })}
+      />
+
+      <ImportHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        mode="vendor"
       />
     </motion.div>
   );

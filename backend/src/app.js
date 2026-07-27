@@ -21,6 +21,7 @@ import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import integrationRoutes from './modules/integrations/routes/integration.routes.js';
 import translationRoutes from './routes/translationRoutes.js';
 import supportRoutes from './routes/support.routes.js';
+import bulkUploadRoutes from './routes/bulkUpload.routes.js';
 
 // Middleware imports
 import { apiLimiter } from './middlewares/rateLimiter.js';
@@ -129,6 +130,7 @@ app.use(
     },
     express.static(uploadsRoot)
 );
+app.use('/api/products', bulkUploadRoutes);         // Bulk Upload, Templates & Catalog Export
 app.use('/api', publicRoutes);            // Public: products, categories, brands, coupons, banners
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/user', userRoutes);         // Customer: auth, addresses, wishlist, reviews, orders
