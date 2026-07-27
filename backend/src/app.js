@@ -20,6 +20,7 @@ import vendorRoutes from './modules/vendor/routes/vendor.routes.js';
 import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import integrationRoutes from './modules/integrations/routes/integration.routes.js';
 import translationRoutes from './routes/translationRoutes.js';
+import supportRoutes from './routes/support.routes.js';
 
 // Middleware imports
 import { apiLimiter } from './middlewares/rateLimiter.js';
@@ -136,6 +137,7 @@ app.use('/api/vendor', vendorRoutes);     // Vendor: auth, products, orders, ear
 app.use('/api/delivery', deliveryRoutes); // Delivery: auth, orders
 app.use('/api/integrations', integrationRoutes); // Partner Integrations: delivery provider APIs
 app.use('/api/v1/translate', translationRoutes); // Public Translation
+app.use('/api/support', supportRoutes);           // Support Desk & Chat APIs
 
 // ─── Error Handling ──────────────────────────────────────────────────────────
 app.use(notFound);

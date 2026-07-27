@@ -58,8 +58,8 @@
                      ]
     },
     {
-        "title":  "Chat",
-        "route":  "/vendor/chat",
+        "title":  "Support Desk",
+        "route":  "/vendor/support-tickets",
         "children":  [
 
                      ]
