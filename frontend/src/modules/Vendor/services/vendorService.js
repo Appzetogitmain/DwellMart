@@ -91,6 +91,14 @@ export const getVendorProfile = () => api.get('/vendor/auth/profile');
  */
 export const updateVendorProfile = (data) => api.put('/vendor/auth/profile', data);
 
+/**
+ * Update vendor password
+ * @param {string} currentPassword 
+ * @param {string} newPassword 
+ */
+export const changeVendorPassword = (currentPassword, newPassword) =>
+    api.put('/vendor/auth/change-password', { currentPassword, newPassword });
+
 
 // ─── PRODUCTS ──────────────────────────────────────────────────────────────────
 

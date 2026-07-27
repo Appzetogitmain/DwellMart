@@ -226,4 +226,8 @@ router.put('/pages/:slug', ...adminAuth, staticPagesController.updatePage);
 router.get('/settings/general', ...adminAuth, settingsController.getGeneralSettings);
 router.put('/settings/general', ...adminAuth, settingsController.updateGeneralSettings);
 
+// ─── Dynamic Category Settings ───────────────────────────────────────────────
+router.get('/settings/:category', ...adminAuth, settingsController.getSettingsByCategory);
+router.put('/settings/:category', ...adminAuth, settingsController.updateSettingsByCategory);
+
 export default router;

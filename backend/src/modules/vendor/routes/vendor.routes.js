@@ -83,6 +83,7 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
+router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
 
 // Subscription (uses vendorAuthOnly so vendor can access even when expired)

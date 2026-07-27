@@ -51,10 +51,24 @@ export const useSettingsStore = create((set, get) => ({
         },
       };
 
+      let features = {};
+      let reviews = {};
+      try {
+          const fRes = await api.get("/admin/settings/features");
+          features = fRes?.data?.data || {};
+      } catch(e) {}
+      
+      try {
+          const rRes = await api.get("/admin/settings/reviews");
+          reviews = rRes?.data?.data || {};
+      } catch(e) {}
+
       set({
         settings: {
           ...get().settings,
           general: mergedGeneral,
+          features,
+          reviews,
         },
         isLoading: false,
         isInitialized: true,
@@ -98,13 +112,31 @@ export const useSettingsStore = create((set, get) => ({
     }
   },
 
-  // Backward compatibility wrapper for updateSettings
+  // Backward compatibility wrapper for updateSettings and dynamic endpoints
   updateSettings: async (category, settingsData) => {
     if (category === "general" || category === "vendor") {
       const currentGeneral = get().settings?.general || defaultGeneralSettings;
       const merged = { ...currentGeneral, ...settingsData };
       return await get().updateGeneralSettings(merged);
     }
-    return get().settings;
+    
+    set({ isLoading: true });
+    try {
+      const res = await api.put(`/admin/settings/${category}`, settingsData);
+      const updatedData = res?.data?.data || res?.data || settingsData;
+      
+      set((state) => ({
+        settings: {
+          ...state.settings,
+          [category]: updatedData,
+        },
+        isLoading: false,
+      }));
+      return updatedData;
+    } catch (error) {
+      set({ isLoading: false });
+      console.error(`Failed to update ${category} settings`, error);
+      throw error;
+    }
   },
 }));

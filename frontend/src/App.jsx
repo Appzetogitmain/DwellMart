@@ -174,6 +174,7 @@ import VendorOrderDetail from "./modules/Vendor/pages/orders/OrderDetail";
 import VendorAnalytics from "./modules/Vendor/pages/Analytics";
 import VendorEarnings from "./modules/Vendor/pages/Earnings";
 import VendorSettings from "./modules/Vendor/pages/Settings";
+import ProfileSettings from "./modules/Vendor/pages/settings/ProfileSettings";
 import VendorStockManagement from "./modules/Vendor/pages/StockManagement";
 import VendorWalletHistory from "./modules/Vendor/pages/WalletHistory";
 import VendorChat from "./modules/Vendor/pages/Chat";
@@ -698,7 +699,7 @@ const AppRoutes = () => {
         <Route path="settings/payment-settings" element={<VendorSettings />} />
         <Route path="settings/shipping" element={<VendorSettings />} />
         <Route path="settings/shipping-settings" element={<VendorSettings />} />
-        <Route path="profile" element={<VendorSettings />} />
+        <Route path="profile" element={<ProfileSettings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -64,12 +64,15 @@ const ContentFeaturesSettings = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateSettings('content', contentData);
-    updateSettings('features', featuresData);
-    updateSettings('reviews', reviewsData);
-    toast.success('Settings saved successfully');
+    try {
+      await updateSettings('features', featuresData);
+      await updateSettings('reviews', reviewsData);
+      toast.success('Settings saved successfully');
+    } catch (err) {
+      toast.error('Failed to save settings');
+    }
   };
 
   const sections = [
