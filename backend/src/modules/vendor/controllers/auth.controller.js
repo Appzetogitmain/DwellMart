@@ -4,6 +4,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
+import Settings from '../../../models/Settings.model.js';
 import EmailVerification from '../../../models/EmailVerification.model.js';
 import crypto from 'crypto';
 import { generateTokens } from '../../../utils/generateToken.js';
@@ -167,10 +168,9 @@ export const register = asyncHandler(async (req, res) => {
         throw new ApiError(409, 'Email already registered.');
     }
 
-    const documents = await uploadVendorDocument({
-        file: req.file,
-        documentType,
-    });
+    const generalSetting = await Settings.findOne({ key: 'general' });
+    const defaultCommRate = Number(generalSetting?.value?.defaultCommissionRate);
+    const initialCommissionRate = (!Number.isNaN(defaultCommRate) && defaultCommRate >= 0) ? defaultCommRate : 10;
 
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
@@ -182,6 +182,7 @@ export const register = asyncHandler(async (req, res) => {
         storeDescription: String(storeDescription || '').trim(),
         address,
         status: 'pending',
+        commissionRate: initialCommissionRate,
         agreedToTerms: true,
         agreedToTermsAt: new Date(),
         onboardingStatus: 'plan_selected',

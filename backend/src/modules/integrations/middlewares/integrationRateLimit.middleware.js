@@ -16,12 +16,12 @@ const createLimiter = ({ windowMs, max, message }) => rateLimit({
 
 export const integrationReadRateLimiter = createLimiter({
     windowMs: 60 * 1000,
-    max: process.env.NODE_ENV === 'production' ? 240 : 2000,
+    max: process.env.NODE_ENV === 'production' ? 600 : 5000,
     message: 'Too many integration read requests. Please retry shortly.',
 });
 
 export const integrationWriteRateLimiter = createLimiter({
     windowMs: 60 * 1000,
-    max: process.env.NODE_ENV === 'production' ? 120 : 1000,
+    max: process.env.NODE_ENV === 'production' ? 300 : 2000,
     message: 'Too many integration write requests. Please retry shortly.',
 });

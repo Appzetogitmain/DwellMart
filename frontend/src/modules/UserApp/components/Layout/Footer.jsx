@@ -13,9 +13,12 @@ import api from "../../../../shared/utils/api";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
 
+import { useSettingsStore } from "../../../../shared/store/settingsStore";
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const [categories, setCategories] = useState([]);
+  const { settings, initialize } = useSettingsStore();
   const { translateObject } = useDynamicTranslation();
   const { getTranslatedText: t } = usePageTranslation([
     "Your one-stop destination for curated products from trusted vendors nationwide. We prioritize quality, security, and customer delight in every transaction.",
@@ -34,6 +37,16 @@ const Footer = () => {
     "Become a Partner",
     "All rights reserved."
   ]);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  const general = settings?.general || {};
+  const logo = general.storeLogo || loginLogo;
+  const description = general.storeDescription || "Your one-stop destination for curated products from trusted vendors nationwide. We prioritize quality, security, and customer delight in every transaction.";
+  const name = general.storeName || "Dwell Mart";
+  const social = general.socialMedia || {};
 
   useEffect(() => {
     api.get("/categories/all")
@@ -72,28 +85,39 @@ const Footer = () => {
     { label: "Become a Partner", path: "/partner" },
   ];
 
+  const socialItems = [
+    { icon: FiFacebook, link: social.facebook || "#" },
+    { icon: FiTwitter, link: social.twitter || "#" },
+    { icon: FiInstagram, link: social.instagram || "#" },
+    { icon: FiYoutube, link: social.linkedin || "#" },
+  ].filter(s => s.link && s.link !== "#");
+
+  const displaySocials = socialItems.length > 0 ? socialItems : [
+    { icon: FiFacebook, link: "#" },
+    { icon: FiTwitter, link: "#" },
+    { icon: FiInstagram, link: "#" },
+    { icon: FiYoutube, link: "#" },
+  ];
+
   return (
     <footer className="bg-gray-900 text-gray-300 pt-16 pb-8 border-t border-gray-800">
-      <div className="container mx-auto px-6 md:px-12 lg:px-24">
+      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Identity */}
           <div className="space-y-4">
             <Link to="/home" className="inline-block">
-              <img src={loginLogo} alt="DwellMart Logo" className="h-14 sm:h-16 md:h-20 w-auto object-contain drop-shadow-md" />
+              <img src={logo} alt={`${name} Logo`} className="h-14 sm:h-16 md:h-20 w-auto object-contain drop-shadow-md" />
             </Link>
             <p className="text-sm leading-relaxed text-gray-400">
-              {t("Your one-stop destination for curated products from trusted vendors nationwide. We prioritize quality, security, and customer delight in every transaction.")}
+              {t(description)}
             </p>
             <div className="flex items-center gap-4">
-              {[
-                { icon: FiFacebook, link: "#" },
-                { icon: FiTwitter, link: "#" },
-                { icon: FiInstagram, link: "#" },
-                { icon: FiYoutube, link: "#" },
-              ].map((social, i) => (
+              {displaySocials.map((social, i) => (
                 <motion.a
                   key={i}
                   href={social.link}
+                  target={social.link !== "#" ? "_blank" : undefined}
+                  rel={social.link !== "#" ? "noopener noreferrer" : undefined}
                   whileHover={{ y: -5, color: "#7C3AED" }}
                   className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center transition-colors"
                 >

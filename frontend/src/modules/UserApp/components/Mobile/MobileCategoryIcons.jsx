@@ -283,21 +283,25 @@ const MobileCategoryIcons = () => {
                   className="flex flex-col items-center gap-1.5 w-16 relative">
                 {!isScrolling && (
                   <div>
-                    <IconComponent
-                      className={`text-lg transition-colors duration-300 ${isActive && activeColors
-                        ? activeColors.icon
-                        : isActive
-                          ? "text-primary-500"
-                          : "text-gray-700 hover:text-primary-600"
-                        }`}
-                      style={{
-                        strokeWidth:
-                          category.name === "Clothing" ||
-                            category.name === "Bags"
-                            ? 5.5
-                            : 2,
-                      }}
-                    />
+                    {category.icon ? (
+                      <span className="text-lg leading-none">{category.icon}</span>
+                    ) : (
+                      <IconComponent
+                        className={`text-lg transition-colors duration-300 ${isActive && activeColors
+                          ? activeColors.icon
+                          : isActive
+                            ? "text-primary-500"
+                            : "text-gray-700 hover:text-primary-600"
+                          }`}
+                        style={{
+                          strokeWidth:
+                            category.name === "Clothing" ||
+                              category.name === "Bags"
+                              ? 5.5
+                              : 2,
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 <span

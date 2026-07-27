@@ -21,8 +21,13 @@ import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { sendEmail } from '../services/email.service.js';
 
+import { getPublicGeneralSettings } from '../modules/admin/controllers/settings.controller.js';
+
 const router = Router();
 const listCache = cacheResponse({ ttlSeconds: 30, maxEntries: 1000 });
+
+// Public General Settings (Storefront identity & contact info)
+router.get('/settings/general', getPublicGeneralSettings);
 const detailCache = cacheResponse({ ttlSeconds: 60, maxEntries: 1000 });
 const catalogCache = cacheResponse({ ttlSeconds: 300, maxEntries: 200 });
 const marketingCache = cacheResponse({ ttlSeconds: 30, maxEntries: 300 });

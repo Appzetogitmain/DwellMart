@@ -798,9 +798,9 @@ const MobileSearch = ({ isShopPage = false }) => {
           </div>
 
           {/* Products List */}
-          <div className="px-4 py-4 lg:p-6">
+          <div className="px-3 py-4 md:px-4 lg:p-6">
             {isLoadingResults ? (
-              <ProductGridSkeleton count={8} columns={viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-1'} />
+              <ProductGridSkeleton count={12} columns={viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7' : 'grid-cols-1'} />
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-12">
                 <FiSearch className="text-6xl text-gray-300 mx-auto mb-4" />
@@ -815,7 +815,7 @@ const MobileSearch = ({ isShopPage = false }) => {
               </div>
             ) : viewMode === 'grid' ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-6">
                   {filteredProducts.map((product, index) => (
                     <motion.div
                       key={product.id}

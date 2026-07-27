@@ -6,7 +6,23 @@ import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
 import PageTransition from '../../../shared/components/PageTransition';
 
+import { useEffect } from 'react';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
+
 const ContactUs = () => {
+  const { settings, initialize } = useSettingsStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  const general = settings?.general || {};
+  const storeName = general.storeName || 'DwellMart';
+  const email = general.contactEmail || 'support@dwellmart.com';
+  const phone = general.contactPhone || '+91 98765 43210';
+  const address = general.address || '123 Commerce Street, Tech Park, New Delhi, India';
+  const hours = general.businessHours || 'Mon-Sat 9AM-8PM';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -76,10 +92,10 @@ const ContactUs = () => {
               <FiArrowLeft className="text-base" /> Back to Home
             </Link>
             <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Contact <span className="text-[#ffc101]">DwellMart</span> Support
+              Contact <span className="text-[#ffc101]">{storeName}</span> Support
             </h1>
             <p className="text-gray-400 mt-2 text-base max-w-2xl">
-              Have a question, feedback, or need assistance with your order or vendor partnership? We are here to help you 24/7.
+              Have a question, feedback, or need assistance with your order or vendor partnership? We are here to help you.
             </p>
           </div>
 
@@ -98,8 +114,8 @@ const ContactUs = () => {
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-gray-400">Email Us</h4>
-                      <p className="text-white font-medium text-base mt-0.5">support@dwellmart.com</p>
-                      <p className="text-xs text-gray-400 mt-1">Our support team responds within 24 hours.</p>
+                      <p className="text-white font-medium text-base mt-0.5">{email}</p>
+                      <p className="text-xs text-gray-400 mt-1">Our support team responds promptly.</p>
                     </div>
                   </div>
 
@@ -108,9 +124,9 @@ const ContactUs = () => {
                       <FiPhone />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Call Toll-Free</h4>
-                      <p className="text-white font-medium text-base mt-0.5">+1 (800) 555-DWELL (39355)</p>
-                      <p className="text-xs text-gray-400 mt-1">Mon - Sat, 9:00 AM - 8:00 PM IST</p>
+                      <h4 className="text-sm font-semibold text-gray-400">Call Us</h4>
+                      <p className="text-white font-medium text-base mt-0.5">{phone}</p>
+                      <p className="text-xs text-gray-400 mt-1">{hours}</p>
                     </div>
                   </div>
 
@@ -119,9 +135,8 @@ const ContactUs = () => {
                       <FiMapPin />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Headquarters</h4>
-                      <p className="text-white font-medium text-base mt-0.5">DwellMart Corporate Tower</p>
-                      <p className="text-xs text-gray-400 mt-1">Tech Park Avenue, Suite 400, India</p>
+                      <h4 className="text-sm font-semibold text-gray-400">Address</h4>
+                      <p className="text-white font-medium text-base mt-0.5">{address}</p>
                     </div>
                   </div>
 
@@ -131,8 +146,7 @@ const ContactUs = () => {
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-gray-400">Business Hours</h4>
-                      <p className="text-white font-medium text-base mt-0.5">Always Open Online</p>
-                      <p className="text-xs text-gray-400 mt-1">24/7 Automated Order Processing</p>
+                      <p className="text-white font-medium text-base mt-0.5">{hours}</p>
                     </div>
                   </div>
                 </div>

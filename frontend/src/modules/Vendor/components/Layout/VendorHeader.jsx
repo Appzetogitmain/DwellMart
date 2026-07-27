@@ -50,50 +50,48 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
 
   return (
     <header
-      className={`bg-black border-b border-gray-800 fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${
-        isDesktopSidebarOpen ? 'lg:left-64' : 'lg:left-0'
-      }`}
+      className="shrink-0 sticky top-0 z-30 w-full bg-slate-900 border-b border-slate-800 text-white shadow-sm transition-all duration-200"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}>
-      <div className="flex items-center justify-between px-4 lg:px-6 py-4">
-        {/* Left: Menu Button */}
-        <div className="flex items-center gap-4">
-          <Button
+      <div className="flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-3.5">
+        {/* Left: Menu Button & Page Heading */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button
             onClick={onMenuClick}
-            variant="icon"
-            className="text-gray-300 hover:text-white transition-colors"
-            icon={FiMenu}
+            className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition-colors shadow-xs shrink-0"
             aria-label="Toggle Sidebar"
-            title="Toggle Sidebar"
-          />
+            title="Toggle Sidebar">
+            <FiMenu className="text-xl text-white" />
+          </button>
 
-          {/* Page Heading - Desktop Only */}
-          <div className="hidden lg:block">
-            <h1 className="text-2xl font-bold text-white mb-1">
+          {/* Page Heading */}
+          <div>
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight">
               {pageName}
             </h1>
-            <p className="text-sm text-gray-400 flex items-center gap-2">
-              <FiShoppingBag className="text-primary-500" />
-              {storeName}
+            <p className="text-xs sm:text-sm text-slate-400 font-medium items-center gap-1.5 hidden sm:flex">
+              <FiShoppingBag className="text-emerald-400" />
+              <span>{storeName}</span>
             </p>
           </div>
         </div>
 
         {/* Right: Notifications & Logout */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
           {/* Notifications */}
           <div className="relative">
-            <Button
+            <button
               data-notification-button
               onClick={toggleNotifications}
-              variant="icon"
-              className="text-gray-300"
-              icon={FiBell}
-            />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            )}
+              className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center justify-center border border-slate-700 transition-colors relative shadow-xs"
+              aria-label="Notifications"
+              title="Notifications">
+              <FiBell className="text-lg" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-slate-900 animate-pulse" />
+              )}
+            </button>
 
             {/* Notification Window - positioned relative to this container */}
             <VendorNotificationWindow
@@ -104,14 +102,12 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
           </div>
 
           {/* Logout Button */}
-          <Button
+          <button
             onClick={handleLogout}
-            variant="ghost"
-            icon={FiLogOut}
-            size="sm"
-            className="text-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600 border border-gray-700">
-            Logout
-          </Button>
+            className="px-3 sm:px-3.5 py-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all font-semibold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0">
+            <FiLogOut className="text-base" />
+            <span>Logout</span>
+          </button>
         </div>
       </div>
     </header>
