@@ -161,7 +161,15 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
         for (const item of order.items || []) {
             const product = await Product.findById(item.productId);
             if (!product) continue;
+            
             product.stockQuantity += Number(item.quantity || 0);
+            
+            // Restore variant specific stock if applicable
+            if (item.variantKey && product.variants?.stockMap) {
+                const currentVariantStock = product.variants.stockMap.get(item.variantKey) || 0;
+                product.variants.stockMap.set(item.variantKey, currentVariantStock + Number(item.quantity || 0));
+            }
+            
             if (product.stockQuantity <= 0) product.stock = 'out_of_stock';
             else if (product.stockQuantity <= product.lowStockThreshold) product.stock = 'low_stock';
             else product.stock = 'in_stock';

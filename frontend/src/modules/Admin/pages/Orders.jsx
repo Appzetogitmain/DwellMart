@@ -12,64 +12,58 @@ import {
 
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { getAllOrders } from '../services/adminService';
+import { getOrderStatusBreakdown } from '../services/adminService';
 
 const Orders = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
+  const [orderStats, setOrderStats] = useState({
+    pending: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    total: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load orders from backend
+  // Load orders stats from backend
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchOrderStats = async () => {
       setIsLoading(true);
       try {
-        const response = await getAllOrders({ limit: 1000 });
-        setOrders(response.data.orders || []);
+        const response = await getOrderStatusBreakdown();
+        const breakdown = response.data || [];
+        
+        let pending = 0, processing = 0, shipped = 0, delivered = 0, cancelled = 0;
+        let total = 0;
+
+        breakdown.forEach((item) => {
+          const count = item.count || 0;
+          total += count;
+          
+          if (item.status === 'pending') pending += count;
+          else if (item.status === 'processing') processing += count;
+          else if (item.status === 'shipped') shipped += count;
+          else if (item.status === 'delivered') delivered += count;
+          else if (item.status === 'cancelled' || item.status === 'canceled') cancelled += count;
+        });
+
+        setOrderStats({
+          pending,
+          processing,
+          shipped,
+          delivered,
+          cancelled,
+          total,
+        });
       } catch (error) {
-        console.error("Orders overview fetch error:", error);
+        console.error("Orders stats fetch error:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchOrders();
+    fetchOrderStats();
   }, []);
-
-  // Calculate order statistics
-  const orderStats = useMemo(() => {
-    const stats = {
-      pending: 0,
-      processing: 0,
-      shipped: 0,
-      delivered: 0,
-      cancelled: 0,
-      total: orders.length,
-      totalRevenue: 0,
-    };
-
-    orders.forEach((order) => {
-      const status = order.status?.toLowerCase() || '';
-
-      if (status === 'pending') {
-        stats.pending++;
-      } else if (status === 'processing') {
-        stats.processing++;
-      } else if (status === 'shipped') {
-        stats.shipped++;
-      } else if (status === 'delivered') {
-        stats.delivered++;
-      } else if (status === 'cancelled' || status === 'canceled') {
-        stats.cancelled++;
-      }
-
-      // Calculate total revenue from delivered orders
-      if (status === 'delivered') {
-        stats.totalRevenue += order.total || 0;
-      }
-    });
-
-    return stats;
-  }, [orders]);
 
   // Analytics cards configuration
   const analyticsCards = [
