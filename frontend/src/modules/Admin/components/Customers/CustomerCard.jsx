@@ -5,17 +5,17 @@ import { formatCurrency } from '../../utils/adminHelpers';
 const CustomerCard = ({ customer, onView }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="font-bold text-gray-800 text-lg mb-1">{customer.name}</h3>
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-bold text-gray-800 text-lg mb-1 truncate">{customer.name}</h3>
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <FiMail className="text-gray-400" />
-            <span>{customer.email}</span>
+            <FiMail className="text-gray-400 flex-shrink-0" />
+            <span className="truncate">{customer.email}</span>
           </div>
           {customer.phone && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <FiPhone className="text-gray-400" />
-              <span>{customer.phone}</span>
+              <FiPhone className="text-gray-400 flex-shrink-0" />
+              <span className="truncate">{customer.phone}</span>
             </div>
           )}
         </div>
