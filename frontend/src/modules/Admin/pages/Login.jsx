@@ -18,7 +18,7 @@ const decodeJwtPayload = (token) => {
   }
 };
 
-const resolveAdminRedirectPath = (location) => {
+const resolveAdminRedirectPath = (location, adminObj) => {
   const fromPath = location?.state?.from?.pathname;
   if (
     typeof fromPath === 'string' &&
@@ -27,13 +27,31 @@ const resolveAdminRedirectPath = (location) => {
   ) {
     return fromPath;
   }
+
+  if (adminObj && adminObj.role !== 'superadmin') {
+    const perms = Array.isArray(adminObj.permissions) ? adminObj.permissions : [];
+    if (!perms.includes('dashboard.view')) {
+      if (perms.includes('orders.view')) return '/admin/orders';
+      if (perms.includes('products.view')) return '/admin/products';
+      if (perms.includes('categories.view')) return '/admin/categories';
+      if (perms.includes('vendors.view')) return '/admin/vendors';
+      if (perms.includes('users.view')) return '/admin/customers';
+      if (perms.includes('delivery.view')) return '/admin/delivery';
+      if (perms.includes('support.view')) return '/admin/support';
+      if (perms.includes('wallet.view')) return '/admin/finance/revenue-overview';
+      if (perms.includes('reports.view')) return '/admin/reports/sales-report';
+      if (perms.includes('offers.view')) return '/admin/offers';
+      if (perms.includes('settings.view')) return '/admin/settings/general';
+    }
+  }
+
   return '/admin/dashboard';
 };
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, logout, isAuthenticated, isLoading, token } = useAdminAuthStore();
+  const { login, logout, isAuthenticated, isLoading, token, admin } = useAdminAuthStore();
   const accessToken = token || localStorage.getItem('adminToken');
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();
@@ -64,10 +82,10 @@ const AdminLogin = () => {
   // Redirect only for a valid authenticated session.
   useEffect(() => {
     if (isAuthenticated && hasValidSession) {
-      const from = resolveAdminRedirectPath(location);
+      const from = resolveAdminRedirectPath(location, admin);
       navigate(from, { replace: true });
     }
-  }, [hasValidSession, isAuthenticated, navigate, location]);
+  }, [hasValidSession, isAuthenticated, navigate, location, admin]);
 
   const handleChange = (e) => {
     setFormData({
@@ -85,9 +103,9 @@ const AdminLogin = () => {
     }
 
     try {
-      await login(formData.email, formData.password, rememberMe);
+      const res = await login(formData.email, formData.password, rememberMe);
       toast.success('Login successful!');
-      const from = resolveAdminRedirectPath(location);
+      const from = resolveAdminRedirectPath(location, res?.admin || admin);
       navigate(from, { replace: true });
     } catch (error) {
       toast.error(error.message || 'Invalid credentials');

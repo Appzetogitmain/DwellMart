@@ -7,6 +7,7 @@ import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProductFormModal from "../../components/ProductFormModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
+import PermissionGuard from "../../../../shared/components/PermissionGuard";
 import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpers";
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
@@ -156,22 +157,26 @@ const ManageProducts = () => {
       sortable: false,
       render: (_, row) => (
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setProductFormModal({ isOpen: true, productId: row.id });
-            }}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-            <FiEdit />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDeleteModal({ isOpen: true, productId: row.id });
-            }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <FiTrash2 />
-          </button>
+          <PermissionGuard permission="products.edit">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setProductFormModal({ isOpen: true, productId: row.id });
+              }}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+              <FiEdit />
+            </button>
+          </PermissionGuard>
+          <PermissionGuard permission="products.delete">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteModal({ isOpen: true, productId: row.id });
+              }}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+              <FiTrash2 />
+            </button>
+          </PermissionGuard>
         </div>
       ),
     },
@@ -202,13 +207,15 @@ const ManageProducts = () => {
             View, edit, and manage your product catalog
           </p>
         </div>
-        <button
-          onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
-        >
-          <FiPlus />
-          Add Product
-        </button>
+        <PermissionGuard permission="products.add">
+          <button
+            onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
+          >
+            <FiPlus />
+            Add Product
+          </button>
+        </PermissionGuard>
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">

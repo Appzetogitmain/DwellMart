@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiMenu, FiBell, FiLogOut } from 'react-icons/fi';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAuthStore } from '../../store/adminStore';
 import { useNotificationStore } from '../../store/notificationStore';
-import { useEffect } from 'react';
+import { usePermission } from '../../hooks/usePermission';
 import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
@@ -12,14 +12,18 @@ const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAdminAuthStore();
+  const { isSuperAdmin, hasPermission } = usePermission();
   const { notifications, unreadCount, fetchNotifications } = useNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
 
+  const canViewNotifications = isSuperAdmin || hasPermission('dashboard.view');
+
   useEffect(() => {
+    if (!canViewNotifications) return;
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000); // Poll every minute
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, canViewNotifications]);
 
   const handleLogout = () => {
     logout();

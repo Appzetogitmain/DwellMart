@@ -12,21 +12,38 @@ const persistedAuthState = (state) => ({
 
 export const useAdminAuthStore = create(
   persist(
-    (set) => ({
+    (set, get) => ({
       admin: null,
       token: null,
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
 
+      // Helper to check permission
+      can: (permissionToken) => {
+        const { admin } = get();
+        if (!admin) return false;
+        if (admin.role === 'superadmin') return true;
+        const permissions = Array.isArray(admin.permissions) ? admin.permissions : [];
+        return permissions.includes(permissionToken);
+      },
+
+      canAny: (...permissionTokens) => {
+        const { admin } = get();
+        if (!admin) return false;
+        if (admin.role === 'superadmin') return true;
+        const permissions = Array.isArray(admin.permissions) ? admin.permissions : [];
+        return permissionTokens.some((t) => permissions.includes(t));
+      },
+
       // Admin login - calls backend
       login: async (email, password) => {
         set({ isLoading: true });
         try {
           const response = await apiLogin(email, password);
-          const { accessToken, refreshToken, admin } = response.data;
+          const data = response?.data || response;
+          const { accessToken, refreshToken, admin } = data;
 
-          // Store token under 'adminToken' key (used by interceptor)
           localStorage.setItem('adminToken', accessToken);
           localStorage.setItem('adminRefreshToken', refreshToken);
 
@@ -41,6 +58,13 @@ export const useAdminAuthStore = create(
         } finally {
           set({ isLoading: false });
         }
+      },
+
+      // Update active admin profile in store
+      setAdmin: (updatedAdmin) => {
+        set((state) => ({
+          admin: { ...state.admin, ...updatedAdmin },
+        }));
       },
 
       // Admin logout
@@ -70,7 +94,7 @@ export const useAdminAuthStore = create(
         ...(persistedState || {}),
         isLoading: false,
       }),
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState;

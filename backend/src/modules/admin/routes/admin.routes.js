@@ -18,12 +18,22 @@ import * as subscriptionPlanController from '../controllers/subscriptionPlan.con
 import * as termsController from '../controllers/termsAndConditions.controller.js';
 import * as staticPagesController from '../controllers/staticPages.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
+import * as subadminController from '../controllers/subadmin.controller.js';
+
 import { authenticate } from '../../../middlewares/authenticate.js';
-import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
+import { enforceAccountStatus } from '../../../middlewares/authorize.js';
+import { requireAdmin, requireSuperAdmin, checkPermission, checkAnyPermission } from '../../../middlewares/permission.middleware.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
 import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
+import { PERMISSIONS } from '../../../constants/permissions.js';
+import {
+    createSubAdminSchema,
+    updateSubAdminSchema,
+    updateStatusSchema,
+    resetPasswordSchema,
+} from '../validators/subadmin.validator.js';
 import {
     createProductSchema,
     updateProductSchema,
@@ -68,7 +78,11 @@ import {
 } from '../validators/marketing.validator.js';
 
 const router = Router();
-const adminAuth = [authenticate, authorize('admin', 'superadmin'), enforceAccountStatus];
+const adminAuth = [authenticate, requireAdmin, enforceAccountStatus];
+
+// Helper to bundle adminAuth with permission check
+const perm = (permissionToken) => [...adminAuth, checkPermission(permissionToken)];
+const permAny = (...tokens) => [...adminAuth, checkAnyPermission(...tokens)];
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 router.post('/auth/login', authLimiter, authController.login);
@@ -76,154 +90,153 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...adminAuth, authController.getProfile);
 
-// ─── Analytics ────────────────────────────────────────────────────────────────
-router.get('/analytics/dashboard', ...adminAuth, analyticsController.getDashboardStats);
-router.get('/analytics/revenue', ...adminAuth, analyticsController.getRevenueData);
-router.get('/analytics/order-status', ...adminAuth, analyticsController.getOrderStatusBreakdown);
-router.get('/analytics/top-products', ...adminAuth, analyticsController.getTopProducts);
-router.get('/analytics/customer-growth', ...adminAuth, analyticsController.getCustomerGrowth);
-router.get('/analytics/recent-orders', ...adminAuth, analyticsController.getRecentOrders);
-router.get('/analytics/sales', ...adminAuth, analyticsController.getSalesData);
-router.get('/analytics/finance-summary', ...adminAuth, analyticsController.getFinancialSummary);
-router.get('/analytics/inventory-stats', ...adminAuth, analyticsController.getInventoryStats);
+// ─── Sub Admin Management (Super Admin Only) ──────────────────────────────────
+router.get('/subadmins', ...adminAuth, requireSuperAdmin, subadminController.getAllSubAdmins);
+router.get('/subadmins/logs', ...adminAuth, requireSuperAdmin, subadminController.getActivityLogs);
+router.get('/subadmins/:id', ...adminAuth, requireSuperAdmin, subadminController.getSubAdminById);
+router.post('/subadmins', ...adminAuth, requireSuperAdmin, validate(createSubAdminSchema), subadminController.createSubAdmin);
+router.put('/subadmins/:id', ...adminAuth, requireSuperAdmin, validate(updateSubAdminSchema), subadminController.updateSubAdmin);
+router.patch('/subadmins/:id/status', ...adminAuth, requireSuperAdmin, validate(updateStatusSchema), subadminController.toggleSubAdminStatus);
+router.post('/subadmins/:id/reset-password', ...adminAuth, requireSuperAdmin, validate(resetPasswordSchema), subadminController.resetSubAdminPassword);
+router.delete('/subadmins/:id', ...adminAuth, requireSuperAdmin, subadminController.deleteSubAdmin);
+
+// ─── Analytics & Dashboard ───────────────────────────────────────────────────
+router.get('/analytics/dashboard', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getDashboardStats);
+router.get('/analytics/revenue', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getRevenueData);
+router.get('/analytics/order-status', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getOrderStatusBreakdown);
+router.get('/analytics/top-products', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getTopProducts);
+router.get('/analytics/customer-growth', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getCustomerGrowth);
+router.get('/analytics/recent-orders', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getRecentOrders);
+router.get('/analytics/sales', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getSalesData);
+router.get('/analytics/finance-summary', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.WALLET_VIEW), analyticsController.getFinancialSummary);
+router.get('/analytics/inventory-stats', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.PRODUCTS_VIEW), analyticsController.getInventoryStats);
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
-router.get('/orders', ...adminAuth, orderController.getAllOrders);
-router.get('/orders/:id', ...adminAuth, orderController.getOrderById);
-router.patch('/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
-router.patch('/orders/:id/assign-delivery', ...adminAuth, orderController.assignDeliveryBoy);
-router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
+router.get('/orders', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getAllOrders);
+router.get('/orders/:id', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getOrderById);
+router.patch('/orders/:id/status', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.updateOrderStatus);
+router.patch('/orders/:id/assign-delivery', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.assignDeliveryBoy);
+router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
 // ─── Products ─────────────────────────────────────────────────────────────────
-router.get('/products', ...adminAuth, catalogController.getAllProducts);
-router.get('/products/tax-pricing-rules', ...adminAuth, catalogController.getTaxPricingRules);
-router.get('/products/:id', ...adminAuth, catalogController.getProductById);
-router.post('/products', ...adminAuth, validate(createProductSchema), catalogController.createProduct);
-router.put('/products/tax-pricing-rules', ...adminAuth, validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);
-
-router.put('/products/:id', ...adminAuth, validate(updateProductSchema), catalogController.updateProduct);
-router.delete('/products/:id', ...adminAuth, catalogController.deleteProduct);
+router.get('/products', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getAllProducts);
+router.get('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getTaxPricingRules);
+router.get('/products/:id', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getProductById);
+router.post('/products', ...perm(PERMISSIONS.PRODUCTS_ADD), validate(createProductSchema), catalogController.createProduct);
+router.put('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_EDIT), validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);
+router.put('/products/:id', ...perm(PERMISSIONS.PRODUCTS_EDIT), validate(updateProductSchema), catalogController.updateProduct);
+router.delete('/products/:id', ...perm(PERMISSIONS.PRODUCTS_DELETE), catalogController.deleteProduct);
 
 // ─── Categories ───────────────────────────────────────────────────────────────
-router.get('/categories', ...adminAuth, catalogController.getAllCategories);
-router.post('/categories', ...adminAuth, validate(createCategorySchema), catalogController.createCategory);
-router.post('/categories/seed', ...adminAuth, catalogController.seedMarketplaceCategories);
-router.patch('/categories/reorder', ...adminAuth, validate(reorderCategoriesSchema), catalogController.reorderCategories);
-router.put('/categories/:id', ...adminAuth, validate(categoryIdParamSchema, 'params'), validate(updateCategorySchema), catalogController.updateCategory);
-router.delete('/categories/:id', ...adminAuth, validate(categoryIdParamSchema, 'params'), catalogController.deleteCategory);
+router.get('/categories', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.getAllCategories);
+router.post('/categories', ...perm(PERMISSIONS.CATEGORIES_ADD), validate(createCategorySchema), catalogController.createCategory);
+router.post('/categories/seed', ...perm(PERMISSIONS.CATEGORIES_ADD), catalogController.seedMarketplaceCategories);
+router.patch('/categories/reorder', ...perm(PERMISSIONS.CATEGORIES_EDIT), validate(reorderCategoriesSchema), catalogController.reorderCategories);
+router.put('/categories/:id', ...perm(PERMISSIONS.CATEGORIES_EDIT), validate(categoryIdParamSchema, 'params'), validate(updateCategorySchema), catalogController.updateCategory);
+router.delete('/categories/:id', ...perm(PERMISSIONS.CATEGORIES_DELETE), validate(categoryIdParamSchema, 'params'), catalogController.deleteCategory);
 
 // ─── Brands ───────────────────────────────────────────────────────────────────
-router.get('/brands', ...adminAuth, catalogController.getAllBrands);
-router.post('/brands', ...adminAuth, validate(createBrandSchema), catalogController.createBrand);
-router.put('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), validate(updateBrandSchema), catalogController.updateBrand);
-router.delete('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), catalogController.deleteBrand);
+router.get('/brands', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.getAllBrands);
+router.post('/brands', ...perm(PERMISSIONS.CATEGORIES_ADD), validate(createBrandSchema), catalogController.createBrand);
+router.put('/brands/:id', ...perm(PERMISSIONS.CATEGORIES_EDIT), validate(brandIdParamSchema, 'params'), validate(updateBrandSchema), catalogController.updateBrand);
+router.delete('/brands/:id', ...perm(PERMISSIONS.CATEGORIES_DELETE), validate(brandIdParamSchema, 'params'), catalogController.deleteBrand);
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
-router.get('/vendors', ...adminAuth, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
-router.get('/vendors/pending', ...adminAuth, (req, res, next) => { req.query.status = 'pending'; next(); }, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
-router.get('/vendors/:id', ...adminAuth, validate(vendorIdParamSchema, 'params'), vendorController.getVendorDetail);
-router.get('/vendors/:id/documents', ...adminAuth, validate(vendorIdParamSchema, 'params'), vendorController.getVendorDocuments);
-router.patch('/vendors/documents/:id/status', ...adminAuth, documentController.adminUpdateDocumentStatus);
-router.get('/vendors/:id/commissions', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
-router.patch('/vendors/:id/status', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
-router.patch('/vendors/:id/commission', ...adminAuth, validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
+router.get('/vendors', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
+router.get('/vendors/pending', ...perm(PERMISSIONS.VENDORS_VIEW), (req, res, next) => { req.query.status = 'pending'; next(); }, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
+router.get('/vendors/:id', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorIdParamSchema, 'params'), vendorController.getVendorDetail);
+router.get('/vendors/:id/documents', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorIdParamSchema, 'params'), vendorController.getVendorDocuments);
+router.patch('/vendors/documents/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), documentController.adminUpdateDocumentStatus);
+router.get('/vendors/:id/commissions', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
+router.patch('/vendors/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
+router.patch('/vendors/:id/commission', ...perm(PERMISSIONS.VENDORS_EDIT), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
 
 // ─── Customers ────────────────────────────────────────────────────────────────
-router.get('/customers', ...adminAuth, validate(customerListQuerySchema, 'query'), customerController.getAllCustomers);
-router.get('/customers/addresses', ...adminAuth, validate(customerAddressesQuerySchema, 'query'), customerController.getCustomerAddresses);
-router.get('/customers/transactions', ...adminAuth, validate(customerTransactionsQuerySchema, 'query'), customerController.getCustomerTransactions);
-router.get('/customers/:id/orders', ...adminAuth, validate(customerIdParamSchema, 'params'), validate(customerOrdersQuerySchema, 'query'), customerController.getCustomerOrders);
-router.get('/customers/:id', ...adminAuth, validate(customerIdParamSchema, 'params'), customerController.getCustomerById);
-router.put('/customers/:id', ...adminAuth, validate(customerIdParamSchema, 'params'), validate(customerUpdateSchema), customerController.updateCustomerDetail);
-router.patch('/customers/:id/status', ...adminAuth, validate(customerIdParamSchema, 'params'), validate(customerStatusUpdateSchema), customerController.updateCustomerStatus);
-router.delete('/customers/:customerId/addresses/:addressId', ...adminAuth, validate(customerAddressParamsSchema, 'params'), customerController.deleteCustomerAddress);
+router.get('/customers', ...perm(PERMISSIONS.USERS_VIEW), validate(customerListQuerySchema, 'query'), customerController.getAllCustomers);
+router.get('/customers/addresses', ...perm(PERMISSIONS.USERS_VIEW), validate(customerAddressesQuerySchema, 'query'), customerController.getCustomerAddresses);
+router.get('/customers/transactions', ...perm(PERMISSIONS.USERS_VIEW), validate(customerTransactionsQuerySchema, 'query'), customerController.getCustomerTransactions);
+router.get('/customers/:id/orders', ...perm(PERMISSIONS.USERS_VIEW), validate(customerIdParamSchema, 'params'), validate(customerOrdersQuerySchema, 'query'), customerController.getCustomerOrders);
+router.get('/customers/:id', ...perm(PERMISSIONS.USERS_VIEW), validate(customerIdParamSchema, 'params'), customerController.getCustomerById);
+router.put('/customers/:id', ...perm(PERMISSIONS.USERS_EDIT), validate(customerIdParamSchema, 'params'), validate(customerUpdateSchema), customerController.updateCustomerDetail);
+router.patch('/customers/:id/status', ...perm(PERMISSIONS.USERS_EDIT), validate(customerIdParamSchema, 'params'), validate(customerStatusUpdateSchema), customerController.updateCustomerStatus);
+router.delete('/customers/:customerId/addresses/:addressId', ...perm(PERMISSIONS.USERS_DELETE), validate(customerAddressParamsSchema, 'params'), customerController.deleteCustomerAddress);
 
 // ─── Delivery ─────────────────────────────────────────────────────────────────
-router.get('/delivery-boys', ...adminAuth, validate(deliveryListQuerySchema, 'query'), deliveryController.getAllDeliveryBoys);
-router.post('/delivery-boys', ...adminAuth, validate(createDeliveryBoySchema), deliveryController.createDeliveryBoy);
-router.get('/delivery-boys/:id', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), deliveryController.getDeliveryBoyById);
-router.put('/delivery-boys/:id', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryBoySchema), deliveryController.updateDeliveryBoy);
-router.delete('/delivery-boys/:id', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), deliveryController.deleteDeliveryBoy);
-router.patch('/delivery-boys/:id/status', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryStatusSchema), deliveryController.updateDeliveryBoyStatus);
-router.patch('/delivery-boys/:id/application-status', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryApplicationStatusSchema), deliveryController.updateDeliveryBoyApplicationStatus);
-router.post('/delivery-boys/:id/settle-cash', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
+router.get('/delivery-boys', ...perm(PERMISSIONS.DELIVERY_VIEW), validate(deliveryListQuerySchema, 'query'), deliveryController.getAllDeliveryBoys);
+router.post('/delivery-boys', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(createDeliveryBoySchema), deliveryController.createDeliveryBoy);
+router.get('/delivery-boys/:id', ...perm(PERMISSIONS.DELIVERY_VIEW), validate(deliveryBoyIdParamSchema, 'params'), deliveryController.getDeliveryBoyById);
+router.put('/delivery-boys/:id', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryBoySchema), deliveryController.updateDeliveryBoy);
+router.delete('/delivery-boys/:id', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), deliveryController.deleteDeliveryBoy);
+router.patch('/delivery-boys/:id/status', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryStatusSchema), deliveryController.updateDeliveryBoyStatus);
+router.patch('/delivery-boys/:id/application-status', ...perm(PERMISSIONS.DELIVERY_APPROVE), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryApplicationStatusSchema), deliveryController.updateDeliveryBoyApplicationStatus);
+router.post('/delivery-boys/:id/settle-cash', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
 
 // ─── Return Requests ──────────────────────────────────────────────────────────
-router.get('/return-requests', ...adminAuth, returnController.getAllReturnRequests);
-router.get('/return-requests/:id', ...adminAuth, returnController.getReturnRequestById);
-router.patch('/return-requests/:id/status', ...adminAuth, returnController.updateReturnRequestStatus);
+router.get('/return-requests', ...perm(PERMISSIONS.ORDERS_VIEW), returnController.getAllReturnRequests);
+router.get('/return-requests/:id', ...perm(PERMISSIONS.ORDERS_VIEW), returnController.getReturnRequestById);
+router.patch('/return-requests/:id/status', ...perm(PERMISSIONS.ORDERS_UPDATE), returnController.updateReturnRequestStatus);
 
 // ─── Support Tickets ──────────────────────────────────────────────────────────
-router.get('/support/tickets', ...adminAuth, supportController.getAllTickets);
-router.get('/support/tickets/:id', ...adminAuth, supportController.getTicketById);
-router.patch('/support/tickets/:id/status', ...adminAuth, supportController.updateTicketStatus);
-router.post('/support/tickets/:id/messages', ...adminAuth, supportController.addTicketMessage);
-router.get('/support/ticket-types', ...adminAuth, supportController.getAllTicketTypes);
-router.post('/support/ticket-types', ...adminAuth, supportController.createTicketType);
-router.put('/support/ticket-types/:id', ...adminAuth, supportController.updateTicketType);
-router.delete('/support/ticket-types/:id', ...adminAuth, supportController.deleteTicketType);
+router.get('/support/tickets', ...perm(PERMISSIONS.SUPPORT_VIEW), supportController.getAllTickets);
+router.get('/support/tickets/:id', ...perm(PERMISSIONS.SUPPORT_VIEW), supportController.getTicketById);
+router.patch('/support/tickets/:id/status', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.updateTicketStatus);
+router.post('/support/tickets/:id/messages', ...perm(PERMISSIONS.SUPPORT_REPLY), supportController.addTicketMessage);
+router.get('/support/ticket-types', ...perm(PERMISSIONS.SUPPORT_VIEW), supportController.getAllTicketTypes);
+router.post('/support/ticket-types', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.createTicketType);
+router.put('/support/ticket-types/:id', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.updateTicketType);
+router.delete('/support/ticket-types/:id', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.deleteTicketType);
 
 // ─── Product Reviews ──────────────────────────────────────────────────────────
-router.get('/reviews', ...adminAuth, reviewController.getAllReviews);
-router.patch('/reviews/:id/status', ...adminAuth, reviewController.updateReviewStatus);
-router.delete('/reviews/:id', ...adminAuth, reviewController.deleteReview);
+router.get('/reviews', ...perm(PERMISSIONS.PRODUCTS_VIEW), reviewController.getAllReviews);
+router.patch('/reviews/:id/status', ...perm(PERMISSIONS.PRODUCTS_EDIT), reviewController.updateReviewStatus);
+router.delete('/reviews/:id', ...perm(PERMISSIONS.PRODUCTS_DELETE), reviewController.deleteReview);
 router.post('/uploads/image', ...adminAuth, uploadSingle('image'), uploadController.uploadImage);
 
 // ─── Marketing & Promotions ──────────────────────────────────────────────────
-// Coupons
-router.get('/marketing/coupons', ...adminAuth, marketingController.getAllCoupons);
-router.post('/marketing/coupons', ...adminAuth, marketingController.createCoupon);
-router.put('/marketing/coupons/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateCoupon);
-router.delete('/marketing/coupons/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteCoupon);
+router.get('/marketing/coupons', ...perm(PERMISSIONS.PROMOCODES_VIEW), marketingController.getAllCoupons);
+router.post('/marketing/coupons', ...perm(PERMISSIONS.PROMOCODES_EDIT), marketingController.createCoupon);
+router.put('/marketing/coupons/:id', ...perm(PERMISSIONS.PROMOCODES_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateCoupon);
+router.delete('/marketing/coupons/:id', ...perm(PERMISSIONS.PROMOCODES_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteCoupon);
 
-// Banners
-router.get('/marketing/banners', ...adminAuth, marketingController.getAllBanners);
-router.post('/marketing/banners', ...adminAuth, marketingController.createBanner);
-router.patch('/marketing/banners/reorder', ...adminAuth, marketingController.reorderBanners);
-router.put('/marketing/banners/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateBanner);
-router.delete('/marketing/banners/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteBanner);
+router.get('/marketing/banners', ...perm(PERMISSIONS.BANNERS_VIEW), marketingController.getAllBanners);
+router.post('/marketing/banners', ...perm(PERMISSIONS.BANNERS_EDIT), marketingController.createBanner);
+router.patch('/marketing/banners/reorder', ...perm(PERMISSIONS.BANNERS_EDIT), marketingController.reorderBanners);
+router.put('/marketing/banners/:id', ...perm(PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateBanner);
+router.delete('/marketing/banners/:id', ...perm(PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteBanner);
 
-// Testimonials
-router.get('/marketing/testimonials', ...adminAuth, marketingController.getAllTestimonials);
-router.post('/marketing/testimonials', ...adminAuth, marketingController.createTestimonial);
-router.put('/marketing/testimonials/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateTestimonial);
-router.delete('/marketing/testimonials/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteTestimonial);
+router.get('/marketing/testimonials', ...perm(PERMISSIONS.OFFERS_VIEW), marketingController.getAllTestimonials);
+router.post('/marketing/testimonials', ...perm(PERMISSIONS.OFFERS_EDIT), marketingController.createTestimonial);
+router.put('/marketing/testimonials/:id', ...perm(PERMISSIONS.OFFERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateTestimonial);
+router.delete('/marketing/testimonials/:id', ...perm(PERMISSIONS.OFFERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteTestimonial);
 
-// Campaigns
-router.get('/marketing/campaigns', ...adminAuth, validate(campaignListQuerySchema, 'query'), marketingController.getAllCampaigns);
-router.post('/marketing/campaigns', ...adminAuth, marketingController.createCampaign);
-router.put('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateCampaign);
-router.delete('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteCampaign);
+router.get('/marketing/campaigns', ...perm(PERMISSIONS.OFFERS_VIEW), validate(campaignListQuerySchema, 'query'), marketingController.getAllCampaigns);
+router.post('/marketing/campaigns', ...perm(PERMISSIONS.OFFERS_EDIT), marketingController.createCampaign);
+router.put('/marketing/campaigns/:id', ...perm(PERMISSIONS.OFFERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateCampaign);
+router.delete('/marketing/campaigns/:id', ...perm(PERMISSIONS.OFFERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteCampaign);
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
-router.get('/reports/sales', ...adminAuth, reportController.getSalesReport);
-router.get('/reports/inventory', ...adminAuth, reportController.getInventoryReport);
+router.get('/reports/sales', ...perm(PERMISSIONS.REPORTS_VIEW), reportController.getSalesReport);
+router.get('/reports/inventory', ...perm(PERMISSIONS.REPORTS_VIEW), reportController.getInventoryReport);
 
 // ─── Notifications ─────────────────────────────────────────────────────────────
-router.get('/notifications', ...adminAuth, notificationController.getAdminNotifications);
-router.put('/notifications/:id/read', ...adminAuth, notificationController.markAsRead);
-router.put('/notifications/read-all', ...adminAuth, notificationController.markAllAsRead);
+router.get('/notifications', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.getAdminNotifications);
+router.put('/notifications/:id/read', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.markAsRead);
+router.put('/notifications/read-all', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.markAllAsRead);
 
-// ─── Subscription Plans ───────────────────────────────────────────────────────
-router.get('/subscription-plans', ...adminAuth, subscriptionPlanController.getAllPlans);
-router.get('/subscription-plans/:id', ...adminAuth, subscriptionPlanController.getPlanById);
-router.post('/subscription-plans', ...adminAuth, subscriptionPlanController.createPlan);
-router.put('/subscription-plans/:id', ...adminAuth, subscriptionPlanController.updatePlan);
-router.delete('/subscription-plans/:id', ...adminAuth, subscriptionPlanController.deletePlan);
+// ─── Subscription Plans & Vendor Subscriptions ───────────────────────────────
+router.get('/subscription-plans', ...perm(PERMISSIONS.VENDORS_VIEW), subscriptionPlanController.getAllPlans);
+router.get('/subscription-plans/:id', ...perm(PERMISSIONS.VENDORS_VIEW), subscriptionPlanController.getPlanById);
+router.post('/subscription-plans', ...perm(PERMISSIONS.VENDORS_EDIT), subscriptionPlanController.createPlan);
+router.put('/subscription-plans/:id', ...perm(PERMISSIONS.VENDORS_EDIT), subscriptionPlanController.updatePlan);
+router.delete('/subscription-plans/:id', ...perm(PERMISSIONS.VENDORS_EDIT), subscriptionPlanController.deletePlan);
+router.get('/vendor-subscriptions', ...perm(PERMISSIONS.VENDORS_VIEW), subscriptionPlanController.getVendorSubscriptions);
 
-// ─── Vendor Subscriptions ─────────────────────────────────────────────────────
-router.get('/vendor-subscriptions', ...adminAuth, subscriptionPlanController.getVendorSubscriptions);
-
-// ─── Vendor Terms & Conditions ────────────────────────────────────────────────
-router.get('/settings/vendor-terms', ...adminAuth, termsController.getVendorTerms);
-router.put('/settings/vendor-terms', ...adminAuth, termsController.updateVendorTerms);
-
-// ─── Static Pages (About, Contact, Terms, Privacy, Returns, Shipping, FAQ, Partner) ──
-router.get('/pages/:slug', ...adminAuth, staticPagesController.getPage);
-router.put('/pages/:slug', ...adminAuth, staticPagesController.updatePage);
-
-// ─── General Settings ────────────────────────────────────────────────────────
-router.get('/settings/general', ...adminAuth, settingsController.getGeneralSettings);
-router.put('/settings/general', ...adminAuth, settingsController.updateGeneralSettings);
+// ─── Settings & Policies ──────────────────────────────────────────────────────
+router.get('/settings/vendor-terms', ...perm(PERMISSIONS.SETTINGS_VIEW), termsController.getVendorTerms);
+router.put('/settings/vendor-terms', ...perm(PERMISSIONS.SETTINGS_EDIT), termsController.updateVendorTerms);
+router.get('/pages/:slug', ...perm(PERMISSIONS.SETTINGS_VIEW), staticPagesController.getPage);
+router.put('/pages/:slug', ...perm(PERMISSIONS.SETTINGS_EDIT), staticPagesController.updatePage);
+router.get('/settings/general', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getGeneralSettings);
+router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateGeneralSettings);
 
 export default router;
