@@ -8,6 +8,7 @@ import {
   updateCategory,
   deleteCategory,
   reorderCategories as reorderCategoriesApi,
+  seedCategoriesApi,
 } from '../../modules/Admin/services/adminService';
 import toast from 'react-hot-toast';
 
@@ -173,6 +174,25 @@ export const useCategoryStore = create(
           }));
           set({ categories: normalizedCategories, isLoading: false });
           toast.success('Category order updated successfully');
+          return true;
+        } catch (error) {
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      // Seed marketplace categories
+      seedCategories: async () => {
+        set({ isLoading: true });
+        try {
+          const response = await seedCategoriesApi();
+          const categoriesList = response.data?.categories || [];
+          const normalizedCategories = categoriesList.map((cat) => ({
+            ...cat,
+            id: cat._id,
+          }));
+          set({ categories: normalizedCategories, isLoading: false });
+          toast.success('Marketplace categories seeded successfully');
           return true;
         } catch (error) {
           set({ isLoading: false });

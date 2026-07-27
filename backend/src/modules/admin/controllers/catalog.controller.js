@@ -6,6 +6,7 @@ import Category from '../../../models/Category.model.js';
 import Brand from '../../../models/Brand.model.js';
 import Settings from '../../../models/Settings.model.js';
 import { slugify } from '../../../utils/slugify.js';
+import { seedCategoriesInDb } from '../../../../scripts/seedCategories.js';
 
 const sanitizeFaqs = (faqs) => {
     if (!Array.isArray(faqs)) return [];
@@ -486,6 +487,13 @@ export const reorderCategories = asyncHandler(async (req, res) => {
 
     const categories = await Category.find().sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Category order updated.'));
+});
+
+// POST /api/admin/categories/seed
+export const seedMarketplaceCategories = asyncHandler(async (req, res) => {
+    const stats = await seedCategoriesInDb();
+    const categories = await Category.find().sort({ order: 1, name: 1 });
+    res.status(200).json(new ApiResponse(200, { stats, categories }, 'Marketplace categories seeded successfully.'));
 });
 
 // GET /api/admin/brands

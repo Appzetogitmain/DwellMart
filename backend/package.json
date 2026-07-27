@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed:categories": "node scripts/seedCategories.js",
+    "seed:policies": "node scripts/seedPolicies.js"
   },
   "author": "furqan",
   "license": "ISC",

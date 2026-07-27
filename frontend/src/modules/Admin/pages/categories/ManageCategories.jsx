@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiPlus, FiSearch, FiTrash2, FiEdit } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiTrash2, FiEdit, FiRefreshCw } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useCategoryStore } from '../../../../shared/store/categoryStore';
 import CategoryForm from '../../components/Categories/CategoryForm';
@@ -14,6 +14,8 @@ const ManageCategories = () => {
     categories,
     initialize,
     deleteCategory,
+    seedCategories,
+    isLoading,
   } = useCategoryStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,13 +105,24 @@ const ManageCategories = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Manage Categories</h1>
           <p className="text-sm sm:text-base text-gray-600">View and manage product categories</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
-        >
-          <FiPlus />
-          <span>Add Category</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => seedCategories()}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all font-semibold text-sm disabled:opacity-50"
+            title="Populate/Refresh standard DwellMart Marketplace Categories"
+          >
+            <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
+            <span>Seed Categories</span>
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
+          >
+            <FiPlus />
+            <span>Add Category</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">

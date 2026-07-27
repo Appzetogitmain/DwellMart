@@ -106,6 +106,7 @@ router.delete('/products/:id', ...adminAuth, catalogController.deleteProduct);
 // ─── Categories ───────────────────────────────────────────────────────────────
 router.get('/categories', ...adminAuth, catalogController.getAllCategories);
 router.post('/categories', ...adminAuth, validate(createCategorySchema), catalogController.createCategory);
+router.post('/categories/seed', ...adminAuth, catalogController.seedMarketplaceCategories);
 router.patch('/categories/reorder', ...adminAuth, validate(reorderCategoriesSchema), catalogController.reorderCategories);
 router.put('/categories/:id', ...adminAuth, validate(categoryIdParamSchema, 'params'), validate(updateCategorySchema), catalogController.updateCategory);
 router.delete('/categories/:id', ...adminAuth, validate(categoryIdParamSchema, 'params'), catalogController.deleteCategory);
