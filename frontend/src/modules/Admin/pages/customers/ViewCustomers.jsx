@@ -215,11 +215,21 @@ const ViewCustomers = () => {
             />
           </>
         ) : (
-          <DataTable
-            data={customers}
-            columns={columns}
-            pagination={false}
-          />
+          <>
+            <DataTable
+              data={customers}
+              columns={columns}
+              pagination={false}
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              className="mt-6"
+            />
+          </>
         )}
       </div>
 
