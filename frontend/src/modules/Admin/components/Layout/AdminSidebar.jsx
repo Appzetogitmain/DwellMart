@@ -24,13 +24,16 @@ import {
   FiChevronDown,
   FiX,
   FiUser,
+  FiLock,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
-import adminMenu from "../../config/adminMenu.json";
+import { usePermission } from "../../hooks/usePermission";
+import adminMenuRaw from "../../config/adminMenu.json";
 
 // Icon mapping for menu items
 const iconMap = {
   Dashboard: FiHome,
+  "Admin Management": FiLock,
   Orders: FiShoppingBag,
   "Return Requests": FiRotateCcw,
   Products: FiPackage,
@@ -38,6 +41,7 @@ const iconMap = {
   Brands: FiTag,
   Customers: FiUsers,
   "Delivery Management": FiTruck,
+  Vendors: FiUsers,
   "Offers & Sliders": FiImage,
   Banners: FiImage,
   Testimonials: FiStar,
@@ -51,9 +55,105 @@ const iconMap = {
   "Sell on DwellMart": FiShoppingBag,
 };
 
+const MENU_PERMISSION_MAP = {
+  Dashboard: "dashboard.view",
+  "Admin Management": "subadmin.view",
+  Orders: "orders.view",
+  "Return Requests": "orders.view",
+  Products: "products.view",
+  Categories: "categories.view",
+  Brands: "categories.view",
+  Customers: "users.view",
+  "Delivery Management": "delivery.view",
+  Vendors: "vendors.view",
+  "Offers & Sliders": "offers.view",
+  Banners: "banners.view",
+  Testimonials: "offers.view",
+  "Promo Codes": "promocodes.view",
+  Notifications: "dashboard.view",
+  "Support Desk": "support.view",
+  Reports: "reports.view",
+  "Analytics & Finance": "wallet.view",
+  Settings: "settings.view",
+  Policies: "settings.view",
+  "Sell on DwellMart": "vendors.view",
+};
+
+export const CHILD_PERMISSION_MAP = {
+  // Subadmins
+  "Admin Users": "subadmin.view",
+  "Activity Logs": "subadmin.view",
+
+  // Orders
+  "All Orders": "orders.view",
+  "Order Tracking": "orders.view",
+
+  // Products
+  "Manage Products": "products.view",
+  "Add Product": "products.add",
+  "Tax & Pricing": "products.edit",
+  "Product Ratings": "products.view",
+
+  // Categories & Brands
+  "Manage Categories": "categories.view",
+  "Category Order": "categories.edit",
+  "Manage Brands": "categories.view",
+
+  // Vendors
+  "Manage Vendors": "vendors.view",
+  "Pending Approvals": "vendors.approve",
+  "Commission Rates": "vendors.edit",
+  "Vendor Analytics": "vendors.view",
+  "Vendor Subscriptions": "vendors.view",
+
+  // Customers
+  "View Customers": "users.view",
+  "Addresses": "users.view",
+  "Transactions": "users.view",
+
+  // Delivery
+  "Delivery Boys": "delivery.view",
+  "Cash Collection": "delivery.edit",
+  "Assign Delivery": "delivery.approve",
+
+  // Offers & Marketing
+  "Home Sliders": "offers.view",
+  "Festival Offers": "offers.view",
+  "Campaigns": "offers.view",
+  "Push Notifications": "dashboard.view",
+  "Custom Messages": "dashboard.view",
+
+  // Support
+  "Live Chat": "support.view",
+  "Ticket Types": "support.update_status",
+  "Tickets": "support.view",
+
+  // Reports
+  "Sales Report": "reports.view",
+  "Inventory Report": "reports.view",
+
+  // Finance
+  "Revenue Overview": "wallet.view",
+  "Profit & Loss": "wallet.view",
+  "Order Trends": "wallet.view",
+  "Payment Breakdown": "wallet.view",
+  "Tax Reports": "wallet.view",
+  "Refund Reports": "refunds.view",
+
+  // Settings & Policies
+  "General": "settings.view",
+  "Payment & Shipping": "settings.edit",
+  "Orders & Customers": "settings.edit",
+  "Content & Features": "settings.edit",
+};
+
 // Helper function to convert child name to route path
 const getChildRoute = (parentRoute, childName) => {
   const routeMap = {
+    "/admin/subadmins": {
+      "Admin Users": "/admin/subadmins",
+      "Activity Logs": "/admin/subadmins/logs",
+    },
     "/admin/orders": {
       "All Orders": "/admin/orders/all-orders",
       "Order Tracking": "/admin/orders/order-tracking",
@@ -145,8 +245,29 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin } = useAdminAuthStore();
+  const { hasPermission, isSuperAdmin } = usePermission();
   const [expandedItems, setExpandedItems] = useState({});
   const [isMobile, setIsMobile] = useState(false);
+
+  // Construct complete admin menu inserting Admin Management after Dashboard for Super Admin
+  const completeMenu = [];
+  adminMenuRaw.forEach((item) => {
+    completeMenu.push(item);
+    if (item.title === "Dashboard" && isSuperAdmin) {
+      completeMenu.push({
+        title: "Admin Management",
+        route: "/admin/subadmins",
+        children: ["Admin Users", "Activity Logs"],
+      });
+    }
+  });
+
+  // Dynamically filter menu items based on permissions
+  const adminMenu = completeMenu.filter((item) => {
+    const requiredPerm = MENU_PERMISSION_MAP[item.title];
+    if (!requiredPerm) return true;
+    return hasPermission(requiredPerm);
+  });
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -315,6 +436,11 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
               className="overflow-hidden">
               <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
                 {item.children.map((child, index) => {
+                  const reqPerm = CHILD_PERMISSION_MAP[child];
+                  if (reqPerm && !isSuperAdmin && !hasPermission(reqPerm)) {
+                    return null;
+                  }
+
                   const childRoute = getChildRoute(item.route, child);
                   const isChildActive =
                     location.pathname === childRoute ||

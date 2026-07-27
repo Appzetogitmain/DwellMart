@@ -309,3 +309,14 @@ export const updatePolicy = (type, content) =>
 export const getAdminNotifications = (params) => api.get('/admin/notifications', { params });
 export const markNotificationAsRead = (id) => api.put(`/admin/notifications/${id}/read`);
 export const markAllNotificationsAsRead = () => api.put('/admin/notifications/read-all');
+
+// ─── Sub Admin Management ─────────────────────────────────────────────────────
+export const getAllSubAdmins = (params = {}) => api.get('/admin/subadmins', { params });
+export const getSubAdminById = (id) => api.get(`/admin/subadmins/${id}`);
+export const createSubAdmin = (data) => api.post('/admin/subadmins', data);
+export const updateSubAdmin = (id, data) => api.put(`/admin/subadmins/${id}`, data);
+export const toggleSubAdminStatus = (id, status) => api.patch(`/admin/subadmins/${id}/status`, { status });
+export const resetSubAdminPassword = (id, data) => api.post(`/admin/subadmins/${id}/reset-password`, data);
+export const deleteSubAdmin = (id) => api.delete(`/admin/subadmins/${id}`);
+export const getSubAdminLogs = (params = {}) => api.get('/admin/subadmins/logs', { params });
+

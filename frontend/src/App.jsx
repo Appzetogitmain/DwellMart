@@ -101,6 +101,11 @@ import ContactUs from "./modules/Admin/pages/policies/ContactUs";
 import ShippingPolicy from "./modules/Admin/pages/policies/ShippingPolicy";
 import FAQs from "./modules/Admin/pages/policies/FAQs";
 import BecomePartner from "./modules/Admin/pages/policies/BecomePartner";
+import AdminRouteGuard from "./modules/Admin/components/AdminRouteGuard";
+import SubAdmins from "./modules/Admin/pages/subadmin/SubAdmins";
+import CreateSubAdmin from "./modules/Admin/pages/subadmin/CreateSubAdmin";
+import EditSubAdmin from "./modules/Admin/pages/subadmin/EditSubAdmin";
+import ActivityLogs from "./modules/Admin/pages/subadmin/ActivityLogs";
 import RouteWrapper from "./shared/components/RouteWrapper";
 import ScrollToTop from "./shared/components/ScrollToTop";
 import AppBootstrap from "./shared/components/AppBootstrap";
@@ -476,58 +481,62 @@ const AppRoutes = () => {
           </AdminProtectedRoute>
         }>
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="products" element={<Products />} />
-        <Route path="products/add-product" element={<ProductForm />} />
-        <Route path="products/manage-products" element={<ManageProducts />} />
-        <Route path="products/tax-pricing" element={<TaxPricing />} />
-        <Route path="products/product-ratings" element={<ProductRatings />} />
-        <Route path="products/:id" element={<ProductForm />} />
-        <Route path="more" element={<More />} />
-        <Route path="categories" element={<Categories />} />
+        <Route path="dashboard" element={<AdminRouteGuard permission="dashboard.view"><Dashboard /></AdminRouteGuard>} />
+        <Route path="subadmins" element={<AdminRouteGuard requiredRole="superadmin"><SubAdmins /></AdminRouteGuard>} />
+        <Route path="subadmins/logs" element={<AdminRouteGuard requiredRole="superadmin"><ActivityLogs /></AdminRouteGuard>} />
+        <Route path="subadmins/create" element={<AdminRouteGuard requiredRole="superadmin"><CreateSubAdmin /></AdminRouteGuard>} />
+        <Route path="subadmins/:id/edit" element={<AdminRouteGuard requiredRole="superadmin"><EditSubAdmin /></AdminRouteGuard>} />
+        <Route path="products" element={<AdminRouteGuard permission="products.view"><Products /></AdminRouteGuard>} />
+        <Route path="products/add-product" element={<AdminRouteGuard permission="products.add"><ProductForm /></AdminRouteGuard>} />
+        <Route path="products/manage-products" element={<AdminRouteGuard permission="products.view"><ManageProducts /></AdminRouteGuard>} />
+        <Route path="products/tax-pricing" element={<AdminRouteGuard permission="products.edit"><TaxPricing /></AdminRouteGuard>} />
+        <Route path="products/product-ratings" element={<AdminRouteGuard permission="products.view"><ProductRatings /></AdminRouteGuard>} />
+        <Route path="products/:id" element={<AdminRouteGuard permission="products.edit"><ProductForm /></AdminRouteGuard>} />
+        <Route path="more" element={<AdminRouteGuard permission="dashboard.view"><More /></AdminRouteGuard>} />
+        <Route path="categories" element={<AdminRouteGuard permission="categories.view"><Categories /></AdminRouteGuard>} />
         <Route
           path="categories/manage-categories"
-          element={<ManageCategories />}
+          element={<AdminRouteGuard permission="categories.view"><ManageCategories /></AdminRouteGuard>}
         />
-        <Route path="categories/category-order" element={<CategoryOrder />} />
-        <Route path="brands" element={<Brands />} />
-        <Route path="brands/manage-brands" element={<ManageBrands />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="orders/:id" element={<OrderDetail />} />
-        <Route path="orders/:id/invoice" element={<Invoice />} />
-        <Route path="orders/all-orders" element={<AllOrders />} />
-        <Route path="orders/order-tracking" element={<OrderTracking />} />
-        <Route path="return-requests" element={<ReturnRequests />} />
-        <Route path="return-requests/:id" element={<ReturnRequestDetail />} />
-        <Route path="customers" element={<Customers />} />
-        <Route path="customers/view-customers" element={<ViewCustomers />} />
-        <Route path="customers/addresses" element={<CustomerAddresses />} />
-        <Route path="customers/transactions" element={<Transactions />} />
-        <Route path="customers/:id" element={<CustomerDetailPage />} />
+        <Route path="categories/category-order" element={<AdminRouteGuard permission="categories.edit"><CategoryOrder /></AdminRouteGuard>} />
+        <Route path="brands" element={<AdminRouteGuard permission="categories.view"><Brands /></AdminRouteGuard>} />
+        <Route path="brands/manage-brands" element={<AdminRouteGuard permission="categories.view"><ManageBrands /></AdminRouteGuard>} />
+        <Route path="orders" element={<AdminRouteGuard permission="orders.view"><AdminOrders /></AdminRouteGuard>} />
+        <Route path="orders/:id" element={<AdminRouteGuard permission="orders.view"><OrderDetail /></AdminRouteGuard>} />
+        <Route path="orders/:id/invoice" element={<AdminRouteGuard permission="orders.view"><Invoice /></AdminRouteGuard>} />
+        <Route path="orders/all-orders" element={<AdminRouteGuard permission="orders.view"><AllOrders /></AdminRouteGuard>} />
+        <Route path="orders/order-tracking" element={<AdminRouteGuard permission="orders.view"><OrderTracking /></AdminRouteGuard>} />
+        <Route path="return-requests" element={<AdminRouteGuard permission="orders.view"><ReturnRequests /></AdminRouteGuard>} />
+        <Route path="return-requests/:id" element={<AdminRouteGuard permission="orders.view"><ReturnRequestDetail /></AdminRouteGuard>} />
+        <Route path="customers" element={<AdminRouteGuard permission="users.view"><Customers /></AdminRouteGuard>} />
+        <Route path="customers/view-customers" element={<AdminRouteGuard permission="users.view"><ViewCustomers /></AdminRouteGuard>} />
+        <Route path="customers/addresses" element={<AdminRouteGuard permission="users.view"><CustomerAddresses /></AdminRouteGuard>} />
+        <Route path="customers/transactions" element={<AdminRouteGuard permission="users.view"><Transactions /></AdminRouteGuard>} />
+        <Route path="customers/:id" element={<AdminRouteGuard permission="users.view"><CustomerDetailPage /></AdminRouteGuard>} />
 
-        <Route path="delivery" element={<DeliveryBoys />} />
-        <Route path="delivery/delivery-boys" element={<DeliveryBoys />} />
-        <Route path="delivery/cash-collection" element={<CashCollection />} />
-        <Route path="delivery/assign-delivery" element={<AssignDelivery />} />
-        <Route path="vendors" element={<Vendors />} />
-        <Route path="vendors/manage-vendors" element={<ManageVendors />} />
+        <Route path="delivery" element={<AdminRouteGuard permission="delivery.view"><DeliveryBoys /></AdminRouteGuard>} />
+        <Route path="delivery/delivery-boys" element={<AdminRouteGuard permission="delivery.view"><DeliveryBoys /></AdminRouteGuard>} />
+        <Route path="delivery/cash-collection" element={<AdminRouteGuard permission="delivery.edit"><CashCollection /></AdminRouteGuard>} />
+        <Route path="delivery/assign-delivery" element={<AdminRouteGuard permission="delivery.approve"><AssignDelivery /></AdminRouteGuard>} />
+        <Route path="vendors" element={<AdminRouteGuard permission="vendors.view"><Vendors /></AdminRouteGuard>} />
+        <Route path="vendors/manage-vendors" element={<AdminRouteGuard permission="vendors.view"><ManageVendors /></AdminRouteGuard>} />
         <Route
           path="vendors/pending-approvals"
-          element={<PendingApprovals />}
+          element={<AdminRouteGuard permission="vendors.approve"><PendingApprovals /></AdminRouteGuard>}
         />
-        <Route path="vendors/commission-rates" element={<CommissionRates />} />
+        <Route path="vendors/commission-rates" element={<AdminRouteGuard permission="vendors.edit"><CommissionRates /></AdminRouteGuard>} />
         <Route
           path="vendors/vendor-analytics"
-          element={<AdminVendorAnalytics />}
+          element={<AdminRouteGuard permission="vendors.view"><AdminVendorAnalytics /></AdminRouteGuard>}
         />
         <Route
           path="vendors/vendor-subscriptions"
-          element={<VendorSubscriptions />}
+          element={<AdminRouteGuard permission="vendors.view"><VendorSubscriptions /></AdminRouteGuard>}
         />
-        <Route path="vendors/:id" element={<VendorDetail />} />
+        <Route path="vendors/:id" element={<AdminRouteGuard permission="vendors.view"><VendorDetail /></AdminRouteGuard>} />
 
-        <Route path="subscription-plans" element={<AdminSubscriptionPlans />} />
-        <Route path="vendor-terms" element={<AdminVendorTerms />} />
+        <Route path="subscription-plans" element={<AdminRouteGuard permission="vendors.view"><AdminSubscriptionPlans /></AdminRouteGuard>} />
+        <Route path="vendor-terms" element={<AdminRouteGuard permission="vendors.view"><AdminVendorTerms /></AdminRouteGuard>} />
 
         <Route path="offers" element={<HomeSliders />} />
         <Route path="offers/home-sliders" element={<HomeSliders />} />

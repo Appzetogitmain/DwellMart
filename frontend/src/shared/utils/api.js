@@ -213,8 +213,9 @@ api.interceptors.response.use(
       }
     }
     
-    // Auth components handle their own error UI (toasts)
-    if (!isExcludedAuthRequest(scope, originalRequest.url)) {
+    // Auth components & silent background requests handle their own error UI
+    const isSilentUrl = originalRequest.url?.includes('/admin/notifications');
+    if (!isExcludedAuthRequest(scope, originalRequest.url) && !isSilentUrl) {
       toast.error(message);
     }
 
