@@ -16,13 +16,6 @@ const PaymentSettings = () => {
       ifscCode: '',
       bankName: '',
     },
-    paymentMethods: {
-      bankTransfer: true,
-      upi: false,
-      paypal: false,
-    },
-    upiId: '',
-    paypalEmail: '',
   });
   const [activeSection, setActiveSection] = useState('bank');
 
@@ -35,13 +28,6 @@ const PaymentSettings = () => {
           ifscCode: '',
           bankName: '',
         },
-        paymentMethods: vendor.paymentMethods || {
-          bankTransfer: true,
-          upi: false,
-          paypal: false,
-        },
-        upiId: vendor.upiId || '',
-        paypalEmail: vendor.paypalEmail || '',
       });
     }
   }, [vendor]);
@@ -60,16 +46,6 @@ const PaymentSettings = () => {
     } else {
       setFormData({ ...formData, [name]: value });
     }
-  };
-
-  const handlePaymentMethodToggle = (method) => {
-    setFormData({
-      ...formData,
-      paymentMethods: {
-        ...formData.paymentMethods,
-        [method]: !formData.paymentMethods[method],
-      },
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -92,7 +68,6 @@ const PaymentSettings = () => {
 
   const sections = [
     { id: 'bank', label: 'Bank Details', icon: FiCreditCard },
-    { id: 'methods', label: 'Payment Methods', icon: FiLock },
   ];
 
   if (!vendor) {
@@ -203,87 +178,6 @@ const PaymentSettings = () => {
                 <p className="text-sm text-yellow-800">
                   <strong>Note:</strong> Your bank details are encrypted and secure. These details are used for commission payouts.
                 </p>
-              </div>
-            </div>
-          )}
-
-          {/* Payment Methods Section */}
-          {activeSection === 'methods' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Preferred Payment Methods</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={formData.paymentMethods.bankTransfer || false}
-                      onChange={() => handlePaymentMethodToggle('bankTransfer')}
-                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-semibold text-gray-700">Bank Transfer</span>
-                      <p className="text-xs text-gray-500 mt-1">Receive payments via bank transfer</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={formData.paymentMethods.upi || false}
-                      onChange={() => handlePaymentMethodToggle('upi')}
-                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-semibold text-gray-700">UPI</span>
-                      <p className="text-xs text-gray-500 mt-1">Receive payments via UPI</p>
-                    </div>
-                  </label>
-
-                  {formData.paymentMethods.upi && (
-                    <div className="ml-7 mb-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        UPI ID
-                      </label>
-                      <input
-                        type="text"
-                        name="upiId"
-                        value={formData.upiId || ''}
-                        onChange={handleChange}
-                        placeholder="yourname@upi"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  )}
-
-                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={formData.paymentMethods.paypal || false}
-                      onChange={() => handlePaymentMethodToggle('paypal')}
-                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-semibold text-gray-700">PayPal</span>
-                      <p className="text-xs text-gray-500 mt-1">Receive payments via PayPal</p>
-                    </div>
-                  </label>
-
-                  {formData.paymentMethods.paypal && (
-                    <div className="ml-7 mb-2">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        PayPal Email
-                      </label>
-                      <input
-                        type="email"
-                        name="paypalEmail"
-                        value={formData.paypalEmail || ''}
-                        onChange={handleChange}
-                        placeholder="your@paypal.com"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           )}
