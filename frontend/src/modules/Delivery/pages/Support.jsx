@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiHelpCircle, FiArrowLeft } from 'react-icons/fi';
 import { useSupportChatStore } from '../../../shared/store/supportChatStore';
-import { useVendorAuthStore } from '../store/vendorAuthStore';
+import { useDeliveryAuthStore } from '../store/deliveryStore';
 import { initNotificationListeners } from '../../../shared/services/notificationSocketService';
 import ConversationList from '../../../shared/components/Support/ConversationList';
 import SupportChatWindow from '../../../shared/components/Support/SupportChatWindow';
 import NewConversationModal from '../../../shared/components/Support/NewConversationModal';
 
-const SupportTickets = () => {
-    const { vendor } = useVendorAuthStore();
+const DeliverySupport = () => {
+    const { deliveryBoy } = useDeliveryAuthStore();
     const { fetchConversations, activeConversation } = useSupportChatStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('list'); // 'list' | 'chat' for mobile
@@ -34,10 +34,10 @@ const SupportTickets = () => {
                     </div>
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                            Vendor Support Center
+                            Delivery Partner Support
                         </h1>
                         <p className="text-xs sm:text-sm text-gray-500">
-                            Contact DwellMart Admin & Support Team for store verification, subscriptions, or settlements
+                            Get support for delivery assignments, route issues, COD collection, or account queries
                         </p>
                     </div>
                 </div>
@@ -59,7 +59,7 @@ const SupportTickets = () => {
                         activeTab === 'chat' ? 'hidden lg:block' : 'block'
                     }`}
                 >
-                    <ConversationList isAdmin={false} currentRole="vendor" />
+                    <ConversationList isAdmin={false} currentRole="delivery" />
                 </div>
 
                 {/* Chat Window */}
@@ -74,10 +74,10 @@ const SupportTickets = () => {
                             onClick={() => setActiveTab('list')}
                             className="text-xs font-semibold text-primary-600 flex items-center gap-1 p-2"
                         >
-                            <FiArrowLeft className="w-4 h-4" /> Back to tickets list
+                            <FiArrowLeft className="w-4 h-4" /> Back to list
                         </button>
                     </div>
-                    <SupportChatWindow isAdmin={false} currentUserId={vendor?.id || vendor?._id} />
+                    <SupportChatWindow isAdmin={false} currentUserId={deliveryBoy?.id || deliveryBoy?._id} />
                 </div>
             </div>
 
@@ -85,10 +85,10 @@ const SupportTickets = () => {
             <NewConversationModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                role="vendor"
+                role="delivery"
             />
         </div>
     );
 };
 
-export default SupportTickets;
+export default DeliverySupport;

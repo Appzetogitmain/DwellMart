@@ -219,6 +219,13 @@ const DesktopHeader = ({ hideSellButton = false }) => {
                       <FiShoppingBag className="text-gray-400" />
                       <span className="text-gray-200 text-sm">{t("Orders")}</span>
                     </Link>
+                    <Link
+                      to="/support"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-lg transition-colors text-left w-full">
+                      <FiBell className="text-gray-400" />
+                      <span className="text-gray-200 text-sm">Support Desk</span>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="flex items-center gap-3 px-3 py-2 hover:bg-red-950/40 rounded-lg transition-colors text-left w-full text-red-400 mt-1">

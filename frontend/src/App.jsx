@@ -139,6 +139,7 @@ import SellOnDwellmart from "./modules/UserApp/pages/SellOnDwellmart";
 import ShopWithConfidence from "./modules/UserApp/pages/ShopWithConfidence";
 import StaticPage from "./modules/UserApp/pages/StaticPage";
 import Shop from "./modules/UserApp/pages/Shop";
+import CustomerSupport from "./modules/UserApp/pages/Support";
 // Delivery Routes
 import DeliveryLogin from "./modules/Delivery/pages/Login";
 import DeliveryRegister from "./modules/Delivery/pages/Register";
@@ -151,6 +152,7 @@ import DeliveryOrders from "./modules/Delivery/pages/Orders";
 import DeliveryOrderDetail from "./modules/Delivery/pages/OrderDetail";
 import DeliveryProfile from "./modules/Delivery/pages/Profile";
 import DeliveryNotifications from "./modules/Delivery/pages/Notifications";
+import DeliverySupport from "./modules/Delivery/pages/Support";
 // Vendor Routes
 import VendorLogin from "./modules/Vendor/pages/Login";
 import VendorRegister from "./modules/Vendor/pages/Register";
@@ -426,6 +428,16 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/support"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <CustomerSupport />
+            </ProtectedRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
         path="/orders"
         element={
           <RouteWrapper>
@@ -594,6 +606,7 @@ const AppRoutes = () => {
         <Route path="orders" element={<DeliveryOrders />} />
         <Route path="orders/:id" element={<DeliveryOrderDetail />} />
         <Route path="notifications" element={<DeliveryNotifications />} />
+        <Route path="support" element={<DeliverySupport />} />
         <Route path="profile" element={<DeliveryProfile />} />
       </Route>
       {/* Vendor Routes */}
@@ -673,6 +686,7 @@ const AppRoutes = () => {
         <Route path="customers/:id" element={<VendorCustomerDetail />} />
         <Route path="customers" element={<VendorCustomers />} />
         <Route path="support-tickets" element={<VendorSupportTickets />} />
+        <Route path="chat" element={<Navigate to="/vendor/support-tickets" replace />} />
         <Route path="inventory-reports" element={<VendorInventoryReports />} />
         <Route
           path="performance-metrics"

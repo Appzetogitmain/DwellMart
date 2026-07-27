@@ -32,6 +32,24 @@ export const useNotificationStore = create((set, get) => ({
         }
     },
 
+    addNotification: (payload) => {
+        const item = payload.notification || payload;
+        const newNotif = {
+            _id: item._id || String(Date.now()),
+            title: item.title || payload.title || 'Notification',
+            message: item.message || payload.message || '',
+            type: item.type || 'system',
+            isRead: false,
+            createdAt: item.createdAt || new Date().toISOString(),
+            data: item.data || payload.data || {},
+        };
+
+        set((state) => ({
+            notifications: [newNotif, ...state.notifications],
+            unreadCount: state.unreadCount + 1,
+        }));
+    },
+
     markAsRead: async (id) => {
         try {
             await markNotificationAsRead(id);

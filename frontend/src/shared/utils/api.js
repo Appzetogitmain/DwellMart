@@ -83,6 +83,14 @@ const getScopeFromUrl = (url = '') => {
   if (url.startsWith('/admin')) return 'admin';
   if (url.startsWith('/vendor')) return 'vendor';
   if (url.startsWith('/delivery')) return 'delivery';
+
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname;
+    if (path.startsWith('/admin')) return 'admin';
+    if (path.startsWith('/vendor')) return 'vendor';
+    if (path.startsWith('/delivery')) return 'delivery';
+  }
+
   return 'user';
 };
 
