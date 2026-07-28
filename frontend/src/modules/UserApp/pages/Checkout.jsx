@@ -111,6 +111,7 @@ const MobileCheckout = () => {
   const [estimatedShipping, setEstimatedShipping] = useState(null);
   const [isEstimatingShipping, setIsEstimatingShipping] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -146,6 +147,47 @@ const MobileCheckout = () => {
     };
 
     fetchCoupons();
+    return () => {
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPaymentSettings = async () => {
+      try {
+        const response = await api.get("/settings/payment");
+        const payload = response?.data?.data || response?.data || response;
+        if (!cancelled && payload) {
+          setPaymentSettings(payload);
+          
+          // Auto-select first available payment method if current is disabled
+          const currentMethod = formData.paymentMethod;
+          let isCurrentMethodEnabled = true;
+          if (currentMethod === 'card' && payload.cardEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'cash' && payload.codEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'wallet' && payload.walletEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'upi' && payload.upiEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'bank') isCurrentMethodEnabled = false;
+          
+          if (!isCurrentMethodEnabled) {
+             const availableMethods = ["card", "cash", "wallet", "upi"].filter(method => {
+                if (method === 'card') return payload.cardEnabled !== false;
+                if (method === 'cash') return payload.codEnabled !== false;
+                if (method === 'wallet') return payload.walletEnabled !== false;
+                if (method === 'upi') return payload.upiEnabled !== false;
+                return true;
+             });
+             if (availableMethods.length > 0) {
+               setFormData(prev => ({ ...prev, paymentMethod: availableMethods[0] }));
+             }
+          }
+        }
+      } catch {
+        if (!cancelled) setPaymentSettings({});
+      }
+    };
+
+    fetchPaymentSettings();
     return () => {
       cancelled = true;
     };
@@ -618,7 +660,14 @@ const MobileCheckout = () => {
                       {t('Payment Method')}
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["card", "cash", "bank"].map((method) => (
+                      {["card", "cash", "wallet", "upi"].filter(method => {
+                        if (!paymentSettings) return true; // Show all until loaded
+                        if (method === 'card') return paymentSettings.cardEnabled !== false;
+                        if (method === 'cash') return paymentSettings.codEnabled !== false;
+                        if (method === 'wallet') return paymentSettings.walletEnabled !== false;
+                        if (method === 'upi') return paymentSettings.upiEnabled !== false;
+                        return true;
+                      }).map((method) => (
                         <label
                           key={method}
                           className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
@@ -638,7 +687,9 @@ const MobileCheckout = () => {
                               ? t("Credit/Debit Card")
                               : method === "cash"
                                 ? t("Cash on Delivery")
-                                : t("Bank Transfer")}
+                                : method === "wallet"
+                                  ? t("Digital Wallet")
+                                  : t("UPI")}
                           </span>
                         </label>
                       ))}

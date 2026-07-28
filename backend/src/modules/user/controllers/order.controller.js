@@ -8,6 +8,7 @@ import Commission from '../../../models/Commission.model.js';
 import ReturnRequest from '../../../models/ReturnRequest.model.js';
 import Admin from '../../../models/Admin.model.js';
 import Vendor from '../../../models/Vendor.model.js';
+import Settings from '../../../models/Settings.model.js';
 import { generateOrderId } from '../../../utils/generateOrderId.js';
 import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js';
 import mongoose from 'mongoose';
@@ -225,6 +226,21 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 )
             );
         }
+    }
+
+    // 0. Validate Payment Method
+    const paymentSettingsDoc = await Settings.findOne({ key: 'payment' }).lean();
+    const paymentSettings = paymentSettingsDoc?.value || {};
+    
+    let isMethodEnabled = true;
+    if (normalizedPaymentMethod === 'card' && paymentSettings.cardEnabled === false) isMethodEnabled = false;
+    if (normalizedPaymentMethod === 'cod' && paymentSettings.codEnabled === false) isMethodEnabled = false;
+    if (normalizedPaymentMethod === 'wallet' && paymentSettings.walletEnabled === false) isMethodEnabled = false;
+    if (normalizedPaymentMethod === 'upi' && paymentSettings.upiEnabled === false) isMethodEnabled = false;
+    if (normalizedPaymentMethod === 'bank') isMethodEnabled = false; // Bank transfer not supported in new UI
+
+    if (!isMethodEnabled) {
+        throw new ApiError(400, `The selected payment method (${normalizedPaymentMethod}) is currently disabled.`);
     }
 
     // 1. Validate items and calculate subtotal
