@@ -219,7 +219,9 @@ const listProducts = asyncHandler(async (req, res) => {
         Product.countDocuments(filter),
     ]);
 
-    res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Products fetched.'));
+    const pages = Math.max(1, Math.ceil(total / numericLimit));
+
+    res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, limit: numericLimit, pages }, 'Products fetched.'));
 });
 
 router.get('/', listCache, listProducts);
