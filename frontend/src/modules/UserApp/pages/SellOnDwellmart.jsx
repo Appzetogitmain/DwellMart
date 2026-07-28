@@ -1,6 +1,5 @@
 import DesktopHeader from '../components/Layout/DesktopHeader';
 import MobileHeader from '../components/Layout/MobileHeader';
-import Footer from '../components/Layout/Footer';
 import SubscriptionOnboardingWizard from '../../Vendor/components/SubscriptionOnboardingWizard';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
@@ -36,8 +35,6 @@ const SellOnDwellmart = () => {
           subtitle={t('The same secure onboarding flow powers the public seller page and the dedicated vendor registration page.')}
         />
       </section>
-
-      <Footer />
     </div>
   );
 };

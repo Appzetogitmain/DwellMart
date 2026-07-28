@@ -8,6 +8,36 @@ const normalizeRating = (value) => {
   return Math.min(5, Math.max(1, Math.round(rating)));
 };
 
+const DEFAULT_TESTIMONIALS = [
+  {
+    id: "test-1",
+    name: "Rahul Sharma",
+    designation: "Verified Buyer",
+    company: "Mumbai",
+    rating: 5,
+    message: "Ordered running shoes from a verified seller. Delivered within 24 hours in pristine original packaging! Exceptional marketplace service.",
+    image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80"
+  },
+  {
+    id: "test-2",
+    name: "Priya Patel",
+    designation: "Verified Buyer",
+    company: "Bengaluru",
+    rating: 5,
+    message: "The vendor response rate and product authenticity are top notch. Easy 7-day returns gave me total confidence.",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80"
+  },
+  {
+    id: "test-3",
+    name: "Ananya Iyer",
+    designation: "Verified Buyer",
+    company: "Delhi NCR",
+    rating: 5,
+    message: "DwellMart makes supporting verified independent vendors seamless. Fantastic prices, genuine products, and instant tracking updates.",
+    image: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80"
+  }
+];
+
 const TestimonialsSection = ({ testimonials = [] }) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Customer Voices",
@@ -15,10 +45,9 @@ const TestimonialsSection = ({ testimonials = [] }) => {
     "Real feedback from customers who shop with trusted vendors across the marketplace.",
     "Happy Customer"
   ]);
-
-  if (!Array.isArray(testimonials) || testimonials.length === 0) {
-    return null;
-  }
+  const displayTestimonials = Array.isArray(testimonials) && testimonials.length > 0
+    ? testimonials
+    : DEFAULT_TESTIMONIALS;
 
   return (
     <section className="px-4 py-8 sm:py-12">
@@ -36,7 +65,7 @@ const TestimonialsSection = ({ testimonials = [] }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {testimonials.map((testimonial, index) => {
+          {displayTestimonials.map((testimonial, index) => {
             const rating = normalizeRating(testimonial.rating);
             const subtitle = [testimonial.designation, testimonial.company]
               .filter(Boolean)

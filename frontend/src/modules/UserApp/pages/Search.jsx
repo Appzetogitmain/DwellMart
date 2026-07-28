@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from '../../../shared/components/ProductCard';
@@ -92,7 +92,12 @@ const MobileSearch = ({ isShopPage = false }) => {
     "Show results for",
     "Stores",
     "Loading...",
-    "Load More"
+    "Showing",
+    "to",
+    "of",
+    "products",
+    "Previous",
+    "Next"
   ]);
 
   const { translateObject, translateArray } = useDynamicTranslation();
@@ -113,7 +118,6 @@ const MobileSearch = ({ isShopPage = false }) => {
   const [approvedVendors, setApprovedVendors] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
@@ -255,19 +259,15 @@ const MobileSearch = ({ isShopPage = false }) => {
 
       return query;
     },
-    [filters.category, filters.vendor, filters.minPrice, filters.maxPrice, sortBy, searchParams]
+    [filters.category, filters.vendor, filters.minPrice, filters.maxPrice, filters.minRating, sortBy, searchParams]
   );
 
   const fetchResults = useCallback(
-    async ({ pageNumber = 1, append = false } = {}) => {
-      const query = buildQueryParams(pageNumber);
-      if (append) {
-        setIsLoadingMore(true);
-      } else {
-        setIsLoadingResults(true);
-      }
+    async ({ pageNumber = 1 } = {}) => {
+      setIsLoadingResults(true);
 
       try {
+        const query = buildQueryParams(pageNumber);
         const response = await api.get('/products', { params: query });
         const payload = response?.data ?? response;
         const list = Array.isArray(payload?.products)
@@ -278,54 +278,36 @@ const MobileSearch = ({ isShopPage = false }) => {
         const total = Number(payload?.total || list.length || 0);
 
         const translatedProducts = await translateArray(list, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
-        setProducts((prev) => (append ? [...prev, ...translatedProducts] : translatedProducts));
+        setProducts(translatedProducts);
         setPagination({ page, pages, total });
       } catch {
-        if (!append) {
-          setProducts([]);
-          setPagination({ page: 1, pages: 1, total: 0 });
-        }
+        setProducts([]);
+        setPagination({ page: 1, pages: 1, total: 0 });
       } finally {
-        if (append) {
-          setIsLoadingMore(false);
-        } else {
-          setIsLoadingResults(false);
-        }
+        setIsLoadingResults(false);
       }
     },
-    [buildQueryParams]
+    [buildQueryParams, translateArray]
   );
 
   useEffect(() => {
-    fetchResults({ pageNumber: 1, append: false });
+    const pageFromUrl = Math.max(1, Number(searchParams.get('page')) || 1);
+    fetchResults({ pageNumber: pageFromUrl });
   }, [fetchResults, searchParams, sortBy]);
 
   const filteredProducts = useMemo(() => products, [products]);
 
-  const hasMore = pagination.page < pagination.pages;
-  const loadMoreRef = useRef(null);
-
-  const loadMore = useCallback(() => {
-    if (isLoadingMore || isLoadingResults || !hasMore) return;
-    fetchResults({ pageNumber: pagination.page + 1, append: true });
-  }, [fetchResults, hasMore, isLoadingMore, isLoadingResults, pagination.page]);
-
-  useEffect(() => {
-    if (!loadMoreRef.current || !hasMore || isLoadingMore || isLoadingResults) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry.isIntersecting) {
-          loadMore();
-        }
-      },
-      { root: null, rootMargin: '120px', threshold: 0.1 }
-    );
-
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [loadMore, hasMore, isLoadingMore, isLoadingResults]);
+  const handlePageChange = (newPage) => {
+    const validPage = Math.max(1, Math.min(newPage, pagination.pages || 1));
+    const newParams = new URLSearchParams(searchParams);
+    if (validPage > 1) {
+      newParams.set('page', String(validPage));
+    } else {
+      newParams.delete('page');
+    }
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const filterButtonRef = useRef(null);
 
@@ -334,6 +316,7 @@ const MobileSearch = ({ isShopPage = false }) => {
     setFilters({ ...filters, [name]: normalizedValue });
     const newParams = new URLSearchParams(searchParams);
     newParams.set('sort', sortBy || 'newest');
+    newParams.delete('page');
     if (normalizedValue) {
       newParams.set(name, normalizedValue);
     } else {
@@ -372,6 +355,7 @@ const MobileSearch = ({ isShopPage = false }) => {
     e.preventDefault();
     const newParams = new URLSearchParams(searchParams);
     newParams.set('sort', sortBy || 'newest');
+    newParams.delete('page');
     const trimmedQuery = searchQuery.trim();
     if (trimmedQuery) {
       newParams.set('q', trimmedQuery);
@@ -390,6 +374,7 @@ const MobileSearch = ({ isShopPage = false }) => {
     saveRecentSearch(normalizedQuery);
     const newParams = new URLSearchParams(searchParams);
     newParams.set('sort', sortBy || 'newest');
+    newParams.delete('page');
     if (normalizedQuery) {
       newParams.set('q', normalizedQuery);
     } else {
@@ -403,6 +388,7 @@ const MobileSearch = ({ isShopPage = false }) => {
     setSortBy(nextSort);
     const newParams = new URLSearchParams(searchParams);
     newParams.set('sort', nextSort);
+    newParams.delete('page');
     setSearchParams(newParams);
   };
 
@@ -814,96 +800,147 @@ const MobileSearch = ({ isShopPage = false }) => {
                 </button>
               </div>
             ) : viewMode === 'grid' ? (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-6">
-                  {filteredProducts.map((product, index) => (
-                    <motion.div
-                      key={product.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <ProductCard product={product} />
-                    </motion.div>
-                  ))}
-                </div>
-
-                {hasMore && (
-                  <div ref={loadMoreRef} className="mt-6 flex flex-col items-center gap-4">
-                    {isLoadingMore && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full"
-                        />
-                        <span className="text-sm">{t('Loading more products...')}</span>
-                      </div>
-                    )}
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoadingMore}
-                      className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLoadingMore ? (
-                        <span className="flex items-center gap-2">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                          />
-                          {t('Loading...')}
-                        </span>
-                      ) : t('Load More')}
-                    </button>
-                  </div>
-                )}
-              </>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-6">
+                {filteredProducts.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </div>
             ) : (
-              <>
-                <div className="space-y-3">
-                  {filteredProducts.map((product, index) => (
-                    <ProductListItem
-                      key={product.id}
-                      product={product}
-                      index={index}
-                    />
-                  ))}
+              <div className="space-y-3">
+                {filteredProducts.map((product, index) => (
+                  <ProductListItem
+                    key={product.id}
+                    product={product}
+                    index={index}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!isLoadingResults && filteredProducts.length > 0 && pagination.pages > 1 && (
+              <div className="mt-8 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+                <div className="text-xs sm:text-sm font-medium text-gray-600 text-center sm:text-left">
+                  {t('Showing')}{' '}
+                  <span className="font-bold text-gray-900">
+                    {Math.min((pagination.page - 1) * PAGE_SIZE + 1, pagination.total)}
+                  </span>{' '}
+                  {t('to')}{' '}
+                  <span className="font-bold text-gray-900">
+                    {Math.min(pagination.page * PAGE_SIZE, pagination.total)}
+                  </span>{' '}
+                  {t('of')}{' '}
+                  <span className="font-bold text-gray-900">{pagination.total}</span>{' '}
+                  {t('products')}
                 </div>
 
-                {hasMore && (
-                  <div ref={loadMoreRef} className="mt-6 flex flex-col items-center gap-4">
-                    {isLoadingMore && (
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full"
-                        />
-                        <span className="text-sm">{t('Loading more products...')}</span>
-                      </div>
-                    )}
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoadingMore}
-                      className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLoadingMore ? (
-                        <span className="flex items-center gap-2">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
-                          />
-                          {t('Loading...')}
-                        </span>
-                      ) : (
-                        t('Load More')
-                      )}
-                    </button>
-                  </div>
-                )}
-              </>
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1 || isLoadingResults}
+                    className="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    <FiChevronLeft className="text-base" />
+                    <span>{t('Previous')}</span>
+                  </button>
+
+                  {(() => {
+                    const pages = [];
+                    const totalPages = pagination.pages;
+                    const current = pagination.page;
+
+                    let startPage = Math.max(1, current - 1);
+                    let endPage = Math.min(totalPages, current + 1);
+
+                    if (current <= 2) {
+                      endPage = Math.min(totalPages, 4);
+                    }
+                    if (current >= totalPages - 1) {
+                      startPage = Math.max(1, totalPages - 3);
+                    }
+
+                    if (startPage > 1) {
+                      pages.push(
+                        <button
+                          key={1}
+                          onClick={() => handlePageChange(1)}
+                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
+                            current === 1
+                              ? 'gradient-green text-white shadow-md scale-105'
+                              : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          1
+                        </button>
+                      );
+                      if (startPage > 2) {
+                        pages.push(
+                          <span key="dots-start" className="px-1 text-gray-400 font-bold">
+                            ...
+                          </span>
+                        );
+                      }
+                    }
+
+                    for (let p = startPage; p <= endPage; p++) {
+                      pages.push(
+                        <button
+                          key={p}
+                          onClick={() => handlePageChange(p)}
+                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
+                            current === p
+                              ? 'gradient-green text-white shadow-md scale-105'
+                              : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    }
+
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) {
+                        pages.push(
+                          <span key="dots-end" className="px-1 text-gray-400 font-bold">
+                            ...
+                          </span>
+                        );
+                      }
+                      pages.push(
+                        <button
+                          key={totalPages}
+                          onClick={() => handlePageChange(totalPages)}
+                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
+                            current === totalPages
+                              ? 'gradient-green text-white shadow-md scale-105'
+                              : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {totalPages}
+                        </button>
+                      );
+                    }
+
+                    return pages;
+                  })()}
+
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.pages || isLoadingResults}
+                    className="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                  >
+                    <span>{t('Next')}</span>
+                    <FiChevronRight className="text-base" />
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
