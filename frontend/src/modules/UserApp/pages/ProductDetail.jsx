@@ -31,7 +31,6 @@ import MobileLayout from "../components/Layout/MobileLayout";
 import ImageGallery from "../../../shared/components/Product/ImageGallery";
 import VariantSelector from "../../../shared/components/Product/VariantSelector";
 import ReviewForm from "../../../shared/components/Product/ReviewForm";
-import MobileProductCard from "../components/Mobile/MobileProductCard";
 import PageTransition from "../../../shared/components/PageTransition";
 import Badge from "../../../shared/components/Badge";
 import ProductCard from "../../../shared/components/ProductCard";
@@ -626,14 +625,12 @@ const MobileProductDetail = () => {
       <MobileLayout showBottomNav={false} showCartBar={true}>
         <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto">
           {/* Back Button */}
-          <div className="px-4 pt-4 lg:pt-8 lg:px-8 mb-6">
+          <div className="px-4 pt-3 sm:pt-4 lg:pt-8 lg:px-8 mb-4">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors group">
-              <div className="p-2 rounded-full group-hover:bg-gray-100 transition-colors">
-                <FiArrowLeft className="text-xl" />
-              </div>
-              <span className="font-medium">{t('Back')}</span>
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-gray-200 shadow-sm text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-all">
+              <FiArrowLeft className="text-base" />
+              <span>{t('Back')}</span>
             </button>
           </div>
 
@@ -955,33 +952,26 @@ const MobileProductDetail = () => {
           </div>
 
           {/* Similar Products */}
-          <div className="mt-16 px-4 lg:px-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-8">
+          <div className="mt-12 sm:mt-16 px-4 lg:px-8">
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
               {similarProducts.length > 0 ? t('Similar Products') : t('You might also like')}
             </h3>
             {similarProducts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
                 {similarProducts.map((p) => (
-                  <div key={p.id} className="hidden lg:block">
-                    <ProductCard product={p} />
-                  </div>
-                ))}
-                {similarProducts.map((p) => (
-                  <div key={p.id} className="lg:hidden">
-                    <MobileProductCard product={p} />
-                  </div>
+                  <ProductCard key={p.id} product={p} />
                 ))}
               </div>
             ) : (
               <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center">
-                <p className="text-gray-500">{t('No similar products yet')}</p>
+                <p className="text-gray-500 text-sm">{t('No similar products yet')}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Sticky Bottom Action Bar (Mobile Only) */}
-        <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 safe-area-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 sm:p-4 z-40 safe-area-bottom shadow-[0_-8px_20px_rgba(0,0,0,0.06)]">
           <div className="flex items-center gap-3">
             <button
               onClick={handleFavorite}
@@ -1012,7 +1002,7 @@ const MobileProductDetail = () => {
             {isInCart ? (
               <button
                 onClick={handleRemoveFromCart}
-                className="flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100">
+                className="flex-1 py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100">
                 <FiTrash2 className="text-xl" />
                 <span>{t('Remove')}</span>
               </button>
@@ -1020,7 +1010,7 @@ const MobileProductDetail = () => {
               <button
                 onClick={handleAddToCart}
                 disabled={product.stock === "out_of_stock"}
-                className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
+                className={`flex-1 py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "gradient-green text-white hover:shadow-glow-green"
                   }`}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, matchPath, useNavigate } from "react-router-dom";
-import { FiHeart } from "react-icons/fi";
+import { FiHeart, FiTruck, FiRotateCcw, FiShield, FiCheckCircle, FiUsers, FiBox, FiGrid, FiLock } from "react-icons/fi";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
 import AnimatedBanner from "../components/Mobile/AnimatedBanner";
@@ -230,9 +230,21 @@ const MobileHome = () => {
     "Flash Sale",
     "Limited time offers",
     "Trending Now",
-    "Trusted Marketplace",
-    "Shop from 50+ Trusted Vendors Nationwide",
-    "Connecting you with the finest curated vendors, ensuring quality and trust in every single purchase.",
+    "MARKETPLACE TRUST & ASSURANCE",
+    "Why Shop With DwellMart?",
+    "We partner with top-rated sellers to guarantee authentic products, transparent pricing, and instant support.",
+    "Free Express Shipping",
+    "On all orders over ₹499 nationwide",
+    "7-Day Easy Returns",
+    "Hassle-free 100% money back guarantee",
+    "100% Secure Payments",
+    "Encrypted checkout via UPI, Cards & NetBanking",
+    "Verified Marketplace Sellers",
+    "Quality-vetted vendors across India",
+    "VERIFIED STORES",
+    "CURATED PRODUCTS",
+    "CATEGORIES",
+    "SECURE PAYMENTS",
     "Refresh failed. Showing available data.",
     "Refreshed",
     "Special Offer",
@@ -792,58 +804,139 @@ const MobileHome = () => {
           {/* Recommended for You */}
           <RecommendedSection products={computedRecommended} />
 
-          {/* Enhanced Tagline Section */}
-          <section className="relative py-16 sm:py-24 px-6 overflow-hidden">
-            {/* Background Decoration */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] bg-primary-500/10 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none" />
-            
+          {/* Marketplace Trust & Assurance Section */}
+          <section className="py-8 sm:py-12 px-4 sm:px-6">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative z-10 max-w-4xl mx-auto text-center"
+              transition={{ duration: 0.7, ease: "easeOut" }}
+              className="max-w-6xl mx-auto bg-white rounded-3xl sm:rounded-[36px] border border-gray-100 p-6 sm:p-10 md:p-12 shadow-[0_10px_40px_rgba(0,0,0,0.03)] text-center"
             >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-50 border border-primary-100 text-primary-600 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-6 sm:mb-8"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-primary-600 animate-pulse" />
-                {t("Trusted Marketplace")}
-              </motion.div>
- 
-              <h2 className="text-3xl sm:text-5xl md:text-6xl font-black text-gray-900 leading-[1.15] mb-8 sm:mb-10 tracking-tight">
-                {t("Shop from 50+ Trusted Vendors Nationwide")}
+              {/* Top Pill Badge */}
+              <div className="inline-block px-4 py-1.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase mb-4">
+                {t("MARKETPLACE TRUST & ASSURANCE")}
+              </div>
+
+              {/* Title */}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-3">
+                {t("Why Shop With DwellMart?")}
               </h2>
 
-              <motion.div
-                animate={{ 
-                  y: [0, -10, 0],
-                  scale: [1, 1.05, 1]
-                }}
-                transition={{ 
-                  duration: 4, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-                className="inline-block"
-              >
-                <div className="relative group cursor-pointer">
-                  <motion.div 
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.1, 0.4, 0.1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute inset-0 bg-primary-400 rounded-full blur-xl group-hover:bg-primary-500 transition-colors"
-                  />
-                  <FiHeart className="text-5xl sm:text-7xl text-primary-500 fill-primary-500 relative z-10 drop-shadow-xl transition-transform group-hover:scale-110" />
-                </div>
-              </motion.div>
-
-              <p className="mt-10 text-gray-400 text-sm sm:text-base font-medium max-w-lg mx-auto leading-relaxed italic">
-                "{t("Connecting you with the finest curated vendors, ensuring quality and trust in every single purchase.")}"
+              {/* Subtitle */}
+              <p className="text-gray-500 text-sm sm:text-base font-medium max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10">
+                {t("We partner with top-rated sellers to guarantee authentic products, transparent pricing, and instant support.")}
               </p>
+
+              {/* Feature Cards Grid (4 Columns) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8 text-left">
+                {/* Feature 1 */}
+                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <FiTruck className="text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                      {t("Free Express Shipping")}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                      {t("On all orders over ₹499 nationwide")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <FiRotateCcw className="text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                      {t("7-Day Easy Returns")}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                      {t("Hassle-free 100% money back guarantee")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                    <FiShield className="text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                      {t("100% Secure Payments")}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                      {t("Encrypted checkout via UPI, Cards & NetBanking")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 4 */}
+                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <FiCheckCircle className="text-2xl" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                      {t("Verified Marketplace Sellers")}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                      {t("Quality-vetted vendors across India")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dark Stat Cards Grid (4 Columns) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Stat 1 */}
+                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
+                  <FiUsers className="text-purple-400 text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                    {computedVendors.length ? `${computedVendors.length}+` : "10+"}
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                    {t("VERIFIED STORES")}
+                  </span>
+                </div>
+
+                {/* Stat 2 */}
+                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
+                  <FiBox className="text-purple-400 text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                    {catalogProducts.length ? `${catalogProducts.length}+` : "97+"}
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                    {t("CURATED PRODUCTS")}
+                  </span>
+                </div>
+
+                {/* Stat 3 */}
+                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
+                  <FiGrid className="text-purple-400 text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                    10+
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                    {t("CATEGORIES")}
+                  </span>
+                </div>
+
+                {/* Stat 4 */}
+                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
+                  <FiLock className="text-purple-400 text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                    100%
+                  </span>
+                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                    {t("SECURE PAYMENTS")}
+                  </span>
+                </div>
+              </div>
             </motion.div>
           </section>
 
