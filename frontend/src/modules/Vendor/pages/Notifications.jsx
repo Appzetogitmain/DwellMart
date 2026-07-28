@@ -255,7 +255,7 @@ const Notifications = () => {
           itemsPerPage={10}
           onRowClick={(row) => {
             if (row.data?.returnRequestId) navigate("/vendor/return-requests");
-            else if (row.data?.documentId) navigate("/vendor/documents");
+            else if (row.data?.documentId) navigate("/vendor/profile?tab=documents");
             else if (row.orderId || row.data?.orderId)
               navigate("/vendor/orders/all-orders");
             if (!row.isRead) {

@@ -442,6 +442,7 @@ export const login = asyncHandler(async (req, res) => {
                     storeName: vendor.storeName,
                     email: vendor.email,
                     storeLogo: vendor.storeLogo,
+                    commissionRate: vendor.commissionRate,
                 },
             },
             'Login successful.'

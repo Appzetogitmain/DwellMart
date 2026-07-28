@@ -217,7 +217,7 @@ const Earnings = () => {
                   </div>
                   <p className="text-2xl font-bold text-pink-800">
                     {vendor?.commissionRate !== undefined 
-                      ? `${(vendor.commissionRate * 100).toFixed(1)}%` 
+                      ? `${(vendor.commissionRate).toFixed(1)}%` 
                       : "N/A"}
                   </p>
                   <p className="text-xs text-pink-600 mt-1">Platform fee</p>

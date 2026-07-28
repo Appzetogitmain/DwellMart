@@ -55,7 +55,7 @@ const VendorNotificationWindow = ({ isOpen, onClose, position = "right" }) => {
       return "/vendor/return-requests";
     }
     if (notification.data?.documentId) {
-      return "/vendor/documents";
+      return "/vendor/profile?tab=documents";
     }
     return "/vendor/dashboard";
   };
