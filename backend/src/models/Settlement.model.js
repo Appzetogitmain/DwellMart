@@ -8,7 +8,7 @@ const settlementSchema = new mongoose.Schema(
         paymentMethod: { type: String, enum: ['bank_transfer', 'wallet', 'upi'], default: 'bank_transfer' },
         transactionId: String,
         notes: String,
-        status: { type: String, enum: ['completed', 'failed'], default: 'completed' },
+        status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
     },
     { timestamps: true }
 );

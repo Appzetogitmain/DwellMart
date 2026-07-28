@@ -66,6 +66,7 @@ import AdminVendorAnalytics from "./modules/Admin/pages/vendors/VendorAnalytics"
 import VendorSubscriptions from "./modules/Admin/pages/vendors/VendorSubscriptions";
 import AdminSubscriptionPlans from "./modules/Admin/pages/SubscriptionPlans";
 import AdminVendorTerms from "./modules/Admin/pages/VendorTerms";
+import PayoutRequests from "./modules/Admin/pages/PayoutRequests";
 
 // Offers & Sliders child pages
 import HomeSliders from "./modules/Admin/pages/offers/HomeSliders";
@@ -534,6 +535,7 @@ const AppRoutes = () => {
           element={<AdminRouteGuard permission="vendors.view"><VendorSubscriptions /></AdminRouteGuard>}
         />
         <Route path="vendors/:id" element={<AdminRouteGuard permission="vendors.view"><VendorDetail /></AdminRouteGuard>} />
+        <Route path="vendors/payout-requests" element={<AdminRouteGuard permission="vendors.approve"><PayoutRequests /></AdminRouteGuard>} />
 
         <Route path="subscription-plans" element={<AdminRouteGuard permission="vendors.view"><AdminSubscriptionPlans /></AdminRouteGuard>} />
         <Route path="vendor-terms" element={<AdminRouteGuard permission="vendors.view"><AdminVendorTerms /></AdminRouteGuard>} />

@@ -158,6 +158,7 @@ router.get('/analytics/overview', ...vendorAuth, analyticsController.getAnalytic
 
 // Earnings
 router.get('/earnings', ...vendorAuth, orderController.getEarnings);
+router.post('/earnings/request-payout', ...vendorAuth, orderController.requestPayout);
 
 // Return requests
 router.get('/return-requests', ...vendorAuth, returnController.getVendorReturnRequests);

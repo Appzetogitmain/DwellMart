@@ -53,6 +53,16 @@ const Vendors = () => {
       hoverShadow: "hover:shadow-purple-500/30",
       description: "View vendor performance analytics",
     },
+    {
+      path: "/admin/vendors/payout-requests",
+      label: "Payout Requests",
+      icon: FiClock,
+      gradient: "from-orange-500 via-orange-600 to-orange-700",
+      lightGradient: "from-orange-50 via-orange-100/80 to-orange-50",
+      shadowColor: "shadow-orange-500/20",
+      hoverShadow: "hover:shadow-orange-500/30",
+      description: "Review vendor payout requests",
+    },
   ];
 
   return (

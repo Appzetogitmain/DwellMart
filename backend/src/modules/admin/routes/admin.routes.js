@@ -19,6 +19,7 @@ import * as termsController from '../controllers/termsAndConditions.controller.j
 import * as staticPagesController from '../controllers/staticPages.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
+import * as settlementController from '../controllers/settlement.controller.js';
 import {
     downloadExcelTemplate,
     downloadCsvTemplate,
@@ -261,5 +262,9 @@ router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsCont
 // ─── Dynamic Category Settings ───────────────────────────────────────────────
 router.get('/settings/:category', ...adminAuth, settingsController.getSettingsByCategory);
 router.put('/settings/:category', ...adminAuth, settingsController.updateSettingsByCategory);
+
+// ─── Settlements ──────────────────────────────────────────────────────────────
+router.get('/settlements', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);
+router.put('/settlements/:id/approve', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.approveSettlement);
 
 export default router;

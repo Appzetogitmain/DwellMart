@@ -10,7 +10,8 @@ import ExportButton from "../../Admin/components/ExportButton";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
-import { getVendorEarnings } from "../services/vendorService";
+import { getVendorEarnings, requestVendorPayout } from "../services/vendorService";
+import toast from "react-hot-toast";
 
 const WalletHistory = () => {
   const { vendor } = useVendorAuthStore();
@@ -20,6 +21,7 @@ const WalletHistory = () => {
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [walletSummary, setWalletSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
 
@@ -70,11 +72,33 @@ const WalletHistory = () => {
         setIsLoading(false);
       }
     };
-
+    
     fetchWallet();
-  }, [
-    vendorId,
-  ]);
+  }, [vendorId]);
+
+  const handleRequestPayout = async () => {
+    if (!walletSummary || (walletSummary.withdrawableEarnings || 0) < 500) {
+      toast.error("Minimum withdrawable balance must be ₹500.");
+      return;
+    }
+    
+    if (window.confirm("Are you sure you want to request a payout for your available balance?")) {
+      setIsRequesting(true);
+      try {
+        await requestVendorPayout({ paymentMethod: "bank_transfer" });
+        toast.success("Payout request submitted successfully!");
+        // Refresh wallet
+        const res = await getVendorEarnings();
+        setWalletSummary(res?.data?.summary || res?.summary || null);
+        // (ideally we should also refresh transactions, but a page reload works too or just refreshing state)
+        window.location.reload();
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Failed to request payout");
+      } finally {
+        setIsRequesting(false);
+      }
+    }
+  };
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
@@ -111,14 +135,14 @@ const WalletHistory = () => {
     return walletSummary.totalEarnings;
   }, [walletSummary]);
 
-  const availableBalance = useMemo(() => {
+  const withdrawableBalance = useMemo(() => {
     if (!walletSummary) return 0;
-    return walletSummary.paidEarnings;
+    return walletSummary.withdrawableEarnings || 0;
   }, [walletSummary]);
 
-  const pendingBalance = useMemo(() => {
+  const lockedBalance = useMemo(() => {
     if (!walletSummary) return 0;
-    return walletSummary.pendingEarnings;
+    return walletSummary.lockedEarnings || 0;
   }, [walletSummary]);
 
   if (!vendorId) {
@@ -216,21 +240,34 @@ const WalletHistory = () => {
           <p className="text-3xl font-bold">{formatPrice(walletBalance)}</p>
           <p className="text-sm text-blue-100 mt-2">All time earnings</p>
         </div>
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-green-100">Available Balance</p>
-            <FiCheckCircle className="text-2xl text-green-200" />
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-green-100">Withdrawable Balance</p>
+              <FiCheckCircle className="text-2xl text-green-200" />
+            </div>
+            <p className="text-3xl font-bold">{formatPrice(withdrawableBalance)}</p>
+            <p className="text-sm text-green-100 mt-2">Available to withdraw</p>
           </div>
-          <p className="text-3xl font-bold">{formatPrice(availableBalance)}</p>
-          <p className="text-sm text-green-100 mt-2">Paid and available</p>
+          <button
+            onClick={handleRequestPayout}
+            disabled={isRequesting || withdrawableBalance < 500}
+            className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors ${
+              withdrawableBalance >= 500 
+                ? "bg-white text-green-700 hover:bg-green-50" 
+                : "bg-green-400/50 text-green-100 cursor-not-allowed"
+            }`}
+          >
+            {isRequesting ? "Processing..." : "Request Payout"}
+          </button>
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-orange-100">Pending Balance</p>
+            <p className="text-orange-100">Locked Balance</p>
             <FiClock className="text-2xl text-orange-200" />
           </div>
-          <p className="text-3xl font-bold">{formatPrice(pendingBalance)}</p>
-          <p className="text-sm text-orange-100 mt-2">Awaiting settlement</p>
+          <p className="text-3xl font-bold">{formatPrice(lockedBalance)}</p>
+          <p className="text-sm text-orange-100 mt-2">7-Day Escrow Period</p>
         </div>
       </div>
 

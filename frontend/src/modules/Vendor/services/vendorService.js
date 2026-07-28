@@ -557,6 +557,7 @@ export const deleteVendorShippingRate = (id) =>
  * Returns { summary: { totalEarnings, pendingEarnings, paidEarnings, totalCommission, totalOrders }, commissions: [...] }
  */
 export const getVendorEarnings = () => api.get('/vendor/earnings');
+export const requestVendorPayout = (data) => api.post('/vendor/earnings/request-payout', data);
 
 
 // ─── BANK DETAILS ───────────────────────────────────────────────────────────────

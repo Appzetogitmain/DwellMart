@@ -150,7 +150,7 @@ export const getEarnings = asyncHandler(async (req, res) => {
 
     const [commissionDocs, totalCommissions, settlements, totalSettlements] = await Promise.all([
         Commission.find({ vendorId: req.user.id })
-            .populate('orderId', 'orderId status')
+            .populate('orderId', 'orderId status deliveredAt')
             .sort({ createdAt: -1 })
             .skip(commissionSkip)
             .limit(numericLimit),
@@ -162,7 +162,7 @@ export const getEarnings = asyncHandler(async (req, res) => {
         Settlement.countDocuments({ vendorId: req.user.id }),
     ]);
     const allCommissionsForSummary = await Commission.find({ vendorId: req.user.id })
-        .populate('orderId', 'orderId status')
+        .populate('orderId', 'orderId status deliveredAt')
         .sort({ createdAt: -1 });
 
     const commissions = commissionDocs.map((doc) => {
@@ -194,13 +194,28 @@ export const getEarnings = asyncHandler(async (req, res) => {
             acc.totalOrders += 1;
         }
 
-        if (effectiveStatus === 'pending') acc.pendingEarnings += earnings;
+        if (effectiveStatus === 'pending') {
+            const deliveredAt = c.orderId?.deliveredAt;
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            
+            if (orderStatus === 'delivered' && deliveredAt && new Date(deliveredAt) <= sevenDaysAgo) {
+                acc.withdrawableEarnings += earnings;
+            } else {
+                acc.lockedEarnings += earnings;
+            }
+            acc.pendingEarnings += earnings; // keep total pending for backwards compatibility
+        }
+        if (effectiveStatus === 'requested') acc.requestedEarnings += earnings;
         if (effectiveStatus === 'paid') acc.paidEarnings += earnings;
         if (effectiveStatus === 'cancelled') acc.cancelledEarnings += earnings;
         return acc;
     }, {
         totalEarnings: 0,
         pendingEarnings: 0,
+        withdrawableEarnings: 0,
+        lockedEarnings: 0,
+        requestedEarnings: 0,
         paidEarnings: 0,
         cancelledEarnings: 0,
         totalCommission: 0,
@@ -230,4 +245,65 @@ export const getEarnings = asyncHandler(async (req, res) => {
             'Earnings fetched.'
         )
     );
+});
+
+// POST /api/vendor/earnings/request-payout
+export const requestPayout = asyncHandler(async (req, res) => {
+    // 1. Fetch all pending commissions for this vendor
+    const pendingCommissions = await Commission.find({ vendorId: req.user.id, status: 'pending' })
+        .populate('orderId', 'status deliveredAt');
+
+    let withdrawableAmount = 0;
+    const eligibleCommissionIds = [];
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // 2. Filter for those delivered > 7 days ago
+    for (const c of pendingCommissions) {
+        const orderStatus = String(c.orderId?.status || '').toLowerCase();
+        const deliveredAt = c.orderId?.deliveredAt;
+        
+        if (orderStatus === 'delivered' && deliveredAt && new Date(deliveredAt) <= sevenDaysAgo) {
+            withdrawableAmount += Number(c.vendorEarnings || 0);
+            eligibleCommissionIds.push(c._id);
+        }
+    }
+
+    // 3. Minimum payout threshold check (e.g. 500)
+    const MINIMUM_PAYOUT = 500;
+    if (withdrawableAmount < MINIMUM_PAYOUT) {
+        throw new ApiError(400, `Minimum payout amount is ₹${MINIMUM_PAYOUT}. Your withdrawable balance is ₹${withdrawableAmount}.`);
+    }
+
+    if (eligibleCommissionIds.length === 0) {
+        throw new ApiError(400, 'No eligible commissions available for payout.');
+    }
+
+    // 4. Create Settlement request
+    const settlement = await Settlement.create({
+        vendorId: req.user.id,
+        commissionIds: eligibleCommissionIds,
+        amount: withdrawableAmount,
+        status: 'pending',
+        paymentMethod: req.body.paymentMethod || 'bank_transfer',
+        notes: 'Requested by vendor'
+    });
+
+    // 5. Mark commissions as requested
+    await Commission.updateMany(
+        { _id: { $in: eligibleCommissionIds } },
+        { $set: { status: 'requested', settlementId: settlement._id } }
+    );
+
+    // 6. Notify the admin
+    await createNotification({
+        recipientType: 'admin',
+        title: 'New Payout Request',
+        message: `Vendor ${req.user.name || req.user.storeName} has requested a payout of ₹${withdrawableAmount}.`,
+        type: 'system',
+        link: '/admin/vendors/payout-requests'
+    });
+
+    res.status(201).json(new ApiResponse(201, settlement, 'Payout request submitted successfully.'));
 });
