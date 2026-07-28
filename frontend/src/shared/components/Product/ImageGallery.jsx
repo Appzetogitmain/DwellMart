@@ -49,10 +49,10 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
 
   return (
     <>
-      <div className="w-full flex flex-col gap-6">
+      <div className="w-full flex flex-col gap-3 sm:gap-4">
         {/* Main Image */}
         <div
-          className="relative w-full aspect-square bg-white rounded-3xl p-4 shadow-sm border border-gray-100 overflow-hidden"
+          className="relative w-full aspect-[4/3] sm:aspect-square bg-gray-50/50 rounded-2xl p-2 sm:p-4 shadow-xs border border-gray-100 overflow-hidden flex items-center justify-center"
           data-gallery>
           <motion.div
             key={selectedIndex}

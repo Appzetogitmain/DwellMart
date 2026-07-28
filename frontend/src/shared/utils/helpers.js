@@ -45,11 +45,28 @@ export const isValidEmail = (email) => {
 };
 
 /**
- * Validate phone number (Indian format)
+ * Validate phone number with country code support
  */
-export const isValidPhone = (phone) => {
-  const phoneRegex = /^[6-9]\d{9}$/;
-  return phoneRegex.test(phone.replace(/\D/g, ""));
+export const isValidPhone = (phone, countryCode = "+91") => {
+  if (!phone) return false;
+  const digitsOnly = String(phone).replace(/\D/g, "");
+
+  switch (countryCode) {
+    case "+91": // India
+      return /^[6-9]\d{9}$/.test(digitsOnly);
+    case "+1": // USA / Canada
+      return /^[2-9]\d{9}$/.test(digitsOnly);
+    case "+880": // Bangladesh
+      return /^1[3-9]\d{8}$/.test(digitsOnly);
+    case "+44": // UK
+      return /^7\d{9}$/.test(digitsOnly);
+    case "+971": // UAE
+      return /^5\d{8}$/.test(digitsOnly);
+    case "+966": // Saudi Arabia
+      return /^5\d{8}$/.test(digitsOnly);
+    default:
+      return /^\d{8,12}$/.test(digitsOnly);
+  }
 };
 
 /**

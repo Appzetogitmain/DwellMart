@@ -1,13 +1,12 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { FiFilter, FiArrowLeft, FiGrid, FiList, FiX, FiCheckCircle, FiStar, FiShoppingBag } from "react-icons/fi";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { FiFilter, FiArrowLeft, FiGrid, FiList, FiX, FiCheckCircle, FiStar, FiShoppingBag, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
 import ProductListItem from "../components/Mobile/ProductListItem";
 import { getProductsByVendor, getVendorById } from "../data/catalogData";
 import PageTransition from "../../../shared/components/PageTransition";
-import useInfiniteScroll from "../../../shared/hooks/useInfiniteScroll";
 import LazyImage from "../../../shared/components/LazyImage";
 import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
@@ -53,21 +52,33 @@ const Seller = () => {
         "Products",
         "No products found",
         "This seller has no products available at the moment.",
-        "Loading more products...",
-        "Loading...",
-        "Load More"
+        "Showing",
+        "to",
+        "of",
+        "products"
     ]);
 
     const { translateObject, translateArray } = useDynamicTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const vendorId = String(id ?? "").trim();
+    const pageParam = parseInt(searchParams.get("page") || "1", 10);
+    const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
     const [catalogVersion, setCatalogVersion] = useState(0);
     const [remoteVendor, setRemoteVendor] = useState(null);
-    const [remoteProducts, setRemoteProducts] = useState([]);
+    const [vendorProducts, setVendorProducts] = useState([]);
+    const [pagination, setPagination] = useState({
+        total: 0,
+        page: currentPage,
+        pages: 1,
+        limit: 12
+    });
     const [isResolvingVendor, setIsResolvingVendor] = useState(true);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-    // Get vendor information
     const vendor = useMemo(
         () => getVendorById(vendorId) || remoteVendor,
         [vendorId, catalogVersion, remoteVendor]
@@ -81,53 +92,15 @@ const Seller = () => {
         minRating: "",
     });
 
-    // Get products for this vendor
-    const rawVendorProducts = useMemo(() => {
-        if (!vendorId) return [];
-
-        const local = getProductsByVendor(vendorId);
-        if (!remoteProducts.length) return local;
-
-        const merged = [...remoteProducts];
-        local.forEach((item) => {
-            const exists = merged.some(
-                (p) => String(p.id) === String(item.id)
-            );
-            if (!exists) merged.push(item);
-        });
-
-        return merged;
-    }, [vendorId, remoteProducts, catalogVersion]);
-
-    const vendorProducts = useMemo(() => {
-        let result = rawVendorProducts;
-
-        if (filters.minPrice) {
-            result = result.filter(
-                (product) => product.price >= parseFloat(filters.minPrice)
-            );
-        }
-        if (filters.maxPrice) {
-            result = result.filter(
-                (product) => product.price <= parseFloat(filters.maxPrice)
-            );
-        }
-        if (filters.minRating) {
-            result = result.filter(
-                (product) => product.rating >= parseFloat(filters.minRating)
-            );
-        }
-
-        return result;
-    }, [rawVendorProducts, filters]);
-
-    const { displayedItems, hasMore, isLoading, loadMore, loadMoreRef } =
-        useInfiniteScroll(vendorProducts, 10, 10);
-
     const filterButtonRef = useRef(null);
 
     const handleFilterChange = (name, value) => {
         setFilters({ ...filters, [name]: value });
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", "1");
+            return next;
+        });
     };
 
     const clearFilters = () => {
@@ -136,9 +109,13 @@ const Seller = () => {
             maxPrice: "",
             minRating: "",
         });
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", "1");
+            return next;
+        });
     };
 
-    // Check if any filter is active
     const hasActiveFilters =
         filters.minPrice ||
         filters.maxPrice ||
@@ -174,13 +151,13 @@ const Seller = () => {
         };
     }, []);
 
+    // Fetch vendor details
     useEffect(() => {
         let active = true;
         const fetchVendorData = async () => {
             if (!vendorId) {
                 if (active) {
                     setRemoteVendor(null);
-                    setRemoteProducts([]);
                     setIsResolvingVendor(false);
                 }
                 return;
@@ -188,40 +165,13 @@ const Seller = () => {
 
             setIsResolvingVendor(true);
             try {
-                const [vendorRes, productsRes] = await Promise.all([
-                    api.get(`/vendors/${vendorId}`),
-                    api.get(`/vendors/${vendorId}/products`, { params: { page: 1, limit: 100 } }),
-                ]);
-
-                if (!active) return;
-
-                const vendorPayload = vendorRes?.data ?? vendorRes;
-                const productsPayload = productsRes?.data ?? productsRes;
+                const res = await api.get(`/vendors/${vendorId}`);
+                const vendorPayload = res?.data ?? res;
                 const vendorDoc = vendorPayload ? normalizeVendor(vendorPayload) : null;
-                const allProducts = Array.isArray(productsPayload?.products)
-                    ? [...productsPayload.products]
-                    : [];
-                const totalPages = Math.max(1, Number(productsPayload?.pages || 1));
-                for (let page = 2; page <= totalPages; page += 1) {
-                    const nextRes = await api.get(`/vendors/${vendorId}/products`, {
-                        params: { page, limit: 100 },
-                    });
-                    const nextPayload = nextRes?.data ?? nextRes;
-                    if (Array.isArray(nextPayload?.products) && nextPayload.products.length) {
-                        allProducts.push(...nextPayload.products);
-                    }
-                }
-
-                const productList = allProducts.map(normalizeProduct);
                 const translatedVendor = await translateObject(vendorDoc, ['storeName', 'name', 'storeDescription']);
-                const translatedProducts = await translateArray(productList, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
-
-                setRemoteVendor(translatedVendor);
-                setRemoteProducts(translatedProducts);
+                if (active) setRemoteVendor(translatedVendor);
             } catch {
-                if (!active) return;
-                setRemoteVendor(null);
-                setRemoteProducts([]);
+                if (active) setRemoteVendor(null);
             } finally {
                 if (active) setIsResolvingVendor(false);
             }
@@ -232,6 +182,83 @@ const Seller = () => {
             active = false;
         };
     }, [vendorId]);
+
+    // Fetch paginated vendor products
+    useEffect(() => {
+        let active = true;
+        const fetchProducts = async () => {
+            if (!vendorId) return;
+            setIsLoadingProducts(true);
+            try {
+                const params = {
+                    page: currentPage,
+                    limit: 12,
+                    ...(filters.minPrice && { minPrice: filters.minPrice }),
+                    ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
+                    ...(filters.minRating && { minRating: filters.minRating }),
+                };
+
+                const res = await api.get(`/vendors/${vendorId}/products`, { params });
+                const payload = res?.data ?? res;
+                if (!active) return;
+
+                if (payload && Array.isArray(payload.products)) {
+                    const normalized = payload.products.map(normalizeProduct);
+                    const translated = await translateArray(normalized, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                    if (active) {
+                        setVendorProducts(translated);
+                        setPagination({
+                            total: Number(payload.total || translated.length),
+                            page: Number(payload.page || currentPage),
+                            pages: Math.max(1, Number(payload.pages || 1)),
+                            limit: Number(payload.limit || 12),
+                        });
+                    }
+                } else {
+                    const local = getProductsByVendor(vendorId);
+                    const translatedLocal = await translateArray(local, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                    if (active) {
+                        setVendorProducts(translatedLocal);
+                        setPagination({
+                            total: translatedLocal.length,
+                            page: 1,
+                            pages: 1,
+                            limit: 12,
+                        });
+                    }
+                }
+            } catch {
+                if (active) {
+                    const local = getProductsByVendor(vendorId);
+                    const translatedLocal = await translateArray(local, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                    setVendorProducts(translatedLocal);
+                    setPagination({
+                        total: translatedLocal.length,
+                        page: 1,
+                        pages: 1,
+                        limit: 12,
+                    });
+                }
+            } finally {
+                if (active) setIsLoadingProducts(false);
+            }
+        };
+
+        fetchProducts();
+        return () => {
+            active = false;
+        };
+    }, [vendorId, currentPage, filters, catalogVersion]);
+
+    const handlePageChange = (newPage) => {
+        if (newPage < 1 || newPage > pagination.pages || newPage === currentPage) return;
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", String(newPage));
+            return next;
+        });
+        window.scrollTo({ top: 250, behavior: "smooth" });
+    };
 
     if (isResolvingVendor) {
         return (
@@ -333,7 +360,6 @@ const Seller = () => {
                                                         className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
                                                         style={{ marginTop: "10px" }}
                                                     >
-                                                        {/* Filter Content (Same as Brand.jsx) */}
                                                         <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
                                                             <div className="flex items-center gap-1.5">
                                                                 <FiFilter className="text-sm text-gray-700" />
@@ -465,7 +491,7 @@ const Seller = () => {
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <FiShoppingBag className="text-gray-500" />
-                                            <span>{vendorProducts.length} {t('Products')}</span>
+                                            <span>{pagination.total || vendorProducts.length} {t('Products')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -475,7 +501,13 @@ const Seller = () => {
 
                     {/* Products List */}
                     <div className="px-4 py-4 lg:p-6">
-                        {vendorProducts.length === 0 ? (
+                        {isLoadingProducts ? (
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                                {[...Array(6)].map((_, i) => (
+                                    <div key={i} className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
+                                ))}
+                            </div>
+                        ) : vendorProducts.length === 0 ? (
                             <div className="text-center py-12">
                                 <div className="text-6xl text-gray-300 mx-auto mb-4">🏪</div>
                                 <h3 className="text-xl font-bold text-gray-800 mb-2">
@@ -488,7 +520,7 @@ const Seller = () => {
                         ) : viewMode === "grid" ? (
                             <>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-                                    {displayedItems.map((product, index) => (
+                                    {vendorProducts.map((product, index) => (
                                         <motion.div
                                             key={product.id}
                                             initial={{ opacity: 0, y: 20 }}
@@ -499,30 +531,58 @@ const Seller = () => {
                                     ))}
                                 </div>
 
-                                {hasMore && (
-                                    <div
-                                        ref={loadMoreRef}
-                                        className="mt-6 flex flex-col items-center gap-4">
-                                        {isLoading && (
-                                            <div className="flex items-center gap-2 text-gray-600">
-                                                <span className="text-sm">
-                                                    Loading more products...
-                                                </span>
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={loadMore}
-                                            disabled={isLoading}
-                                            className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                            {isLoading ? "Loading..." : "Load More"}
-                                        </button>
+                                {/* Pagination Controls */}
+                                {pagination.pages > 1 && (
+                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
+                                        <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                                            {t("Showing")} {((currentPage - 1) * pagination.limit) + 1} {t("to")}{" "}
+                                            {Math.min(currentPage * pagination.limit, pagination.total)} {t("of")}{" "}
+                                            {pagination.total} {t("products")}
+                                        </span>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage <= 1 || isLoadingProducts}
+                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <FiChevronLeft className="text-lg" />
+                                            </button>
+
+                                            {[...Array(pagination.pages)].map((_, i) => {
+                                                const pNum = i + 1;
+                                                const isCurrent = pNum === currentPage;
+                                                return (
+                                                    <button
+                                                        key={pNum}
+                                                        onClick={() => handlePageChange(pNum)}
+                                                        disabled={isLoadingProducts}
+                                                        className={`w-9 h-9 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                                                            isCurrent
+                                                                ? "gradient-green text-white shadow-md"
+                                                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                                        }`}
+                                                    >
+                                                        {pNum}
+                                                    </button>
+                                                );
+                                            })}
+
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage >= pagination.pages || isLoadingProducts}
+                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <FiChevronRight className="text-lg" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </>
                         ) : (
                             <>
                                 <div className="space-y-3">
-                                    {displayedItems.map((product, index) => (
+                                    {vendorProducts.map((product, index) => (
                                         <ProductListItem
                                             key={product.id}
                                             product={product}
@@ -531,23 +591,51 @@ const Seller = () => {
                                     ))}
                                 </div>
 
-                                {hasMore && (
-                                    <div
-                                        ref={loadMoreRef}
-                                        className="mt-6 flex flex-col items-center gap-4">
-                                        {isLoading && (
-                                            <div className="flex items-center gap-2 text-gray-600">
-                                                <span className="text-sm">
-                                                    Loading more products...
-                                                </span>
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={loadMore}
-                                            disabled={isLoading}
-                                            className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                            {isLoading ? "Loading..." : "Load More"}
-                                        </button>
+                                {/* Pagination Controls */}
+                                {pagination.pages > 1 && (
+                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
+                                        <span className="text-xs sm:text-sm text-gray-500 font-medium">
+                                            {t("Showing")} {((currentPage - 1) * pagination.limit) + 1} {t("to")}{" "}
+                                            {Math.min(currentPage * pagination.limit, pagination.total)} {t("of")}{" "}
+                                            {pagination.total} {t("products")}
+                                        </span>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage <= 1 || isLoadingProducts}
+                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <FiChevronLeft className="text-lg" />
+                                            </button>
+
+                                            {[...Array(pagination.pages)].map((_, i) => {
+                                                const pNum = i + 1;
+                                                const isCurrent = pNum === currentPage;
+                                                return (
+                                                    <button
+                                                        key={pNum}
+                                                        onClick={() => handlePageChange(pNum)}
+                                                        disabled={isLoadingProducts}
+                                                        className={`w-9 h-9 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                                                            isCurrent
+                                                                ? "gradient-green text-white shadow-md"
+                                                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                                        }`}
+                                                    >
+                                                        {pNum}
+                                                    </button>
+                                                );
+                                            })}
+
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage >= pagination.pages || isLoadingProducts}
+                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                            >
+                                                <FiChevronRight className="text-lg" />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </>

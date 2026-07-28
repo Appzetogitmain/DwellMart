@@ -625,23 +625,21 @@ const MobileProductDetail = () => {
       <MobileLayout showBottomNav={false} showCartBar={true}>
         <div className="w-full pb-12 max-w-7xl mx-auto">
           {/* Back Button */}
-          <div className="px-4 pt-3 sm:pt-4 lg:pt-8 lg:px-8 mb-4">
+          <div className="px-4 pt-2 sm:pt-4 lg:pt-6 lg:px-8 mb-2 sm:mb-4">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-gray-200 shadow-sm text-gray-700 hover:text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-all">
-              <FiArrowLeft className="text-base" />
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white border border-gray-200 shadow-xs text-gray-700 hover:text-gray-900 text-xs font-semibold hover:bg-gray-50 transition-all">
+              <FiArrowLeft className="text-sm" />
               <span>{t('Back')}</span>
             </button>
           </div>
 
-          <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-16 lg:px-8 lg:items-start">
+          <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-12 lg:px-8 lg:items-start">
             {/* Left Column: Product Image */}
-            <div className="px-4 py-4 lg:p-0 sticky top-24">
-              <div className="bg-white rounded-3xl p-2 lg:p-4 shadow-sm border border-gray-100">
-                <ImageGallery images={productImages} productName={product.name} />
-              </div>
+            <div className="px-4 py-2 lg:p-0 lg:sticky lg:top-24">
+              <ImageGallery images={productImages} productName={product.name} />
               {product.flashSale && (
-                <div className="mt-4 flex justify-center lg:justify-start">
+                <div className="mt-3 flex justify-center lg:justify-start">
                   <Badge variant="flash" size="lg">{t('Flash Sale - Limited Time Offer')}</Badge>
                 </div>
               )}
@@ -761,7 +759,7 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* Variants & Quantity */}
-                <div className="space-y-6 border-b border-gray-100 pb-8">
+                <div className="space-y-4 pb-4 border-b border-gray-100">
                   {product.variants && (
                     <VariantSelector
                       variants={product.variants}
@@ -800,23 +798,23 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* PRODUCT ACTIONS */}
-                <div className="grid grid-cols-5 gap-3 sm:gap-4 py-4">
+                <div className="flex items-center gap-3 w-full py-2">
                   {isInCart ? (
                     <button
                       onClick={handleRemoveFromCart}
-                      className="col-span-3 py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 shadow-sm">
-                      <FiTrash2 className="text-lg sm:text-xl" />
+                      className="flex-1 py-3.5 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 shadow-xs">
+                      <FiTrash2 className="text-lg" />
                       <span>{t('Remove from Cart')}</span>
                     </button>
                   ) : (
                     <button
                       onClick={handleAddToCart}
                       disabled={product.stock === "out_of_stock"}
-                      className={`col-span-3 py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 ${product.stock === "out_of_stock"
+                      className={`flex-1 py-3.5 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                         : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5 shadow-md"
                         }`}>
-                      <FiShoppingBag className="text-lg sm:text-xl" />
+                      <FiShoppingBag className="text-lg" />
                       <span>
                         {product.stock === "out_of_stock"
                           ? t("Out of Stock")
@@ -827,12 +825,13 @@ const MobileProductDetail = () => {
 
                   <button
                     onClick={handleFavorite}
-                    className={`col-span-1 py-3.5 sm:py-4 rounded-xl font-semibold transition-all duration-300 border flex items-center justify-center ${isFavorite
-                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100 shadow-sm"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
+                    aria-label="Add to wishlist"
+                    className={`w-12 h-12 rounded-xl font-semibold transition-all duration-300 border flex items-center justify-center shrink-0 ${isFavorite
+                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100 shadow-xs"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-xs"
                       }`}>
                     <FiHeart
-                      className={`text-xl sm:text-2xl ${isFavorite ? "fill-current" : ""}`}
+                      className={`text-xl ${isFavorite ? "fill-current" : ""}`}
                     />
                   </button>
 
@@ -849,8 +848,9 @@ const MobileProductDetail = () => {
                         toast.success(t("Link copied to clipboard"));
                       }
                     }}
-                    className="col-span-1 py-3.5 sm:py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 shadow-sm flex items-center justify-center">
-                    <FiShare2 className="text-xl sm:text-2xl" />
+                    aria-label="Share product"
+                    className="w-12 h-12 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 shadow-xs flex items-center justify-center shrink-0">
+                    <FiShare2 className="text-xl" />
                   </button>
                 </div>
 

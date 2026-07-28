@@ -430,9 +430,9 @@ router.get('/vendors/:id', detailCache, asyncHandler(async (req, res) => {
 
 // GET /api/vendors/:id/products (public)
 router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, sort = 'newest' } = req.query;
+    const { page = 1, limit = 12, sort = 'newest', minPrice, maxPrice, minRating } = req.query;
     const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 100);
     const skip = (numericPage - 1) * numericLimit;
 
     const sortMap = {
@@ -455,6 +455,15 @@ router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => 
     if (activeSaleProductIds.length) {
         filter._id = { $nin: activeSaleProductIds };
     }
+    if (minPrice || maxPrice) {
+        filter.price = {};
+        if (minPrice && !isNaN(Number(minPrice))) filter.price.$gte = Number(minPrice);
+        if (maxPrice && !isNaN(Number(maxPrice))) filter.price.$lte = Number(maxPrice);
+    }
+    if (minRating && !isNaN(Number(minRating))) {
+        filter.rating = { $gte: Number(minRating) };
+    }
+
     const [products, total] = await Promise.all([
         Product.find(filter)
             .select(PRODUCT_LIST_SELECT)
@@ -472,7 +481,8 @@ router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => 
         products,
         total,
         page: numericPage,
-        pages: Math.ceil(total / numericLimit)
+        pages: Math.max(1, Math.ceil(total / numericLimit)),
+        limit: numericLimit
     }, 'Vendor products fetched.'));
 }));
 

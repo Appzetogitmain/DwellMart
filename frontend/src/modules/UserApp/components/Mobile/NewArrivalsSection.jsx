@@ -4,7 +4,7 @@ import { FiTag, FiArrowRight } from "react-icons/fi";
 import LazyImage from "../../../../shared/components/LazyImage";
 import { getNewArrivals } from "../../data/catalogData";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
-import { formatPrice } from "../../../../shared/utils/helpers";
+import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpers";
 
 const NewArrivalsSection = ({ products = null }) => {
   const { getTranslatedText: t } = usePageTranslation(["New Arrivals", "Fresh products just added", "See All"]);
@@ -138,8 +138,7 @@ const NewArrivalsSection = ({ products = null }) => {
                         alt={product.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
                         onError={(e) => {
-                          e.target.src =
-                            "https://via.placeholder.com/300x300?text=Product+Image";
+                          e.target.src = getPlaceholderImage(300, 300, product.name?.charAt(0) || 'P');
                         }}
                       />
                       {/* Gradient Overlay */}

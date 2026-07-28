@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { categories as fallbackCategories } from "../../../../data/categories";
 import LazyImage from "../../../../shared/components/LazyImage";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import { getPlaceholderImage } from "../../../../shared/utils/helpers";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
 import { useState } from "react";
@@ -93,8 +94,7 @@ const MobileCategoryGrid = () => {
                     alt={category.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/64x64?text=Category";
+                      e.target.src = getPlaceholderImage(64, 64, category.name?.charAt(0) || 'C');
                     }}
                   />
                 </div>
@@ -126,8 +126,7 @@ const MobileCategoryGrid = () => {
                     alt={category.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/64x64?text=Category";
+                      e.target.src = getPlaceholderImage(64, 64, category.name?.charAt(0) || 'C');
                     }}
                   />
                 </div>

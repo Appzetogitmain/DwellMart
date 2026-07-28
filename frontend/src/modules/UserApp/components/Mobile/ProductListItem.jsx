@@ -9,6 +9,7 @@ import LazyImage from '../../../../shared/components/LazyImage';
 import VendorBadge from "../../../Vendor/components/VendorBadge";
 import { getVendorById } from "../../data/catalogData";
 import { getVariantSignature } from "../../../../shared/utils/variant";
+import { getPlaceholderImage } from "../../../../shared/utils/helpers";
 
 const ProductListItem = ({ product, index, isFlashSale = false }) => {
   const navigate = useNavigate();
@@ -106,7 +107,7 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
               alt={product.name}
               className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500"
               onError={(e) => {
-                e.target.src = "https://via.placeholder.com/200x200?text=Product";
+                e.target.src = getPlaceholderImage(200, 200, product.name?.charAt(0) || 'P');
               }}
             />
           </div>
