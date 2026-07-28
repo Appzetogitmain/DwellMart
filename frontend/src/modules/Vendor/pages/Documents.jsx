@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FiFile, FiUpload, FiDownload, FiTrash2 } from "react-icons/fi";
+import { FiFile, FiUpload, FiDownload, FiTrash2, FiInfo } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../Admin/components/DataTable";
 import ConfirmModal from "../../Admin/components/ConfirmModal";
@@ -12,7 +12,7 @@ import {
 } from "../services/vendorService";
 import toast from "react-hot-toast";
 
-const Documents = () => {
+const Documents = ({ asTab = false }) => {
   const { vendor } = useVendorAuthStore();
   const [documents, setDocuments] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
@@ -124,25 +124,53 @@ const Documents = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className={asTab ? "space-y-6 max-w-full overflow-x-hidden" : "space-y-6"}
     >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="lg:hidden">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-            <FiFile className="text-primary-600" />
-            Documents
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            Manage business documents and certificates
-          </p>
+      {!asTab && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="lg:hidden">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <FiFile className="text-primary-600" />
+              Documents
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              Manage business documents and certificates
+            </p>
+          </div>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+          >
+            <FiUpload />
+            <span>Upload Document</span>
+          </button>
         </div>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
-        >
-          <FiUpload />
-          <span>Upload Document</span>
-        </button>
+      )}
+
+      {asTab && (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-gray-800">Your Documents</h2>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold text-sm"
+          >
+            <FiUpload />
+            <span>Upload</span>
+          </button>
+        </div>
+      )}
+
+      {/* Helper Text */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <h4 className="text-blue-800 font-semibold mb-2 flex items-center gap-2 text-sm sm:text-base">
+          <FiInfo /> What documents can I upload?
+        </h4>
+        <ul className="list-disc list-inside text-xs sm:text-sm text-blue-700 space-y-1">
+          <li><strong>License:</strong> Trade license, business operating license, etc.</li>
+          <li><strong>Certificate:</strong> ISO, quality assurance, or brand authorization certificates.</li>
+          <li><strong>Tax Document:</strong> GST, VAT, PAN, or other tax identification documents.</li>
+          <li>All uploaded documents are reviewed by administrators before approval.</li>
+        </ul>
       </div>
 
       {isLoading ? (

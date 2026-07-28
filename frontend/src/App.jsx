@@ -700,7 +700,6 @@ const AppRoutes = () => {
           path="performance-metrics"
           element={<VendorPerformanceMetrics />}
         />
-        <Route path="documents" element={<VendorDocuments />} />
         <Route path="language-settings" element={<VendorLanguageSettings />} />
         <Route path="settings" element={<VendorSettings />} />
         <Route path="settings/store" element={<VendorSettings />} />
