@@ -145,6 +145,7 @@ const VendorDashboard = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
       {/* Header */}
+      {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="lg:hidden">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
@@ -154,13 +155,21 @@ const VendorDashboard = () => {
             Welcome back, {vendor?.storeName || vendor?.name}! Here's your store
             overview.
           </p>
-          {vendor?.commissionRate !== undefined && (
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-pink-50 border border-pink-200 text-pink-700 rounded-full text-sm font-medium">
-              <span>Platform Commission:</span>
-              <span className="font-bold">{(vendor.commissionRate * 100).toFixed(1)}%</span>
-            </div>
-          )}
         </div>
+        
+        {vendor?.commissionRate !== undefined && (
+          <div className="hidden lg:inline-flex items-center gap-2 px-4 py-2 bg-pink-50 border border-pink-200 text-pink-700 rounded-lg text-sm font-medium w-max mb-2">
+            <span>Platform Commission Rate:</span>
+            <span className="font-bold">{(vendor.commissionRate).toFixed(1)}%</span>
+          </div>
+        )}
+        
+        {vendor?.commissionRate !== undefined && (
+          <div className="lg:hidden inline-flex items-center gap-2 px-3 py-1 bg-pink-50 border border-pink-200 text-pink-700 rounded-full text-sm font-medium w-max">
+            <span>Platform Commission:</span>
+            <span className="font-bold">{(vendor.commissionRate).toFixed(1)}%</span>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}

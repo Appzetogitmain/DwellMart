@@ -172,6 +172,20 @@ const ProfileSettings = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Platform Commission Rate
+                  </label>
+                  <input
+                    type="text"
+                    value={vendor?.commissionRate !== undefined ? `${(vendor.commissionRate).toFixed(1)}%` : "N/A"}
+                    readOnly
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">This is the fee the platform takes on sales.</p>
+                </div>
               </div>
 
               <div className="flex justify-end pt-4 border-t border-gray-200">
