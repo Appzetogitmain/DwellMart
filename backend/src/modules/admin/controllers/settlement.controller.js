@@ -21,7 +21,7 @@ export const getSettlements = asyncHandler(async (req, res) => {
 
     const [settlements, total] = await Promise.all([
         Settlement.find(filter)
-            .populate('vendorId', 'name email storeName')
+            .populate('vendorId', 'name email storeName bankDetails')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(numericLimit)

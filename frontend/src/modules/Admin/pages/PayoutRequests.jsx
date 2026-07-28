@@ -9,6 +9,7 @@ const PayoutRequests = () => {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
+  const [selectedVendorInfo, setSelectedVendorInfo] = useState(null);
 
   const fetchRequests = async () => {
     setIsLoading(true);
@@ -127,7 +128,13 @@ const PayoutRequests = () => {
                         <span className="capitalize">{req.status}</span>
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 flex gap-2">
+                      <button
+                        onClick={() => setSelectedVendorInfo(req.vendorId)}
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Bank Info
+                      </button>
                       {req.status === "pending" && (
                         <button
                           onClick={() => handleApprove(req._id)}
@@ -144,6 +151,59 @@ const PayoutRequests = () => {
           </div>
         )}
       </div>
+
+      {/* Bank Info Modal */}
+      {selectedVendorInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
+          >
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Vendor Bank Details</h3>
+            
+            <div className="space-y-3 mb-6">
+              <div>
+                <p className="text-sm text-gray-500">Store Name</p>
+                <p className="font-medium">{selectedVendorInfo.storeName || selectedVendorInfo.name}</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">Account Holder</p>
+                  <p className="font-semibold text-gray-800">{selectedVendorInfo.bankDetails?.accountName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Account Number</p>
+                  <p className="font-semibold text-gray-800">{selectedVendorInfo.bankDetails?.accountNumber || 'N/A'}</p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">Bank Name</p>
+                    <p className="font-semibold text-gray-800">{selectedVendorInfo.bankDetails?.bankName || 'N/A'}</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">IFSC Code</p>
+                    <p className="font-semibold text-gray-800">{selectedVendorInfo.bankDetails?.ifscCode || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-gray-200 mt-2">
+                  <p className="text-xs text-gray-500">UPI ID</p>
+                  <p className="font-semibold text-gray-800">{selectedVendorInfo.bankDetails?.upiId || 'Not provided'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setSelectedVendorInfo(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-sm font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   );
 };

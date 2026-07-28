@@ -27,6 +27,7 @@ const PaymentSettings = () => {
           accountNumber: '',
           ifscCode: '',
           bankName: '',
+          upiId: '',
         },
       });
     }
@@ -59,6 +60,7 @@ const PaymentSettings = () => {
         accountNumber: formData.bankDetails.accountNumber,
         ifscCode: formData.bankDetails.ifscCode,
         bankName: formData.bankDetails.bankName,
+        upiId: formData.bankDetails.upiId,
       });
       toast.success('Payment settings saved successfully');
     } catch {
@@ -170,6 +172,20 @@ const PaymentSettings = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    UPI ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="bank_upiId"
+                    value={formData.bankDetails.upiId || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="example@upi"
                   />
                 </div>
               </div>

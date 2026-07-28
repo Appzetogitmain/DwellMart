@@ -41,10 +41,11 @@ const vendorSchema = new mongoose.Schema(
             country: String,
         },
         bankDetails: {
-            accountName: { type: String, select: false },
-            accountNumber: { type: String, select: false },
-            bankName: { type: String, select: false },
-            ifscCode: { type: String, select: false },
+            accountName: { type: String },
+            accountNumber: { type: String },
+            bankName: { type: String },
+            ifscCode: { type: String },
+            upiId: { type: String },
         },
         documents: {
             gst: String,
