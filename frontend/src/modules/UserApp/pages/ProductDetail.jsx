@@ -623,7 +623,7 @@ const MobileProductDetail = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-        <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto">
+        <div className="w-full pb-12 max-w-7xl mx-auto">
           {/* Back Button */}
           <div className="px-4 pt-3 sm:pt-4 lg:pt-8 lg:px-8 mb-4">
             <button
@@ -799,24 +799,24 @@ const MobileProductDetail = () => {
                   </div>
                 </div>
 
-                {/* DESKTOP ACTIONS */}
-                <div className="hidden lg:grid grid-cols-5 gap-4 py-4">
+                {/* PRODUCT ACTIONS */}
+                <div className="grid grid-cols-5 gap-3 sm:gap-4 py-4">
                   {isInCart ? (
                     <button
                       onClick={handleRemoveFromCart}
-                      className="col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100">
-                      <FiTrash2 className="text-xl" />
+                      className="col-span-3 py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 shadow-sm">
+                      <FiTrash2 className="text-lg sm:text-xl" />
                       <span>{t('Remove from Cart')}</span>
                     </button>
                   ) : (
                     <button
                       onClick={handleAddToCart}
                       disabled={product.stock === "out_of_stock"}
-                      className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
+                      className={`col-span-3 py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 ${product.stock === "out_of_stock"
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                        : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
+                        : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5 shadow-md"
                         }`}>
-                      <FiShoppingBag className="text-xl" />
+                      <FiShoppingBag className="text-lg sm:text-xl" />
                       <span>
                         {product.stock === "out_of_stock"
                           ? t("Out of Stock")
@@ -827,12 +827,12 @@ const MobileProductDetail = () => {
 
                   <button
                     onClick={handleFavorite}
-                    className={`col-span-1 py-4 rounded-xl font-semibold transition-all duration-300 border-2 flex items-center justify-center ${isFavorite
-                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                    className={`col-span-1 py-3.5 sm:py-4 rounded-xl font-semibold transition-all duration-300 border flex items-center justify-center ${isFavorite
+                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100 shadow-sm"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm"
                       }`}>
                     <FiHeart
-                      className={`text-2xl ${isFavorite ? "fill-current" : ""}`}
+                      className={`text-xl sm:text-2xl ${isFavorite ? "fill-current" : ""}`}
                     />
                   </button>
 
@@ -849,8 +849,8 @@ const MobileProductDetail = () => {
                         toast.success(t("Link copied to clipboard"));
                       }
                     }}
-                    className="col-span-1 py-4 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center">
-                    <FiShare2 className="text-2xl" />
+                    className="col-span-1 py-3.5 sm:py-4 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 shadow-sm flex items-center justify-center">
+                    <FiShare2 className="text-xl sm:text-2xl" />
                   </button>
                 </div>
 
@@ -966,61 +966,6 @@ const MobileProductDetail = () => {
               <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center">
                 <p className="text-gray-500 text-sm">{t('No similar products yet')}</p>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Sticky Bottom Action Bar (Mobile Only) */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 sm:p-4 z-40 safe-area-bottom shadow-[0_-8px_20px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleFavorite}
-              className={`p-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center ${isFavorite
-                ? "bg-red-50 text-red-600 border-2 border-red-200"
-                : "bg-gray-100 text-gray-700"
-                }`}>
-              <FiHeart
-                className={`text-xl ${isFavorite ? "fill-red-600" : ""}`}
-              />
-            </button>
-            <button
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: product.name,
-                    text: `${t('Check out')} ${product.name}`,
-                    url: window.location.href,
-                  });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast.success(t("Link copied to clipboard"));
-                }
-              }}
-              className="p-3 bg-gray-100 text-gray-700 rounded-xl font-semibold transition-all duration-300">
-              <FiShare2 className="text-xl" />
-            </button>
-            {isInCart ? (
-              <button
-                onClick={handleRemoveFromCart}
-                className="flex-1 py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100">
-                <FiTrash2 className="text-xl" />
-                <span>{t('Remove')}</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock === "out_of_stock"}
-                className={`flex-1 py-3.5 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "gradient-green text-white hover:shadow-glow-green"
-                  }`}>
-                <FiShoppingBag className="text-xl" />
-                <span>
-                  {product.stock === "out_of_stock"
-                    ? t("Out of Stock")
-                    : t("Add to Cart")}
-                </span>
-              </button>
             )}
           </div>
         </div>
