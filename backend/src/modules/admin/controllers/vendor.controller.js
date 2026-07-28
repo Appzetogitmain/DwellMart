@@ -4,6 +4,7 @@ import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import VendorDocument from '../../../models/VendorDocument.model.js';
 import Commission from '../../../models/Commission.model.js';
+import Order from '../../../models/Order.model.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 
@@ -53,9 +54,40 @@ export const getAllVendors = asyncHandler(async (req, res) => {
             .lean(),
         Vendor.countDocuments(filter),
     ]);
+
+    const vendorIds = vendors.map(v => v._id);
+
+    const statsByVendor = await Order.aggregate([
+        { $unwind: "$vendorItems" },
+        { $match: { "vendorItems.vendorId": { $in: vendorIds } } },
+        {
+            $group: {
+                _id: "$vendorItems.vendorId",
+                totalOrders: { $sum: 1 },
+                totalRevenue: { $sum: "$vendorItems.subtotal" }
+            }
+        }
+    ]);
+
+    const statsMap = new Map(
+        statsByVendor.map(stat => [String(stat._id), stat])
+    );
+
+    const vendorsWithStats = vendors.map(vendor => {
+        const stats = statsMap.get(String(vendor._id)) || { totalOrders: 0, totalRevenue: 0 };
+        return {
+            ...toApiVendor(vendor),
+            totalOrders: stats.totalOrders,
+            totalRevenue: stats.totalRevenue,
+            totalEarnings: stats.totalRevenue, // Following the frontend logic for VendorAnalytics
+            pendingEarnings: 0, // Placeholder mapping to avoid breaking frontend immediately if used
+            paidEarnings: 0
+        };
+    });
+
     res.status(200).json(
         new ApiResponse(200, {
-            vendors: vendors.map(toApiVendor),
+            vendors: vendorsWithStats,
             total,
             page: numericPage,
             pages: Math.ceil(total / numericLimit)
@@ -126,6 +158,28 @@ export const updateCommissionRate = asyncHandler(async (req, res) => {
 
     const vendor = await Vendor.findByIdAndUpdate(req.params.id, { commissionRate: dbCommissionRate }, { new: true });
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const message = `Your commission rate has been updated to ${dbCommissionRate.toFixed(1)}%.`;
+
+    await createNotification({
+        recipientId: vendor._id,
+        recipientType: 'vendor',
+        title: 'Commission Rate Updated',
+        message,
+        type: 'system',
+    });
+
+    try {
+        await sendEmail({
+            to: vendor.email,
+            subject: 'Commission Rate Updated',
+            text: message,
+            html: `<p>${message}</p>`,
+        });
+    } catch (err) {
+        console.warn(`Vendor commission email failed for ${vendor.email}: ${err.message}`);
+    }
+
     res.status(200).json(new ApiResponse(200, toApiVendor(vendor), 'Commission rate updated.'));
 });
 

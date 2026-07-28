@@ -149,7 +149,7 @@ const Earnings = () => {
           {/* Earnings Summary Cards - Show on Overview tab */}
           {activeTab === "overview" && (
             <div className="mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-sm border border-green-200">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-green-700 font-medium">
@@ -206,6 +206,21 @@ const Earnings = () => {
                     {earningsSummary ? earningsSummary.totalOrders : 0}
                   </p>
                   <p className="text-xs text-purple-600 mt-1">With earnings</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-6 shadow-sm border border-pink-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-pink-700 font-medium">
+                      Commission Rate
+                    </p>
+                    <FiFileText className="text-pink-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-pink-800">
+                    {vendor?.commissionRate !== undefined 
+                      ? `${(vendor.commissionRate * 100).toFixed(1)}%` 
+                      : "N/A"}
+                  </p>
+                  <p className="text-xs text-pink-600 mt-1">Platform fee</p>
                 </div>
               </div>
             </div>

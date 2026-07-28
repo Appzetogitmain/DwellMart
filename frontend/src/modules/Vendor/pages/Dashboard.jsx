@@ -150,10 +150,16 @@ const VendorDashboard = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
             Dashboard
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600 mb-3">
             Welcome back, {vendor?.storeName || vendor?.name}! Here's your store
             overview.
           </p>
+          {vendor?.commissionRate !== undefined && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-pink-50 border border-pink-200 text-pink-700 rounded-full text-sm font-medium">
+              <span>Platform Commission:</span>
+              <span className="font-bold">{(vendor.commissionRate * 100).toFixed(1)}%</span>
+            </div>
+          )}
         </div>
       </div>
 

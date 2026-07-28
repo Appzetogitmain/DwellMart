@@ -159,6 +159,23 @@ const StoreSettings = () => {
                     placeholder="Brief description of your store"
                   />
                 </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Platform Commission Rate
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      disabled
+                      value={vendor?.commissionRate !== undefined ? `${(vendor.commissionRate * 100).toFixed(1)}%` : "N/A"}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-medium cursor-not-allowed"
+                    />
+                    <div className="mt-1 text-xs text-gray-500">
+                      This is the fee percentage deducted by the platform from your earnings.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
