@@ -119,7 +119,8 @@ const MobileRegister = () => {
       toast.success(t('Registration successful!'));
       navigate('/verification', { state: { email: data.email } });
     } catch (error) {
-      toast.error(error.message || t('Registration failed. Please try again.'));
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      toast.error(errorMessage || t('Registration failed. Please try again.'));
     }
   };
 
