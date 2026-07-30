@@ -13,9 +13,10 @@ import LongPressMenu from "../../modules/UserApp/components/Mobile/LongPressMenu
 import FlyingItem from "../../modules/UserApp/components/Mobile/FlyingItem";
 import { getVariantSignature } from "../utils/variant";
 import { usePageTranslation } from "../../hooks/usePageTranslation";
+import { Card, Button, Badge } from "./ui";
 
 
-const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
+const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant = 'default' }) => {
   const navigate = useNavigate();
   const { getTranslatedText: t } = usePageTranslation([
     "Please select variant on product page",
@@ -188,170 +189,164 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
   // Calculate sold percentage for flash sale (mock logic)
   const soldPercentage = product.stockQuantity ? Math.min(95, Math.floor(100 - (product.stockQuantity / 2))) : 75;
 
+  const isPremium = variant === 'premium';
+  const isCompact = variant === 'compact';
+  const isMinimal = variant === 'minimal';
+
+  const cardVariantStyle = isPremium
+    ? 'glass'
+    : isMinimal
+    ? 'bordered'
+    : 'default';
+
   return (
     <>
-      <motion.div
+      <Card
+        as={motion.div}
+        variant={cardVariantStyle}
+        hoverable
+        padding="none"
         whileTap={{ scale: 0.98 }}
         whileHover={{ y: -4 }}
-        style={{ willChange: "transform", transform: "translateZ(0)" }}
-        className={`glass-card rounded-xl overflow-hidden group cursor-pointer h-full flex flex-col hover:shadow-lg transition-all duration-300 ${isFlashSale ? "border border-[#ffc101]/40 bg-amber-50/10" : ""
-          }`}
-        {...longPressHandlers}>
+        className={`group cursor-pointer h-full flex flex-col ${
+          isPremium
+            ? 'bg-zinc-950/90 border-[#D4AF37]/50 shadow-amber-500/10'
+            : isFlashSale
+            ? 'border-borderToken-goldAccent bg-amber-50/10'
+            : ''
+        }`}
+        {...longPressHandlers}
+      >
         <div className="relative">
           {/* Favorite Icon */}
           <div className="absolute top-2 right-2 z-10">
             <button
               onClick={handleFavorite}
-              className="p-1.5 glass rounded-full shadow-lg transition-all duration-300 group hover:bg-white">
+              className="p-1.5 bg-surface-card/80 backdrop-blur-md rounded-full shadow-lg transition-all duration-300 group hover:bg-surface-card"
+              aria-label="Add to wishlist"
+            >
               <FiHeart
-                className={`text-xs md:text-sm transition-all duration-300 ${isFavorite
-                  ? "text-red-500 fill-red-500 scale-110"
-                  : "text-gray-400 group-hover:text-gray-600"
-                  }`}
+                className={`text-xs md:text-sm transition-all duration-300 ${
+                  isFavorite
+                    ? 'text-red-500 fill-red-500 scale-110'
+                    : 'text-textColor-muted group-hover:text-textColor-primary'
+                }`}
               />
             </button>
           </div>
 
           {/* Product Image */}
           <Link to={productLink} className="block">
-            <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center overflow-hidden relative group-hover:bg-gray-200/50 transition-colors">
+            <div className="w-full aspect-[4/3] bg-surface-background flex items-center justify-center overflow-hidden relative group-hover:bg-borderToken-light/50 transition-colors">
               {product.originalPrice && (
-                <div className={`absolute top-0 left-0 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-br-lg z-10 shadow-sm ${isFlashSale ? "bg-[#ffc101] text-black font-extrabold" : "bg-red-500"}`}>
-                  {Math.round(
-                    ((product.originalPrice - product.price) /
-                      product.originalPrice) *
-                    100
-                  )}% {t("OFF")}
+                <div className="absolute top-2 left-2 z-10">
+                  <Badge variant={isFlashSale || isPremium ? 'gold' : 'hot'}>
+                    {Math.round(
+                      ((product.originalPrice - product.price) / product.originalPrice) * 100
+                    )}% {t('OFF')}
+                  </Badge>
                 </div>
               )}
               {isFlashSale && (
-                <div className="absolute top-0 right-0 p-1">
-                  <div className="bg-black text-[#ffc101] border border-[#ffc101]/30 text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-tighter">
-                    {t("Hot Deal")}
-                  </div>
+                <div className="absolute top-2 right-10 z-10">
+                  <Badge variant="hot">{t('Hot Deal')}</Badge>
                 </div>
               )}
               <LazyImage
                 src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                fallbackImage={getPlaceholderImage(400, 400, "Product Image")}
+                fallbackImage={getPlaceholderImage(400, 400, 'Product Image')}
               />
             </div>
           </Link>
         </div>
 
         {/* Product Info */}
-        <div className="p-1 md:p-3 lg:p-2 flex-1 flex flex-col bg-white">
+        <div className={`p-3.5 flex-1 flex flex-col ${isPremium ? 'bg-zinc-950/95 border-t border-[#D4AF37]/20' : 'bg-surface-card'}`}>
           <Link to={productLink} className="block lg:h-5">
-            <h3 className="font-bold text-gray-800 mb-0 line-clamp-2 md:line-clamp-1 text-[11px] md:text-sm transition-colors group-hover:text-primary-600 leading-none">
+            <h3 className={`font-bold mb-0 line-clamp-2 md:line-clamp-1 text-[11px] md:text-sm transition-colors group-hover:text-brand-primary leading-none ${isPremium ? 'text-white' : 'text-textColor-primary'}`}>
               {product.name}
             </h3>
           </Link>
-          <p className="text-[8px] md:text-xs text-gray-400 mb-0 font-medium lg:h-3 leading-none truncate">
+          <p className="text-[10px] md:text-xs text-textColor-muted mb-1 font-medium lg:h-3 leading-none truncate">
             {product.unit}
           </p>
 
-
-
           {/* Rating */}
-          <div className="flex items-center justify-between mb-0.5">
+          <div className="flex items-center justify-between mb-1">
             {!!product.rating && !hideRating && (
               <div className="flex items-center gap-1">
-                <div className="flex items-center bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
-                  <span className="text-[9px] md:text-xs font-bold text-yellow-700 mr-0.5">{product.rating}</span>
-                  <FiStar className="text-[8px] md:text-[10px] text-yellow-500 fill-yellow-500" />
+                <div className="flex items-center bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/30">
+                  <span className="text-[10px] md:text-xs font-bold text-amber-500 mr-0.5">{product.rating}</span>
+                  <FiStar className="text-[9px] md:text-[10px] text-amber-400 fill-amber-400" />
                 </div>
-                <span className="text-[9px] md:text-xs text-gray-400 font-medium hidden md:inline">
+                <span className="text-[9px] md:text-xs text-textColor-muted font-medium hidden md:inline">
                   ({product.reviewCount || 0})
                 </span>
               </div>
             )}
             {isFlashSale && (
-              <span className="text-[9px] font-bold text-amber-700 uppercase tracking-tighter hidden md:inline">
-                {t("Ending Soon")}
+              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-tighter hidden md:inline">
+                {t('Ending Soon')}
               </span>
             )}
           </div>
 
           {/* Flash Sale Progress Bar */}
           {isFlashSale && (
-            <div className="mb-1 space-y-0.5">
+            <div className="mb-2 space-y-0.5">
               <div className="flex justify-between text-[8px] md:text-[10px] font-bold">
-                <span className="text-gray-500 uppercase">{t("Available")}</span>
-                <span className="text-amber-800">{soldPercentage}% {t("Sold")}</span>
+                <span className="text-textColor-muted uppercase">{t('Available')}</span>
+                <span className="text-brand-primary">{soldPercentage}% {t('Sold')}</span>
               </div>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-borderToken-light rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${soldPercentage}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-[#ffc101] to-amber-500"
+                  className="h-full bg-brand-primary"
                 />
               </div>
             </div>
           )}
 
-          <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 mb-0.5 mt-auto leading-none">
-            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${isFlashSale ? "text-[#b38600]" : "text-gray-900"}`} />
+          <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 mb-2 mt-auto leading-none">
+            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${isPremium || isFlashSale ? 'text-brand-primary' : 'text-textColor-primary'}`} />
             {product.originalPrice && (
-              <Price amount={product.originalPrice} className="text-[9px] md:text-xs text-gray-400 line-through font-medium leading-none mb-0.5" />
+              <Price amount={product.originalPrice} className="text-[9px] md:text-xs text-textColor-muted line-through font-medium leading-none mb-0.5" />
             )}
           </div>
 
-          {/* Add/Remove Button */}
+          {/* Add/Remove Button using Primitive Button */}
           {isInCart ? (
-            <motion.button
-              type="button"
+            <Button
+              variant="danger"
+              size="sm"
+              fullWidth
               onClick={handleRemoveFromCart}
-              whileTap={{ scale: 0.95 }}
-              className="w-full py-1.5 md:py-2.5 lg:py-2 rounded-xl font-bold text-xs md:text-sm bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-all duration-300 flex items-center justify-center gap-1.5">
-              <FiTrash2 className="text-xs md:text-base" />
-              <span>{t("Remove")}</span>
-            </motion.button>
+              leftIcon={<FiTrash2 />}
+            >
+              {t('Remove')}
+            </Button>
           ) : (
-            <motion.button
+            <Button
               ref={buttonRef}
-              type="button"
+              variant="primary"
+              size="sm"
+              fullWidth
+              disabled={product.stock === 'out_of_stock'}
+              isLoading={isAdding}
               onClick={handleAddToCart}
-              disabled={product.stock === "out_of_stock" || isAdding}
-              whileTap={{ scale: 0.95 }}
-              animate={
-                isAdding
-                  ? {
-                    scale: [1, 1.1, 1],
-                  }
-                  : {}
-              }
-              style={{ willChange: "transform", transform: "translateZ(0)" }}
-              className={`w-full py-1 md:py-2.5 lg:py-2 rounded-xl font-extrabold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${product.stock === "out_of_stock"
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                : isFlashSale
-                  ? "bg-gradient-to-r from-[#ffc101] via-[#f5b800] to-[#e6ac00] text-black shadow-md hover:shadow-amber-200 hover:-translate-y-0.5"
-                  : "gradient-green text-white shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                }`}>
-              <motion.div
-                animate={
-                  isAdding
-                    ? {
-                      rotate: [0, -10, 10, -10, 0],
-                    }
-                    : {}
-                }
-                transition={{ duration: 0.5 }}>
-                <FiShoppingBag className="text-xs md:text-base transition-transform" />
-              </motion.div>
-              <span>
-                {product.stock === "out_of_stock"
-                  ? t("Out of Stock")
-                  : isAdding
-                    ? t("Adding...")
-                    : <><span className="md:hidden">{t("Add")}</span><span className="hidden md:inline">{t("Add to Cart")}</span></>}
-              </span>
-            </motion.button>
+              leftIcon={<FiShoppingBag />}
+            >
+              {product.stock === 'out_of_stock'
+                ? t('Out of Stock')
+                : t('Add to Cart')}
+            </Button>
           )}
         </div>
-      </motion.div>
+      </Card>
 
       <LongPressMenu
         isOpen={showLongPressMenu}

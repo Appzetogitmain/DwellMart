@@ -17,6 +17,7 @@ import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { loginLogo } from '../../../shared/utils/imagePaths';
+import { Input, Button, Card } from '../../../shared/components/ui';
 
 const MobileLogin = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -115,155 +116,125 @@ const MobileLogin = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="min-h-[85vh] w-full flex flex-col justify-center items-center px-4 py-6 sm:py-12 bg-gradient-to-b from-gray-50/50 via-white to-gray-50">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="w-full max-w-md"
-          >
-            {/* Main Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100 relative">
-              
-              {/* Back Button */}
-              <button
-                onClick={() => navigate(-1)}
-                className="mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-all text-xs font-semibold border border-gray-200/80"
-              >
-                <FiArrowLeft className="text-sm" />
-                <span>{t('Back')}</span>
-              </button>
+      <div className="min-h-[85vh] w-full flex flex-col justify-center items-center px-4 py-6 sm:py-12 bg-surface-background">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-md"
+        >
+          {/* Main Card */}
+          <Card variant="elevated" padding="lg" className="relative">
+            {/* Back Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<FiArrowLeft />}
+              onClick={() => navigate(-1)}
+              className="mb-4"
+            >
+              {t('Back')}
+            </Button>
 
-              {/* Logo & Header */}
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="flex justify-center mb-4">
-                  <div className="bg-[#0B132A] px-5 py-3 rounded-2xl border border-amber-400/20 shadow-md inline-flex items-center justify-center">
-                    <img
-                      src={loginLogo}
-                      alt="DwellMart Logo"
-                      className="h-10 sm:h-12 w-auto object-contain drop-shadow-md"
-                    />
-                  </div>
+            {/* Logo & Header */}
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="flex justify-center mb-4">
+                <div className="bg-[#0B132A] px-5 py-3 rounded-2xl border border-amber-400/20 shadow-md inline-flex items-center justify-center">
+                  <img
+                    src={loginLogo}
+                    alt="DwellMart Logo"
+                    className="h-10 sm:h-12 w-auto object-contain drop-shadow-md"
+                  />
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-1">
-                  {t('Welcome Back')}
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-500 font-medium">
-                  {t('Login to access your account')}
-                </p>
               </div>
-
-              {/* Form */}
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
-                {/* Email Address */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    {t('Email Address')}
-                  </label>
-                  <div className="relative">
-                    <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                    <input
-                      type="email"
-                      {...register('email', {
-                        required: t('Email is required'),
-                        validate: (value) =>
-                          !value || isValidEmail(value) || t('Please enter a valid email'),
-                      })}
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        errors.email
-                          ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                          : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                      } outline-none`}
-                      placeholder={t('your.email@example.com')}
-                    />
-                  </div>
-                  {errors.email && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.email.message}</p>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    {t('Password')}
-                  </label>
-                  <div className="relative">
-                    <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      {...register('password', {
-                        required: t('Password is required'),
-                        minLength: {
-                          value: 6,
-                          message: t('Password must be at least 6 characters'),
-                        },
-                      })}
-                      className={`w-full pl-10 pr-11 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        errors.password
-                          ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                          : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                      } outline-none`}
-                      placeholder={t('Enter your password')}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                    >
-                      {showPassword ? <FiEyeOff className="text-base" /> : <FiEye className="text-base" />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.password.message}</p>
-                  )}
-                </div>
-
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between pt-1">
-                  <label className="flex items-center cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 accent-emerald-600"
-                    />
-                    <span className="ml-2 text-xs text-gray-600 font-medium">{t('Remember me')}</span>
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-xs text-emerald-600 hover:text-emerald-700 font-bold hover:underline transition-all"
-                  >
-                    {t('Forget password?')}
-                  </Link>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm text-white gradient-green shadow-md hover:shadow-emerald-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-2 active:scale-[0.99]"
-                >
-                  {isLoading ? t('Logging in...') : t('Log In')}
-                </button>
-              </form>
-
-              {/* Sign Up Link */}
-              <div className="mt-6 text-center pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 font-medium">
-                  {t("Don't have an account?")}{' '}
-                  <Link
-                    to="/register"
-                    className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline transition-all"
-                  >
-                    {t('Sign Up')}
-                  </Link>
-                </p>
-              </div>
-
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-1 text-textColor-primary">
+                {t('Welcome Back')}
+              </h1>
+              <p className="text-xs sm:text-sm text-textColor-muted font-medium">
+                {t('Login to access your account')}
+              </p>
             </div>
-          </motion.div>
-        </div>
-      </MobileLayout>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+              {/* Email Address */}
+              <Input
+                label={t('Email Address')}
+                type="email"
+                placeholder={t('your.email@example.com')}
+                leftIcon={<FiMail />}
+                error={errors.email?.message}
+                {...register('email', {
+                  required: t('Email is required'),
+                  validate: (value) =>
+                    !value || isValidEmail(value) || t('Please enter a valid email'),
+                })}
+              />
+
+              {/* Password */}
+              <Input
+                label={t('Password')}
+                type="password"
+                placeholder={t('Enter your password')}
+                leftIcon={<FiLock />}
+                error={errors.password?.message}
+                {...register('password', {
+                  required: t('Password is required'),
+                  minLength: {
+                    value: 6,
+                    message: t('Password must be at least 6 characters'),
+                  },
+                })}
+              />
+
+              {/* Remember Me & Forgot Password */}
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-brand-primary border-borderToken-default rounded focus:ring-brand-primary accent-brand-primary"
+                  />
+                  <span className="ml-2 text-xs text-textColor-secondary font-medium">{t('Remember me')}</span>
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-brand-primary hover:underline font-bold transition-all"
+                >
+                  {t('Forget password?')}
+                </Link>
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                isLoading={isLoading}
+                className="mt-2"
+              >
+                {t('Log In')}
+              </Button>
+            </form>
+
+            {/* Sign Up Link */}
+            <div className="mt-6 text-center pt-4 border-t border-borderToken-light">
+              <p className="text-xs text-textColor-muted font-medium">
+                {t("Don't have an account?")}{' '}
+                <Link
+                  to="/register"
+                  className="text-brand-primary font-bold hover:underline transition-all"
+                >
+                  {t('Sign Up')}
+                </Link>
+              </p>
+            </div>
+
+          </Card>
+        </motion.div>
+      </div>
+    </MobileLayout>
     </PageTransition>
   );
 };

@@ -200,11 +200,14 @@ import VendorPickupLocations from "./modules/Vendor/pages/PickupLocations";
 import VendorReports from "./modules/Vendor/pages/Reports";
 import VendorLanguageSettings from "./modules/Vendor/pages/LanguageSettings";
 import VendorSubscriptionManagement from "./modules/Vendor/pages/SubscriptionManagement";
+import DesignSystemShowcase from "./shared/components/ui/Showcase/DesignSystemShowcase";
+import { ToastProvider } from "./shared/components/ui";
 
 // Inner component that has access to useLocation
 const AppRoutes = () => {
   return (
     <Routes>
+      <Route path="/dev/ui" element={<DesignSystemShowcase />} />
       <Route
         path="/"
         element={
@@ -720,46 +723,47 @@ const AppRoutes = () => {
 function App() {
   return (
     <ThemeProvider defaultThemeId="default">
-      <ErrorBoundary>
-        <Router
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}>
-          <AppBootstrap />
-          <ScrollToTop />
-          <AppRoutes />
-          <CartDrawer />
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: "#212121",
-                color: "#fff",
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#388E3C",
-                  secondary: "#fff",
-                },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: "#FF6161",
-                  secondary: "#fff",
-                },
-              },
+      <ToastProvider position="top-right" maxToasts={5}>
+        <ErrorBoundary>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
             }}
-          />
-        </Router>
-      </ErrorBoundary>
+          >
+            <AppBootstrap />
+            <ScrollToTop />
+            <AppRoutes />
+            <CartDrawer />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: "#212121",
+                  color: "#fff",
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: "#388E3C",
+                    secondary: "#fff",
+                  },
+                },
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: "#FF6161",
+                    secondary: "#fff",
+                  },
+                },
+              }}
+            />
+          </Router>
+        </ErrorBoundary>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
-
-
