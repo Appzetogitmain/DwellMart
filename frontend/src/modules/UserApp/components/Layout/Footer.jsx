@@ -72,6 +72,7 @@ const Footer = () => {
 
   const customerServiceLinks = [
     { label: "Contact Us", path: "/contact" },
+    { label: "Submit Feedback", path: "/feedback" },
     { label: "Track Your Order", path: "/orders" },
     { label: "Returns & Exchanges", path: "/returns" },
     { label: "Shipping Policy", path: "/shipping" },

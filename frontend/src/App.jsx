@@ -80,6 +80,7 @@ import AllNotifications from "./modules/Admin/pages/notifications/AllNotificatio
 import LiveChat from "./modules/Admin/pages/support/LiveChat";
 import TicketTypes from "./modules/Admin/pages/support/TicketTypes";
 import Tickets from "./modules/Admin/pages/support/Tickets";
+import Feedbacks from "./modules/Admin/pages/Feedbacks";
 // Reports child pages
 import SalesReport from "./modules/Admin/pages/reports/SalesReport";
 import InventoryReport from "./modules/Admin/pages/reports/InventoryReport";
@@ -138,6 +139,7 @@ import MobileFlashSale from "./modules/UserApp/pages/FlashSale";
 import MobileNewArrivals from "./modules/UserApp/pages/NewArrivals";
 import MobileCampaignSale from "./modules/UserApp/pages/CampaignSale";
 import UserContactUs from "./modules/UserApp/pages/ContactUs";
+import Feedback from "./modules/UserApp/pages/Feedback";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
@@ -470,6 +472,7 @@ const AppRoutes = () => {
       {/* Static content pages — powered by admin-editable content */}
       <Route path="/about" element={<RouteWrapper><StaticPage slug="about" /></RouteWrapper>} />
       <Route path="/contact" element={<RouteWrapper><UserContactUs /></RouteWrapper>} />
+      <Route path="/feedback" element={<RouteWrapper><Feedback /></RouteWrapper>} />
       <Route path="/terms" element={<RouteWrapper><StaticPage slug="terms" /></RouteWrapper>} />
       <Route path="/privacy" element={<RouteWrapper><StaticPage slug="privacy" /></RouteWrapper>} />
       <Route path="/returns" element={<RouteWrapper><StaticPage slug="returns" /></RouteWrapper>} />
@@ -561,6 +564,7 @@ const AppRoutes = () => {
         <Route path="support/live-chat" element={<LiveChat />} />
         <Route path="support/ticket-types" element={<TicketTypes />} />
         <Route path="support/tickets" element={<Tickets />} />
+        <Route path="support/feedbacks" element={<AdminRouteGuard permission="support.view"><Feedbacks /></AdminRouteGuard>} />
         <Route path="reports" element={<SalesReport />} />
         <Route path="reports/sales-report" element={<SalesReport />} />
         <Route path="reports/inventory-report" element={<InventoryReport />} />

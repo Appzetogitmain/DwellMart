@@ -20,6 +20,7 @@ import * as staticPagesController from '../controllers/staticPages.controller.js
 import * as settingsController from '../controllers/settings.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
+import * as feedbackController from '../controllers/feedback.controller.js';
 import {
     downloadExcelTemplate,
     downloadCsvTemplate,
@@ -205,6 +206,10 @@ router.get('/support/ticket-types', ...perm(PERMISSIONS.SUPPORT_VIEW), supportCo
 router.post('/support/ticket-types', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.createTicketType);
 router.put('/support/ticket-types/:id', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.updateTicketType);
 router.delete('/support/ticket-types/:id', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), supportController.deleteTicketType);
+
+// ─── Feedback ───────────────────────────────────────────────────────────────
+router.get('/feedbacks', ...perm(PERMISSIONS.SUPPORT_VIEW), feedbackController.getAllFeedbacks);
+router.patch('/feedbacks/:id/status', ...perm(PERMISSIONS.SUPPORT_UPDATE_STATUS), feedbackController.updateFeedbackStatus);
 
 // ─── Product Reviews ──────────────────────────────────────────────────────────
 router.get('/reviews', ...perm(PERMISSIONS.PRODUCTS_VIEW), reviewController.getAllReviews);

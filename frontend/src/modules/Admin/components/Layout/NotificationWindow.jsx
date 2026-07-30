@@ -51,8 +51,17 @@ const NotificationWindow = ({ isOpen, onClose, position = 'right' }) => {
   const handleNotificationClick = (notification) => {
     markAsRead(notification._id);
     const orderId = notification.orderId || notification.data?.orderId;
-    if (orderId) {
+    const feedbackId = notification.feedbackId || notification.data?.feedbackId;
+    const vendorId = notification.vendorId || notification.data?.vendorId;
+
+    if (feedbackId || notification.title?.toLowerCase().includes('feedback')) {
+      navigate('/admin/support/feedbacks');
+      onClose();
+    } else if (orderId) {
       navigate('/admin/orders');
+      onClose();
+    } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
+      navigate('/admin/vendors');
       onClose();
     }
   };
