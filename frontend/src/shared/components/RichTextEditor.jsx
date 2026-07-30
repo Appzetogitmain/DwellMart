@@ -13,18 +13,28 @@ import {
   FiRotateCcw,
 } from 'react-icons/fi';
 
+const ensureHtml = (text) => {
+  if (!text) return '';
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return text
+    .split(/\r?\n/)
+    .map((line) => (line.trim() ? `<p>${line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : '<br/>'))
+    .join('');
+};
+
 const RichTextEditor = ({ value, onChange, placeholder = 'Write policy content here...' }) => {
   const editorRef = useRef(null);
   const [isSourceMode, setIsSourceMode] = useState(false);
-  const [htmlContent, setHtmlContent] = useState(value || '');
+  const [htmlContent, setHtmlContent] = useState(ensureHtml(value || ''));
   const isInternalChange = useRef(false);
 
   // Sync value from props when changed externally
   useEffect(() => {
     if (!isInternalChange.current) {
-      setHtmlContent(value || '');
+      const formatted = ensureHtml(value || '');
+      setHtmlContent(formatted);
       if (editorRef.current && !isSourceMode) {
-        editorRef.current.innerHTML = value || '';
+        editorRef.current.innerHTML = formatted;
       }
     }
     isInternalChange.current = false;
@@ -41,8 +51,13 @@ const RichTextEditor = ({ value, onChange, placeholder = 'Write policy content h
   };
 
   // Execute formatting commands
-  const execCmd = (command, value = null) => {
-    document.execCommand(command, false, value);
+  const execCmd = (command, cmdValue = null) => {
+    try {
+      document.execCommand('styleWithCSS', false, true);
+    } catch {
+      // Fallback if styleWithCSS is not supported in browser
+    }
+    document.execCommand(command, false, cmdValue);
     handleInput();
     if (editorRef.current) {
       editorRef.current.focus();
