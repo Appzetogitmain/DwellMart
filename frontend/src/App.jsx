@@ -5,6 +5,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { ThemeProvider } from "./theme";
 
 import CartDrawer from "./shared/components/Cart/CartDrawer";
 import ProtectedRoute from "./shared/components/Auth/ProtectedRoute";
@@ -718,42 +719,44 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <ErrorBoundary>
-      <Router
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}>
-        <AppBootstrap />
-        <ScrollToTop />
-        <AppRoutes />
-        <CartDrawer />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: "#212121",
-              color: "#fff",
-            },
-            success: {
+    <ThemeProvider defaultThemeId="default">
+      <ErrorBoundary>
+        <Router
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}>
+          <AppBootstrap />
+          <ScrollToTop />
+          <AppRoutes />
+          <CartDrawer />
+          <Toaster
+            position="top-right"
+            toastOptions={{
               duration: 3000,
-              iconTheme: {
-                primary: "#388E3C",
-                secondary: "#fff",
+              style: {
+                background: "#212121",
+                color: "#fff",
               },
-            },
-            error: {
-              duration: 4000,
-              iconTheme: {
-                primary: "#FF6161",
-                secondary: "#fff",
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: "#388E3C",
+                  secondary: "#fff",
+                },
               },
-            },
-          }}
-        />
-      </Router>
-    </ErrorBoundary>
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: "#FF6161",
+                  secondary: "#fff",
+                },
+              },
+            }}
+          />
+        </Router>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 

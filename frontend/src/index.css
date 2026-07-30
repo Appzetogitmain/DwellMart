@@ -2,6 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Default Theme CSS Variables Fallback */
+  --color-brand-primary: #D4AF37;
+  --color-brand-primary-hover: #C49F27;
+  --color-brand-primary-active: #A4821A;
+  --color-brand-secondary: #0B0F17;
+  --color-brand-secondary-hover: #161D2B;
+  --color-brand-accent: #F59E0B;
+
+  --color-surface-background: #F8FAFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-card-elevated: #FFFFFF;
+  --color-surface-header: #0B0F17;
+  --color-surface-footer: #090D16;
+  --color-surface-drawer: #FFFFFF;
+  --color-surface-modal: #FFFFFF;
+  --color-surface-input: #FFFFFF;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+  --color-text-inverse: #FFFFFF;
+  --color-text-brand: #B48A1D;
+
+  --color-border-default: #E2E8F0;
+  --color-border-light: #F1F5F9;
+  --color-border-dark: #334155;
+  --color-border-focus: #D4AF37;
+  --color-border-gold-accent: rgba(212, 175, 55, 0.3);
+
+  --color-status-success: #10B981;
+  --color-status-warning: #F59E0B;
+  --color-status-error: #EF4444;
+  --color-status-info: #3B82F6;
+
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-input: 12px;
+  --radius-modal: 16px;
+  --radius-badge: 9999px;
+
+  --shadow-card: 0 8px 24px 0 rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 16px 36px 0 rgba(0, 0, 0, 0.12);
+  --shadow-dropdown: 0 12px 32px 0 rgba(0, 0, 0, 0.15);
+  --shadow-modal: 0 24px 48px -12px rgba(0, 0, 0, 0.25);
+  --shadow-button: 0 4px 14px 0 rgba(212, 175, 55, 0.25);
+  --shadow-focus: 0 0 0 3px rgba(212, 175, 55, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -20,7 +69,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #F8FAFC;
+  background: var(--color-surface-background, #F8FAFC);
+  color: var(--color-text-primary, #0F172A);
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
