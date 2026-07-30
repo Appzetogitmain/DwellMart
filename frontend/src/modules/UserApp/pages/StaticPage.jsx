@@ -112,13 +112,20 @@ const StaticPage = ({ slug: slugProp }) => {
 
         {/* Content */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-8 py-8">
-          <div className="prose prose-gray max-w-none">
-            {page.content.split('\n').map((line, i) => (
-              line.trim() === ''
-                ? <br key={i} />
-                : <p key={i} className="text-gray-700 leading-relaxed mb-0">{line}</p>
-            ))}
-          </div>
+          {/<[a-z][\s\S]*>/i.test(page.content) ? (
+            <div
+              className="prose prose-slate max-w-none text-gray-800 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: page.content }}
+            />
+          ) : (
+            <div className="prose prose-gray max-w-none">
+              {page.content.split('\n').map((line, i) => (
+                line.trim() === ''
+                  ? <br key={i} />
+                  : <p key={i} className="text-gray-700 leading-relaxed mb-0">{line}</p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
