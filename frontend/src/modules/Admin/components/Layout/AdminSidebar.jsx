@@ -127,6 +127,7 @@ export const CHILD_PERMISSION_MAP = {
   "Live Chat": "support.view",
   "Ticket Types": "support.update_status",
   "Tickets": "support.view",
+  "Feedbacks": "support.view",
 
   // Reports
   "Sales Report": "reports.view",
@@ -202,6 +203,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Live Chat": "/admin/support/live-chat",
       "Ticket Types": "/admin/support/ticket-types",
       Tickets: "/admin/support/tickets",
+      Feedbacks: "/admin/support/feedbacks",
     },
     "/admin/reports": {
       "Sales Report": "/admin/reports/sales-report",

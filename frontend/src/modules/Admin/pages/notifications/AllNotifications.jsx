@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiBell, FiCheck, FiChevronDown } from "react-icons/fi";
 import { useNotificationStore } from "../../store/notificationStore";
 import { formatDateTime } from "../../utils/adminHelpers";
 
 const AllNotifications = () => {
+  const navigate = useNavigate();
   const {
     notifications,
     unreadCount,
@@ -15,6 +17,21 @@ const AllNotifications = () => {
     markAsRead,
     markAllAsRead,
   } = useNotificationStore();
+
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification._id);
+    const orderId = notification.orderId || notification.data?.orderId;
+    const feedbackId = notification.feedbackId || notification.data?.feedbackId;
+    const vendorId = notification.vendorId || notification.data?.vendorId;
+
+    if (feedbackId || notification.title?.toLowerCase().includes('feedback')) {
+      navigate('/admin/support/feedbacks');
+    } else if (orderId) {
+      navigate('/admin/orders');
+    } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
+      navigate('/admin/vendors');
+    }
+  };
 
   useEffect(() => {
     fetchNotifications(1);
@@ -68,10 +85,11 @@ const AllNotifications = () => {
             {notifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`border rounded-lg p-4 transition-colors ${
+                onClick={() => handleNotificationClick(notification)}
+                className={`border rounded-lg p-4 transition-colors cursor-pointer ${
                   notification.isRead
-                    ? "border-gray-200 bg-white"
-                    : "border-blue-200 bg-blue-50/40"
+                    ? "border-gray-200 bg-white hover:bg-gray-50"
+                    : "border-blue-200 bg-blue-50/40 hover:bg-blue-50/70"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
