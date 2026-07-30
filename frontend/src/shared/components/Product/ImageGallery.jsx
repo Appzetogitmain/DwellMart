@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import LazyImage from "../LazyImage";
 import useSwipeGesture from "../../../modules/UserApp/hooks/useSwipeGesture";
 
@@ -68,10 +69,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
               src={imageArray[selectedIndex]}
               alt={`${productName} - Image ${selectedIndex + 1}`}
               className="w-full h-full object-contain mix-blend-multiply"
-              onError={(e) => {
-                e.target.src =
-                  "https://via.placeholder.com/500x500?text=Product+Image";
-              }}
+              fallbackImage="https://via.placeholder.com/500x500?text=Product+Image"
             />
           </motion.div>
 
@@ -115,10 +113,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                   src={image}
                   alt={`${productName} thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src =
-                      "https://via.placeholder.com/100x100?text=Thumbnail";
-                  }}
+                  fallbackImage="https://via.placeholder.com/100x100?text=Thumbnail"
                 />
               </button>
             ))}
@@ -127,62 +122,65 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
       </div>
 
       {/* Lightbox Modal */}
-      <AnimatePresence>
-        {isLightboxOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4"
-            onClick={() => setIsLightboxOpen(false)}>
-            <button
-              onClick={() => setIsLightboxOpen(false)}
-              className="absolute top-4 right-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors z-10">
-              <FiX className="text-2xl" />
-            </button>
-
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isLightboxOpen && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative max-w-7xl max-h-[90vh] w-full">
-              <img
-                src={imageArray[selectedIndex]}
-                alt={`${productName} - Full view`}
-                className="w-full h-full object-contain max-h-[90vh] rounded-lg"
-                onError={(e) => {
-                  e.target.src =
-                    "https://via.placeholder.com/800x800?text=Product+Image";
-                }}
-              />
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4"
+              onClick={() => setIsLightboxOpen(false)}>
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="absolute top-4 right-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors z-10">
+                <FiX className="text-2xl" />
+              </button>
 
-              {/* Navigation in Lightbox */}
-              {imageArray.length > 1 && (
-                <>
-                  <button
-                    onClick={handlePrevious}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors">
-                    <FiChevronLeft className="text-2xl" />
-                  </button>
-                  <button
-                    onClick={handleNext}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors">
-                    <FiChevronRight className="text-2xl" />
-                  </button>
-                </>
-              )}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative max-w-7xl max-h-[90vh] w-full">
+                <img
+                  src={imageArray[selectedIndex]}
+                  alt={`${productName} - Full view`}
+                  className="w-full h-full object-contain max-h-[90vh] rounded-lg"
+                  onError={(e) => {
+                    e.target.src =
+                      "https://via.placeholder.com/800x800?text=Product+Image";
+                  }}
+                />
 
-              {/* Image Counter */}
-              {imageArray.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-lg text-sm">
-                  {selectedIndex + 1} / {imageArray.length}
-                </div>
-              )}
+                {/* Navigation in Lightbox */}
+                {imageArray.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePrevious}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors">
+                      <FiChevronLeft className="text-2xl" />
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white transition-colors">
+                      <FiChevronRight className="text-2xl" />
+                    </button>
+                  </>
+                )}
+
+                {/* Image Counter */}
+                {imageArray.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-lg text-sm">
+                    {selectedIndex + 1} / {imageArray.length}
+                  </div>
+                )}
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 };

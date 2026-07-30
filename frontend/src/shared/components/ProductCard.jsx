@@ -235,9 +235,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
                 src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                onError={(e) => {
-                  e.target.src = getPlaceholderImage(400, 400, "Product Image");
-                }}
+                fallbackImage={getPlaceholderImage(400, 400, "Product Image")}
               />
             </div>
           </Link>

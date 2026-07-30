@@ -9,6 +9,7 @@ const LazyImage = ({
   placeholderWidth = 200,
   placeholderHeight = 200,
   placeholderText,
+  fallbackImage,
   ...props
 }) => {
   const [imageSrc, setImageSrc] = useState(null);
@@ -51,9 +52,9 @@ const LazyImage = ({
   };
 
   const handleError = (e) => {
-    // If we haven't tried a fallback yet, use the placeholder
+    // If we haven't tried a fallback yet, use the provided fallbackImage or the default placeholder
     if (!fallbackSrc) {
-      const placeholder = getPlaceholderImage(
+      const placeholder = fallbackImage || getPlaceholderImage(
         placeholderWidth,
         placeholderHeight,
         placeholderText || alt || "Image"

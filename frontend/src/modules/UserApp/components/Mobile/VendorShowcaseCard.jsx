@@ -24,9 +24,7 @@ const VendorShowcaseCard = ({ vendor, index = 0 }) => {
                 src={vendor.storeLogo}
                 alt={vendor.storeName || vendor.name}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(vendor.storeName || vendor.name)}&background=7C3AED&color=fff&size=128`;
-                }}
+                fallbackImage={`https://ui-avatars.com/api/?name=${encodeURIComponent(vendor.storeName || vendor.name)}&background=7C3AED&color=fff&size=128`}
               />
             ) : (
               <span className="text-2xl font-bold text-white">
