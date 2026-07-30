@@ -15,6 +15,17 @@ const DEFAULT_TITLES = {
   partner: 'Become a Partner',
 };
 
+const formatContent = (content) => {
+  if (!content) return '';
+  if (/<[a-z][\s\S]*>/i.test(content)) {
+    return content;
+  }
+  return content
+    .split(/\r?\n/)
+    .map((line) => (line.trim() ? `<p>${line}</p>` : '<br/>'))
+    .join('');
+};
+
 const StaticPage = ({ slug: slugProp }) => {
   // Accept slug either from props (used in App.jsx) or from URL params
   const params = useParams();
@@ -112,20 +123,10 @@ const StaticPage = ({ slug: slugProp }) => {
 
         {/* Content */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-8 py-8">
-          {/<[a-z][\s\S]*>/i.test(page.content) ? (
-            <div
-              className="prose prose-slate max-w-none text-gray-800 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: page.content }}
-            />
-          ) : (
-            <div className="prose prose-gray max-w-none">
-              {page.content.split('\n').map((line, i) => (
-                line.trim() === ''
-                  ? <br key={i} />
-                  : <p key={i} className="text-gray-700 leading-relaxed mb-0">{line}</p>
-              ))}
-            </div>
-          )}
+          <div
+            className="prose prose-slate max-w-none text-gray-800 leading-relaxed [&_font[color]]:!text-[attr(color)] [&_[style*='color']]:![color:inherit]"
+            dangerouslySetInnerHTML={{ __html: formatContent(page.content) }}
+          />
         </div>
       </div>
     </div>
