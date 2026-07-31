@@ -227,7 +227,7 @@ const SearchBar = () => {
     <div className="w-full relative" ref={searchRef}>
       <form onSubmit={handleSubmit} className="w-full">
         <div className="relative group">
-          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-[#ffc101] transition-colors z-10 text-base" />
+          <FiSearch className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-content-muted group-focus-within:text-brand-primary transition-colors z-10 text-base" />
           <input
             ref={inputRef}
             type="text"
@@ -237,7 +237,7 @@ const SearchBar = () => {
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
             placeholder="Search products..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700/80 rounded-full focus:outline-none focus:ring-2 focus:ring-[#ffc101]/50 focus:border-[#ffc101] transition-all text-sm text-gray-100 placeholder:text-gray-400 shadow-inner"
+            className="w-full pl-10 pr-4 py-2 bg-surface-header border border-border-strong rounded-full focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all text-sm text-content-inverse placeholder:text-content-muted shadow-inner"
           />
         </div>
       </form>
@@ -246,17 +246,17 @@ const SearchBar = () => {
       {showSuggestions && hasSuggestions && (
         <div
           ref={suggestionsRef}
-          className="absolute top-full left-0 mt-2 w-full min-w-[300px] sm:min-w-[360px] bg-white rounded-xl shadow-2xl border border-gray-200 z-[100] max-h-96 overflow-y-auto"
+          className="absolute top-full left-0 mt-2 w-full min-w-[300px] sm:min-w-[360px] bg-surface rounded-xl shadow-2xl border border-border z-[100] max-h-96 overflow-y-auto"
         >
           {/* Product Suggestions */}
           {searchQuery.trim() && suggestions.length > 0 && (
             <div className="p-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">Products</div>
+              <div className="px-3 py-2 text-xs font-semibold text-content-muted uppercase">Products</div>
               {suggestions.map((suggestion, index) => (
                 <button
                   key={suggestion.id}
                   onClick={() => handleSuggestionSelect(index)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors ${selectedIndex === index ? 'bg-primary-50' : ''
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors ${selectedIndex === index ? 'bg-brand-primary/10' : ''
                     }`}
                 >
                   <img
@@ -265,8 +265,8 @@ const SearchBar = () => {
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold text-gray-800">{suggestion.name}</p>
-                    <Price amount={suggestion.price} className="text-xs text-gray-600" />
+                    <p className="text-sm font-semibold text-content">{suggestion.name}</p>
+                    <Price amount={suggestion.price} className="text-xs text-content-secondary" />
                   </div>
                 </button>
               ))}
@@ -275,8 +275,8 @@ const SearchBar = () => {
 
           {/* Recent Searches */}
           {!searchQuery.trim() && recentSearches.length > 0 && (
-            <div className="p-2 border-t border-gray-200">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+            <div className="p-2 border-t border-border">
+              <div className="px-3 py-2 text-xs font-semibold text-content-muted uppercase flex items-center gap-2">
                 <FiClock className="text-xs" />
                 Recent Searches
               </div>
@@ -284,11 +284,11 @@ const SearchBar = () => {
                 <button
                   key={index}
                   onClick={() => handleSuggestionSelect(index)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left ${selectedIndex === index ? 'bg-primary-50' : ''
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors text-left ${selectedIndex === index ? 'bg-brand-primary/10' : ''
                     }`}
                 >
-                  <FiClock className="text-gray-400" />
-                  <span className="text-sm text-gray-700">{search}</span>
+                  <FiClock className="text-content-muted" />
+                  <span className="text-sm text-content-secondary">{search}</span>
                 </button>
               ))}
             </div>
@@ -296,8 +296,8 @@ const SearchBar = () => {
 
           {/* Popular Searches */}
           {!searchQuery.trim() && popularSearches.length > 0 && (
-            <div className="p-2 border-t border-gray-200">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase flex items-center gap-2">
+            <div className="p-2 border-t border-border">
+              <div className="px-3 py-2 text-xs font-semibold text-content-muted uppercase flex items-center gap-2">
                 <FiTrendingUp className="text-xs" />
                 Popular Searches
               </div>
@@ -305,11 +305,11 @@ const SearchBar = () => {
                 <button
                   key={index}
                   onClick={() => handleSuggestionSelect(recentSearches.length + index)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left ${selectedIndex === recentSearches.length + index ? 'bg-primary-50' : ''
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors text-left ${selectedIndex === recentSearches.length + index ? 'bg-brand-primary/10' : ''
                     }`}
                 >
-                  <FiTrendingUp className="text-gray-400" />
-                  <span className="text-sm text-gray-700">{search}</span>
+                  <FiTrendingUp className="text-content-muted" />
+                  <span className="text-sm text-content-secondary">{search}</span>
                 </button>
               ))}
             </div>
@@ -317,7 +317,7 @@ const SearchBar = () => {
 
           {/* No Results */}
           {searchQuery.trim() && suggestions.length === 0 && (
-            <div className="p-4 text-center text-gray-500 text-sm">
+            <div className="p-4 text-center text-content-muted text-sm">
               No products found for "{searchQuery}"
             </div>
           )}

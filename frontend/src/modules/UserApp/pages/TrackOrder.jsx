@@ -186,19 +186,19 @@ const MobileTrackOrder = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-          <div className="w-full pb-24">
+          <div className="w-full pb-24 min-h-screen bg-surface-muted">
             {/* Header */}
-            <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
+            <div className="px-4 py-4 bg-surface border-b border-border sticky top-1 z-30">
               <div className="flex items-center gap-3 mb-3">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-muted rounded-full transition-colors"
                 >
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  <FiArrowLeft className="text-xl text-content-secondary" />
                 </button>
                 <div className="flex-1">
-                   <h1 className="text-xl font-bold text-gray-800">{t('Track Order')}</h1>
-                  <p className="text-sm text-gray-600">{t('Order')} #{displayOrderId}</p>
+                   <h1 className="text-xl font-bold text-content">{t('Track Order')}</h1>
+                  <p className="text-sm text-content-secondary">{t('Order')} #{displayOrderId}</p>
                 </div>
                  <Badge variant={normalizedStatus}>{t(normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).toLowerCase())}</Badge>
               </div>
@@ -206,25 +206,25 @@ const MobileTrackOrder = () => {
 
             <div className="px-4 py-4 space-y-4">
               {/* Tracking Timeline */}
-              <div className="glass-card rounded-2xl p-4">
-                 <h2 className="text-base font-bold text-gray-800 mb-4">{t('Order Status')}</h2>
+              <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
+                 <h2 className="text-base font-bold text-content mb-4">{t('Order Status')}</h2>
                 <div className="space-y-4">
                   {steps.map((step, index) => {
                     const Icon = step.icon;
                     return (
                       <div key={index} className="flex items-start gap-4">
                         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${step.completed
-                          ? 'gradient-green text-white'
-                          : 'bg-gray-200 text-gray-500'
+                          ? 'bg-brand-primary text-black'
+                          : 'bg-surface-muted text-content-muted border border-border'
                           }`}>
                           <Icon className="text-lg" />
                         </div>
                         <div className="flex-1">
-                          <h3 className={`font-semibold text-sm mb-1 ${step.completed ? 'text-gray-800' : 'text-gray-500'
+                          <h3 className={`font-semibold text-sm mb-1 ${step.completed ? 'text-content' : 'text-content-muted'
                             }`}>
                             {step.label}
                           </h3>
-                          <p className="text-xs text-gray-500">{formatDate(step.date)}</p>
+                          <p className="text-xs text-content-muted">{formatDate(step.date)}</p>
                         </div>
                       </div>
                     );
@@ -234,21 +234,21 @@ const MobileTrackOrder = () => {
 
               {/* Tracking Number */}
               {order.trackingNumber && (
-                <div className="glass-card rounded-2xl p-4">
-                   <h2 className="text-base font-bold text-gray-800 mb-2">{t('Tracking Number')}</h2>
-                  <p className="text-lg font-bold text-primary-600">{order.trackingNumber}</p>
+                <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
+                   <h2 className="text-base font-bold text-content mb-2">{t('Tracking Number')}</h2>
+                  <p className="text-lg font-bold text-brand-primary">{order.trackingNumber}</p>
                 </div>
               )}
 
               {/* Shipping Address */}
               {hasShippingAddress ? (
-                <div className="glass-card rounded-2xl p-4">
-                  <h2 className="text-base font-bold text-gray-800 mb-3 flex items-center gap-2">
-                     <FiMapPin className="text-primary-600" />
+                <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
+                  <h2 className="text-base font-bold text-content mb-3 flex items-center gap-2">
+                     <FiMapPin className="text-brand-primary" />
                     {t('Shipping Address')}
                   </h2>
-                  <div className="text-sm text-gray-600 space-y-1">
-                     <p className="font-semibold text-gray-800">{shippingAddress.name || t('N/A')}</p>
+                  <div className="text-sm text-content-secondary space-y-1">
+                     <p className="font-semibold text-content">{shippingAddress.name || t('N/A')}</p>
                     <p>{shippingAddress.address || t('N/A')}</p>
                     <p>
                       {shippingAddress.city || t('N/A')}, {shippingAddress.state || t('N/A')}{' '}
@@ -259,12 +259,12 @@ const MobileTrackOrder = () => {
               ) : null}
 
               {/* Order Items */}
-              <div className="glass-card rounded-2xl p-4">
-                 <h2 className="text-base font-bold text-gray-800 mb-3">{t('Order Items')}</h2>
+              <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
+                 <h2 className="text-base font-bold text-content mb-3">{t('Order Items')}</h2>
                 <div className="space-y-3">
                   {orderItems.map((item) => (
                     <div key={item.id} className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-muted border border-border-light flex-shrink-0">
                         <LazyImage
                           src={item.image}
                           alt={item.name}
@@ -272,32 +272,32 @@ const MobileTrackOrder = () => {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
-                        <p className="text-xs text-gray-600">
+                        <h3 className="font-semibold text-content text-sm mb-1">{item.name}</h3>
+                        <p className="text-xs text-content-secondary">
                           {formatPrice(item.price)} x {item.quantity}
                         </p>
                         {formatVariantLabel(item?.variant) && (
-                          <p className="text-[11px] text-gray-500">
+                          <p className="text-[11px] text-content-muted">
                             {formatVariantLabel(item?.variant)}
                           </p>
                         )}
                       </div>
-                      <p className="font-bold text-gray-800 text-sm">
+                      <p className="font-bold text-content text-sm">
                         {formatPrice(item.price * item.quantity)}
                       </p>
                     </div>
                   ))}
                    {orderItems.length === 0 && (
-                    <p className="text-sm text-gray-600">{t('Item details are not available for this tracking view.')}</p>
+                    <p className="text-sm text-content-secondary">{t('Item details are not available for this tracking view.')}</p>
                   )}
                 </div>
               </div>
 
               {/* Estimated Delivery */}
               {order.estimatedDelivery && (
-                <div className="glass-card rounded-2xl p-4">
-                   <h2 className="text-base font-bold text-gray-800 mb-2">{t('Estimated Delivery')}</h2>
-                  <p className="text-lg font-semibold text-primary-600">
+                <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
+                   <h2 className="text-base font-bold text-content mb-2">{t('Estimated Delivery')}</h2>
+                  <p className="text-lg font-semibold text-brand-primary">
                     {formatDate(order.estimatedDelivery)}
                   </p>
                 </div>
@@ -307,14 +307,14 @@ const MobileTrackOrder = () => {
               {user?.id ? (
                 <button
                    onClick={() => navigate(`/orders/${displayOrderId}`)}
-                  className="w-full py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all"
+                  className="w-full py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all"
                 >
                   {t('View Order Details')}
                 </button>
               ) : (
                 <button
                    onClick={() => navigate('/home')}
-                  className="w-full py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all"
+                  className="w-full py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all"
                 >
                   {t('Continue Shopping')}
                 </button>

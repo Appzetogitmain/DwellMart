@@ -97,20 +97,20 @@ const SearchSuggestions = ({
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-80 overflow-y-auto"
+          className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-xl shadow-2xl border border-border z-50 max-h-80 overflow-y-auto"
         >
           {/* Recent Searches */}
           {recentSearches.length > 0 && trimmedQuery.length === 0 && (
             <div className="p-2">
               <div className="flex items-center justify-between px-3 py-2">
-                <span className="text-xs font-semibold text-gray-600">{t('Recent Searches')}</span>
+                <span className="text-xs font-semibold text-content-secondary">{t('Recent Searches')}</span>
                 <button
                   onClick={() => {
                     if (onClearRecent) {
                       onClearRecent();
                     }
                   }}
-                  className="text-xs text-primary-600 font-medium"
+                  className="text-xs text-brand-primary font-medium"
                 >
                   {t('Clear All')}
                 </button>
@@ -122,18 +122,18 @@ const SearchSuggestions = ({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
                   onClick={() => onSelect(search)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-muted rounded-lg transition-colors text-left"
                 >
-                  <FiClock className="text-gray-400 text-sm" />
-                  <span className="text-sm text-gray-700 flex-1">{search}</span>
+                  <FiClock className="text-content-muted text-sm" />
+                  <span className="text-sm text-content-secondary flex-1">{search}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDeleteRecent(index);
                     }}
-                    className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    className="p-1 hover:bg-border rounded-full transition-colors"
                   >
-                    <FiX className="text-gray-500 text-xs" />
+                    <FiX className="text-content-muted text-xs" />
                   </button>
                 </motion.button>
               ))}
@@ -144,7 +144,7 @@ const SearchSuggestions = ({
           {trimmedQuery.length > 0 && suggestions.length > 0 && (
             <div className="p-2">
               <div className="px-3 py-2">
-                <span className="text-xs font-semibold text-gray-600">{t('Suggestions')}</span>
+                <span className="text-xs font-semibold text-content-secondary">{t('Suggestions')}</span>
               </div>
               {suggestions.map((product, index) => (
                 <motion.button
@@ -153,12 +153,12 @@ const SearchSuggestions = ({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
                   onClick={() => onSelect(product.name)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-surface-muted rounded-lg transition-colors text-left"
                 >
-                  <FiSearch className="text-gray-400 text-sm" />
+                  <FiSearch className="text-content-muted text-sm" />
                   <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm text-gray-700">{product.name}</span>
-                    <Price amount={product.price} className="text-xs text-gray-500" />
+                    <span className="text-sm text-content-secondary">{product.name}</span>
+                    <Price amount={product.price} className="text-xs text-content-muted" />
                   </div>
                 </motion.button>
               ))}
@@ -167,7 +167,7 @@ const SearchSuggestions = ({
 
           {suggestions.length === 0 && recentSearches.length === 0 && trimmedQuery.length > 0 && (
             <div className="p-4 text-center">
-              <p className="text-sm text-gray-500">{t('No suggestions found')}</p>
+              <p className="text-sm text-content-muted">{t('No suggestions found')}</p>
             </div>
           )}
         </motion.div>

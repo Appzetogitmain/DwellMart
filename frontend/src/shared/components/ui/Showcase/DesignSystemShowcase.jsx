@@ -16,6 +16,18 @@ import {
   EmptyState,
   Alert,
   useToast,
+  Dropdown,
+  Accordion,
+  Tabs,
+  Pagination,
+  Checkbox,
+  Radio,
+  Switch,
+  Avatar,
+  Chip,
+  Rating,
+  Tooltip,
+  QuantitySelector,
 } from '../index';
 import ProductCard from '../../ProductCard';
 import { FiShoppingBag, FiSearch, FiMail, FiLock, FiArrowRight, FiFilter, FiSliders, FiBell, FiCheckCircle } from 'react-icons/fi';
@@ -28,13 +40,17 @@ const DesignSystemShowcase = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [activeDrawer, setActiveDrawer] = useState(null);
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    search: '',
-    category: '',
-    comments: '',
-  });
+  // Phase 2D Navigation State
+  const [demoTab, setDemoTab] = useState('overview');
+  const [demoPage, setDemoPage] = useState(1);
+  const [demoPageSize, setDemoPageSize] = useState(10);
+
+  // Phase 2E Utility State
+  const [demoChecked, setDemoChecked] = useState(true);
+  const [demoRadioVal, setDemoRadioVal] = useState('express');
+  const [demoSwitchVal, setDemoSwitchVal] = useState(true);
+  const [demoRatingVal, setDemoRatingVal] = useState(4.5);
+  const [demoQty, setDemoQty] = useState(2);
 
   return (
     <div className="min-h-screen bg-surface-background text-textColor-primary p-4 sm:p-8 max-w-[1600px] mx-auto space-y-12 transition-colors duration-300">
@@ -270,6 +286,272 @@ const DesignSystemShowcase = () => {
               variant="minimal"
             />
           </div>
+        </div>
+      </section>
+
+      {/* ==================== CATEGORY 4: NAVIGATION COMPONENTS (PHASE 2D) ==================== */}
+      <section className="space-y-6">
+        <div className="border-b border-borderToken-default pb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">🧭 4. Navigation Components (Phase 2D)</h2>
+            <p className="text-sm text-textColor-muted">Dropdown popovers, collapsible accordions, tabbed panels, and pagination</p>
+          </div>
+          <Badge variant="gold">Phase 2D</Badge>
+        </div>
+
+        {/* Dropdowns & Accordion */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Dropdown Menu Popovers */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Dropdown Menu Popover</h3>
+            </Card.Header>
+            <Card.Body className="space-y-4">
+              <p className="text-xs text-textColor-muted">Supports click-outside listener, position placement, and keyboard navigation.</p>
+              <div className="flex items-center gap-4 flex-wrap">
+                <Dropdown trigger={<Button variant="outline" size="sm">User Menu (Bottom Left)</Button>} position="bottom-left">
+                  <Dropdown.Header>Account Settings</Dropdown.Header>
+                  <Dropdown.Item icon={<FiShoppingBag />}>My Orders</Dropdown.Item>
+                  <Dropdown.Item icon={<FiSliders />}>Preferences</Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item danger>Log Out</Dropdown.Item>
+                </Dropdown>
+
+                <Dropdown trigger={<Button variant="primary" size="sm">Actions (Bottom Right)</Button>} position="bottom-right">
+                  <Dropdown.Header>Admin Controls</Dropdown.Header>
+                  <Dropdown.Item>Edit Catalog</Dropdown.Item>
+                  <Dropdown.Item>Export CSV</Dropdown.Item>
+                </Dropdown>
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Accordion Panels */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Collapsible Accordion</h3>
+            </Card.Header>
+            <Card.Body>
+              <Accordion type="single" defaultExpandedId="faq-1">
+                <Accordion.Item id="faq-1">
+                  <Accordion.Header>What is the return policy?</Accordion.Header>
+                  <Accordion.Body>Returns are accepted within 7 days of delivery with original packaging intact.</Accordion.Body>
+                </Accordion.Item>
+                <Accordion.Item id="faq-2">
+                  <Accordion.Header>Do you offer free shipping?</Accordion.Header>
+                  <Accordion.Body>Free express shipping is applied on all orders above ₹999.</Accordion.Body>
+                </Accordion.Item>
+              </Accordion>
+            </Card.Body>
+          </Card>
+        </div>
+
+        {/* Tabs & Pagination */}
+        <div className="grid grid-cols-1 gap-6">
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Tabbed Panels (Pills Variant)</h3>
+            </Card.Header>
+            <Card.Body className="space-y-4">
+              <Tabs activeTab={demoTab} onChange={setDemoTab} variant="pills">
+                <Tabs.List>
+                  <Tabs.Tab id="overview" badge="Live">Store Overview</Tabs.Tab>
+                  <Tabs.Tab id="orders" badge={18}>Active Orders</Tabs.Tab>
+                  <Tabs.Tab id="analytics">Analytics Report</Tabs.Tab>
+                </Tabs.List>
+
+                <Tabs.Panel id="overview">
+                  <p className="text-xs text-textColor-secondary">Store overview summary metrics and high-level inventory distribution.</p>
+                </Tabs.Panel>
+                <Tabs.Panel id="orders">
+                  <p className="text-xs text-textColor-secondary">18 active fulfillment orders currently being processed by logistics providers.</p>
+                </Tabs.Panel>
+                <Tabs.Panel id="analytics">
+                  <p className="text-xs text-textColor-secondary">Sales performance and customer retention funnel reports.</p>
+                </Tabs.Panel>
+              </Tabs>
+
+              {/* Interactive Pagination */}
+              <div className="pt-4 border-t border-borderToken-default">
+                <span className="block text-xs font-bold uppercase text-textColor-muted mb-2">Accessible Pagination:</span>
+                <Pagination
+                  currentPage={demoPage}
+                  totalPages={12}
+                  totalItems={120}
+                  pageSize={demoPageSize}
+                  onPageChange={setDemoPage}
+                  onPageSizeChange={setDemoPageSize}
+                  showSizeChanger
+                />
+              </div>
+            </Card.Body>
+          </Card>
+        </div>
+      </section>
+
+      {/* ==================== CATEGORY 5: UTILITY PRIMITIVES (PHASE 2E) ==================== */}
+      <section className="space-y-6">
+        <div className="border-b border-borderToken-default pb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">🛠️ 5. Utility Primitives (Phase 2E)</h2>
+            <p className="text-sm text-textColor-muted">Form controls, avatar status badges, chips, ratings, portal tooltips, & quantity selectors</p>
+          </div>
+          <Badge variant="gold">Phase 2E</Badge>
+        </div>
+
+        {/* Form Controls & Switches */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Checkbox & Indeterminate</h3>
+            </Card.Header>
+            <Card.Body className="space-y-3">
+              <Checkbox
+                checked={demoChecked}
+                onChange={(e) => setDemoChecked(e.target.checked)}
+                label="Enable express delivery"
+                description="Orders delivered within 2 hours"
+              />
+              <Checkbox
+                indeterminate
+                label="Select All Items (Indeterminate)"
+                description="Used for table select-all controls"
+              />
+            </Card.Body>
+          </Card>
+
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Radio Controls</h3>
+            </Card.Header>
+            <Card.Body className="space-y-3">
+              <Radio
+                checked={demoRadioVal === 'standard'}
+                value="standard"
+                onChange={() => setDemoRadioVal('standard')}
+                label="Standard Shipping"
+                description="Delivered in 3-5 business days"
+              />
+              <Radio
+                checked={demoRadioVal === 'express'}
+                value="express"
+                onChange={() => setDemoRadioVal('express')}
+                label="Express Shipping (Gold)"
+                description="Delivered next business morning"
+              />
+            </Card.Body>
+          </Card>
+
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Motion Toggle Switches</h3>
+            </Card.Header>
+            <Card.Body className="space-y-3">
+              <Switch
+                checked={demoSwitchVal}
+                onChange={(e) => setDemoSwitchVal(e.target.checked)}
+                label="Email Notifications"
+                description="Receive daily order updates"
+              />
+              <Switch
+                checked={false}
+                disabled
+                label="Dark Mode Lock"
+                description="System managed theme control"
+              />
+            </Card.Body>
+          </Card>
+        </div>
+
+        {/* Avatars, Chips, Ratings, Tooltips & QuantitySelectors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Avatars & Avatar.Group */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Avatar & Avatar.Group</h3>
+            </Card.Header>
+            <Card.Body className="space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Avatar name="Furqan Uddin" size="sm" status="online" />
+                <Avatar name="Nansi Khushi" size="md" status="away" />
+                <Avatar name="Alex Smith" size="lg" isVerified />
+                <Avatar name="Vendor Store" size="xl" status="busy" />
+              </div>
+
+              <div>
+                <span className="block text-xs font-bold uppercase text-textColor-muted mb-2">Avatar Group (+Overflow):</span>
+                <Avatar.Group max={3} size="md">
+                  <Avatar name="Furqan Uddin" />
+                  <Avatar name="Nansi Khushi" />
+                  <Avatar name="Alex Smith" />
+                  <Avatar name="John Doe" />
+                  <Avatar name="Sarah Connor" />
+                </Avatar.Group>
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Chips & Tag Presets */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Semantic Chips & Filter Tags</h3>
+            </Card.Header>
+            <Card.Body className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Chip variant="gold">Obsidian Gold</Chip>
+                <Chip variant="primary">Primary Tag</Chip>
+                <Chip variant="success">Completed</Chip>
+                <Chip variant="warning">Pending</Chip>
+                <Chip variant="error">Cancelled</Chip>
+                <Chip variant="info">System Info</Chip>
+                <Chip variant="filter" onRemove={() => toast.info('Category filter removed')}>Category: Furniture</Chip>
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Star Rating Controls */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Star Rating (Interactive & ReadOnly)</h3>
+            </Card.Header>
+            <Card.Body className="space-y-4">
+              <div>
+                <span className="block text-xs font-bold text-textColor-muted mb-1">Interactive Rating Input:</span>
+                <Rating value={demoRatingVal} onChange={setDemoRatingVal} size="lg" showValue />
+              </div>
+              <div>
+                <span className="block text-xs font-bold text-textColor-muted mb-1">ReadOnly Half Star (4.5 Stars):</span>
+                <Rating value={4.5} readOnly size="md" showValue />
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Tooltips & QuantitySelector */}
+          <Card variant="default">
+            <Card.Header>
+              <h3 className="font-bold text-base">Portal Tooltips & Quantity Selector</h3>
+            </Card.Header>
+            <Card.Body className="space-y-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Tooltip content="Adds item to shopping cart" placement="top">
+                  <Button size="sm" variant="outline">Hover Top Tooltip</Button>
+                </Tooltip>
+                <Tooltip content="Detailed product specs" placement="right" trigger="hover">
+                  <Button size="sm" variant="secondary">Hover Right Tooltip</Button>
+                </Tooltip>
+              </div>
+
+              <div>
+                <span className="block text-xs font-bold uppercase text-textColor-muted mb-2">E-Commerce QuantitySelector:</span>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <QuantitySelector value={demoQty} onChange={setDemoQty} min={1} max={10} step={1} />
+                  <QuantitySelector value={1} min={1} max={5} isOutOfStock />
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
         </div>
       </section>
 

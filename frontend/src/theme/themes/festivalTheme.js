@@ -30,6 +30,16 @@ export const festivalTheme = createTheme({
       modal: '#FFFFFF',
       input: '#FFFFFF',
     },
+    status: {
+      success:   '#10B981',
+      successBg: '#ECFDF5',
+      warning:   '#F59E0B',
+      warningBg: '#FFFBEB',
+      error:     '#EF4444',
+      errorBg:   '#FEF2F2',
+      info:      '#3B82F6',
+      infoBg:    '#EFF6FF',
+    },
   },
   semantic: {
     button: buttonSemantic,

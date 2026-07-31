@@ -44,6 +44,16 @@ export const darkTheme = createTheme({
       focus: '#EAB308',
       goldAccent: 'rgba(234, 179, 8, 0.3)',
     },
+    status: {
+      success:   '#34D399',
+      successBg: '#064E3B',
+      warning:   '#FBBF24',
+      warningBg: '#451A03',
+      error:     '#F87171',
+      errorBg:   '#450A0A',
+      info:      '#93C5FD',
+      infoBg:    '#1E3A5F',
+    },
   },
   semantic: {
     button: buttonSemantic,

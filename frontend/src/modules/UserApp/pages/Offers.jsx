@@ -258,28 +258,28 @@ const MobileOffers = () => {
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div className="w-full pb-24">
-          <div className="mx-2 mt-2 px-4 py-6 bg-gradient-to-r from-red-50 to-orange-50 border border-gray-100 rounded-2xl sticky top-2 z-30 shadow-md">
+          <div className="mx-2 mt-2 px-4 py-6 bg-surface-header border border-border rounded-2xl sticky top-2 z-30 shadow-md">
             <div className="flex items-center gap-3 mb-3">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-red-100/50 rounded-full transition-colors">
-                <FiArrowLeft className="text-xl text-gray-700" />
+                className="p-2 hover:bg-surface-muted rounded-full transition-colors">
+                <FiArrowLeft className="text-xl text-content-secondary" />
               </button>
               <div className="flex-1">
-                <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">
+                <h1 className="text-2xl font-black text-content tracking-tight uppercase">
                   {t('Special Offers')}
                 </h1>
-                <p className="text-sm font-medium text-red-600">
+                <p className="text-sm font-medium text-brand-primary">
                   {filteredProducts.length} {filteredProducts.length === 1 ? t("offer") : t("offers")} {t('live now • Extra savings')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center bg-surface-muted rounded-lg p-1 border border-border">
                   <button
                     onClick={() => setViewMode("list")}
                     className={`p-1.5 rounded transition-colors ${viewMode === "list"
-                      ? "bg-white text-red-600 shadow-sm"
-                      : "text-gray-600"
+                      ? "bg-surface text-brand-primary shadow-sm"
+                      : "text-content-secondary"
                       }`}
                   >
                     <FiList className="text-lg" />
@@ -287,8 +287,8 @@ const MobileOffers = () => {
                   <button
                     onClick={() => setViewMode("grid")}
                     className={`p-1.5 rounded transition-colors ${viewMode === "grid"
-                      ? "bg-white text-red-600 shadow-sm"
-                      : "text-gray-600"
+                      ? "bg-surface text-brand-primary shadow-sm"
+                      : "text-content-secondary"
                       }`}
                   >
                     <FiGrid className="text-lg" />
@@ -297,10 +297,10 @@ const MobileOffers = () => {
                 <div ref={filterButtonRef} className="relative">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`p-2 glass-card rounded-xl hover:bg-white/80 transition-colors ${showFilters ? "bg-white/80" : ""
+                    className={`p-2 glass-card rounded-xl hover:bg-surface/80 transition-colors ${showFilters ? "bg-surface/80" : ""
                       }`}>
                     <FiFilter
-                      className={`text-lg transition-colors ${hasActiveFilters ? "text-blue-600" : "text-gray-600"
+                      className={`text-lg transition-colors ${hasActiveFilters ? "text-brand-primary" : "text-content-secondary"
                         }`}
                     />
                   </button>
@@ -324,26 +324,26 @@ const MobileOffers = () => {
                             stiffness: 300,
                             damping: 30,
                           }}
-                          className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
+                          className="filter-dropdown absolute right-0 top-full w-56 bg-surface rounded-xl shadow-2xl border border-border z-[10001] overflow-hidden"
                           style={{ marginTop: "-50px" }}>
-                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-surface-muted">
                             <div className="flex items-center gap-1.5">
-                              <FiFilter className="text-sm text-gray-700" />
-                              <h3 className="text-sm font-bold text-gray-800">
+                              <FiFilter className="text-sm text-content-secondary" />
+                              <h3 className="text-sm font-bold text-content">
                                 {t('Filters')}
                               </h3>
                             </div>
                             <button
                               onClick={() => setShowFilters(false)}
-                              className="p-0.5 hover:bg-gray-200 rounded-full transition-colors">
-                              <FiX className="text-sm text-gray-600" />
+                              className="p-0.5 hover:bg-border rounded-full transition-colors">
+                              <FiX className="text-sm text-content-secondary" />
                             </button>
                           </div>
 
                           <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
                             <div className="p-2 space-y-2">
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                   {t('Category')}
                                 </h4>
                                 <select
@@ -351,7 +351,7 @@ const MobileOffers = () => {
                                   onChange={(e) =>
                                     handleFilterChange("category", e.target.value)
                                   }
-                                  className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-red-500 text-xs"
+                                  className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                 >
                                   <option value="">{t('All Categories')}</option>
                                   {categories.map((cat) => (
@@ -363,7 +363,7 @@ const MobileOffers = () => {
                               </div>
 
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                   {t('Price Range')}
                                 </h4>
                                 <div className="space-y-1.5">
@@ -374,7 +374,7 @@ const MobileOffers = () => {
                                     onChange={(e) =>
                                       handleFilterChange("minPrice", e.target.value)
                                     }
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-red-500 text-xs"
+                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                   />
                                   <input
                                     type="number"
@@ -383,20 +383,20 @@ const MobileOffers = () => {
                                     onChange={(e) =>
                                       handleFilterChange("maxPrice", e.target.value)
                                     }
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-red-500 text-xs"
+                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                   />
                                 </div>
                               </div>
 
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                   {t('Minimum Rating')}
                                 </h4>
                                 <div className="space-y-0.5">
                                   {[4, 3, 2, 1].map((rating) => (
                                     <label
                                       key={rating}
-                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-gray-50 transition-colors">
+                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-surface-muted transition-colors">
                                       <input
                                         type="radio"
                                         name="minRating"
@@ -405,15 +405,15 @@ const MobileOffers = () => {
                                         onChange={(e) =>
                                           handleFilterChange("minRating", e.target.value)
                                         }
-                                        className="w-3 h-3 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-red-500 relative cursor-pointer"
+                                        className="w-3 h-3 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
                                         style={{
                                           backgroundImage:
                                             filters.minRating === rating.toString()
-                                              ? "radial-gradient(circle, #EF4444 40%, transparent 40%)"
+                                              ? "radial-gradient(circle, var(--color-brand-primary) 40%, transparent 40%)"
                                               : "none",
                                         }}
                                       />
-                                      <span className="text-xs text-gray-700">
+                                      <span className="text-xs text-content-secondary">
                                         {rating}+ {t('Stars')}
                                       </span>
                                     </label>
@@ -423,15 +423,15 @@ const MobileOffers = () => {
                             </div>
                           </div>
 
-                          <div className="border-t border-gray-200 p-2 bg-gray-50 space-y-1.5">
+                          <div className="border-t border-border p-2 bg-surface-muted space-y-1.5">
                             <button
                               onClick={clearFilters}
-                              className="w-full py-1.5 bg-gray-200 text-gray-700 rounded-md font-semibold text-xs hover:bg-gray-300 transition-colors">
+                              className="w-full py-1.5 bg-border text-content-secondary rounded-md font-semibold text-xs hover:bg-border-strong transition-colors">
                               {t('Clear All')}
                             </button>
                             <button
                               onClick={() => setShowFilters(false)}
-                              className="w-full py-1.5 gradient-red text-white rounded-md font-semibold text-xs hover:shadow-glow-red transition-all">
+                              className="w-full py-1.5 bg-brand-primary text-black rounded-md font-semibold text-xs hover:bg-brand-primaryHover transition-all">
                               {t('Apply Filters')}
                             </button>
                           </div>
@@ -446,9 +446,9 @@ const MobileOffers = () => {
 
           {availableCoupons.length > 0 && (
             <div className="px-4 pt-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-3">
-                <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
-                  <FiTag className="text-red-600" />
+              <div className="bg-surface border border-border rounded-xl p-3">
+                <h3 className="text-sm font-bold text-content mb-2 flex items-center gap-2">
+                  <FiTag className="text-brand-primary" />
                   {t('Available Coupons')}
                 </h3>
                 <div className="space-y-2">
@@ -456,11 +456,11 @@ const MobileOffers = () => {
                     <button
                       key={coupon._id || coupon.code}
                       onClick={() => copyCoupon(coupon.code)}
-                      className="w-full text-left p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                      className="w-full text-left p-2 rounded-lg bg-surface-muted hover:bg-border/30 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-gray-800">{coupon.code}</p>
-                        <p className="text-xs text-red-600 font-semibold">
+                        <p className="text-sm font-semibold text-content">{coupon.code}</p>
+                        <p className="text-xs text-brand-primary font-semibold">
                           {coupon.type === "percentage"
                             ? `${coupon.value}% ${t('OFF')}`
                             : coupon.type === "fixed"
@@ -468,7 +468,7 @@ const MobileOffers = () => {
                                : t("Free Shipping")}
                         </p>
                       </div>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-content-secondary">
                         {t('Min order:')} {formatPrice(coupon.minOrderValue || 0)}
                       </p>
                     </button>
@@ -481,11 +481,11 @@ const MobileOffers = () => {
           <div className="px-4 py-4">
             {filteredProducts.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-6xl text-gray-300 mx-auto mb-4">[ ]</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                <div className="text-6xl text-content-muted mx-auto mb-4">[ ]</div>
+                <h3 className="text-xl font-bold text-content mb-2">
                   {t('No offers found')}
                 </h3>
-                <p className="text-gray-600">{t('Try adjusting your filters')}</p>
+                <p className="text-content-secondary">{t('Try adjusting your filters')}</p>
               </div>
             ) : viewMode === "grid" ? (
               <>
@@ -506,7 +506,7 @@ const MobileOffers = () => {
                     ref={loadMoreRef}
                     className="mt-6 flex flex-col items-center gap-4">
                     {isLoading && (
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-content-secondary">
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{
@@ -514,7 +514,7 @@ const MobileOffers = () => {
                             repeat: Infinity,
                             ease: "linear",
                           }}
-                          className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full"
+                          className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full"
                         />
                         <span className="text-sm">
                           {t('Loading more products...')}
@@ -524,7 +524,7 @@ const MobileOffers = () => {
                     <button
                       onClick={loadMore}
                       disabled={isLoading}
-                      className="px-6 py-3 gradient-red text-white rounded-xl font-semibold hover:shadow-glow-red transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                       {isLoading ? t("Loading...") : t("Load More")}
                     </button>
                   </div>
@@ -548,7 +548,7 @@ const MobileOffers = () => {
                     ref={loadMoreRef}
                     className="mt-6 flex flex-col items-center gap-4">
                     {isLoading && (
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-content-secondary">
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{
@@ -556,7 +556,7 @@ const MobileOffers = () => {
                             repeat: Infinity,
                             ease: "linear",
                           }}
-                          className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full"
+                          className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full"
                         />
                         <span className="text-sm">
                           {t('Loading more products...')}
@@ -566,7 +566,7 @@ const MobileOffers = () => {
                     <button
                       onClick={loadMore}
                       disabled={isLoading}
-                      className="px-6 py-3 gradient-red text-white rounded-xl font-semibold hover:shadow-glow-red transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                       {isLoading ? t("Loading...") : t("Load More")}
                     </button>
                   </div>

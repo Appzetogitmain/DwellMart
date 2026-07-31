@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiSearch, FiEdit, FiTrash2 } from "react-icons/fi";
 import { motion } from "framer-motion";
-import DataTable from "../../../Admin/components/DataTable";
+import { DashboardPage, DataTable, StatusBadge } from "../../../../shared/components/Dashboard";
+import { Button, Badge, Card, Select } from "../../../../shared/components/ui";
 import ExportButton from "../../../Admin/components/ExportButton";
-import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../../Admin/components/ConfirmModal";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import { formatPrice, getPlaceholderImage, getImageUrl } from "../../../../shared/utils/helpers";
@@ -132,19 +132,12 @@ const ManageProducts = () => {
     },
     {
       key: "stock",
-      label: "Status",
+      title: "Status",
       sortable: true,
       render: (value) => (
-        <Badge
-          variant={
-            value === "in_stock"
-              ? "success"
-              : value === "low_stock"
-                ? "warning"
-                : "error"
-          }>
-          {value?.replace("_", " ").toUpperCase() || "N/A"}
-        </Badge>
+        <StatusBadge
+          status={value === "in_stock" ? "active" : value === "low_stock" ? "pending" : "out_of_stock"}
+        />
       ),
     },
     {
@@ -190,127 +183,54 @@ const ManageProducts = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="lg:hidden">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-            Manage Products
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            View, edit, and manage your product catalog
-          </p>
+    <DashboardPage
+      title="Manage Products"
+      subtitle="View, edit, and manage your product catalog"
+      actions={
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportVendorProductsCatalog('xlsx')}
+            leftIcon={<FiDownload />}
+          >
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsHistoryModalOpen(true)}
+            leftIcon={<FiList />}
+          >
+            History
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsBulkModalOpen(true)}
+            leftIcon={<FiUploadCloud />}
+          >
+            Bulk Upload
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleActionClick("/vendor/products/add-product")}
+          >
+            Add New Product
+          </Button>
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        {/* Filters Section */}
-        <div className="mb-6 pb-6 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="relative flex-1 w-full sm:min-w-[200px]">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
-              />
-            </div>
-
-            <AnimatedSelect
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              options={[
-                { value: "all", label: "All Status" },
-                { value: "in_stock", label: "In Stock" },
-                { value: "low_stock", label: "Low Stock" },
-                { value: "out_of_stock", label: "Out of Stock" },
-              ]}
-              className="w-full sm:w-auto min-w-[140px]"
-            />
-
-            <AnimatedSelect
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              options={[
-                { value: "all", label: "All Categories" },
-                ...categories
-                  .filter((cat) => cat.isActive !== false)
-                  .map((cat) => ({ value: String(cat._id ?? cat.id), label: cat.name })),
-              ]}
-              className="w-full sm:w-auto min-w-[160px]"
-            />
-
-            <button
-              onClick={() => exportVendorProductsCatalog('xlsx')}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-              <FiDownload />
-              Export Catalog
-            </button>
-
-            <button
-              onClick={() => setIsHistoryModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-3 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-              <FiList />
-              Import History
-            </button>
-
-            <button
-              onClick={() => setIsBulkModalOpen(true)}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm">
-              <FiUploadCloud />
-              Bulk Upload
-            </button>
-
-            <button
-              onClick={() => handleActionClick("/vendor/products/add-product")}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm sm:text-base whitespace-nowrap">
-              <span>Add New Product</span>
-            </button>
-
-            <div className="w-full sm:w-auto">
-              <ExportButton
-                data={filteredProducts}
-                headers={[
-                  { label: "ID", accessor: (row) => String(row._id ?? row.id) },
-                  { label: "Name", accessor: (row) => row.name },
-                  { label: "Price", accessor: (row) => formatPrice(row.price) },
-                  { label: "Stock", accessor: (row) => row.stockQuantity || 0 },
-                  { label: "Status", accessor: (row) => row.stock || "N/A" },
-                ]}
-                filename="vendor-products"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* DataTable */}
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">Loading products...</p>
-          </div>
-        ) : filteredProducts.length > 0 ? (
-          <DataTable
-            data={filteredProducts}
-            columns={columns}
-            pagination={true}
-            itemsPerPage={10}
-            onRowClick={(row) => handleActionClick(`/vendor/products/${row._id ?? row.id}`)}
-          />
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">No products found</p>
-            <button
-              onClick={() => handleActionClick("/vendor/products/add-product")}
-              className="px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold">
-              Add Your First Product
-            </button>
-          </div>
-        )}
-      </div>
+      }
+    >
+      <DataTable
+        columns={columns}
+        data={filteredProducts}
+        loading={isLoading}
+        searchable={true}
+        searchPlaceholder="Search products..."
+        emptyTitle="No products found"
+        emptyDescription="Get started by adding your first product to your catalog."
+      />
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}
@@ -335,7 +255,7 @@ const ManageProducts = () => {
         onClose={() => setIsHistoryModalOpen(false)}
         mode="vendor"
       />
-    </motion.div>
+    </DashboardPage>
   );
 };
 

@@ -10,6 +10,7 @@ import PageTransition from '../../../shared/components/PageTransition';
 import LazyImage from '../../../shared/components/LazyImage';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
+import { Card, Alert, Button, Badge } from "../../../shared/components/ui";
 
 const MobileOrderConfirmation = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -41,7 +42,7 @@ const MobileOrderConfirmation = () => {
   const navigate = useNavigate();
   const { getOrder, fetchOrderById, lastError } = useOrderStore();
   const [isResolving, setIsResolving] = useState(true);
-   const order = getOrder(orderId);
+  const order = getOrder(orderId);
   const [translatedOrderItems, setTranslatedOrderItems] = useState([]);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ const MobileOrderConfirmation = () => {
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>
           <div className="flex items-center justify-center min-h-[60vh] px-4">
-             <p className="text-gray-600">{t('Loading order...')}</p>
+             <p className="text-textColor-muted font-bold">{t('Loading order...')}</p>
           </div>
         </MobileLayout>
       </PageTransition>
@@ -94,16 +95,13 @@ const MobileOrderConfirmation = () => {
         <MobileLayout showBottomNav={false} showCartBar={false}>
           <div className="flex items-center justify-center min-h-[60vh] px-4">
             <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">{t('Order Not Found')}</h2>
+              <h2 className="text-xl font-bold text-textColor-primary mb-4">{t('Order Not Found')}</h2>
               {lastError ? (
-                <p className="text-sm text-gray-500 mb-4">{lastError}</p>
+                <p className="text-sm text-textColor-muted mb-4">{lastError}</p>
               ) : null}
-              <button
-                onClick={() => navigate('/home')}
-                className="gradient-green text-white px-6 py-3 rounded-xl font-semibold"
-              >
-                  {t('Go Home')}
-              </button>
+              <Button onClick={() => navigate('/home')} variant="primary" size="md">
+                {t('Go Home')}
+              </Button>
             </div>
           </div>
         </MobileLayout>
@@ -111,7 +109,7 @@ const MobileOrderConfirmation = () => {
     );
   }
 
-   const formatDate = (dateString) => {
+  const formatDate = (dateString) => {
     if (!dateString) return t('N/A');
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return t('N/A');
@@ -125,49 +123,41 @@ const MobileOrderConfirmation = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-gray-50">
-          <div className="w-full max-w-md lg:max-w-lg">
-            {/* Success Animation */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-              className="flex flex-col items-center justify-center mb-8"
-            >
-              <div className="w-24 h-24 gradient-green rounded-full flex items-center justify-center mb-4 shadow-glow-green">
-                <FiCheckCircle className="text-white text-5xl" />
-              </div>
-                <h1 className="text-2xl font-bold text-gray-800 mb-2">{t('Order Confirmed!')}</h1>
-              <p className="text-gray-600 text-center text-sm">
-                 {t('Thank you for your purchase. Your order has been received and is being processed.')}
-              </p>
-            </motion.div>
+        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-background">
+          <div className="w-full max-w-md lg:max-w-lg space-y-4">
+            
+            {/* Success Alert Banner */}
+            <Alert
+              variant="success"
+              title={t('Order Confirmed!')}
+              description={t('Thank you for your purchase. Your order has been received and is being processed.')}
+            />
 
-            {/* Order Details */}
-            <div className="glass-card rounded-2xl p-6 mb-4">
+            {/* Order Summary Details */}
+            <Card variant="default" padding="lg">
               <div className="text-center mb-6">
-                  <p className="text-sm text-gray-600 mb-1">{t('Order Number')}</p>
-                <p className="text-xl font-bold text-gray-800">{displayOrderId}</p>
+                <p className="text-xs font-bold text-textColor-muted uppercase tracking-wide mb-1">{t('Order Number')}</p>
+                <p className="text-xl font-black text-textColor-primary">{displayOrderId}</p>
                 {order.trackingNumber && (
-                  <>
-                     <p className="text-sm text-gray-600 mt-3 mb-1">{t('Tracking Number')}</p>
-                    <p className="text-lg font-bold text-primary-600">{order.trackingNumber}</p>
-                  </>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-textColor-muted uppercase tracking-wide mb-1">{t('Tracking Number')}</p>
+                    <Badge variant="gold" size="md">{order.trackingNumber}</Badge>
+                  </div>
                 )}
               </div>
 
-              <div className="border-t border-gray-200 pt-4 space-y-3">
+              <div className="border-t border-borderToken-default pt-4 space-y-3">
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{t('Order Date')}</span>
-                  <span className="font-semibold text-gray-800">{formatDate(order.date || order.createdAt)}</span>
+                  <span className="text-textColor-muted font-medium">{t('Order Date')}</span>
+                  <span className="font-bold text-textColor-primary">{formatDate(order.date || order.createdAt)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{t('Total Amount')}</span>
-                  <span className="font-bold text-primary-600 text-lg">{formatPrice(order.total)}</span>
+                  <span className="text-textColor-muted font-medium">{t('Total Amount')}</span>
+                  <span className="font-black text-brand-primary text-lg">{formatPrice(order.total)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{t('Payment Method')}</span>
-                  <span className="font-semibold text-gray-800 capitalize">
+                  <span className="text-textColor-muted font-medium">{t('Payment Method')}</span>
+                  <span className="font-bold text-textColor-primary capitalize">
                     {order.paymentMethod === 'card' ? t('Credit/Debit Card') :
                       order.paymentMethod === 'cash' ? t('Cash on Delivery') :
                         order.paymentMethod === 'bank' ? t('Bank Transfer') :
@@ -175,15 +165,15 @@ const MobileOrderConfirmation = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Order Items Summary */}
-            <div className="glass-card rounded-2xl p-6 mb-4">
-                <h2 className="text-base font-bold text-gray-800 mb-4">{t('Order Items')}</h2>
+            {/* Order Items Summary Card */}
+            <Card variant="default" padding="lg">
+              <h2 className="text-base font-bold text-textColor-primary mb-4">{t('Order Items')}</h2>
               <div className="space-y-3">
                 {orderItems.slice(0, 3).map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                    <div className="w-16 h-16 rounded-card overflow-hidden bg-surface-background border border-borderToken-default flex-shrink-0">
                       <LazyImage
                         src={item.image}
                         alt={item.name}
@@ -191,58 +181,62 @@ const MobileOrderConfirmation = () => {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
-                      <p className="text-xs text-gray-600">
+                      <h3 className="font-bold text-textColor-primary text-sm mb-0.5 line-clamp-1">{item.name}</h3>
+                      <p className="text-xs text-textColor-muted font-medium">
                         {formatPrice(item.price)} x {item.quantity}
                       </p>
                       {formatVariantLabel(item?.variant) && (
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-textColor-muted">
                           {formatVariantLabel(item?.variant)}
                         </p>
                       )}
                     </div>
-                    <p className="font-bold text-gray-800 text-sm">
+                    <p className="font-bold text-textColor-primary text-sm">
                       {formatPrice(item.price * item.quantity)}
                     </p>
                   </div>
                 ))}
                 {orderItems.length > 3 && (
-                  <p className="text-sm text-gray-600 text-center pt-2">
+                  <p className="text-xs text-textColor-muted text-center pt-2 font-semibold">
                      +{orderItems.length - 3} {orderItems.length - 3 !== 1 ? t('more items') : t('more item')}
                   </p>
                 )}
                 {orderItems.length === 0 && (
-                    <p className="text-sm text-gray-600 text-center pt-2">{t('No item details available for this order.')}</p>
+                  <p className="text-xs text-textColor-muted text-center pt-2 font-semibold">{t('No item details available for this order.')}</p>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* Actions */}
-            <div className="space-y-3">
-              <Link
+            <div className="space-y-2 pt-2">
+              <Button
+                as={Link}
                 to={`/orders/${displayOrderId}`}
-                className="block w-full py-3 gradient-green text-white rounded-xl font-semibold text-center hover:shadow-glow-green transition-all"
+                variant="primary"
+                size="lg"
+                fullWidth
+                leftIcon={<FiEye />}
               >
-                <div className="flex items-center justify-center gap-2">
-                    <FiEye className="text-lg" />
-                  {t('View Order Details')}
-                </div>
-              </Link>
-              <Link
+                {t('View Order Details')}
+              </Button>
+              <Button
+                as={Link}
                 to={`/track-order/${displayOrderId}`}
-                className="block w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-center hover:bg-gray-200 transition-colors"
+                variant="secondary"
+                size="lg"
+                fullWidth
+                leftIcon={<FiTruck />}
               >
-                <div className="flex items-center justify-center gap-2">
-                    <FiTruck className="text-lg" />
-                  {t('Track Order')}
-                </div>
-              </Link>
-              <button
+                {t('Track Order')}
+              </Button>
+              <Button
                 onClick={() => navigate('/home')}
-                className="w-full py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                variant="outline"
+                size="lg"
+                fullWidth
               >
-                  {t('Continue Shopping')}
-              </button>
+                {t('Continue Shopping')}
+              </Button>
             </div>
           </div>
         </div>

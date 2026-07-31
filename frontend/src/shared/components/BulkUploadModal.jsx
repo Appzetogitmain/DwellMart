@@ -196,48 +196,48 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 animate-fadeIn">
+            <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-border-light animate-fadeIn">
                 {/* Modal Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50/80">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-muted">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-primary-100 text-primary-600 rounded-xl">
                             <FiUploadCloud className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-800">Bulk Product Upload</h2>
-                            <p className="text-xs text-gray-500">Upload hundreds of products cleanly via Excel or CSV</p>
+                            <h2 className="text-xl font-bold text-content">Bulk Product Upload</h2>
+                            <p className="text-xs text-content-muted">Upload hundreds of products cleanly via Excel or CSV</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg transition-colors">
+                        className="p-2 text-content-muted hover:text-content rounded-lg transition-colors">
                         <FiX className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Stepper Indicator */}
-                <div className="px-6 py-3 bg-white border-b border-gray-100 flex items-center justify-between text-xs font-semibold">
-                    <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary-600' : 'text-gray-400'}`}>
+                <div className="px-6 py-3 bg-surface border-b border-border-light flex items-center justify-between text-xs font-semibold">
+                    <div className={`flex items-center gap-2 ${step >= 1 ? 'text-brand-primary' : 'text-content-muted'}`}>
                         <span className="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center border border-primary-200">1</span>
                         <span>Template</span>
                     </div>
-                    <div className="w-8 h-[2px] bg-gray-200" />
-                    <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className="w-8 h-[2px] bg-border" />
+                    <div className={`flex items-center gap-2 ${step >= 2 ? 'text-brand-primary' : 'text-content-muted'}`}>
                         <span className="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center border border-primary-200">2</span>
                         <span>Upload File</span>
                     </div>
-                    <div className="w-8 h-[2px] bg-gray-200" />
-                    <div className={`flex items-center gap-2 ${step >= 3 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className="w-8 h-[2px] bg-border" />
+                    <div className={`flex items-center gap-2 ${step >= 3 ? 'text-brand-primary' : 'text-content-muted'}`}>
                         <span className="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center border border-primary-200">3</span>
                         <span>Dry-Run Preview</span>
                     </div>
-                    <div className="w-8 h-[2px] bg-gray-200" />
-                    <div className={`flex items-center gap-2 ${step >= 4 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className="w-8 h-[2px] bg-border" />
+                    <div className={`flex items-center gap-2 ${step >= 4 ? 'text-brand-primary' : 'text-content-muted'}`}>
                         <span className="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center border border-primary-200">4</span>
                         <span>Strategy</span>
                     </div>
-                    <div className="w-8 h-[2px] bg-gray-200" />
-                    <div className={`flex items-center gap-2 ${step >= 5 ? 'text-primary-600' : 'text-gray-400'}`}>
+                    <div className="w-8 h-[2px] bg-border" />
+                    <div className={`flex items-center gap-2 ${step >= 5 ? 'text-brand-primary' : 'text-content-muted'}`}>
                         <span className="w-6 h-6 rounded-full bg-primary-50 flex items-center justify-center border border-primary-200">5</span>
                         <span>Import & Summary</span>
                     </div>
@@ -261,27 +261,27 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <button
                                     onClick={() => handleDownloadTemplate('excel')}
-                                    className="flex items-center justify-center gap-3 p-4 border border-emerald-200 bg-emerald-50/40 rounded-xl hover:bg-emerald-100/50 transition-colors text-emerald-700 font-semibold text-sm">
+                                    className="flex items-center justify-center gap-3 p-4 border border-brand-primary/20 bg-status-successBg rounded-xl hover:bg-status-successBg/70 transition-colors text-status-success font-semibold text-sm">
                                     <FiDownload className="w-5 h-5" />
                                     Download Sample Excel (.xlsx)
                                 </button>
                                 <button
                                     onClick={() => handleDownloadTemplate('csv')}
-                                    className="flex items-center justify-center gap-3 p-4 border border-blue-200 bg-blue-50/40 rounded-xl hover:bg-blue-100/50 transition-colors text-blue-700 font-semibold text-sm">
+                                    className="flex items-center justify-center gap-3 p-4 border border-status-info/20 bg-status-infoBg rounded-xl hover:bg-status-infoBg/70 transition-colors text-status-info font-semibold text-sm">
                                     <FiDownload className="w-5 h-5" />
                                     Download Sample CSV (.csv)
                                 </button>
                             </div>
 
                             {mode === 'admin' && vendors.length > 0 && (
-                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                    <label className="block text-xs font-semibold text-gray-700 mb-2">
+                                <div className="bg-surface-muted rounded-xl p-4 border border-border">
+                                    <label className="block text-xs font-semibold text-content-secondary mb-2">
                                         Target Store / Vendor Selection (Optional):
                                     </label>
                                     <select
                                         value={selectedVendorId}
                                         onChange={(e) => setSelectedVendorId(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                                        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-brand-primary focus:outline-none">
                                         <option value="">-- Use Vendor Email Column in File --</option>
                                         {vendors.map((v) => (
                                             <option key={v._id || v.id} value={v._id || v.id}>
@@ -298,14 +298,14 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                     id="autoCreateBrands"
                                     checked={autoCreateBrands}
                                     onChange={(e) => setAutoCreateBrands(e.target.checked)}
-                                    className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                                    className="w-4 h-4 text-primary-600 rounded border-border focus:ring-brand-primary"
                                 />
-                                <label htmlFor="autoCreateBrands" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                <label htmlFor="autoCreateBrands" className="text-sm font-medium text-content-secondary cursor-pointer">
                                     Automatically create missing brands during import
                                 </label>
                             </div>
 
-                            <div className="flex justify-end pt-4 border-t border-gray-100">
+                            <div className="flex justify-end pt-4 border-t border-border-light">
                                 <button
                                     onClick={() => setStep(2)}
                                     className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-semibold text-sm hover:bg-primary-700 transition-colors">
@@ -319,45 +319,45 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                     {step === 2 && (
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-content-secondary mb-2">
                                     1. Upload Spreadsheet File (.xlsx or .csv, Max 20MB) *
                                 </label>
-                                <div className="border-2 border-dashed border-gray-300 hover:border-primary-500 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-gray-50/50 relative">
+                                <div className="border-2 border-dashed border-border hover:border-brand-primary rounded-2xl p-6 text-center cursor-pointer transition-colors bg-surface-muted relative">
                                     <input
                                         type="file"
                                         accept=".xlsx, .csv, .xls"
                                         onChange={(e) => setExcelFile(e.target.files[0])}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                     />
-                                    <FiUploadCloud className="w-10 h-10 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-sm font-medium text-gray-700">
+                                    <FiUploadCloud className="w-10 h-10 text-content-muted mx-auto mb-2" />
+                                    <p className="text-sm font-medium text-content-secondary">
                                         {excelFile ? excelFile.name : 'Drag & drop file here or click to browse'}
                                     </p>
-                                    <p className="text-xs text-gray-400 mt-1">Supported: .xlsx, .csv up to 20MB</p>
+                                    <p className="text-xs text-content-muted mt-1">Supported: .xlsx, .csv up to 20MB</p>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-content-secondary mb-2">
                                     2. Upload Images Archive (Optional: images.zip matching SKU.jpg / SKU.png)
                                 </label>
-                                <div className="border border-dashed border-gray-300 hover:border-primary-500 rounded-xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50 relative">
+                                <div className="border border-dashed border-border hover:border-brand-primary rounded-xl p-4 text-center cursor-pointer transition-colors bg-surface-muted relative">
                                     <input
                                         type="file"
                                         accept=".zip"
                                         onChange={(e) => setZipFile(e.target.files[0])}
                                         className="absolute inset-0 opacity-0 cursor-pointer"
                                     />
-                                    <p className="text-xs font-medium text-gray-600">
+                                    <p className="text-xs font-medium text-content-secondary">
                                         {zipFile ? zipFile.name : 'Select images.zip (Matching SKU.jpg / SKU.png)'}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                            <div className="flex justify-between items-center pt-4 border-t border-border-light">
                                 <button
                                     onClick={() => setStep(1)}
-                                    className="px-5 py-2 text-gray-600 font-medium text-sm hover:bg-gray-100 rounded-xl">
+                                    className="px-5 py-2 text-content-secondary font-medium text-sm hover:bg-surface-muted rounded-xl">
                                     ← Back
                                 </button>
                                 <button
@@ -381,25 +381,25 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                     {step === 3 && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-4 gap-3 text-center text-xs font-bold">
-                                <div className="p-3 bg-gray-50 border rounded-xl">
-                                    <p className="text-gray-500">Total Rows</p>
-                                    <p className="text-lg text-gray-800">{previewRows.length}</p>
+                                <div className="p-3 bg-surface-muted border rounded-xl">
+                                    <p className="text-content-muted">Total Rows</p>
+                                    <p className="text-lg text-content">{previewRows.length}</p>
                                 </div>
-                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                                    <p className="text-emerald-600">✓ Valid</p>
-                                    <p className="text-lg text-emerald-700">
+                                <div className="p-3 bg-status-successBg border border-status-success/20 rounded-xl">
+                                    <p className="text-status-success">✓ Valid</p>
+                                    <p className="text-lg text-status-success">
                                         {previewRows.filter((r) => r.validationStatus === 'valid').length}
                                     </p>
                                 </div>
-                                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                    <p className="text-amber-600">⚠ Warnings</p>
-                                    <p className="text-lg text-amber-700">
+                                <div className="p-3 bg-status-warningBg border border-status-warning/20 rounded-xl">
+                                    <p className="text-status-warning">⚠ Warnings</p>
+                                    <p className="text-lg text-status-warning">
                                         {previewRows.filter((r) => r.validationStatus === 'warning').length}
                                     </p>
                                 </div>
-                                <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                                    <p className="text-red-600">✖ Errors</p>
-                                    <p className="text-lg text-red-700">
+                                <div className="p-3 bg-status-errorBg border border-status-error/20 rounded-xl">
+                                    <p className="text-status-error">✖ Errors</p>
+                                    <p className="text-lg text-status-error">
                                         {previewRows.filter((r) => r.validationStatus === 'error').length}
                                     </p>
                                 </div>
@@ -415,9 +415,9 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                             </div>
 
                             {/* Preview Table */}
-                            <div className="border border-gray-200 rounded-xl overflow-x-auto max-h-[300px]">
+                            <div className="border border-border rounded-xl overflow-x-auto max-h-[300px]">
                                 <table className="w-full text-xs text-left">
-                                    <thead className="bg-gray-100 text-gray-700 font-semibold sticky top-0">
+                                    <thead className="bg-surface-muted text-content-secondary font-semibold sticky top-0">
                                         <tr>
                                             <th className="p-2.5">Row</th>
                                             <th className="p-2.5">Product Name</th>
@@ -434,7 +434,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                         {previewRows.map((r) => (
                                             <tr
                                                 key={r.rowNumber}
-                                                className={`hover:bg-gray-50/80 ${
+                                                className={`hover:bg-surface-muted ${
                                                     r.validationStatus === 'error'
                                                         ? 'bg-red-50/40'
                                                         : r.validationStatus === 'warning'
@@ -442,13 +442,13 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                                         : ''
                                                 }`}>
                                                 <td className="p-2.5 font-medium">{r.rowNumber}</td>
-                                                <td className="p-2.5 font-semibold text-gray-800">{r.name}</td>
+                                                <td className="p-2.5 font-semibold text-content">{r.name}</td>
                                                 <td className="p-2.5">{r.categoryName}</td>
                                                 <td className="p-2.5 font-mono text-[11px]">{r.sku}</td>
                                                 <td className="p-2.5 font-medium">₹{r.price}</td>
                                                 <td className="p-2.5">{r.stockQuantity}</td>
                                                 <td className="p-2.5">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.isActive ? 'bg-status-successBg text-status-success' : 'bg-surface-muted text-content-muted'}`}>
                                                         {r.isActive ? 'Active' : 'Inactive'}
                                                     </span>
                                                 </td>
@@ -509,7 +509,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                                 <td className="p-2.5 text-center">
                                                     <button
                                                         onClick={() => handleRemoveRow(r.rowNumber)}
-                                                        className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+                                                        className="p-1 text-status-error hover:bg-status-errorBg rounded transition-colors"
                                                         title="Remove Row">
                                                         <FiTrash2 />
                                                     </button>
@@ -520,10 +520,10 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 </table>
                             </div>
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                            <div className="flex justify-between items-center pt-4 border-t border-border-light">
                                 <button
                                     onClick={() => setStep(2)}
-                                    className="px-5 py-2 text-gray-600 font-medium text-sm hover:bg-gray-100 rounded-xl">
+                                    className="px-5 py-2 text-content-secondary font-medium text-sm hover:bg-surface-muted rounded-xl">
                                     ← Back
                                 </button>
                                 <button
@@ -539,9 +539,9 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                     {/* STEP 4: Duplicate Strategy */}
                     {step === 4 && (
                         <div className="space-y-6">
-                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                                <h3 className="text-sm font-bold text-gray-800 mb-2">Duplicate SKU Handling Strategy</h3>
-                                <p className="text-xs text-gray-600 mb-4">
+                            <div className="bg-surface-muted border border-border rounded-xl p-4">
+                                <h3 className="text-sm font-bold text-content mb-2">Duplicate SKU Handling Strategy</h3>
+                                <p className="text-xs text-content-secondary mb-4">
                                     Select how the system should handle SKUs that already exist in your catalog:
                                 </p>
 
@@ -556,8 +556,8 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                             className="mt-1 text-primary-600 focus:ring-primary-500"
                                         />
                                         <div>
-                                            <p className="text-sm font-semibold text-gray-800">Skip Existing (Recommended)</p>
-                                            <p className="text-xs text-gray-500">Leave existing catalog products untouched and skip duplicate rows.</p>
+                                            <p className="text-sm font-semibold text-content">Skip Existing (Recommended)</p>
+                                            <p className="text-xs text-content-muted">Leave existing catalog products untouched and skip duplicate rows.</p>
                                         </div>
                                     </label>
 
@@ -571,8 +571,8 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                             className="mt-1 text-primary-600 focus:ring-primary-500"
                                         />
                                         <div>
-                                            <p className="text-sm font-semibold text-gray-800">Update Existing</p>
-                                            <p className="text-xs text-gray-500">Overwrites price, stock, description, and status of existing catalog products.</p>
+                                            <p className="text-sm font-semibold text-content">Update Existing</p>
+                                            <p className="text-xs text-content-muted">Overwrites price, stock, description, and status of existing catalog products.</p>
                                         </div>
                                     </label>
 
@@ -586,22 +586,22 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                             className="mt-1 text-primary-600 focus:ring-primary-500"
                                         />
                                         <div>
-                                            <p className="text-sm font-semibold text-gray-800">Create Duplicate (New SKU)</p>
-                                            <p className="text-xs text-gray-500">Creates a new product with an automatically appended unique SKU suffix.</p>
+                                            <p className="text-sm font-semibold text-content">Create Duplicate (New SKU)</p>
+                                            <p className="text-xs text-content-muted">Creates a new product with an automatically appended unique SKU suffix.</p>
                                         </div>
                                     </label>
                                 </div>
                             </div>
 
-                            <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                            <div className="flex justify-between items-center pt-4 border-t border-border-light">
                                 <button
                                     onClick={() => setStep(3)}
-                                    className="px-5 py-2 text-gray-600 font-medium text-sm hover:bg-gray-100 rounded-xl">
+                                    className="px-5 py-2 text-content-secondary font-medium text-sm hover:bg-surface-muted rounded-xl">
                                     ← Back to Preview
                                 </button>
                                 <button
                                     onClick={handleExecuteImport}
-                                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 shadow-md transition-all">
+                                    className="px-6 py-2.5 bg-brand-primary text-black rounded-xl font-semibold text-sm hover:bg-brand-primaryHover shadow-md transition-all">
                                     Execute Bulk Import ({previewRows.length} Products)
                                 </button>
                             </div>
@@ -614,14 +614,14 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                             {isProcessing && (
                                 <div className="space-y-4">
                                     <FiRefreshCw className="w-12 h-12 text-primary-600 animate-spin mx-auto" />
-                                    <h3 className="text-lg font-bold text-gray-800">Importing Products in Background...</h3>
-                                    <div className="max-w-md mx-auto bg-gray-200 rounded-full h-4 overflow-hidden border">
+                                    <h3 className="text-lg font-bold text-content">Importing Products in Background...</h3>
+                                    <div className="max-w-md mx-auto bg-border rounded-full h-4 overflow-hidden border">
                                         <div
                                             className="bg-primary-600 h-full transition-all duration-300"
                                             style={{ width: `${jobProgress?.progressPercent || 0}%` }}
                                         />
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-600">
+                                    <p className="text-sm font-semibold text-content-secondary">
                                         Importing {jobProgress?.processedRows || 0} / {jobProgress?.totalRows || previewRows.length} ({jobProgress?.progressPercent || 0}%)
                                     </p>
                                     <button
@@ -634,36 +634,36 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
 
                             {!isProcessing && jobProgress && (
                                 <div className="space-y-6">
-                                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
-                                        <FiCheckCircle className="w-12 h-12 text-emerald-600 mx-auto mb-2" />
-                                        <h3 className="text-xl font-bold text-emerald-800">Bulk Upload Complete</h3>
-                                        <p className="text-xs text-emerald-600 mt-1">Products have been processed and synced to store catalog.</p>
+                                    <div className="p-4 bg-status-successBg border border-status-success/20 rounded-2xl text-center">
+                                        <FiCheckCircle className="w-12 h-12 text-status-success mx-auto mb-2" />
+                                        <h3 className="text-xl font-bold text-status-success">Bulk Upload Complete</h3>
+                                        <p className="text-xs text-status-success mt-1">Products have been processed and synced to store catalog.</p>
                                     </div>
 
                                     <div className="grid grid-cols-5 gap-3 text-center text-xs font-bold">
-                                        <div className="p-3 bg-gray-50 border rounded-xl">
-                                            <p className="text-gray-500">Total</p>
-                                            <p className="text-base text-gray-800">{jobProgress.totalRows}</p>
+                                        <div className="p-3 bg-surface-muted border rounded-xl">
+                                            <p className="text-content-muted">Total</p>
+                                            <p className="text-base text-content">{jobProgress.totalRows}</p>
                                         </div>
-                                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                                            <p className="text-emerald-600">Imported</p>
-                                            <p className="text-base text-emerald-700">{jobProgress.importedCount}</p>
+                                        <div className="p-3 bg-status-successBg border border-status-success/20 rounded-xl">
+                                            <p className="text-status-success">Imported</p>
+                                            <p className="text-base text-status-success">{jobProgress.importedCount}</p>
                                         </div>
-                                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                                            <p className="text-blue-600">Updated</p>
-                                            <p className="text-base text-blue-700">{jobProgress.updatedCount}</p>
+                                        <div className="p-3 bg-status-infoBg border border-status-info/20 rounded-xl">
+                                            <p className="text-status-info">Updated</p>
+                                            <p className="text-base text-status-info">{jobProgress.updatedCount}</p>
                                         </div>
-                                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                            <p className="text-amber-600">Skipped</p>
-                                            <p className="text-base text-amber-700">{jobProgress.skippedCount}</p>
+                                        <div className="p-3 bg-status-warningBg border border-status-warning/20 rounded-xl">
+                                            <p className="text-status-warning">Skipped</p>
+                                            <p className="text-base text-status-warning">{jobProgress.skippedCount}</p>
                                         </div>
-                                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                                            <p className="text-red-600">Failed</p>
-                                            <p className="text-base text-red-700">{jobProgress.failedCount}</p>
+                                        <div className="p-3 bg-status-errorBg border border-status-error/20 rounded-xl">
+                                            <p className="text-status-error">Failed</p>
+                                            <p className="text-base text-status-error">{jobProgress.failedCount}</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-center gap-4 pt-4 border-t border-gray-100">
+                                    <div className="flex justify-center gap-4 pt-4 border-t border-border-light">
                                         {jobProgress.errorFileUrl && (
                                             <a
                                                 href={jobProgress.errorFileUrl}
@@ -682,7 +682,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                         )}
                                         <button
                                             onClick={onClose}
-                                            className="px-6 py-2.5 bg-gray-800 text-white rounded-xl font-semibold text-sm hover:bg-gray-900 transition-colors">
+                                            className="px-6 py-2.5 bg-surface-header text-content-inverse rounded-xl font-semibold text-sm hover:bg-content transition-colors">
                                             Close
                                         </button>
                                     </div>

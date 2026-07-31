@@ -320,7 +320,7 @@ const Brand = () => {
                             </h2>
                             <button
                                 onClick={() => navigate("/home")}
-                                className="gradient-green text-white px-6 py-3 rounded-xl font-semibold">
+                                className="bg-brand-primary text-black px-6 py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all">
                                 {t('Go Back Home')}
                             </button>
                         </div>
@@ -333,17 +333,17 @@ const Brand = () => {
     return (
         <PageTransition>
             <MobileLayout showBottomNav={true} showCartBar={true}>
-                <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
+                <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-surface-muted">
                     {/* Header */}
-                    <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
+                    <div className="bg-surface border-b border-border sticky top-0 z-30">
                         <div className="px-2 md:px-4 py-2 md:py-4">
                             <div className="flex items-center gap-2 md:gap-3 mb-4">
                                 <button
                                     onClick={() => navigate(-1)}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                    <FiArrowLeft className="text-xl text-gray-700" />
+                                    className="p-2 hover:bg-surface-muted rounded-full transition-colors">
+                                    <FiArrowLeft className="text-xl text-content-secondary" />
                                 </button>
-                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 p-1">
+                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-muted border border-border-light flex-shrink-0 p-1">
                                     <LazyImage
                                         src={brand.logo}
                                         alt={brand.name}
@@ -354,46 +354,46 @@ const Brand = () => {
                                     />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h1 className="text-xl font-bold text-gray-800 truncate">
+                                    <h1 className="text-xl font-bold text-content truncate">
                                         {brand.name}
                                     </h1>
                                     <div className="relative mt-1">
-                                        <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                                        <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted text-xs" />
                                         <input
                                             type="text"
                                             placeholder={t("Search in brand...")}
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full pl-8 pr-8 py-2 bg-gray-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 shadow-inner"
+                                            className="w-full pl-8 pr-8 py-2 bg-surface-muted border border-border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary text-content shadow-inner"
                                         />
                                         {searchQuery && (
                                             <button
                                                 onClick={() => setSearchQuery("")}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-content-muted p-1 hover:bg-border rounded-full transition-colors"
                                             >
                                                 <FiX className="text-xs" />
                                             </button>
                                         )}
                                     </div>
-                                    <p className="text-[10px] text-gray-500 mt-1">
+                                    <p className="text-[10px] text-content-muted mt-1">
                                         {brandProducts.length} {brandProducts.length !== 1 ? t("products") : t("product")} {t('available')}
                                     </p>
                                 </div>
                                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                    <div className="flex items-center bg-surface-muted rounded-lg p-1 border border-border">
                                         <button
                                             onClick={() => setViewMode("list")}
                                             className={`p-1.5 rounded transition-colors ${viewMode === "list"
-                                                ? "bg-white text-primary-600 shadow-sm"
-                                                : "text-gray-600"
+                                                ? "bg-surface text-brand-primary shadow-sm"
+                                                : "text-content-secondary"
                                                 }`}>
                                             <FiList className="text-lg" />
                                         </button>
                                         <button
                                             onClick={() => setViewMode("grid")}
                                             className={`p-1.5 rounded transition-colors ${viewMode === "grid"
-                                                ? "bg-white text-primary-600 shadow-sm"
-                                                : "text-gray-600"
+                                                ? "bg-surface text-brand-primary shadow-sm"
+                                                : "text-content-secondary"
                                                 }`}>
                                             <FiGrid className="text-lg" />
                                         </button>
@@ -401,10 +401,10 @@ const Brand = () => {
                                     <div ref={filterButtonRef} className="relative">
                                         <button
                                             onClick={() => setShowFilters(!showFilters)}
-                                            className={`p-2 glass-card rounded-xl hover:bg-white/80 transition-colors ${showFilters ? "bg-white/80" : ""
+                                            className={`p-2 glass-card rounded-xl hover:bg-surface/80 transition-colors ${showFilters ? "bg-surface/80" : ""
                                                 }`}>
                                             <FiFilter
-                                                className={`text-lg transition-colors ${hasActiveFilters ? "text-blue-600" : "text-gray-600"
+                                                className={`text-lg transition-colors ${hasActiveFilters ? "text-brand-primary" : "text-content-secondary"
                                                     }`}
                                             />
                                         </button>
@@ -429,20 +429,20 @@ const Brand = () => {
                                                             stiffness: 300,
                                                             damping: 30,
                                                         }}
-                                                        className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
+                                                        className="filter-dropdown absolute right-0 top-full w-56 bg-surface rounded-xl shadow-2xl border border-border z-[10001] overflow-hidden"
                                                         style={{ marginTop: "-50px" }}>
                                                         {/* Header */}
-                                                        <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+                                                        <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-surface-muted">
                                                             <div className="flex items-center gap-1.5">
-                                                                <FiFilter className="text-sm text-gray-700" />
-                                                                <h3 className="text-sm font-bold text-gray-800">
+                                                                <FiFilter className="text-sm text-content-secondary" />
+                                                                <h3 className="text-sm font-bold text-content">
                                                                     {t('Filters')}
                                                                 </h3>
                                                             </div>
                                                             <button
                                                                 onClick={() => setShowFilters(false)}
-                                                                className="p-0.5 hover:bg-gray-200 rounded-full transition-colors">
-                                                                <FiX className="text-sm text-gray-600" />
+                                                                className="p-0.5 hover:bg-border rounded-full transition-colors">
+                                                                <FiX className="text-sm text-content-secondary" />
                                                             </button>
                                                         </div>
 
@@ -450,13 +450,13 @@ const Brand = () => {
                                                         <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
                                                             <div className="p-2 space-y-2">
                                                                  <div>
-                                                                    <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                                                    <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                                                         {t('Sort By')}
                                                                     </h4>
                                                                     <select
                                                                         value={sortBy}
                                                                         onChange={(e) => setSortBy(e.target.value)}
-                                                                        className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                                                        className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                                                     >
                                                                         <option value="newest">{t('Newest')}</option>
                                                                         <option value="popular">{t('Most Popular')}</option>
@@ -467,7 +467,7 @@ const Brand = () => {
                                                                 </div>
                                                                 {/* Price Range */}
                                                                  <div>
-                                                                    <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                                                    <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                                                         {t('Price Range')}
                                                                     </h4>
                                                                     <div className="space-y-1.5">
@@ -481,7 +481,7 @@ const Brand = () => {
                                                                                     e.target.value
                                                                                 )
                                                                             }
-                                                                            className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                                                            className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                                                         />
                                                                         <input
                                                                             type="number"
@@ -493,21 +493,21 @@ const Brand = () => {
                                                                                     e.target.value
                                                                                 )
                                                                             }
-                                                                            className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                                                            className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                                                         />
                                                                     </div>
                                                                 </div>
 
                                                                 {/* Rating Filter */}
                                                                 <div>
-                                                                    <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                                                    <h4 className="font-semibold text-content-secondary mb-1 text-xs">
                                                                         {t('Minimum Rating')}
                                                                     </h4>
                                                                     <div className="space-y-0.5">
                                                                         {[4, 3, 2, 1].map((rating) => (
                                                                             <label
                                                                                 key={rating}
-                                                                                className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-gray-50 transition-colors">
+                                                                                className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-surface-muted transition-colors">
                                                                                 <input
                                                                                     type="radio"
                                                                                     name="minRating"
@@ -522,16 +522,16 @@ const Brand = () => {
                                                                                             e.target.value
                                                                                         )
                                                                                     }
-                                                                                    className="w-3 h-3 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-primary-500 relative cursor-pointer"
+                                                                                    className="w-3 h-3 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
                                                                                     style={{
                                                                                         backgroundImage:
                                                                                             filters.minRating ===
                                                                                                 rating.toString()
-                                                                                                ? "radial-gradient(circle, #10b981 40%, transparent 40%)"
+                                                                                                ? "radial-gradient(circle, var(--color-brand-primary) 40%, transparent 40%)"
                                                                                                 : "none",
                                                                                     }}
                                                                                 />
-                                                                                <span className="text-xs text-gray-700">
+                                                                                <span className="text-xs text-content-secondary">
                                                                                     {rating}+ {t('Stars')}
                                                                                 </span>
                                                                             </label>
@@ -542,15 +542,15 @@ const Brand = () => {
                                                         </div>
 
                                                         {/* Footer */}
-                                                         <div className="border-t border-gray-200 p-2 bg-gray-50 space-y-1.5">
+                                                         <div className="border-t border-border p-2 bg-surface-muted space-y-1.5">
                                                             <button
                                                                 onClick={clearFilters}
-                                                                className="w-full py-1.5 bg-gray-200 text-gray-700 rounded-md font-semibold text-xs hover:bg-gray-300 transition-colors">
+                                                                className="w-full py-1.5 bg-border text-content-secondary rounded-md font-semibold text-xs hover:bg-border-strong transition-colors">
                                                                 {t('Clear All')}
                                                             </button>
                                                             <button
                                                                 onClick={() => setShowFilters(false)}
-                                                                className="w-full py-1.5 gradient-green text-white rounded-md font-semibold text-xs hover:shadow-glow-green transition-all">
+                                                                className="w-full py-1.5 bg-brand-primary text-black rounded-md font-semibold text-xs hover:bg-brand-primaryHover transition-all">
                                                                 {t('Apply Filters')}
                                                             </button>
                                                         </div>
@@ -568,13 +568,13 @@ const Brand = () => {
                     <div className="px-4 py-4 lg:p-6">
                         {brandProducts.length === 0 ? (
                             <div className="text-center py-12">
-                                <div className="text-6xl text-gray-300 mx-auto mb-4 flex justify-center">
+                                <div className="text-6xl text-content-muted mx-auto mb-4 flex justify-center">
                                     <FiTag />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                                <h3 className="text-xl font-bold text-content mb-2">
                                     {t('No products found')}
                                 </h3>
-                                <p className="text-gray-600">
+                                <p className="text-content-secondary">
                                     {t('There are no products available for this brand at the moment.')}
                                 </p>
                             </div>
@@ -606,7 +606,7 @@ const Brand = () => {
                                         <button
                                             onClick={loadMore}
                                             disabled={isLoading}
-                                            className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                             {isLoading ? t("Loading...") : t("Load More")}
                                         </button>
                                     </div>
@@ -638,7 +638,7 @@ const Brand = () => {
                                         <button
                                             onClick={loadMore}
                                             disabled={isLoading}
-                                            className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                             {isLoading ? t("Loading...") : t("Load More")}
                                         </button>
                                     </div>

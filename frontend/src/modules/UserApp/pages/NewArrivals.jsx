@@ -151,29 +151,29 @@ const MobileNewArrivals = () => {
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div className="w-full pb-24">
-          <div className="px-4 py-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-b border-gray-200 sticky top-1 z-30">
+          <div className="px-4 py-4 bg-surface-header border-b border-border sticky top-1 z-30">
             <div className="flex items-center gap-3 mb-3">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-white/50 rounded-full transition-colors"
+                className="p-2 hover:bg-surface-muted rounded-full transition-colors"
               >
-                <FiArrowLeft className="text-xl text-gray-700" />
+                <FiArrowLeft className="text-xl text-content-secondary" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <h1 className="text-xl font-bold text-content flex items-center gap-2">
                   <span>New Arrivals</span>
-                  <FiTag className="text-cyan-500" />
+                  <FiTag className="text-brand-primary" />
                 </h1>
-                <p className="text-[10px] text-gray-500 mt-0.5">{filteredCountText}</p>
+                <p className="text-[10px] text-content-muted mt-0.5">{filteredCountText}</p>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center bg-surface-muted rounded-lg p-1 border border-border">
                   <button
                     onClick={() => setViewMode("list")}
                     className={`p-1 rounded transition-colors ${
                       viewMode === "list"
-                        ? "bg-white text-primary-600 shadow-sm"
-                        : "text-gray-600"
+                        ? "bg-surface text-brand-primary shadow-sm"
+                        : "text-content-secondary"
                     }`}
                   >
                     <FiList className="text-sm" />
@@ -182,8 +182,8 @@ const MobileNewArrivals = () => {
                     onClick={() => setViewMode("grid")}
                     className={`p-1 rounded transition-colors ${
                       viewMode === "grid"
-                        ? "bg-white text-primary-600 shadow-sm"
-                        : "text-gray-600"
+                        ? "bg-surface text-brand-primary shadow-sm"
+                        : "text-content-secondary"
                     }`}
                   >
                     <FiGrid className="text-sm" />
@@ -192,13 +192,13 @@ const MobileNewArrivals = () => {
                 <div ref={filterButtonRef} className="relative">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`p-1.5 glass-card rounded-lg hover:bg-white/80 transition-colors ${
-                      showFilters ? "bg-white/80" : ""
+                    className={`p-1.5 glass-card rounded-lg hover:bg-surface/80 transition-colors ${
+                      showFilters ? "bg-surface/80" : ""
                     }`}
                   >
                     <FiFilter
                       className={`text-sm transition-colors ${
-                        hasActiveFilters ? "text-blue-600" : "text-gray-600"
+                        hasActiveFilters ? "text-brand-primary" : "text-content-secondary"
                       }`}
                     />
                   </button>
@@ -218,30 +218,30 @@ const MobileNewArrivals = () => {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -10, scale: 0.95 }}
                           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
+                          className="filter-dropdown absolute right-0 top-full w-56 bg-surface rounded-xl shadow-2xl border border-border z-[10001] overflow-hidden"
                           style={{ marginTop: "-50px" }}
                         >
-                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-surface-muted">
                             <div className="flex items-center gap-1.5">
-                              <FiFilter className="text-sm text-gray-700" />
-                              <h3 className="text-sm font-bold text-gray-800">Filters</h3>
+                              <FiFilter className="text-sm text-content-secondary" />
+                              <h3 className="text-sm font-bold text-content">Filters</h3>
                             </div>
                             <button
                               onClick={() => setShowFilters(false)}
-                              className="p-0.5 hover:bg-gray-200 rounded-full transition-colors"
+                              className="p-0.5 hover:bg-border rounded-full transition-colors"
                             >
-                              <FiX className="text-sm text-gray-600" />
+                              <FiX className="text-sm text-content-secondary" />
                             </button>
                           </div>
 
                           <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
                             <div className="p-2 space-y-2">
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">Sort By</h4>
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">Sort By</h4>
                                 <select
                                   value={sortBy}
                                   onChange={(e) => setSortBy(e.target.value)}
-                                  className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                  className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                 >
                                   <option value="newest">Newest</option>
                                   <option value="popular">Most Popular</option>
@@ -252,32 +252,32 @@ const MobileNewArrivals = () => {
                               </div>
 
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">Price Range</h4>
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">Price Range</h4>
                                 <div className="space-y-1.5">
                                   <input
                                     type="number"
                                     placeholder="Min Price"
                                     value={filters.minPrice}
                                     onChange={(e) => handleFilterChange("minPrice", e.target.value)}
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                   />
                                   <input
                                     type="number"
                                     placeholder="Max Price"
                                     value={filters.maxPrice}
                                     onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
                                   />
                                 </div>
                               </div>
 
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">Minimum Rating</h4>
+                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">Minimum Rating</h4>
                                 <div className="space-y-0.5">
                                   {[4, 3, 2, 1].map((rating) => (
                                     <label
                                       key={rating}
-                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-gray-50 transition-colors"
+                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-surface-muted transition-colors"
                                     >
                                       <input
                                         type="radio"
@@ -285,15 +285,15 @@ const MobileNewArrivals = () => {
                                         value={rating}
                                         checked={filters.minRating === rating.toString()}
                                         onChange={(e) => handleFilterChange("minRating", e.target.value)}
-                                        className="w-3 h-3 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-primary-500 relative cursor-pointer"
+                                        className="w-3 h-3 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
                                         style={{
                                           backgroundImage:
                                             filters.minRating === rating.toString()
-                                              ? "radial-gradient(circle, #10b981 40%, transparent 40%)"
+                                              ? "radial-gradient(circle, var(--color-brand-primary) 40%, transparent 40%)"
                                               : "none",
                                         }}
                                       />
-                                      <span className="text-xs text-gray-700">{rating}+ Stars</span>
+                                      <span className="text-xs text-content-secondary">{rating}+ Stars</span>
                                     </label>
                                   ))}
                                 </div>
@@ -301,16 +301,16 @@ const MobileNewArrivals = () => {
                             </div>
                           </div>
 
-                          <div className="border-t border-gray-200 p-2 bg-gray-50 space-y-1.5">
+                          <div className="border-t border-border p-2 bg-surface-muted space-y-1.5">
                             <button
                               onClick={clearFilters}
-                              className="w-full py-1.5 bg-gray-200 text-gray-700 rounded-md font-semibold text-xs hover:bg-gray-300 transition-colors"
+                              className="w-full py-1.5 bg-border text-content-secondary rounded-md font-semibold text-xs hover:bg-border-strong transition-colors"
                             >
                               Clear All
                             </button>
                             <button
                               onClick={() => setShowFilters(false)}
-                              className="w-full py-1.5 gradient-green text-white rounded-md font-semibold text-xs hover:shadow-glow-green transition-all"
+                              className="w-full py-1.5 bg-brand-primary text-black rounded-md font-semibold text-xs hover:bg-brand-primaryHover transition-all"
                             >
                               Apply Filters
                             </button>
@@ -324,18 +324,18 @@ const MobileNewArrivals = () => {
             </div>
 
             <div className="relative mt-2 w-full">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-sm" />
               <input
                 type="text"
                 placeholder="Search new arrivals..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-10 py-2.5 bg-white border border-gray-200 shadow-sm rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                className="w-full pl-9 pr-10 py-2.5 bg-surface border border-border shadow-sm rounded-xl text-sm text-content focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted p-1 hover:bg-surface-muted rounded-full transition-colors"
                 >
                   <FiX className="text-sm" />
                 </button>
@@ -345,14 +345,14 @@ const MobileNewArrivals = () => {
 
           <div className="px-4 py-4">
             {isInitialLoading ? (
-              <div className="text-center py-12 text-gray-600">Loading new arrivals...</div>
+              <div className="text-center py-12 text-content-secondary">Loading new arrivals...</div>
             ) : products.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-6xl text-gray-300 mx-auto mb-4 flex justify-center">
+                <div className="text-6xl text-content-muted mx-auto mb-4 flex justify-center">
                   <FiTag />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">No new arrivals</h3>
-                <p className="text-gray-600">Check back later for fresh products.</p>
+                <h3 className="text-xl font-bold text-content mb-2">No new arrivals</h3>
+                <p className="text-content-secondary">Check back later for fresh products.</p>
               </div>
             ) : viewMode === "grid" ? (
               <>
@@ -372,14 +372,14 @@ const MobileNewArrivals = () => {
                 {hasMore && (
                   <div className="mt-6 flex flex-col items-center gap-4">
                     {isLoading && (
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-content-secondary">
                         <span className="text-sm">Loading more products...</span>
                       </div>
                     )}
                     <button
                       onClick={handleLoadMore}
                       disabled={isLoading}
-                      className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? "Loading..." : "Load More"}
                     </button>
@@ -397,14 +397,14 @@ const MobileNewArrivals = () => {
                 {hasMore && (
                   <div className="mt-6 flex flex-col items-center gap-4">
                     {isLoading && (
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-2 text-content-secondary">
                         <span className="text-sm">Loading more products...</span>
                       </div>
                     )}
                     <button
                       onClick={handleLoadMore}
                       disabled={isLoading}
-                      className="px-6 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? "Loading..." : "Load More"}
                     </button>

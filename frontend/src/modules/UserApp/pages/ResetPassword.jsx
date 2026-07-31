@@ -65,39 +65,39 @@ const MobileResetPassword = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-muted">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="bg-surface rounded-2xl p-6 shadow-xl border border-border">
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('Reset Password')}</h1>
-                <p className="text-sm text-gray-600">
-                  {t('Set a new password for')} <span className="font-medium text-gray-900">{email || t('your account')}</span>
+                <h1 className="text-2xl font-bold text-content mb-2">{t('Reset Password')}</h1>
+                <p className="text-sm text-content-secondary">
+                  {t('Set a new password for')} <span className="font-medium text-content">{email || t('your account')}</span>
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('New Password')}</label>
+                  <label className="block text-sm font-semibold text-content-secondary mb-2">{t('New Password')}</label>
                   <div className="relative">
-                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                       placeholder={t('Enter new password')}
-                      className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors text-base"
+                      className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-border bg-surface text-content focus:border-brand-primary focus:outline-none transition-colors text-base"
                       required
                       minLength={6}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-content-muted hover:text-content-secondary transition-colors"
                     >
                       {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                     </button>
@@ -105,22 +105,22 @@ const MobileResetPassword = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Confirm Password')}</label>
+                  <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Confirm Password')}</label>
                   <div className="relative">
-                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={formData.confirmPassword}
                       onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                       placeholder={t('Confirm new password')}
-                      className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors text-base"
+                      className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-border bg-surface text-content focus:border-brand-primary focus:outline-none transition-colors text-base"
                       required
                       minLength={6}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((v) => !v)}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-content-muted hover:text-content-secondary transition-colors"
                     >
                       {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                     </button>
@@ -130,14 +130,14 @@ const MobileResetPassword = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-brand-primary hover:bg-brand-primaryHover text-black py-3.5 rounded-xl font-semibold text-base transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? t('Resetting...') : t('Reset Password')}
                 </button>
               </form>
 
               <div className="text-center pt-6">
-                <Link to="/login" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 font-medium">
+                <Link to="/login" className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content font-medium">
                   <FiArrowLeft />
                   {t('Back to Login')}
                 </Link>

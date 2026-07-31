@@ -27,25 +27,25 @@ const CustomerSupport = () => {
     }, [activeConversation]);
 
     return (
-        <div className="min-h-screen bg-gray-50/50 py-6 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-surface-muted py-6 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header Banner */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/80 flex flex-wrap items-center justify-between gap-4">
+                <div className="bg-surface rounded-2xl p-6 shadow-sm border border-border flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => navigate(-1)}
-                            className="p-2.5 hover:bg-gray-100 rounded-xl text-gray-600 transition-colors"
+                            className="p-2.5 hover:bg-surface-muted rounded-xl text-content-secondary transition-colors"
                         >
                             <FiArrowLeft className="w-5 h-5" />
                         </button>
-                        <div className="p-3 bg-primary-50 text-primary-600 rounded-2xl">
+                        <div className="p-3 bg-surface-muted border border-border text-brand-primary rounded-2xl">
                             <FiHelpCircle className="w-6 h-6" />
                         </div>
                         <div>
-                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                            <h1 className="text-xl sm:text-2xl font-bold text-content">
                                 DwellMart Support Center
                             </h1>
-                            <p className="text-xs sm:text-sm text-gray-500">
+                            <p className="text-xs sm:text-sm text-content-secondary">
                                 Contact DwellMart Customer Support Desk & track your queries in real-time
                             </p>
                         </div>
@@ -53,7 +53,7 @@ const CustomerSupport = () => {
 
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                        className="px-5 py-2.5 bg-brand-primary hover:bg-brand-primaryHover text-black font-semibold text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
                     >
                         <FiPlus className="w-4 h-4" />
                         <span>New Conversation</span>
@@ -81,7 +81,7 @@ const CustomerSupport = () => {
                         <div className="lg:hidden mb-2">
                             <button
                                 onClick={() => setActiveTab('list')}
-                                className="text-xs font-semibold text-primary-600 flex items-center gap-1 p-2"
+                                className="text-xs font-semibold text-brand-primary flex items-center gap-1 p-2"
                             >
                                 <FiArrowLeft className="w-4 h-4" /> Back to conversations
                             </button>

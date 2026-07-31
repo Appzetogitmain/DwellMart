@@ -110,18 +110,18 @@ const MobileVerification = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-muted">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="bg-surface rounded-2xl p-6 shadow-xl border border-border">
               {/* Back Button */}
               <button
                 onClick={() => navigate(-1)}
-                className="mb-6 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                className="mb-6 flex items-center text-content-secondary hover:text-content transition-colors"
               >
                 <FiArrowLeft className="mr-2" size={20} />
                 <span className="text-sm font-medium">{t('Back')}</span>
@@ -129,25 +129,25 @@ const MobileVerification = () => {
 
               {/* Header */}
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('Verification')}</h1>
+                <h1 className="text-2xl font-bold text-content mb-6">{t('Verification')}</h1>
 
                 {/* Verification Icon */}
                 <div className="flex justify-center mb-6">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-purple-200 flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
-                          <FiCheck className="text-white" size={24} />
+                    <div className="w-20 h-20 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-brand-primary/20 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full bg-brand-primary text-black flex items-center justify-center">
+                          <FiCheck size={24} />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('Verification code')}</h2>
-                <p className="text-sm text-gray-600">
+                <h2 className="text-xl font-semibold text-content mb-2">{t('Verification code')}</h2>
+                <p className="text-sm text-content-secondary">
                   {t("Enter the verification code we've sent to your")}{' '}
-                  <span className="font-medium text-gray-900">{email || t('email')}</span>
+                  <span className="font-medium text-content">{email || t('email')}</span>
                 </p>
               </div>
 
@@ -166,8 +166,8 @@ const MobileVerification = () => {
                       onKeyDown={(e) => handleKeyDown(index, e)}
                       onPaste={index === 0 ? handlePaste : undefined}
                       className={`w-14 h-14 rounded-full border-2 text-center text-xl font-semibold focus:outline-none transition-all ${code
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-200 focus:border-purple-500 text-gray-900'
+                          ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
+                          : 'border-border bg-surface focus:border-brand-primary text-content'
                         }`}
                     />
                   ))}
@@ -177,7 +177,7 @@ const MobileVerification = () => {
                 <button
                   type="submit"
                   disabled={isLoading || codes.some(code => !code)}
-                  className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-brand-primary hover:bg-brand-primaryHover text-black py-3.5 rounded-xl font-semibold text-base transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? t('Verifying...') : t('Confirm')}
                 </button>
@@ -185,11 +185,11 @@ const MobileVerification = () => {
 
               {/* Resend Link */}
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-content-secondary">
                   {t("Didn't receive the code?")}{' '}
                   <button
                     onClick={handleResend}
-                    className="text-primary-600 hover:text-primary-700 font-semibold"
+                    className="text-brand-primary hover:underline font-semibold"
                   >
                     {t('Resend')}
                   </button>

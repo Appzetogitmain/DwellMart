@@ -113,20 +113,20 @@ const MobileAddresses = () => {
     <ProtectedRoute>
       <PageTransition>
         <MobileLayout showBottomNav={true} showCartBar={true}>
-          <div className="w-full pb-24">
+          <div className="w-full pb-24 min-h-screen bg-surface-muted">
             {/* Header */}
-            <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
+            <div className="px-4 py-4 bg-surface border-b border-border sticky top-1 z-30">
               <div className="flex items-center gap-3 mb-3">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-muted rounded-full transition-colors"
                 >
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  <FiArrowLeft className="text-xl text-content-secondary" />
                 </button>
-                <h1 className="text-xl font-bold text-gray-800 flex-1">{t('Saved Addresses')}</h1>
+                <h1 className="text-xl font-bold text-content flex-1">{t('Saved Addresses')}</h1>
                 <button
                   onClick={() => setIsFormOpen(true)}
-                  className="p-2 gradient-green text-white rounded-xl hover:shadow-glow-green transition-all"
+                  className="p-2 bg-brand-primary text-black rounded-xl hover:bg-brand-primaryHover transition-all"
                 >
                   <FiPlus className="text-xl" />
                 </button>
@@ -137,16 +137,16 @@ const MobileAddresses = () => {
             <div className="px-4 py-4">
               {isLoading ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-600">{t('Loading addresses...')}</p>
+                  <p className="text-content-secondary">{t('Loading addresses...')}</p>
                 </div>
               ) : addresses.length === 0 ? (
                 <div className="text-center py-12">
-                  <FiMapPin className="text-6xl text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{t('No addresses saved')}</h3>
-                  <p className="text-gray-600 mb-6">{t('Add your first address to get started')}</p>
+                  <FiMapPin className="text-6xl text-content-muted mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-content mb-2">{t('No addresses saved')}</h3>
+                  <p className="text-content-secondary mb-6">{t('Add your first address to get started')}</p>
                   <button
                     onClick={() => setIsFormOpen(true)}
-                    className="gradient-green text-white px-6 py-3 rounded-xl font-semibold"
+                    className="bg-brand-primary text-black px-6 py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all"
                   >
                     {t('Add Address')}
                   </button>
@@ -158,31 +158,31 @@ const MobileAddresses = () => {
                       key={address.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="glass-card rounded-2xl p-4"
+                      className="glass-card rounded-2xl p-4 bg-surface border border-border"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-3 flex-1">
-                          <FiMapPin className="text-primary-600 text-xl mt-0.5 flex-shrink-0" />
+                          <FiMapPin className="text-brand-primary text-xl mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-gray-800 text-base">{address.name}</h3>
+                              <h3 className="font-bold text-content text-base">{address.name}</h3>
                               {address.isDefault && (
-                                <span className="px-2 py-0.5 bg-primary-100 text-primary-700 rounded text-xs font-semibold">
+                                <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary border border-brand-primary/30 rounded text-xs font-semibold">
                                   {t('Default')}
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mb-1">{address.fullName}</p>
-                            <p className="text-sm text-gray-600 mb-1">{address.address}</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-content-secondary mb-1">{address.fullName}</p>
+                            <p className="text-sm text-content-secondary mb-1">{address.address}</p>
+                            <p className="text-sm text-content-secondary">
                               {address.city}, {address.state} {address.zipCode}
                             </p>
-                            <p className="text-sm text-gray-600">{address.country}</p>
-                            <p className="text-sm text-gray-600 mt-1">Phone: {address.phone}</p>
+                            <p className="text-sm text-content-secondary">{address.country}</p>
+                            <p className="text-sm text-content-muted mt-1">Phone: {address.phone}</p>
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 pt-3 border-t border-gray-200">
+                      <div className="flex gap-2 pt-3 border-t border-border">
                         {!address.isDefault && (
                           <button
                             onClick={async () => {
@@ -193,20 +193,20 @@ const MobileAddresses = () => {
                                 toast.error(error?.message || t('Failed to set default address'));
                               }
                             }}
-                            className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-colors"
+                            className="flex-1 py-2 bg-surface-muted border border-border text-content-secondary rounded-xl font-semibold text-sm hover:bg-border transition-colors"
                           >
                             {t('Set as Default')}
                           </button>
                         )}
                         <button
                           onClick={() => handleEdit(address)}
-                          className="p-2 bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-100 transition-colors"
+                          className="p-2 bg-surface-muted border border-border text-brand-primary rounded-xl hover:bg-border transition-colors"
                         >
                           <FiEdit className="text-base" />
                         </button>
                         <button
                           onClick={() => handleDelete(address.id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                          className="p-2 bg-status-errorBg border border-status-error/30 text-status-error rounded-xl hover:opacity-90 transition-colors"
                         >
                           <FiTrash2 className="text-base" />
                         </button>
@@ -261,111 +261,111 @@ const AddressFormModal = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto border-t border-border"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-content">
             {editingAddress ? t('Edit Address') : t('Add New Address')}
           </h2>
-          <button onClick={onCancel} className="p-2 hover:bg-gray-100 rounded-full">
-            <FiX className="text-xl" />
+          <button onClick={onCancel} className="p-2 hover:bg-surface-muted rounded-full">
+            <FiX className="text-xl text-content-secondary" />
           </button>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Address Label')}</label>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Address Label')}</label>
             <input
               type="text"
               {...register('name', { required: t('Address label is required') })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.name ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.name ? 'border-status-error' : 'border-border'
+                } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
               placeholder={t('Home, Work, etc.')}
             />
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+            {errors.name && <p className="mt-1 text-sm text-status-error">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Full Name')}</label>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Full Name')}</label>
             <input
               type="text"
               {...register('fullName', { required: t('Full name is required') })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.fullName ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.fullName ? 'border-status-error' : 'border-border'
+                } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
             />
             {errors.fullName && (
-              <p className="mt-1 text-sm text-red-600">{errors.fullName.message}</p>
+              <p className="mt-1 text-sm text-status-error">{errors.fullName.message}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Phone Number')}</label>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Phone Number')}</label>
             <input
               type="tel"
               {...register('phone', { required: t('Phone number is required') })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.phone ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.phone ? 'border-status-error' : 'border-border'
+                } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
             />
-            {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
+            {errors.phone && <p className="mt-1 text-sm text-status-error">{errors.phone.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Street Address')}</label>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Street Address')}</label>
             <input
               type="text"
               {...register('address', { required: t('Address is required') })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.address ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.address ? 'border-status-error' : 'border-border'
+                } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
             />
             {errors.address && (
-              <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+              <p className="mt-1 text-sm text-status-error">{errors.address.message}</p>
             )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('City')}</label>
+              <label className="block text-sm font-semibold text-content-secondary mb-2">{t('City')}</label>
               <input
                 type="text"
                 {...register('city', { required: t('City is required') })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.city ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.city ? 'border-status-error' : 'border-border'
+                  } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('State')}</label>
+              <label className="block text-sm font-semibold text-content-secondary mb-2">{t('State')}</label>
               <input
                 type="text"
                 {...register('state', { required: t('State is required') })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.state ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.state ? 'border-status-error' : 'border-border'
+                  } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Zip Code')}</label>
+              <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Zip Code')}</label>
               <input
                 type="text"
                 {...register('zipCode', { required: t('Zip code is required') })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.zipCode ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.zipCode ? 'border-status-error' : 'border-border'
+                  } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Country')}</label>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Country')}</label>
             <input
               type="text"
               {...register('country', { required: t('Country is required') })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.country ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.country ? 'border-status-error' : 'border-border'
+                } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
             />
           </div>
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 gradient-green text-white py-3 rounded-xl font-semibold hover:shadow-glow-green transition-all"
+              className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all"
             >
               {editingAddress ? t('Update Address') : t('Add Address')}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+              className="px-6 py-3 bg-surface-muted text-content-secondary border border-border rounded-xl font-semibold hover:bg-border transition-colors"
             >
               {t('Cancel')}
             </button>

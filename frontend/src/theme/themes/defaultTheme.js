@@ -46,6 +46,16 @@ export const defaultTheme = createTheme({
       focus: '#D4AF37',
       goldAccent: 'rgba(212, 175, 55, 0.3)',
     },
+    status: {
+      success:   '#10B981',
+      successBg: '#ECFDF5',
+      warning:   '#F59E0B',
+      warningBg: '#FFFBEB',
+      error:     '#EF4444',
+      errorBg:   '#FEF2F2',
+      info:      '#3B82F6',
+      infoBg:    '#EFF6FF',
+    },
   },
   semantic: {
     button: buttonSemantic,

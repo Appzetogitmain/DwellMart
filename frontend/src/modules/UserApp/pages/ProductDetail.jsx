@@ -34,6 +34,9 @@ import ReviewForm from "../../../shared/components/Product/ReviewForm";
 import PageTransition from "../../../shared/components/PageTransition";
 import Badge from "../../../shared/components/Badge";
 import ProductCard from "../../../shared/components/ProductCard";
+import ProductGrid from "../../../shared/components/ProductGrid";
+import ProductReviewCard from "../../../shared/components/ProductReviewCard";
+import { Button, Rating, QuantitySelector, Accordion, Tabs, Avatar } from "../../../shared/components/ui";
 import { getVariantSignature } from "../../../shared/utils/variant";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -623,12 +626,12 @@ const MobileProductDetail = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-        <div className="w-full pb-12 max-w-7xl mx-auto">
+        <div className="w-full pb-12 max-w-7xl mx-auto min-h-screen bg-surface-muted">
           {/* Back Button */}
           <div className="px-4 pt-2 sm:pt-4 lg:pt-6 lg:px-8 mb-2 sm:mb-4">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white border border-gray-200 shadow-xs text-gray-700 hover:text-gray-900 text-xs font-semibold hover:bg-gray-50 transition-all">
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-surface border border-border shadow-xs text-content-secondary hover:text-content text-xs font-semibold hover:bg-surface-muted transition-all">
               <FiArrowLeft className="text-sm" />
               <span>{t('Back')}</span>
             </button>
@@ -654,9 +657,9 @@ const MobileProductDetail = () => {
                     <div className="mb-4">
                       <Link
                         to={`/seller/${vendor.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
+                        className="inline-flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group">
                         {/* Vendor Logo */}
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-surface border border-border flex-shrink-0 flex items-center justify-center">
                           {stableVendorLogo ? (
                             <img
                               src={stableVendorLogo}
@@ -669,22 +672,22 @@ const MobileProductDetail = () => {
                             />
                           ) : null}
                           <div
-                            className="w-full h-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-[10px] font-bold"
+                            className="w-full h-full bg-brand-primary text-black flex items-center justify-center text-[10px] font-bold"
                             style={{ display: stableVendorLogo ? "none" : "flex" }}>
                             <FiShoppingBag />
                           </div>
                         </div>
 
-                        <span className="font-medium text-sm group-hover:text-primary-600 transition-colors">
+                        <span className="font-medium text-sm group-hover:text-brand-primary transition-colors">
                           {translatedVendor?.storeName || translatedVendor?.name || product.vendorName}
                         </span>
                         {translatedVendor?.isVerified && (
                           <FiCheckCircle
-                            className="text-accent-500 text-sm"
+                            className="text-status-info text-sm"
                             title={t("Verified Vendor")}
                           />
                         )}
-                        <span className="text-gray-400 group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-content-muted group-hover:translate-x-1 transition-transform">{"->"}</span>
                       </Link>
                     </div>
                   )}
@@ -692,8 +695,8 @@ const MobileProductDetail = () => {
                     <div className="mb-4">
                       <Link
                         to={`/brand/${brand.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0 flex items-center justify-center">
+                        className="inline-flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-surface border border-border flex-shrink-0 flex items-center justify-center">
                           {stableBrandLogo ? (
                             <img
                               src={stableBrandLogo}
@@ -706,60 +709,59 @@ const MobileProductDetail = () => {
                             />
                           ) : null}
                           <div
-                            className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-[10px]"
+                            className="w-full h-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-bold text-[10px]"
                             style={{ display: stableBrandLogo ? "none" : "flex" }}>
                             {(translatedBrand?.name || brand.name)?.[0]?.toUpperCase()}
                           </div>
                         </div>
-                        <span className="font-medium text-sm group-hover:text-primary-600 transition-colors">
+                        <span className="font-medium text-sm group-hover:text-brand-primary transition-colors">
                           {translatedBrand?.name || product.brandName}
                         </span>
-                        <span className="text-gray-400 group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-content-muted group-hover:translate-x-1 transition-transform">{"->"}</span>
                       </Link>
                     </div>
                   )}
 
-                  <h1 className="text-2xl lg:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
+                  <h1 className="text-2xl lg:text-4xl font-extrabold text-content mb-4 leading-tight">
                     {product.name}
                   </h1>
 
                   {/* Rating & Reviews */}
                   {!!product.rating && (
                     <div className="flex items-center gap-4 mb-6">
-                      <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
-                        <span className="font-bold text-yellow-700">{product.rating}</span>
-                        <FiStar className="text-yellow-500 fill-yellow-500" />
-                      </div>
-                      <span className="text-gray-500 text-sm font-medium hover:text-gray-700 cursor-pointer">
+                      <Rating value={product.rating} readOnly showValue size="md" />
+                      <span className="text-content-muted text-sm font-medium">
                         {product.reviewCount || 0} {t('Reviews')}
                       </span>
-                      <span className="text-gray-300">|</span>
-                      <span className="text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-lg">
+                      <span className="text-content-muted">|</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-card ${
+                        product.stock === "in_stock" ? "bg-status-success/15 text-status-success" : "bg-status-error/15 text-status-error"
+                      }`}>
                         {product.stock === "in_stock" ? t("In Stock") : product.stock === "low_stock" ? t("Low Stock") : t("Out of Stock")}
                       </span>
                     </div>
                   )}
 
-                  <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                  <div className="bg-surface rounded-card p-6 mb-8 border border-border shadow-card">
                     <div className="flex items-end gap-3 mb-2">
-                      <Price amount={currentPrice} className="text-4xl font-extrabold text-gray-900" />
+                      <Price amount={currentPrice} className="text-4xl font-extrabold text-content" />
                       {product.originalPrice && (
-                        <Price amount={product.originalPrice} className="text-xl text-gray-400 line-through font-medium mb-1.5" />
+                        <Price amount={product.originalPrice} className="text-xl text-content-muted line-through font-medium mb-1.5" />
                       )}
                     </div>
                     {product.originalPrice && (
                       <div className="flex items-center gap-2">
-                        <span className="text-accent-600 font-bold bg-accent-50 px-3 py-1 rounded-full text-sm">
+                        <span className="text-brand-primary font-bold bg-brand-primary/15 px-3 py-1 rounded-full text-sm">
                           {calculateDiscount(product.originalPrice, currentPrice)}% {t('OFF')}
                         </span>
-                        <span className="text-sm text-gray-500">{t('Best price guaranteed')}</span>
+                        <span className="text-sm text-content-muted">{t('Best price guaranteed')}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Variants & Quantity */}
-                <div className="space-y-4 pb-4 border-b border-gray-100">
+                <div className="space-y-4 pb-4 border-b border-border">
                   {product.variants && (
                     <VariantSelector
                       variants={product.variants}
@@ -769,28 +771,18 @@ const MobileProductDetail = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                    <label className="block text-sm font-bold text-content mb-3">
                       {t('Quantity')}
                     </label>
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
-                        <button
-                          onClick={() => handleQuantityChange(-1)}
-                          disabled={quantity <= 1}
-                          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
-                          <FiMinus />
-                        </button>
-                        <span className="w-12 text-center font-bold text-gray-900 text-lg">
-                          {quantity}
-                        </span>
-                        <button
-                          onClick={() => handleQuantityChange(1)}
-                          disabled={quantity >= (selectedAvailableStock || 10)}
-                          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
-                          <FiPlus />
-                        </button>
-                      </div>
-                      <span className="text-sm text-gray-500">
+                      <QuantitySelector
+                        value={quantity}
+                        onChange={setQuantity}
+                        min={1}
+                        max={selectedAvailableStock || 10}
+                        size="lg"
+                      />
+                      <span className="text-xs text-content-muted font-medium">
                         {selectedAvailableStock} {t(product.unit || 'unit')}{(selectedAvailableStock !== 1 && product.unit === 'item') ? 's' : ''} {t('available')}
                       </span>
                     </div>
@@ -800,42 +792,41 @@ const MobileProductDetail = () => {
                 {/* PRODUCT ACTIONS */}
                 <div className="flex items-center gap-3 w-full py-2">
                   {isInCart ? (
-                    <button
+                    <Button
+                      variant="danger"
+                      size="lg"
+                      fullWidth
                       onClick={handleRemoveFromCart}
-                      className="flex-1 py-3.5 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 shadow-xs">
-                      <FiTrash2 className="text-lg" />
-                      <span>{t('Remove from Cart')}</span>
-                    </button>
+                      leftIcon={<FiTrash2 />}
+                    >
+                      {t('Remove from Cart')}
+                    </Button>
                   ) : (
-                    <button
-                      onClick={handleAddToCart}
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      fullWidth
                       disabled={product.stock === "out_of_stock"}
-                      className={`flex-1 py-3.5 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                        : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5 shadow-md"
-                        }`}>
-                      <FiShoppingBag className="text-lg" />
-                      <span>
-                        {product.stock === "out_of_stock"
-                          ? t("Out of Stock")
-                          : t("Add to Cart")}
-                      </span>
-                    </button>
+                      onClick={handleAddToCart}
+                      leftIcon={<FiShoppingBag />}
+                    >
+                      {product.stock === "out_of_stock"
+                        ? t("Out of Stock")
+                        : t("Add to Cart")}
+                    </Button>
                   )}
 
-                  <button
+                  <Button
+                    variant={isFavorite ? 'danger' : 'outline'}
+                    size="lg"
                     onClick={handleFavorite}
                     aria-label="Add to wishlist"
-                    className={`w-12 h-12 rounded-xl font-semibold transition-all duration-300 border flex items-center justify-center shrink-0 ${isFavorite
-                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100 shadow-xs"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-xs"
-                      }`}>
-                    <FiHeart
-                      className={`text-xl ${isFavorite ? "fill-current" : ""}`}
-                    />
-                  </button>
+                    leftIcon={<FiHeart className={isFavorite ? 'fill-current' : ''} />}
+                  />
 
-                  <button
+                  <Button
+                    variant="outline"
+                    size="lg"
                     onClick={() => {
                       if (navigator.share) {
                         navigator.share({
@@ -849,17 +840,16 @@ const MobileProductDetail = () => {
                       }
                     }}
                     aria-label="Share product"
-                    className="w-12 h-12 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 shadow-xs flex items-center justify-center shrink-0">
-                    <FiShare2 className="text-xl" />
-                  </button>
+                    leftIcon={<FiShare2 />}
+                  />
                 </div>
 
                 {/* Description */}
                 <div className="pt-6">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                  <h3 className="text-lg font-bold text-content mb-4">
                     {t('Product Description')}
                   </h3>
-                  <div className="prose prose-sm lg:prose-base text-gray-600 leading-relaxed bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                  <div className="prose prose-sm lg:prose-base text-content-secondary leading-relaxed bg-surface p-6 rounded-2xl border border-border">
                     {product.description ? (
                       <p>{product.description}</p>
                     ) : (
@@ -873,19 +863,19 @@ const MobileProductDetail = () => {
                 {/* FAQs */}
                 {translatedFaqs.length > 0 && (
                   <div className="pt-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    <h3 className="text-lg font-bold text-content mb-4">
                       {t('Product FAQs')}
                     </h3>
                     <div className="space-y-3">
                       {translatedFaqs.map((faq, index) => (
                         <div
                           key={`${faq.question}-${index}`}
-                          className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
+                          className="bg-surface border border-border rounded-xl p-4 shadow-sm"
                         >
-                          <p className="text-sm font-bold text-gray-800 mb-2">
+                          <p className="text-sm font-bold text-content mb-2">
                             {faq.question}
                           </p>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-sm text-content-secondary leading-relaxed">
                             {faq.answer}
                           </p>
                         </div>
@@ -903,7 +893,7 @@ const MobileProductDetail = () => {
                         onSubmit={handleSubmitReview}
                       />
                     ) : (
-                      <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-600">
+                      <div className="bg-surface border border-border rounded-2xl p-4 text-sm text-content-secondary">
                         {t('Reviews are available after product delivery.')}
                       </div>
                     )}
@@ -913,36 +903,18 @@ const MobileProductDetail = () => {
                 {/* Reviews List */}
                 {translatedProductReviews.length > 0 && (
                   <div className="pt-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    <h3 className="text-lg font-bold text-content mb-4">
                       {t('Customer Reviews')} ({translatedProductReviews.length})
                     </h3>
                     <div className="space-y-4">
                       {translatedProductReviews.slice(0, 3).map((review) => (
-                        <div key={review.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
-                                {review.user.charAt(0)}
-                              </div>
-                              <span className="text-sm font-bold text-gray-900">
-                                {review.user}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="font-bold text-sm text-gray-700">{review.rating}</span>
-                              <FiStar className="text-yellow-400 fill-yellow-400 text-sm" />
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed pl-10">{review.comment}</p>
-                          {review.vendorResponse && (
-                            <div className="mt-3 ml-10 bg-primary-50 border border-primary-100 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-primary-700 mb-1">
-                                {t('Response from Seller')}
-                              </p>
-                              <p className="text-sm text-gray-600 leading-relaxed">{review.vendorResponse}</p>
-                            </div>
-                          )}
-                        </div>
+                        <ProductReviewCard
+                          key={review.id}
+                          user={review.user}
+                          rating={review.rating}
+                          comment={review.comment}
+                          date={review.date}
+                        />
                       ))}
                     </div>
                   </div>
@@ -951,22 +923,17 @@ const MobileProductDetail = () => {
             </div>
           </div>
 
-          {/* Similar Products */}
+          {/* Similar Products Grid */}
           <div className="mt-12 sm:mt-16 px-4 lg:px-8">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-textColor-primary mb-6">
               {similarProducts.length > 0 ? t('Similar Products') : t('You might also like')}
             </h3>
-            {similarProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                {similarProducts.map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-8 text-center">
-                <p className="text-gray-500 text-sm">{t('No similar products yet')}</p>
-              </div>
-            )}
+            <ProductGrid
+              products={similarProducts}
+              loading={isLoadingProduct}
+              emptyTitle={t('No similar products yet')}
+              emptyDescription={t('Browse our catalog for related items.')}
+            />
           </div>
         </div>
       </MobileLayout>

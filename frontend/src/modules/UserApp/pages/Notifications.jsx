@@ -47,20 +47,20 @@ const UserNotifications = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="px-4 py-4 sm:py-6 space-y-4">
+        <div className="px-4 py-4 sm:py-6 space-y-4 min-h-screen bg-surface-muted">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-start justify-between gap-3"
           >
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">{t('Notifications')}</h1>
-              <p className="text-sm text-gray-600">{unreadCount} {t('unread')}</p>
+              <h1 className="text-2xl font-bold text-content">{t('Notifications')}</h1>
+              <p className="text-sm text-content-secondary">{unreadCount} {t('unread')}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => fetchNotifications(1)}
-                className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                className="px-3 py-2 rounded-lg border border-border text-content-secondary text-sm font-semibold bg-surface hover:bg-surface-muted"
                 type="button"
               >
                 <span className="inline-flex items-center gap-1">
@@ -71,7 +71,7 @@ const UserNotifications = () => {
               <button
                 onClick={markAllAsRead}
                 disabled={!notifications.length || unreadCount === 0}
-                className="px-3 py-2 rounded-lg bg-primary-600 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 rounded-lg bg-brand-primary text-black text-sm font-semibold hover:bg-brand-primaryHover disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
               >
                 {t('Mark all read')}
@@ -80,14 +80,14 @@ const UserNotifications = () => {
           </motion.div>
 
           {isLoading && notifications.length === 0 ? (
-            <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-200 text-gray-600">
+            <div className="bg-surface rounded-2xl p-6 text-center shadow-sm border border-border text-content-secondary">
               {t('Loading notifications...')}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-200">
-              <FiInbox className="mx-auto mb-3 text-4xl text-gray-400" />
-              <p className="text-gray-700 font-semibold">{t('No notifications yet')}</p>
-              <p className="text-sm text-gray-500 mt-1">
+            <div className="bg-surface rounded-2xl p-8 text-center shadow-sm border border-border">
+              <FiInbox className="mx-auto mb-3 text-4xl text-content-muted" />
+              <p className="text-content font-semibold">{t('No notifications yet')}</p>
+              <p className="text-sm text-content-secondary mt-1">
                 {t('Order and account updates will appear here.')}
               </p>
             </div>
@@ -101,22 +101,22 @@ const UserNotifications = () => {
                   transition={{ delay: idx * 0.03 }}
                   className={`rounded-2xl p-4 shadow-sm border ${
                     notification?.isRead
-                      ? "bg-white border-gray-200"
-                      : "bg-blue-50 border-blue-200"
+                      ? "bg-surface border-border"
+                      : "bg-surface-muted border-brand-primary/40"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <FiBell className={notification?.isRead ? "text-gray-400" : "text-primary-600"} />
-                        <h3 className="font-semibold text-gray-800 truncate">
+                        <FiBell className={notification?.isRead ? "text-content-muted" : "text-brand-primary"} />
+                        <h3 className="font-semibold text-content truncate">
                           {notification?.title || t("Notification")}
                         </h3>
                       </div>
-                      <p className="text-sm text-gray-700 mt-1 break-words">
+                      <p className="text-sm text-content-secondary mt-1 break-words">
                         {notification?.message || "-"}
                       </p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-content-muted mt-2">
                         {formatDateTime(notification?.createdAt)}
                       </p>
                     </div>
@@ -125,7 +125,7 @@ const UserNotifications = () => {
                       {!notification?.isRead && (
                         <button
                           onClick={() => markAsRead(notification?._id)}
-                          className="p-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-white"
+                          className="p-2 rounded-lg border border-border text-content-secondary bg-surface hover:bg-surface-muted"
                           title={t("Mark as read")}
                           type="button"
                         >
@@ -134,7 +134,7 @@ const UserNotifications = () => {
                       )}
                       <button
                         onClick={() => removeNotification(notification?._id)}
-                        className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                        className="p-2 rounded-lg border border-status-error/30 text-status-error bg-status-errorBg hover:opacity-90"
                         title={t("Delete notification")}
                         type="button"
                       >
@@ -152,7 +152,7 @@ const UserNotifications = () => {
               <button
                 onClick={() => fetchNotifications(Number(page || 1) + 1)}
                 disabled={isLoading}
-                className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 rounded-xl bg-surface border border-border text-content-secondary font-semibold hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 type="button"
               >
                 {isLoading ? t("Loading...") : t("Load more")}

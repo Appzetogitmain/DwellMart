@@ -10,6 +10,7 @@ import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from '../../../shared/components/PageTransition';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { loginLogo } from '../../../shared/utils/imagePaths';
+import { Input, Button, Card } from '../../../shared/components/ui';
 
 const COUNTRY_PHONE_CONFIGS = {
   '+91': {
@@ -127,7 +128,7 @@ const MobileRegister = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="min-h-[85vh] w-full flex flex-col justify-center items-center px-4 py-6 sm:py-12 bg-gradient-to-b from-gray-50/50 via-white to-gray-50">
+        <div className="min-h-[85vh] w-full flex flex-col justify-center items-center px-4 py-6 sm:py-12 bg-surface-background">
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -135,21 +136,23 @@ const MobileRegister = () => {
             className="w-full max-w-md"
           >
             {/* Main Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_10px_40px_rgba(0,0,0,0.04)] border border-gray-100 relative">
+            <Card variant="elevated" padding="lg" className="relative">
               
               {/* Back Button */}
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<FiArrowLeft />}
                 onClick={() => navigate(-1)}
-                className="mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-all text-xs font-semibold border border-gray-200/80"
+                className="mb-4"
               >
-                <FiArrowLeft className="text-sm" />
-                <span>{t('Back')}</span>
-              </button>
+                {t('Back')}
+              </Button>
 
               {/* Logo & Header */}
               <div className="text-center mb-6 sm:mb-8">
                 <div className="flex justify-center mb-4">
-                  <div className="bg-[#0B132A] px-5 py-3 rounded-2xl border border-amber-400/20 shadow-md inline-flex items-center justify-center">
+                  <div className="bg-surface-header px-5 py-3 rounded-2xl border border-border shadow-md inline-flex items-center justify-center">
                     <img
                       src={loginLogo}
                       alt="DwellMart Logo"
@@ -157,10 +160,10 @@ const MobileRegister = () => {
                     />
                   </div>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-1">
+                <h1 className="text-2xl sm:text-3xl font-black text-textColor-primary tracking-tight mb-1">
                   {t('Get Started Now')}
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                <p className="text-xs sm:text-sm text-textColor-muted font-medium">
                   {t('Create an account to explore our platform')}
                 </p>
               </div>
@@ -171,102 +174,61 @@ const MobileRegister = () => {
                 {/* First Name & Last Name Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {/* First Name */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                      {t('First Name')}
-                    </label>
-                    <div className="relative">
-                      <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                      <input
-                        type="text"
-                        {...register('firstName', {
-                          required: t('First name is required'),
-                          minLength: {
-                            value: 2,
-                            message: t('First name must be at least 2 characters'),
-                          },
-                          pattern: {
-                            value: /^[a-zA-Z\s\'-]+$/,
-                            message: t('Numbers and special characters are not allowed'),
-                          },
-                        })}
-                        className={`w-full pl-10 pr-3 py-3 rounded-xl border text-sm font-medium transition-all ${
-                          errors.firstName
-                            ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                            : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                        } outline-none`}
-                        placeholder={t('Raj')}
-                      />
-                    </div>
-                    {errors.firstName && (
-                      <p className="mt-1 text-xs text-red-500 font-medium">{errors.firstName.message}</p>
-                    )}
-                  </div>
+                  <Input
+                    label={t('First Name')}
+                    placeholder={t('Raj')}
+                    leftIcon={<FiUser />}
+                    error={errors.firstName?.message}
+                    {...register('firstName', {
+                      required: t('First name is required'),
+                      minLength: {
+                        value: 2,
+                        message: t('First name must be at least 2 characters'),
+                      },
+                      pattern: {
+                        value: /^[a-zA-Z\s\'-]+$/,
+                        message: t('Numbers and special characters are not allowed'),
+                      },
+                    })}
+                  />
 
                   {/* Last Name */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                      {t('Last Name')}
-                    </label>
-                    <div className="relative">
-                      <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                      <input
-                        type="text"
-                        {...register('lastName', {
-                          required: t('Last name is required'),
-                          minLength: {
-                            value: 2,
-                            message: t('Last name must be at least 2 characters'),
-                          },
-                          pattern: {
-                            value: /^[a-zA-Z\s\'-]+$/,
-                            message: t('Numbers and special characters are not allowed'),
-                          },
-                        })}
-                        className={`w-full pl-10 pr-3 py-3 rounded-xl border text-sm font-medium transition-all ${
-                          errors.lastName
-                            ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                            : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                        } outline-none`}
-                        placeholder={t('Sarkar')}
-                      />
-                    </div>
-                    {errors.lastName && (
-                      <p className="mt-1 text-xs text-red-500 font-medium">{errors.lastName.message}</p>
-                    )}
-                  </div>
+                  <Input
+                    label={t('Last Name')}
+                    placeholder={t('Sarkar')}
+                    leftIcon={<FiUser />}
+                    error={errors.lastName?.message}
+                    {...register('lastName', {
+                      required: t('Last name is required'),
+                      minLength: {
+                        value: 2,
+                        message: t('Last name must be at least 2 characters'),
+                      },
+                      pattern: {
+                        value: /^[a-zA-Z\s\'-]+$/,
+                        message: t('Numbers and special characters are not allowed'),
+                      },
+                    })}
+                  />
                 </div>
 
                 {/* Email Address */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    {t('Email Address')}
-                  </label>
-                  <div className="relative">
-                    <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                    <input
-                      type="email"
-                      {...register('email', {
-                        required: t('Email is required'),
-                        validate: (value) =>
-                          !value || isValidEmail(value) || t('Please enter a valid email'),
-                      })}
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        errors.email
-                          ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                          : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                      } outline-none`}
-                      placeholder={t('your.email@example.com')}
-                    />
-                  </div>
-                  {errors.email && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.email.message}</p>
-                  )}
-                </div>
+                <Input
+                  label={t('Email Address')}
+                  type="email"
+                  placeholder={t('your.email@example.com')}
+                  leftIcon={<FiMail />}
+                  error={errors.email?.message}
+                  {...register('email', {
+                    required: t('Email is required'),
+                    validate: (value) =>
+                      !value || isValidEmail(value) || t('Please enter a valid email'),
+                  })}
+                />
 
                 {/* Phone Number */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-textColor-secondary uppercase tracking-wider mb-1.5">
                     {t('Phone Number')}
                   </label>
                   <div className="flex gap-2">
@@ -281,7 +243,7 @@ const MobileRegister = () => {
                           setValue('phone', sanitized, { shouldValidate: true });
                         },
                       })}
-                      className="w-28 px-2 py-3 rounded-xl border border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 text-xs font-bold outline-none cursor-pointer"
+                      className="w-28 px-2 py-3 rounded-xl border border-borderToken-default bg-surface-card text-textColor-primary focus:border-brand-primary text-xs font-bold outline-none cursor-pointer"
                     >
                       {Object.values(COUNTRY_PHONE_CONFIGS).map((item) => (
                         <option key={item.code} value={item.code}>
@@ -290,7 +252,7 @@ const MobileRegister = () => {
                       ))}
                     </select>
                     <div className="relative flex-1">
-                      <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+                      <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-textColor-muted text-base" />
                       <input
                         type="tel"
                         maxLength={countryConfig.digits}
@@ -317,78 +279,60 @@ const MobileRegister = () => {
                         }}
                         className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                           errors.phone
-                            ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                            : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                            ? 'border-status-error bg-status-error/10 focus:border-status-error'
+                            : 'border-borderToken-default bg-surface-card text-textColor-primary focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20'
                         } outline-none`}
                         placeholder={t(countryConfig.placeholder)}
                       />
                     </div>
                   </div>
                   {errors.phone && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.phone.message}</p>
+                    <p className="mt-1 text-xs text-status-error font-medium">{errors.phone.message}</p>
                   )}
                 </div>
 
                 {/* Password */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    {t('Set Password')}
-                  </label>
-                  <div className="relative">
-                    <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      {...register('password', {
-                        required: t('Password is required'),
-                        minLength: {
-                          value: 6,
-                          message: t('Password must be at least 6 characters'),
-                        },
-                      })}
-                      className={`w-full pl-10 pr-11 py-3 rounded-xl border text-sm font-medium transition-all ${
-                        errors.password
-                          ? 'border-red-300 bg-red-50/20 focus:border-red-500'
-                          : 'border-gray-200 bg-gray-50/40 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                      } outline-none`}
-                      placeholder={t('Create a password')}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                    >
-                      {showPassword ? <FiEyeOff className="text-base" /> : <FiEye className="text-base" />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="mt-1 text-xs text-red-500 font-medium">{errors.password.message}</p>
-                  )}
-                </div>
+                <Input
+                  label={t('Set Password')}
+                  type="password"
+                  placeholder={t('Create a password')}
+                  leftIcon={<FiLock />}
+                  error={errors.password?.message}
+                  {...register('password', {
+                    required: t('Password is required'),
+                    minLength: {
+                      value: 6,
+                      message: t('Password must be at least 6 characters'),
+                    },
+                  })}
+                />
 
                 {/* Submit Button */}
-                <button
+                <Button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 rounded-xl font-bold text-sm text-white gradient-green shadow-md hover:shadow-emerald-200 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-4 active:scale-[0.99]"
+                  variant="primary"
+                  fullWidth
+                  isLoading={isLoading}
+                  className="mt-4"
                 >
-                  {isLoading ? t('Creating Account...') : t('Sign Up')}
-                </button>
+                  {t('Sign Up')}
+                </Button>
               </form>
 
               {/* Sign In Link */}
-              <div className="mt-6 text-center pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 font-medium">
+              <div className="mt-6 text-center pt-4 border-t border-borderToken-light">
+                <p className="text-xs text-textColor-muted font-medium">
                   {t('Already have an account?')}{' '}
                   <Link
                     to="/login"
-                    className="text-emerald-600 hover:text-emerald-700 font-bold hover:underline transition-all"
+                    className="text-brand-primary font-bold hover:underline transition-all"
                   >
                     {t('Sign In')}
                   </Link>
                 </p>
               </div>
 
-            </div>
+            </Card>
           </motion.div>
         </div>
       </MobileLayout>

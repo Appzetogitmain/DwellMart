@@ -94,27 +94,27 @@ const MobileOrders = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-          <div className="w-full pb-24">
+          <div className="w-full pb-24 min-h-screen bg-surface-muted">
             {/* Header */}
-            <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
+            <div className="px-4 py-4 bg-surface border-b border-border sticky top-1 z-30">
               <div className="flex items-center gap-3 mb-3">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-muted rounded-full transition-colors"
                 >
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  <FiArrowLeft className="text-xl text-content-secondary" />
                 </button>
                 <div className="flex-1">
-                  <h1 className="text-xl font-bold text-gray-800">{t('My Orders')}</h1>
-                  <p className="text-sm text-gray-600">
+                  <h1 className="text-xl font-bold text-content">{t('My Orders')}</h1>
+                  <p className="text-sm text-content-secondary">
                     {filteredOrders.length} {filteredOrders.length === 1 ? t('order') : t('orders')}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowFilter(!showFilter)}
-                  className="p-2 glass-card rounded-xl hover:bg-white/80 transition-colors"
+                  className="p-2 glass-card rounded-xl hover:bg-surface-muted transition-colors border border-border"
                 >
-                  <FiFilter className="text-gray-600 text-lg" />
+                  <FiFilter className="text-content-secondary text-lg" />
                 </button>
               </div>
 
@@ -129,8 +129,8 @@ const MobileOrders = () => {
                         setShowFilter(false);
                       }}
                       className={`px-4 py-2 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${selectedStatus === option.value
-                        ? 'gradient-green text-white'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-brand-primary text-black'
+                        : 'bg-surface-muted border border-border text-content-secondary'
                         }`}
                     >
                       {option.label}
@@ -151,20 +151,20 @@ const MobileOrders = () => {
             >
               {isLoading ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-600">{t('Loading orders...')}</p>
+                  <p className="text-content-secondary">{t('Loading orders...')}</p>
                 </div>
               ) : filteredOrders.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-6xl text-gray-300 mx-auto mb-4">📦</div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{t('No orders found')}</h3>
-                  <p className="text-gray-600 mb-6">
+                  <div className="text-6xl text-content-muted mx-auto mb-4">📦</div>
+                  <h3 className="text-xl font-bold text-content mb-2">{t('No orders found')}</h3>
+                  <p className="text-content-secondary mb-6">
                     {selectedStatus === 'all'
                       ? t("You haven't placed any orders yet")
                       : `${t('No')} ${t(selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1).toLowerCase())} ${t('orders')}`}
                   </p>
                   <button
                     onClick={() => navigate('/home')}
-                    className="gradient-green text-white px-6 py-3 rounded-xl font-semibold"
+                    className="bg-brand-primary text-black px-6 py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all"
                   >
                     {t('Start Shopping')}
                   </button>
@@ -186,7 +186,7 @@ const MobileOrders = () => {
                       <button
                         onClick={handleLoadMore}
                         disabled={isLoadingMore}
-                        className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-60"
+                        className="w-full py-3 bg-surface border border-border text-content-secondary rounded-xl font-semibold hover:bg-surface-muted transition-colors disabled:opacity-60"
                       >
                         {isLoadingMore ? t('Loading...') : t('Load More Orders')}
                       </button>

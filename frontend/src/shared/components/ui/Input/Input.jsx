@@ -26,7 +26,7 @@ const Input = forwardRef(({
   ...props
 }, ref) => {
   const generatedId = useId();
-  const inputId = customId || generatedId;
+  const inputId = customId || props.name || generatedId;
   const errorId = `${inputId}-error`;
   const helperId = `${inputId}-helper`;
 
@@ -39,7 +39,7 @@ const Input = forwardRef(({
   const baseInputStyles = 'w-full bg-surface-input text-textColor-primary placeholder:text-textColor-muted font-medium text-sm rounded-input border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 min-h-[44px] px-3.5';
 
   const borderStyles = error
-    ? 'border-statusToken-error text-statusToken-error focus:ring-red-500/20 focus:border-statusToken-error'
+    ? 'border-status-error focus:ring-status-error/20 focus:border-status-error'
     : 'border-borderToken-default hover:border-borderToken-dark';
 
   const paddingLeft = leftIcon ? 'pl-10' : 'pl-3.5';
@@ -53,6 +53,14 @@ const Input = forwardRef(({
     ${className}
   `.replace(/\s+/g, ' ').trim();
 
+  const { ref: propRef, ...cleanProps } = props;
+  const inputRef = ref || propRef;
+
+  const inputProps = { ...cleanProps };
+  if (value !== undefined) inputProps.value = value;
+  if (defaultValue !== undefined) inputProps.defaultValue = defaultValue;
+  if (onChange) inputProps.onChange = onChange;
+
   return (
     <div
       className={`${fullWidth ? 'w-full' : 'inline-block'} space-y-1.5`}
@@ -65,7 +73,7 @@ const Input = forwardRef(({
           className="block text-xs font-bold uppercase tracking-wider text-textColor-primary"
         >
           {label}
-          {required && <span className="text-statusToken-error ml-1">*</span>}
+          {required && <span className="text-status-error ml-1">*</span>}
         </label>
       )}
 
@@ -77,20 +85,17 @@ const Input = forwardRef(({
         )}
 
         <input
-          ref={ref}
+          ref={inputRef}
           id={inputId}
           type={currentType}
-          value={value}
-          defaultValue={defaultValue}
           placeholder={placeholder}
           disabled={disabled}
           readOnly={readOnly}
           required={required}
-          onChange={onChange}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
           className={combinedInputClasses}
-          {...props}
+          {...inputProps}
         />
 
         {/* Right Icon / Password Toggle / Search Clear */}
@@ -128,7 +133,7 @@ const Input = forwardRef(({
 
       {/* Error Message or Helper Text */}
       {error ? (
-        <p id={errorId} className="flex items-center gap-1 text-xs text-statusToken-error font-medium mt-1">
+        <p id={errorId} className="flex items-center gap-1 text-xs text-status-error font-medium mt-1">
           <FiAlertCircle className="flex-shrink-0" />
           <span>{error}</span>
         </p>
