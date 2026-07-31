@@ -3,14 +3,15 @@ import { FiSave, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
+import RichTextEditor from '../../../shared/components/RichTextEditor';
 
 /**
- * Reusable admin page editor.
+ * Reusable admin page editor with Rich Text Editor.
  * Props:
  *   slug        — e.g. "terms", "about", "contact"
  *   pageTitle   — h1 text shown on the page
  *   description — subtitle shown on the page
- *   placeholder — placeholder text for the textarea
+ *   placeholder — placeholder text for the editor
  */
 const AdminPageEditor = ({ slug, pageTitle, description, placeholder = 'Write your content here...' }) => {
   const [title, setTitle] = useState('');
@@ -35,7 +36,7 @@ const AdminPageEditor = ({ slug, pageTitle, description, placeholder = 'Write yo
   }, [slug]);
 
   const handleSave = async () => {
-    if (!content.trim()) {
+    if (!content || !content.trim()) {
       toast.error('Content cannot be empty.');
       return;
     }
@@ -95,17 +96,15 @@ const AdminPageEditor = ({ slug, pageTitle, description, placeholder = 'Write yo
             />
           </div>
 
-          {/* Main content */}
+          {/* Rich Text Content Editor */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Content</label>
-            <textarea
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Page Body Content</label>
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={22}
+              onChange={(newHtml) => setContent(newHtml)}
               placeholder={placeholder}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm resize-y"
             />
-            <p className="text-xs text-gray-400 mt-1">Plain text. Line breaks are preserved when displayed to users.</p>
+            <p className="text-xs text-gray-400 mt-1">Design your page using headings, colors, lists, formatting, or custom HTML.</p>
           </div>
         </div>
       )}
