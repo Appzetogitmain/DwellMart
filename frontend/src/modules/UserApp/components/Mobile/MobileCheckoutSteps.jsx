@@ -15,20 +15,20 @@ const MobileCheckoutSteps = ({ currentStep, totalSteps = 3 }) => {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
                     isCompleted
-                      ? "gradient-green text-white"
+                      ? "bg-brand-primary text-black"
                       : isCurrent
-                      ? "gradient-green text-white ring-4 ring-primary-200"
-                      : "bg-gray-200 text-gray-500"
+                      ? "bg-brand-primary text-black ring-4 ring-brand-primary/30"
+                      : "bg-surface-muted border border-border text-content-muted"
                   }`}>
                   {isCompleted ? <FiCheck className="text-lg" /> : step}
                 </div>
                 <span
                   className={`text-xs font-semibold mt-2 ${
                     isCurrent
-                      ? "text-primary-600"
+                      ? "text-brand-primary"
                       : isCompleted
-                      ? "text-gray-600"
-                      : "text-gray-400"
+                      ? "text-content-secondary"
+                      : "text-content-muted"
                   }`}>
                   Step {step}
                 </span>
@@ -36,7 +36,7 @@ const MobileCheckoutSteps = ({ currentStep, totalSteps = 3 }) => {
               {step < totalSteps && (
                 <div
                   className={`h-1 w-28 ml-10 mr-0 -mt-6 transition-all ${
-                    isCompleted ? "gradient-green" : "bg-gray-200"
+                    isCompleted ? "bg-brand-primary" : "bg-border"
                   }`}
                 />
               )}

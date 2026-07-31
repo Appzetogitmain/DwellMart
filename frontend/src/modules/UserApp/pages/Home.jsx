@@ -720,10 +720,10 @@ const MobileHome = () => {
           {/* Most Popular */}
           <div className="px-4 py-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{t("Most Popular")}</h2>
+              <h2 className="text-xl font-bold text-content">{t("Most Popular")}</h2>
               <Link
                 to="/search"
-                className="text-sm text-primary-600 font-semibold">
+                className="text-sm text-brand-primary font-semibold hover:underline">
                 {t("See All")}
               </Link>
             </div>
@@ -748,17 +748,17 @@ const MobileHome = () => {
 
           {/* Flash Sale */}
           {computedFlashSale.length > 0 && (
-            <div className="px-4 py-4 bg-gradient-to-br from-red-50 to-orange-50">
+            <div className="px-4 py-4 bg-surface-muted border-y border-border">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-800">
+                  <h2 className="text-xl font-bold text-content">
                     {t("Flash Sale")}
                   </h2>
-                  <p className="text-xs text-gray-600">{t("Limited time offers")}</p>
+                  <p className="text-xs text-content-secondary">{t("Limited time offers")}</p>
                 </div>
                 <Link
                   to="/flash-sale"
-                  className="text-sm text-primary-600 font-semibold">
+                  className="text-sm text-brand-primary font-semibold hover:underline">
                   {t("See All")}
                 </Link>
               </div>
@@ -780,10 +780,10 @@ const MobileHome = () => {
           {/* Trending Items */}
           <div className="px-4 py-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{t("Trending Now")}</h2>
+              <h2 className="text-xl font-bold text-content">{t("Trending Now")}</h2>
               <Link
                 to="/search"
-                className="text-sm text-primary-600 font-semibold">
+                className="text-sm text-brand-primary font-semibold hover:underline">
                 {t("See All")}
               </Link>
             </div>
@@ -811,80 +811,80 @@ const MobileHome = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, ease: "easeOut" }}
-              className="max-w-6xl mx-auto bg-white rounded-3xl sm:rounded-[36px] border border-gray-100 p-6 sm:p-10 md:p-12 shadow-[0_10px_40px_rgba(0,0,0,0.03)] text-center"
+              className="max-w-6xl mx-auto bg-surface rounded-3xl sm:rounded-[36px] border border-border p-6 sm:p-10 md:p-12 shadow-xl text-center"
             >
               {/* Top Pill Badge */}
-              <div className="inline-block px-4 py-1.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase mb-4">
+              <div className="inline-block px-4 py-1.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/30 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase mb-4">
                 {t("MARKETPLACE TRUST & ASSURANCE")}
               </div>
 
               {/* Title */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-3">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-content tracking-tight mb-3">
                 {t("Why Shop With DwellMart?")}
               </h2>
 
               {/* Subtitle */}
-              <p className="text-gray-500 text-sm sm:text-base font-medium max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10">
+              <p className="text-content-secondary text-sm sm:text-base font-medium max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10">
                 {t("We partner with top-rated sellers to guarantee authentic products, transparent pricing, and instant support.")}
               </p>
 
               {/* Feature Cards Grid (4 Columns) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8 text-left">
                 {/* Feature 1 */}
-                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-status-info/10 text-status-info flex items-center justify-center shrink-0">
                     <FiTruck className="text-2xl" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
                       {t("Free Express Shipping")}
                     </h3>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
                       {t("On all orders over ₹499 nationwide")}
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 2 */}
-                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-status-success/10 text-status-success flex items-center justify-center shrink-0">
                     <FiRotateCcw className="text-2xl" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
                       {t("7-Day Easy Returns")}
                     </h3>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
                       {t("Hassle-free 100% money back guarantee")}
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 3 */}
-                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
                     <FiShield className="text-2xl" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
                       {t("100% Secure Payments")}
                     </h3>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
                       {t("Encrypted checkout via UPI, Cards & NetBanking")}
                     </p>
                   </div>
                 </div>
 
                 {/* Feature 4 */}
-                <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
+                  <div className="h-12 w-12 rounded-2xl bg-status-warning/10 text-status-warning flex items-center justify-center shrink-0">
                     <FiCheckCircle className="text-2xl" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-extrabold text-gray-900 leading-tight mb-1">
+                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
                       {t("Verified Marketplace Sellers")}
                     </h3>
-                    <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
                       {t("Quality-vetted vendors across India")}
                     </p>
                   </div>
@@ -894,45 +894,45 @@ const MobileHome = () => {
               {/* Dark Stat Cards Grid (4 Columns) */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Stat 1 */}
-                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
-                  <FiUsers className="text-purple-400 text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
+                  <FiUsers className="text-brand-primary text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
                     {computedVendors.length ? `${computedVendors.length}+` : "10+"}
                   </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
                     {t("VERIFIED STORES")}
                   </span>
                 </div>
 
                 {/* Stat 2 */}
-                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
-                  <FiBox className="text-purple-400 text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
+                  <FiBox className="text-brand-primary text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
                     {catalogProducts.length ? `${catalogProducts.length}+` : "97+"}
                   </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
                     {t("CURATED PRODUCTS")}
                   </span>
                 </div>
 
                 {/* Stat 3 */}
-                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
-                  <FiGrid className="text-purple-400 text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
+                  <FiGrid className="text-brand-primary text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
                     10+
                   </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
                     {t("CATEGORIES")}
                   </span>
                 </div>
 
                 {/* Stat 4 */}
-                <div className="bg-[#0F172A] rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1">
-                  <FiLock className="text-purple-400 text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-[#FFC101] tracking-tight mb-1">
+                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
+                  <FiLock className="text-brand-primary text-2xl sm:text-3xl mb-3" />
+                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
                     100%
                   </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-gray-300 tracking-wider uppercase">
+                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
                     {t("SECURE PAYMENTS")}
                   </span>
                 </div>

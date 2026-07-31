@@ -83,18 +83,18 @@ const CampaignSale = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24">
-          <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="w-full pb-24 min-h-screen bg-surface-muted">
+          <div className="px-4 py-4 bg-surface border-b border-border sticky top-0 z-30">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-surface-muted rounded-full transition-colors"
               >
-                <FiArrowLeft className="text-xl text-gray-700" />
+                <FiArrowLeft className="text-xl text-content-secondary" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-gray-800">{title}</h1>
-                <p className="text-xs text-gray-500">
+                <h1 className="text-xl font-bold text-content">{title}</h1>
+                <p className="text-xs text-content-muted">
                   {discount}
                   {products.length ? ` • ${products.length} products` : ""}
                 </p>
@@ -104,16 +104,16 @@ const CampaignSale = () => {
 
           <div className="px-4 py-4">
             {isLoading ? (
-              <div className="text-center py-12 text-gray-500">Loading campaign...</div>
+              <div className="text-center py-12 text-content-muted">Loading campaign...</div>
             ) : !campaign ? (
               <div className="text-center py-12">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Campaign unavailable</h3>
-                <p className="text-gray-500">This offer is not active right now.</p>
+                <h3 className="text-lg font-semibold text-content mb-2">Campaign unavailable</h3>
+                <p className="text-content-muted">This offer is not active right now.</p>
               </div>
             ) : products.length === 0 ? (
               <div className="text-center py-12">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No products in this campaign</h3>
-                <p className="text-gray-500">Please check back later.</p>
+                <h3 className="text-lg font-semibold text-content mb-2">No products in this campaign</h3>
+                <p className="text-content-muted">Please check back later.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">

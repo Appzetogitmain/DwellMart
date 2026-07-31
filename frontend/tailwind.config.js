@@ -124,6 +124,57 @@ export default {
           800: '#662828',
           900: '#331515',
         },
+
+        // ─── SEMANTIC ALIASES ───────────────────────────────────────────────
+        // Short, ergonomic names that bind Tailwind utilities to CSS variables.
+        // All resolve through ThemeProvider → theme switches automatically.
+        //
+        // Token Migration Rule:
+        //   bg-white          → bg-surface
+        //   text-gray-700     → text-content-secondary
+        //   text-gray-500     → text-content-muted
+        //   border-gray-200   → border-border
+        //   bg-gray-50        → bg-surface-muted
+        //   bg-green-*        → bg-status-success / bg-status-successBg
+        //   bg-red-*          → bg-status-error  / bg-status-errorBg
+        //   text-green-*      → text-status-success
+        //   text-red-*        → text-status-error
+
+        // Surface: replaces bg-white, bg-gray-50, bg-gray-100
+        'surface':          'var(--color-surface-background)',
+        'surface-muted':    'var(--color-surface-card)',
+        'surface-elevated': 'var(--color-surface-card-elevated)',
+        'surface-header':   'var(--color-surface-header)',
+        'surface-input':    'var(--color-surface-input)',
+
+        // Content: replaces text-gray-*, text-black, text-white (on dark bg)
+        'content': {
+          DEFAULT:   'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted:     'var(--color-text-muted)',
+          inverse:   'var(--color-text-inverse)',
+          brand:     'var(--color-text-brand)',
+        },
+
+        // Border: replaces border-gray-*, divide-gray-*
+        'border': {
+          DEFAULT: 'var(--color-border-default)',
+          light:   'var(--color-border-light)',
+          strong:  'var(--color-border-dark)',
+          focus:   'var(--color-border-focus)',
+        },
+
+        // Status: replaces bg-green-*, bg-red-*, bg-yellow-*, bg-blue-*
+        'status': {
+          success:   'var(--color-status-success)',
+          successBg: 'var(--color-status-successBg)',
+          warning:   'var(--color-status-warning)',
+          warningBg: 'var(--color-status-warningBg)',
+          error:     'var(--color-status-error)',
+          errorBg:   'var(--color-status-errorBg)',
+          info:      'var(--color-status-info)',
+          infoBg:    'var(--color-status-infoBg)',
+        },
       },
       boxShadow: {
         'card': 'var(--shadow-card)',

@@ -26,6 +26,7 @@ import MobileLayout from "../components/Layout/MobileLayout";
 import MobileCheckoutSteps from "../components/Mobile/MobileCheckoutSteps";
 import PageTransition from "../../../shared/components/PageTransition";
 import OrderSummary from "../components/Mobile/CheckoutOrderSummary";
+import { Input, TextArea, Radio, Card, Button, Badge, EmptyState, FormControl } from "../../../shared/components/ui";
 
 
 const MobileCheckout = () => {
@@ -363,16 +364,16 @@ const MobileCheckout = () => {
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>
           <div className="flex items-center justify-center min-h-[60vh] px-4">
-            <div className="text-center">
-               <h2 className="text-xl font-bold text-gray-800 mb-4">
-                {t('Your cart is empty')}
-              </h2>
-              <button
-                onClick={() => navigate("/home")}
-                className="gradient-green text-white px-6 py-3 rounded-xl font-semibold">
-                {t('Continue Shopping')}
-              </button>
-            </div>
+            <EmptyState
+              variant="cart"
+              title={t('Your cart is empty')}
+              description={t('Add some items before checking out.')}
+              action={
+                <Button onClick={() => navigate("/home")} variant="primary" size="md">
+                  {t('Continue Shopping')}
+                </Button>
+              }
+            />
           </div>
         </MobileLayout>
       </PageTransition>
@@ -449,17 +450,17 @@ const MobileCheckout = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full pb-24 min-h-screen bg-gray-50">
+        <div className="w-full pb-24 min-h-screen bg-surface-muted">
           {/* Header */}
-          <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+          <div className="bg-surface border-b border-border sticky top-0 z-30 shadow-sm">
             {/* Title Bar */}
             <div className="px-4 py-3 flex items-center gap-3">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <FiArrowLeft className="text-xl text-gray-700" />
+                className="p-2 hover:bg-surface-muted rounded-full transition-colors">
+                <FiArrowLeft className="text-xl text-content-secondary" />
               </button>
-              <h1 className="text-xl font-bold text-gray-800">{t('Checkout')}</h1>
+              <h1 className="text-xl font-bold text-content">{t('Checkout')}</h1>
             </div>
             {/* Steps Bar */}
             <div className="px-4 pb-3">
@@ -477,15 +478,15 @@ const MobileCheckout = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="px-4 py-4 lg:p-0">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      <FiTruck className="text-primary-600" />
+                    <h2 className="text-lg font-bold text-content mb-4 flex items-center gap-2">
+                      <FiTruck className="text-brand-primary" />
                       {t('Shipping Information')}
                     </h2>
 
                     {/* Saved Addresses */}
                     {isAuthenticated && addresses.length > 0 && (
                       <div className="mb-4">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        <h3 className="text-sm font-semibold text-content-secondary mb-3">
                           {t('Saved Addresses')}
                         </h3>
                         <div className="space-y-2 mb-3">
@@ -494,30 +495,30 @@ const MobileCheckout = () => {
                               key={address.id}
                               onClick={() => handleSelectAddress(address)}
                               className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedAddressId === address.id
-                                ? "border-primary-500 bg-primary-50"
-                                : "border-gray-200"
+                                ? "border-brand-primary bg-surface-muted"
+                                : "border-border"
                                 }`}>
                               <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-2 flex-1">
-                                  <FiMapPin className="text-primary-600 mt-0.5 flex-shrink-0" />
+                                  <FiMapPin className="text-brand-primary mt-0.5 flex-shrink-0" />
                                   <div className="flex-1">
-                                    <h4 className="font-bold text-gray-800 text-sm">
+                                    <h4 className="font-bold text-content text-sm">
                                       {address.name}
                                     </h4>
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-content-secondary">
                                       {address.fullName}
                                     </p>
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-content-secondary">
                                       {address.address}
                                     </p>
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-content-secondary">
                                       {address.city}, {address.state}{" "}
                                       {address.zipCode}
                                     </p>
                                   </div>
                                 </div>
                                 {selectedAddressId === address.id && (
-                                  <FiCheck className="text-primary-600 text-xl flex-shrink-0" />
+                                  <FiCheck className="text-brand-primary text-xl flex-shrink-0" />
                                 )}
                               </div>
                             </div>
@@ -526,7 +527,7 @@ const MobileCheckout = () => {
                         <button
                           type="button"
                           onClick={() => setShowAddressForm(true)}
-                          className="flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold text-sm">
+                          className="flex items-center gap-2 text-brand-primary hover:text-brand-primaryHover font-semibold text-sm">
                           <FiPlus />
                           {t('Add New Address')}
                         </button>
@@ -534,9 +535,9 @@ const MobileCheckout = () => {
                     )}
 
                     {/* Address Form */}
-                    <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:p-6">
+                    <div className="space-y-4 bg-surface p-4 rounded-xl border border-border-light shadow-sm lg:p-6">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Full Name')}
                         </label>
                         <input
@@ -545,12 +546,12 @@ const MobileCheckout = () => {
                           value={formData.name}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                         />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('Email')}
                           </label>
                           <input
@@ -559,11 +560,11 @@ const MobileCheckout = () => {
                             value={formData.email}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('Phone Number')}
                           </label>
                           <input
@@ -572,12 +573,12 @@ const MobileCheckout = () => {
                             value={formData.phone}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Address')}
                         </label>
                         <textarea
@@ -586,12 +587,12 @@ const MobileCheckout = () => {
                           onChange={handleInputChange}
                           required
                           rows={3}
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('City')}
                           </label>
                           <input
@@ -600,11 +601,11 @@ const MobileCheckout = () => {
                             value={formData.city}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('State')}
                           </label>
                           <input
@@ -613,13 +614,13 @@ const MobileCheckout = () => {
                             value={formData.state}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('ZIP Code')}
                           </label>
                           <input
@@ -628,11 +629,11 @@ const MobileCheckout = () => {
                             value={formData.zipCode}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary mb-2">
                             {t('Country')}
                           </label>
                           <input
@@ -641,7 +642,7 @@ const MobileCheckout = () => {
                             value={formData.country}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                           />
                         </div>
                       </div>
@@ -655,8 +656,8 @@ const MobileCheckout = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="px-4 py-4 lg:p-0">
-                    <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                      <FiCreditCard className="text-primary-600" />
+                    <h2 className="text-lg font-bold text-content mb-4 flex items-center gap-2">
+                      <FiCreditCard className="text-brand-primary" />
                       {t('Payment Method')}
                     </h2>
                     <div className="space-y-3 mb-6">
@@ -671,8 +672,8 @@ const MobileCheckout = () => {
                         <label
                           key={method}
                           className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
-                            ? "border-primary-500 bg-primary-50"
-                            : "border-gray-200"
+                            ? "border-brand-primary bg-surface-muted"
+                            : "border-border"
                             }`}>
                           <input
                             type="radio"
@@ -680,9 +681,9 @@ const MobileCheckout = () => {
                             value={method}
                             checked={formData.paymentMethod === method}
                             onChange={handleInputChange}
-                            className="w-5 h-5 text-primary-500"
+                            className="w-5 h-5 text-brand-primary"
                           />
-                          <span className="font-semibold text-gray-800 capitalize text-base">
+                          <span className="font-semibold text-content capitalize text-base">
                             {method === "card"
                               ? t("Credit/Debit Card")
                               : method === "cash"
@@ -698,14 +699,14 @@ const MobileCheckout = () => {
                     {/* Shipping Options */}
                     {total < 100 && (
                       <div className="mb-6">
-                        <h3 className="text-base font-semibold text-gray-800 mb-3">
+                        <h3 className="text-base font-semibold text-content mb-3">
                           {t('Shipping Options')}
                         </h3>
                         <div className="space-y-3">
                           <label
                             className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${shippingOption === "standard"
-                              ? "border-primary-500 bg-primary-50"
-                              : "border-gray-200"
+                              ? "border-brand-primary bg-surface-muted"
+                              : "border-border"
                               }`}>
                             <div>
                               <input
@@ -714,23 +715,23 @@ const MobileCheckout = () => {
                                 value="standard"
                                 checked={shippingOption === "standard"}
                                 onChange={(e) => setShippingOption(e.target.value)}
-                                className="w-5 h-5 text-primary-500 mr-3"
+                                className="w-5 h-5 text-brand-primary mr-3"
                               />
-                              <span className="font-semibold text-gray-800 text-base">
+                              <span className="font-semibold text-content text-base">
                                 {t('Standard Shipping')}
                               </span>
-                              <p className="text-xs text-gray-600">
+                              <p className="text-xs text-content-secondary">
                                 {t('5-7 business days')}
                               </p>
                             </div>
-                            <span className="font-bold text-gray-800">
+                            <span className="font-bold text-content">
                               {formatPrice(50)}
                             </span>
                           </label>
                           <label
                             className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${shippingOption === "express"
-                              ? "border-primary-500 bg-primary-50"
-                              : "border-gray-200"
+                              ? "border-brand-primary bg-surface-muted"
+                              : "border-border"
                               }`}>
                             <div>
                               <input
@@ -739,21 +740,21 @@ const MobileCheckout = () => {
                                 value="express"
                                 checked={shippingOption === "express"}
                                 onChange={(e) => setShippingOption(e.target.value)}
-                                className="w-5 h-5 text-primary-500 mr-3"
+                                className="w-5 h-5 text-brand-primary mr-3"
                               />
-                              <span className="font-semibold text-gray-800 text-base">
+                              <span className="font-semibold text-content text-base">
                                 {t('Express Shipping')}
                               </span>
-                              <p className="text-xs text-gray-600">
+                              <p className="text-xs text-content-secondary">
                                 {t('2-3 business days')}
                               </p>
                             </div>
-                            <span className="font-bold text-gray-800">
+                            <span className="font-bold text-content">
                               {formatPrice(100)}
                             </span>
                           </label>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-content-muted mt-2">
                           {isEstimatingShipping
                             ? t("Updating shipping estimate...")
                             : `${t('Estimated shipping:')} ${formatPrice(shipping)}`}
@@ -763,7 +764,7 @@ const MobileCheckout = () => {
 
                     {/* Coupon Code */}
                     <div className="mb-6">
-                      <h3 className="text-base font-semibold text-gray-800 mb-3">
+                      <h3 className="text-base font-semibold text-content mb-3">
                         {t('Coupon Code')}
                       </h3>
                       {!appliedCoupon ? (
@@ -774,20 +775,20 @@ const MobileCheckout = () => {
                               value={couponCode}
                               onChange={(e) => setCouponCode(e.target.value)}
                               placeholder={t("Enter code")}
-                              className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                              className="flex-1 px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                             />
                             <button
                               type="button"
                               onClick={() => handleApplyCoupon()}
                               disabled={isApplyingCoupon}
-                              className="px-4 py-3 gradient-green text-white rounded-xl font-semibold hover:shadow-glow-green transition-all">
+                              className="px-4 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all">
                               {isApplyingCoupon ? t("Applying...") : t("Apply")}
                             </button>
                           </div>
                           {availableCoupons.length > 0 && (
-                            <div className="mt-3 bg-gray-50 rounded-xl p-3 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <FiTag className="text-primary-600" />
+                            <div className="mt-3 bg-surface-muted rounded-xl p-3 border border-border">
+                              <h4 className="text-sm font-semibold text-content mb-2 flex items-center gap-2">
+                                <FiTag className="text-brand-primary" />
                                 {t('Available coupons')}
                               </h4>
                               <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -797,11 +798,11 @@ const MobileCheckout = () => {
                                     type="button"
                                     onClick={() => handleApplyCoupon(coupon.code)}
                                     disabled={isApplyingCoupon}
-                                    className="w-full text-left p-2 bg-white rounded-lg border border-gray-200 hover:border-primary-300 transition-colors"
+                                    className="w-full text-left p-2 bg-surface rounded-lg border border-border hover:border-brand-primary transition-colors"
                                   >
                                     <div className="flex items-center justify-between">
-                                      <p className="text-sm font-semibold text-gray-800">{coupon.code}</p>
-                                      <p className="text-xs font-semibold text-primary-700">
+                                      <p className="text-sm font-semibold text-content">{coupon.code}</p>
+                                      <p className="text-xs font-semibold text-brand-primary">
                                         {coupon.type === "percentage"
                                           ? `${coupon.value}% ${t('OFF')}`
                                           : coupon.type === "fixed"
@@ -809,7 +810,7 @@ const MobileCheckout = () => {
                                             : t("Free Shipping")}
                                       </p>
                                     </div>
-                                    <p className="text-xs text-gray-600">
+                                    <p className="text-xs text-content-secondary">
                                       {t('Min order:')} {formatPrice(coupon.minOrderValue || 0)}
                                     </p>
                                   </button>
@@ -819,12 +820,12 @@ const MobileCheckout = () => {
                           )}
                         </>
                       ) : (
-                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+                        <div className="flex items-center justify-between p-3 bg-status-successBg rounded-xl border border-status-success/20">
                           <div>
-                            <p className="text-sm font-semibold text-green-800">
+                            <p className="text-sm font-semibold text-status-success">
                               {appliedCoupon.code || "Coupon"} {t('Applied')}
                             </p>
-                            <p className="text-xs text-green-600">
+                            <p className="text-xs text-status-success font-medium">
                               {t('Code:')} {couponCode}
                             </p>
                           </div>
@@ -835,7 +836,7 @@ const MobileCheckout = () => {
                               setAppliedDiscount(0);
                               setCouponCode("");
                             }}
-                            className="text-red-600 hover:text-red-700">
+                            className="text-status-error hover:text-status-error/80">
                             <FiX className="text-lg" />
                           </button>
                         </div>
@@ -861,7 +862,7 @@ const MobileCheckout = () => {
               {/* Right Column - Desktop Order Summary */}
               <div className="hidden lg:block lg:col-span-4">
                 <div className="sticky top-24 space-y-4">
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
                     <OrderSummary
                       itemsByVendor={itemsByVendor}
                       total={total}
@@ -871,18 +872,18 @@ const MobileCheckout = () => {
                       finalTotal={finalTotal}
                       formatPrice={formatPrice}
                     />
-                    <div className="p-4 border-t border-gray-100 bg-gray-50">
+                    <div className="p-4 border-t border-border bg-surface-muted">
                       <button
                         type="submit"
                         disabled={step === 2 && isPlacingOrder}
-                        className="w-full gradient-green text-white py-3.5 rounded-xl font-bold text-lg shadow-lg hover:shadow-glow-green transition-all duration-300 transform hover:-translate-y-0.5">
+                        className="w-full bg-brand-primary text-black py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-brand-primaryHover transition-all duration-300 transform hover:-translate-y-0.5">
                         {step === 2 ? (isPlacingOrder ? t("Placing Order...") : t("Place Order")) : t("Continue to Payment")}
                       </button>
                       {step === 2 && (
                         <button
                           type="button"
                           onClick={() => setStep(1)}
-                          className="w-full mt-3 py-2 text-gray-500 font-semibold hover:text-gray-700 transition-colors text-sm">
+                          className="w-full mt-3 py-2 text-content-secondary font-semibold hover:text-content transition-colors text-sm">
                           {t('Back to Shipping')}
                         </button>
                       )}
@@ -890,29 +891,29 @@ const MobileCheckout = () => {
                   </div>
 
                   {/* Trust Badges or Info */}
-                  <div className="flex justify-center gap-4 text-gray-400 text-2xl pt-2 opacity-70">
+                  <div className="flex justify-center gap-4 text-content-muted text-2xl pt-2 opacity-70">
                     <FiLock className="w-6 h-6" />
-                    <span className="text-xs text-gray-500">{t('Secure Checkout')}</span>
+                    <span className="text-xs text-content-muted">{t('Secure Checkout')}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Navigation Buttons (Mobile Fixed Bottom) */}
-            <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 safe-area-bottom lg:hidden">
+            <div className="fixed bottom-16 left-0 right-0 bg-surface border-t border-border p-4 z-40 safe-area-bottom lg:hidden">
               <div className="flex gap-3">
                 {step > 1 && (
                   <button
                     type="button"
                     onClick={() => setStep(step - 1)}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                    className="px-6 py-3 bg-surface-muted text-content-secondary rounded-xl font-semibold hover:bg-border transition-colors">
                     {t('Back')}
                   </button>
                 )}
                 <button
                   type="submit"
                   disabled={step === 2 && isPlacingOrder}
-                  className="flex-1 gradient-green text-white py-3 rounded-xl font-semibold hover:shadow-glow-green transition-all duration-300">
+                  className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300">
                   {step === 2 ? (isPlacingOrder ? "Placing..." : "Place Order") : "Continue"}
                 </button>
               </div>
@@ -968,18 +969,18 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto">
+        className="bg-surface rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto border-t border-border">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-800">Add New Address</h3>
+          <h3 className="text-xl font-bold text-content">Add New Address</h3>
           <button
             onClick={onCancel}
-            className="p-2 hover:bg-gray-100 rounded-full">
+            className="p-2 hover:bg-surface-muted rounded-full text-content-secondary">
             <FiX className="text-xl" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-content-secondary mb-2">
               Address Label
             </label>
             <input
@@ -988,12 +989,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
               placeholder="Home, Work, etc."
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-content-secondary mb-2">
               Full Name
             </label>
             <input
@@ -1002,11 +1003,11 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.fullName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-content-secondary mb-2">
               Phone Number
             </label>
             <input
@@ -1015,11 +1016,11 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.phone}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-content-secondary mb-2">
               Street Address
             </label>
             <input
@@ -1028,12 +1029,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.address}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-content-secondary mb-2">
                 City
               </label>
               <input
@@ -1042,11 +1043,11 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.city}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-content-secondary mb-2">
                 State
               </label>
               <input
@@ -1055,11 +1056,11 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.state}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-content-secondary mb-2">
                 Zip Code
               </label>
               <input
@@ -1068,12 +1069,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.zipCode}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-content-secondary mb-2">
               Country
             </label>
             <input
@@ -1082,19 +1083,19 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.country}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
             />
           </div>
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 gradient-green text-white py-3 rounded-xl font-semibold hover:shadow-glow-green transition-all">
+              className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all">
               Add Address
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+              className="px-6 py-3 bg-surface-muted text-content-secondary rounded-xl font-semibold hover:bg-border transition-colors">
               Cancel
             </button>
           </div>

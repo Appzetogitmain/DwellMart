@@ -16,6 +16,45 @@ import { usePageTranslation } from "../../hooks/usePageTranslation";
 import { Card, Button, Badge } from "./ui";
 
 
+export const PRODUCT_CARD_VARIANTS = {
+  default: {
+    cardStyle: 'default',
+    containerClass: 'bg-surface-card border-borderToken-default',
+    infoBg: 'bg-surface-card',
+    titleColor: 'text-textColor-primary',
+    priceColor: 'text-textColor-primary',
+    badgeVariant: 'hot',
+    buttonVariant: 'primary',
+  },
+  premium: {
+    cardStyle: 'glass',
+    containerClass: 'bg-zinc-950/90 border-[#D4AF37]/50 shadow-amber-500/10 text-white',
+    infoBg: 'bg-zinc-950/95 border-t border-[#D4AF37]/20',
+    titleColor: 'text-white',
+    priceColor: 'text-brand-primary',
+    badgeVariant: 'gold',
+    buttonVariant: 'primary',
+  },
+  minimal: {
+    cardStyle: 'bordered',
+    containerClass: 'bg-surface-card border-2 border-borderToken-default',
+    infoBg: 'bg-surface-card',
+    titleColor: 'text-textColor-primary',
+    priceColor: 'text-textColor-primary',
+    badgeVariant: 'info',
+    buttonVariant: 'secondary',
+  },
+  compact: {
+    cardStyle: 'default',
+    containerClass: 'bg-surface-card border-borderToken-default',
+    infoBg: 'bg-surface-card',
+    titleColor: 'text-textColor-primary',
+    priceColor: 'text-textColor-primary',
+    badgeVariant: 'gold',
+    buttonVariant: 'primary',
+  },
+};
+
 const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant = 'default' }) => {
   const navigate = useNavigate();
   const { getTranslatedText: t } = usePageTranslation([
@@ -61,7 +100,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     end: { x: 0, y: 0 },
   });
   const buttonRef = useRef(null);
-  const cartIconRef = useRef(null);
 
   const handleAddToCart = (e) => {
     if (e) {
@@ -85,12 +123,10 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     if (!isLargeScreen) {
       setIsAdding(true);
 
-      // Get button position
       const buttonRect = buttonRef.current?.getBoundingClientRect();
       const startX = buttonRect ? buttonRect.left + buttonRect.width / 2 : 0;
       const startY = buttonRect ? buttonRect.top + buttonRect.height / 2 : 0;
 
-      // Get cart bar position (prefer cart bar over header icon)
       setTimeout(() => {
         const cartBar = document.querySelector("[data-cart-bar]");
         let endX = window.innerWidth / 2;
@@ -101,7 +137,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           endX = cartRect.left + cartRect.width / 2;
           endY = cartRect.top + cartRect.height / 2;
         } else {
-          // Fallback to cart icon in header
           const cartIcon = document.querySelector("[data-cart-icon]");
           if (cartIcon) {
             const cartRect = cartIcon.getBoundingClientRect();
@@ -169,7 +204,10 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
   const longPressHandlers = useLongPress(handleLongPress, 500);
 
   const handleFavorite = (e) => {
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (isFavorite) {
       removeFromWishlist(product.id);
       toast.success(t("Removed from wishlist"));
@@ -186,34 +224,21 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     }
   };
 
-  // Calculate sold percentage for flash sale (mock logic)
   const soldPercentage = product.stockQuantity ? Math.min(95, Math.floor(100 - (product.stockQuantity / 2))) : 75;
 
-  const isPremium = variant === 'premium';
-  const isCompact = variant === 'compact';
-  const isMinimal = variant === 'minimal';
-
-  const cardVariantStyle = isPremium
-    ? 'glass'
-    : isMinimal
-    ? 'bordered'
-    : 'default';
+  const currentVariantConfig = PRODUCT_CARD_VARIANTS[variant] || PRODUCT_CARD_VARIANTS.default;
 
   return (
     <>
       <Card
         as={motion.div}
-        variant={cardVariantStyle}
+        variant={currentVariantConfig.cardStyle}
         hoverable
         padding="none"
         whileTap={{ scale: 0.98 }}
         whileHover={{ y: -4 }}
-        className={`group cursor-pointer h-full flex flex-col ${
-          isPremium
-            ? 'bg-zinc-950/90 border-[#D4AF37]/50 shadow-amber-500/10'
-            : isFlashSale
-            ? 'border-borderToken-goldAccent bg-amber-50/10'
-            : ''
+        className={`group cursor-pointer h-full flex flex-col ${currentVariantConfig.containerClass} ${
+          isFlashSale ? 'border-borderToken-goldAccent bg-amber-50/10' : ''
         }`}
         {...longPressHandlers}
       >
@@ -240,7 +265,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
             <div className="w-full aspect-[4/3] bg-surface-background flex items-center justify-center overflow-hidden relative group-hover:bg-borderToken-light/50 transition-colors">
               {product.originalPrice && (
                 <div className="absolute top-2 left-2 z-10">
-                  <Badge variant={isFlashSale || isPremium ? 'gold' : 'hot'}>
+                  <Badge variant={isFlashSale ? 'hot' : currentVariantConfig.badgeVariant}>
                     {Math.round(
                       ((product.originalPrice - product.price) / product.originalPrice) * 100
                     )}% {t('OFF')}
@@ -263,9 +288,9 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
         </div>
 
         {/* Product Info */}
-        <div className={`p-3.5 flex-1 flex flex-col ${isPremium ? 'bg-zinc-950/95 border-t border-[#D4AF37]/20' : 'bg-surface-card'}`}>
+        <div className={`p-3.5 flex-1 flex flex-col ${currentVariantConfig.infoBg}`}>
           <Link to={productLink} className="block lg:h-5">
-            <h3 className={`font-bold mb-0 line-clamp-2 md:line-clamp-1 text-[11px] md:text-sm transition-colors group-hover:text-brand-primary leading-none ${isPremium ? 'text-white' : 'text-textColor-primary'}`}>
+            <h3 className={`font-bold mb-0 line-clamp-2 md:line-clamp-1 text-[11px] md:text-sm transition-colors group-hover:text-brand-primary leading-none ${currentVariantConfig.titleColor}`}>
               {product.name}
             </h3>
           </Link>
@@ -312,7 +337,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           )}
 
           <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 mb-2 mt-auto leading-none">
-            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${isPremium || isFlashSale ? 'text-brand-primary' : 'text-textColor-primary'}`} />
+            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${currentVariantConfig.priceColor}`} />
             {product.originalPrice && (
               <Price amount={product.originalPrice} className="text-[9px] md:text-xs text-textColor-muted line-through font-medium leading-none mb-0.5" />
             )}
@@ -332,7 +357,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           ) : (
             <Button
               ref={buttonRef}
-              variant="primary"
+              variant={currentVariantConfig.buttonVariant}
               size="sm"
               fullWidth
               disabled={product.stock === 'out_of_stock'}

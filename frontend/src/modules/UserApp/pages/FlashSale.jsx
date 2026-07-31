@@ -195,42 +195,42 @@ const MobileFlashSale = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24 min-h-screen bg-gray-50">
-          <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="w-full pb-24 min-h-screen bg-surface-muted">
+          <div className="px-4 py-4 bg-surface border-b border-border sticky top-0 z-30">
             <div className="flex items-center gap-3 mb-3">
-              <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <FiArrowLeft className="text-xl text-gray-700" />
+              <button onClick={() => navigate(-1)} className="p-2 hover:bg-surface-muted rounded-full transition-colors">
+                <FiArrowLeft className="text-xl text-content-secondary" />
               </button>
               <div className="flex-1">
-                <h1 className="text-xl font-bold text-gray-800">{t('Flash Sale')}</h1>
+                <h1 className="text-xl font-bold text-content">{t('Flash Sale')}</h1>
                 <div className="relative mt-1">
-                  <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                  <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted text-xs" />
                   <input
                     type="text"
                     placeholder={t('Search in flash sale...')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-10 py-1.5 bg-gray-100 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    className="w-full pl-8 pr-10 py-1.5 bg-surface-muted border border-border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-brand-primary text-content"
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:bg-gray-200 rounded-full">
+                    <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted p-1 hover:bg-border rounded-full">
                       <FiX className="text-xs" />
                     </button>
                   )}
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                  <button onClick={() => setViewMode("list")} className={`p-1 rounded transition-colors ${viewMode === "list" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600"}`}>
+                <div className="flex items-center bg-surface-muted rounded-lg p-1 border border-border">
+                  <button onClick={() => setViewMode("list")} className={`p-1 rounded transition-colors ${viewMode === "list" ? "bg-surface text-brand-primary shadow-sm" : "text-content-secondary"}`}>
                     <FiList className="text-sm" />
                   </button>
-                  <button onClick={() => setViewMode("grid")} className={`p-1 rounded transition-colors ${viewMode === "grid" ? "bg-white text-primary-600 shadow-sm" : "text-gray-600"}`}>
+                  <button onClick={() => setViewMode("grid")} className={`p-1 rounded transition-colors ${viewMode === "grid" ? "bg-surface text-brand-primary shadow-sm" : "text-content-secondary"}`}>
                     <FiGrid className="text-sm" />
                   </button>
                 </div>
                 <div ref={filterButtonRef} className="relative">
-                  <button onClick={() => setShowFilters(!showFilters)} className={`p-1.5 glass-card rounded-lg hover:bg-white/80 transition-colors ${showFilters ? "bg-white/80" : ""}`}>
-                    <FiFilter className={`text-sm transition-colors ${hasActiveFilters ? "text-blue-600" : "text-gray-600"}`} />
+                  <button onClick={() => setShowFilters(!showFilters)} className={`p-1.5 glass-card rounded-lg hover:bg-surface/80 transition-colors ${showFilters ? "bg-surface/80" : ""}`}>
+                    <FiFilter className={`text-sm transition-colors ${hasActiveFilters ? "text-brand-primary" : "text-content-secondary"}`} />
                   </button>
                   <AnimatePresence>
                     {showFilters && (
@@ -241,19 +241,19 @@ const MobileFlashSale = () => {
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -10, scale: 0.95 }}
                           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
+                          className="filter-dropdown absolute right-0 top-full w-56 bg-surface rounded-xl shadow-2xl border border-border z-[10001] overflow-hidden"
                           style={{ marginTop: "-50px" }}
                         >
-                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
-                            <h3 className="text-sm font-bold text-gray-800">{t('Filters')}</h3>
-                            <button onClick={() => setShowFilters(false)} className="p-0.5 hover:bg-gray-200 rounded-full">
-                              <FiX className="text-sm text-gray-600" />
+                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-surface-muted">
+                            <h3 className="text-sm font-bold text-content">{t('Filters')}</h3>
+                            <button onClick={() => setShowFilters(false)} className="p-0.5 hover:bg-border rounded-full">
+                              <FiX className="text-sm text-content-secondary" />
                             </button>
                           </div>
                           <div className="max-h-[50vh] overflow-y-auto scrollbar-hide p-2 space-y-2">
                             <div>
-                              <h4 className="font-semibold text-gray-700 mb-1 text-xs">{t('Category')}</h4>
-                              <select value={filters.category} onChange={(e) => handleFilterChange("category", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs">
+                              <h4 className="font-semibold text-content-secondary mb-1 text-xs">{t('Category')}</h4>
+                              <select value={filters.category} onChange={(e) => handleFilterChange("category", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs">
                                 <option value="">{t('All Categories')}</option>
                                 {translatedCategories.map((cat) => (
                                   <option key={cat.id} value={String(cat.id)}>{cat.name}</option>
@@ -261,16 +261,16 @@ const MobileFlashSale = () => {
                               </select>
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-700 mb-1 text-xs">{t('Price Range')}</h4>
+                              <h4 className="font-semibold text-content-secondary mb-1 text-xs">{t('Price Range')}</h4>
                               <div className="space-y-1.5">
-                                <input type="number" placeholder={t('Min Price')} value={filters.minPrice} onChange={(e) => handleFilterChange("minPrice", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs" />
-                                <input type="number" placeholder={t('Max Price')} value={filters.maxPrice} onChange={(e) => handleFilterChange("maxPrice", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs" />
+                                <input type="number" placeholder={t('Min Price')} value={filters.minPrice} onChange={(e) => handleFilterChange("minPrice", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs" />
+                                <input type="number" placeholder={t('Max Price')} value={filters.maxPrice} onChange={(e) => handleFilterChange("maxPrice", e.target.value)} className="w-full px-2 py-1.5 rounded-md border border-border bg-surface text-content focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs" />
                               </div>
                             </div>
                           </div>
-                          <div className="border-t border-gray-200 p-2 bg-gray-50 space-y-1.5">
-                            <button onClick={clearFilters} className="w-full py-1.5 bg-gray-200 text-gray-700 rounded-md font-semibold text-xs hover:bg-gray-300">{t('Clear All')}</button>
-                            <button onClick={() => setShowFilters(false)} className="w-full py-1.5 gradient-green text-white rounded-md font-semibold text-xs">{t('Apply Filters')}</button>
+                          <div className="border-t border-border p-2 bg-surface-muted space-y-1.5">
+                            <button onClick={clearFilters} className="w-full py-1.5 bg-border text-content-secondary rounded-md font-semibold text-xs hover:bg-border-strong">{t('Clear All')}</button>
+                            <button onClick={() => setShowFilters(false)} className="w-full py-1.5 bg-brand-primary text-black rounded-md font-semibold text-xs hover:bg-brand-primaryHover">{t('Apply Filters')}</button>
                           </div>
                         </motion.div>
                       </>
@@ -286,9 +286,9 @@ const MobileFlashSale = () => {
               <ProductGridSkeleton count={6} columns={viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1'} />
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-6xl text-gray-300 mx-auto mb-4">[ ]</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">{t('No flash sale items')}</h3>
-                <p className="text-gray-600">{t('Check back later for flash sales.')}</p>
+                <div className="text-6xl text-content-muted mx-auto mb-4">[ ]</div>
+                <h3 className="text-xl font-bold text-content mb-2">{t('No flash sale items')}</h3>
+                <p className="text-content-secondary">{t('Check back later for flash sales.')}</p>
               </div>
             ) : viewMode === "grid" ? (
               <>
@@ -301,7 +301,7 @@ const MobileFlashSale = () => {
                 </div>
                 {hasMore && (
                   <div ref={loadMoreRef} className="mt-6 flex flex-col items-center gap-4">
-                    <button onClick={loadMore} disabled={isLoading} className="px-6 py-3 gradient-green text-white rounded-xl font-semibold disabled:opacity-50">
+                    <button onClick={loadMore} disabled={isLoading} className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover disabled:opacity-50">
                       {isLoading ? t("Loading...") : t("Load More")}
                     </button>
                   </div>
@@ -316,7 +316,7 @@ const MobileFlashSale = () => {
                 </div>
                 {hasMore && (
                   <div ref={loadMoreRef} className="mt-6 flex flex-col items-center gap-4">
-                    <button onClick={loadMore} disabled={isLoading} className="px-6 py-3 gradient-green text-white rounded-xl font-semibold disabled:opacity-50">
+                    <button onClick={loadMore} disabled={isLoading} className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover disabled:opacity-50">
                       {isLoading ? t("Loading...") : t("Load More")}
                     </button>
                   </div>

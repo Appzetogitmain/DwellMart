@@ -14,6 +14,8 @@ import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans } from "../services/vendorService";
 import { formatPrice } from "../../../shared/utils/helpers";
 import toast from "react-hot-toast";
+import { DashboardPage, StatCard, StatusBadge } from "../../../shared/components/Dashboard";
+import { Button, Card, Badge } from "../../../shared/components/ui";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -137,125 +139,88 @@ const VendorDashboard = () => {
     },
   ];
 
-  const topProducts = useMemo(() => products.slice(0, 5), [products]);
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6">
-      {/* Header */}
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="lg:hidden">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-            Dashboard
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mb-3">
-            Welcome back, {vendor?.storeName || vendor?.name}! Here's your store
-            overview.
-          </p>
-        </div>
-        
-        {vendor?.commissionRate !== undefined && (
-          <div className="hidden lg:inline-flex items-center gap-2 px-4 py-2 bg-pink-50 border border-pink-200 text-pink-700 rounded-lg text-sm font-medium w-max mb-2">
-            <span>Platform Commission Rate:</span>
-            <span className="font-bold">{(vendor.commissionRate).toFixed(1)}%</span>
-          </div>
-        )}
-        
-        {vendor?.commissionRate !== undefined && (
-          <div className="lg:hidden inline-flex items-center gap-2 px-3 py-1 bg-pink-50 border border-pink-200 text-pink-700 rounded-full text-sm font-medium w-max">
-            <span>Platform Commission:</span>
-            <span className="font-bold">{(vendor.commissionRate).toFixed(1)}%</span>
-          </div>
-        )}
-      </div>
-
+    <DashboardPage
+      title="Dashboard"
+      subtitle={`Welcome back, ${vendor?.storeName || vendor?.name || 'Vendor'}! Here's your store overview.`}
+      actions={
+        vendor?.commissionRate !== undefined && (
+          <Badge variant="gold" size="md">
+            Commission Rate: {vendor.commissionRate.toFixed(1)}%
+          </Badge>
+        )
+      }
+    >
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            onClick={() => stat.link && navigate(stat.link)}
-            className={`${stat.bgColor} rounded-xl p-4 cursor-pointer hover:shadow-lg transition-shadow`}>
-            <div className="flex items-center justify-between mb-2">
-              <div className={`${stat.color} p-3 rounded-lg`}>
-                <stat.icon className="text-white text-xl" />
-              </div>
-              <FiArrowRight className={`${stat.textColor} text-lg`} />
-            </div>
-            <h3 className={`${stat.textColor} text-sm font-medium mb-1`}>
-              {stat.label}
-            </h3>
-            <p className={`${stat.textColor} text-2xl font-bold`}>
-              {isLoading ? "—" : stat.value}
-            </p>
-          </motion.div>
+          <div key={index} onClick={() => stat.link && navigate(stat.link)} className="cursor-pointer">
+            <StatCard
+              title={stat.label}
+              value={isLoading ? "—" : stat.value}
+              icon={<stat.icon />}
+            />
+          </div>
         ))}
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h2>
+      <Card variant="default" padding="lg">
+        <h2 className="text-lg font-bold text-textColor-primary mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <button
+          <Button
+            variant="outline"
+            size="lg"
             onClick={() => navigate("/vendor/products/add-product")}
-            className="flex items-center gap-3 p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors text-left">
-            <div className="bg-primary-500 p-2 rounded-lg">
-              <FiPackage className="text-white text-xl" />
-            </div>
+            leftIcon={<FiPackage />}
+            className="justify-start text-left h-auto py-3 px-4"
+          >
             <div>
-              <h3 className="font-semibold text-gray-800">Add New Product</h3>
-              <p className="text-sm text-gray-600">
-                Create a new product listing
-              </p>
+              <div className="font-bold text-textColor-primary">Add New Product</div>
+              <div className="text-xs text-textColor-muted font-normal">Create a new product listing</div>
             </div>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="lg"
             onClick={() => navigate("/vendor/orders")}
-            className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-left">
-            <div className="bg-green-500 p-2 rounded-lg">
-              <FiShoppingBag className="text-white text-xl" />
-            </div>
+            leftIcon={<FiShoppingBag />}
+            className="justify-start text-left h-auto py-3 px-4"
+          >
             <div>
-              <h3 className="font-semibold text-gray-800">View Orders</h3>
-              <p className="text-sm text-gray-600">Manage your orders</p>
+              <div className="font-bold text-textColor-primary">View Orders</div>
+              <div className="text-xs text-textColor-muted font-normal">Manage your customer orders</div>
             </div>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="lg"
             onClick={() => navigate("/vendor/earnings")}
-            className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors text-left">
-            <div className="bg-purple-500 p-2 rounded-lg">
-              <MdCurrencyRupee className="text-white text-xl" />
-            </div>
+            leftIcon={<MdCurrencyRupee />}
+            className="justify-start text-left h-auto py-3 px-4"
+          >
             <div>
-              <h3 className="font-semibold text-gray-800">View Earnings</h3>
-              <p className="text-sm text-gray-600">Check your earnings</p>
+              <div className="font-bold text-textColor-primary">View Earnings</div>
+              <div className="text-xs text-textColor-muted font-normal">Check your payout reports</div>
             </div>
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Recent Orders & Products */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Orders */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+        <Card variant="default" padding="lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Recent Orders</h2>
-            <button
-              onClick={() => navigate("/vendor/orders")}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+            <h2 className="text-lg font-bold text-textColor-primary">Recent Orders</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/vendor/orders")}>
               View All
-            </button>
+            </Button>
           </div>
           {isLoading ? (
-            <p className="text-gray-400 text-center py-8">Loading orders...</p>
+            <p className="text-textColor-muted text-center py-8 font-medium">Loading orders...</p>
           ) : recentOrders.length > 0 ? (
             <div className="space-y-3">
               {recentOrders.map((order) => {
@@ -267,52 +232,43 @@ const VendorDashboard = () => {
                   vendorItem?.subtotal ?? order.totalAmount ?? order.total ?? 0;
 
                 return (
-                <div
-                  key={order._id ?? order.orderId}
-                  onClick={() =>
-                    navigate(`/vendor/orders/${order.orderId ?? order._id}`)
-                  }
-                  className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {order.orderId ?? order._id}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
+                  <div
+                    key={order._id ?? order.orderId}
+                    onClick={() =>
+                      navigate(`/vendor/orders/${order.orderId ?? order._id}`)
+                    }
+                    className="flex items-center justify-between p-3 bg-surface-background border border-borderToken-default hover:bg-borderToken-light rounded-card cursor-pointer transition-colors"
+                  >
+                    <div>
+                      <p className="font-bold text-textColor-primary text-sm">
+                        {order.orderId ?? order._id}
+                      </p>
+                      <p className="text-xs text-textColor-muted">
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="font-black text-textColor-primary text-sm">
+                        {formatPrice(displayAmount)}
+                      </p>
+                      <StatusBadge status={displayStatus} size="xs" />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-800">
-                      {formatPrice(displayAmount)}
-                    </p>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${displayStatus === "delivered"
-                          ? "bg-green-100 text-green-700"
-                          : displayStatus === "pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}>
-                      {displayStatus}
-                    </span>
-                  </div>
-                </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No orders yet</p>
+            <p className="text-textColor-muted text-center py-8 font-medium">No orders yet</p>
           )}
-        </div>
+        </Card>
 
         {/* Top Products */}
-        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+        <Card variant="default" padding="lg">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-800">Your Products</h2>
-            <button
-              onClick={() => navigate("/vendor/products")}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+            <h2 className="text-lg font-bold text-textColor-primary">Your Products</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/vendor/products")}>
               View All
-            </button>
+            </Button>
           </div>
           {topProducts.length > 0 ? (
             <div className="space-y-3">
@@ -340,81 +296,72 @@ const VendorDashboard = () => {
                       {formatPrice(product.price || 0)}
                     </p>
                   </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${product.stock === "in_stock"
-                        ? "bg-green-100 text-green-700"
-                        : product.stock === "low_stock"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700"
-                      }`}>
-                    {product.stock === "in_stock"
-                      ? "In Stock"
-                      : product.stock === "low_stock"
-                        ? "Low Stock"
-                        : "Out of Stock"}
-                  </span>
+                  <StatusBadge
+                    status={product.stock === "in_stock" ? "active" : product.stock === "low_stock" ? "pending" : "out_of_stock"}
+                    size="xs"
+                  />
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No products yet</p>
+            <p className="text-textColor-muted text-center py-8 font-medium">No products yet</p>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Subscription Plans Section */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200">
+      <Card variant="default" padding="lg">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold text-gray-800">Membership Plans</h2>
-          <button
-            onClick={() => navigate("/vendor/subscription")}
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+          <h2 className="text-lg font-bold text-textColor-primary">Membership Plans</h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/vendor/subscription")}>
             Manage Subscription
-          </button>
+          </Button>
         </div>
 
         {plansLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-100 animate-pulse rounded-2xl"></div>
+              <div key={i} className="h-48 bg-surface-background animate-pulse rounded-card"></div>
             ))}
           </div>
         ) : plans.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => (
-              <div
+              <Card
                 key={plan._id}
-                className={`relative p-6 rounded-2xl border-2 transition-all duration-200 ${
-                  plan.isMostPopular
-                    ? 'border-primary-500 bg-primary-50/10'
-                    : 'border-gray-100 bg-white hover:border-primary-100'
+                variant={plan.isMostPopular ? "elevated" : "default"}
+                padding="md"
+                className={`relative border-2 ${
+                  plan.isMostPopular ? 'border-brand-primary bg-brand-primary/5' : 'border-borderToken-default'
                 }`}
               >
                 {plan.isMostPopular && (
-                  <div className="absolute -top-3 right-6 bg-primary-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm z-10 flex items-center gap-1">
-                    <FiCheck className="text-[10px]" /> POPULAR
+                  <div className="absolute -top-3 right-6">
+                    <Badge variant="gold" size="xs">
+                      <FiCheck className="mr-1 inline" /> POPULAR
+                    </Badge>
                   </div>
                 )}
                 {plan.isTrial && (
-                  <div className="absolute -top-3 left-6 bg-gray-800 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm z-10">
-                    TRIAL
+                  <div className="absolute -top-3 left-6">
+                    <Badge variant="default" size="xs">TRIAL</Badge>
                   </div>
                 )}
 
                 <div className="mb-4">
-                  <h3 className="text-base font-bold text-gray-800 mb-1">{plan.name}</h3>
+                  <h3 className="text-base font-bold text-textColor-primary mb-1">{plan.name}</h3>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-gray-900">{plan.price}</span>
-                    <span className="text-gray-500 font-semibold text-sm">{plan.currency || 'AED'}</span>
+                    <span className="text-2xl font-black text-textColor-primary">{plan.price}</span>
+                    <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'AED'}</span>
                   </div>
-                  <p className="text-xs text-gray-400">{plan.durationDays} days</p>
+                  <p className="text-xs text-textColor-muted">{plan.durationDays} days</p>
                 </div>
 
                 {plan.features?.length > 0 && (
                   <ul className="space-y-2 mb-4">
                     {plan.features.slice(0, 4).map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-gray-600">
-                        <FiCheck className="text-primary-500 mt-0.5 flex-shrink-0" />
+                      <li key={idx} className="flex items-start gap-2 text-xs text-textColor-muted">
+                        <FiCheck className="text-brand-primary mt-0.5 flex-shrink-0" />
                         <span className="line-clamp-1">{feature}</span>
                       </li>
                     ))}
@@ -422,21 +369,21 @@ const VendorDashboard = () => {
                 )}
 
                 <div className="flex items-center gap-2 mt-auto">
-                    <span className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                        {plan.isActive ? 'Active Plan' : 'Inactive'}
-                    </span>
+                  <span className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-status-success' : 'bg-textColor-muted'}`}></span>
+                  <span className="text-[10px] font-bold text-textColor-muted uppercase tracking-tight">
+                    {plan.isActive ? 'Active Plan' : 'Inactive'}
+                  </span>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-            <p className="text-gray-500 text-sm">No membership plans found.</p>
+          <div className="text-center py-10 bg-surface-background rounded-card border border-dashed border-borderToken-default">
+            <p className="text-textColor-muted text-sm">No membership plans found.</p>
           </div>
         )}
-      </div>
-    </motion.div>
+      </Card>
+    </DashboardPage>
   );
 };
 

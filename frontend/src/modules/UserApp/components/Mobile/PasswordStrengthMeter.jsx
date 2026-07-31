@@ -15,36 +15,36 @@ const PasswordStrengthMeter = ({ password }) => {
     return Math.min(score, 4);
   }, [password]);
 
-  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
-  const strengthColors = [
-    'bg-red-500',
-    'bg-orange-500',
-    'bg-yellow-500',
-    'bg-blue-500',
-    'bg-green-500',
-  ];
+  const STRENGTH_CONFIG = {
+    very_weak: { label: 'Very Weak', barColor: 'bg-status-error', textColor: 'text-status-error' },
+    weak: { label: 'Weak', barColor: 'bg-status-error', textColor: 'text-status-error' },
+    fair: { label: 'Fair', barColor: 'bg-status-warning', textColor: 'text-status-warning' },
+    good: { label: 'Good', barColor: 'bg-status-info', textColor: 'text-status-info' },
+    strong: { label: 'Strong', barColor: 'bg-status-success', textColor: 'text-status-success' },
+  };
+
+  const strengthKey = useMemo(() => {
+    const keys = ['very_weak', 'weak', 'fair', 'good', 'strong'];
+    return keys[strength] || 'very_weak';
+  }, [strength]);
 
   if (!password) return null;
+
+  const currentConfig = STRENGTH_CONFIG[strengthKey];
 
   return (
     <div className="mt-2">
       <div className="flex items-center gap-2 mb-1">
-        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div className="flex-1 h-2 bg-surface-muted rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${(strength / 4) * 100}%` }}
             transition={{ duration: 0.3 }}
-            className={`h-full ${strengthColors[strength] || strengthColors[0]} rounded-full`}
+            className={`h-full ${currentConfig.barColor} rounded-full`}
           />
         </div>
-        <span className={`text-xs font-semibold ${
-          strength === 0 ? 'text-red-600' :
-          strength === 1 ? 'text-orange-600' :
-          strength === 2 ? 'text-yellow-600' :
-          strength === 3 ? 'text-blue-600' :
-          'text-green-600'
-        }`}>
-          {strengthLabels[strength] || strengthLabels[0]}
+        <span className={`text-xs font-semibold ${currentConfig.textColor}`}>
+          {currentConfig.label}
         </span>
       </div>
     </div>

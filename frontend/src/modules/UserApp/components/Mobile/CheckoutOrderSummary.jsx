@@ -37,17 +37,17 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
 
   const displayGroups = translatedItemsByVendor.length > 0 ? translatedItemsByVendor : itemsByVendor;
   return (
-    <div className="glass-card rounded-xl p-4">
-      <h3 className="text-base font-bold text-gray-800 mb-3">{t('Order Summary')}</h3>
+    <div className="glass-card rounded-xl p-4 bg-surface border border-border">
+      <h3 className="text-base font-bold text-content mb-3">{t('Order Summary')}</h3>
       <div className="space-y-3 mb-4">
         {displayGroups.map((vendorGroup) => (
           <div key={vendorGroup.vendorId} className="space-y-2 mb-4">
-            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg border border-primary-200/50 shadow-sm">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
-                <FiShoppingBag className="text-white text-[10px]" />
+            <div className="flex items-center gap-2 px-3 py-2 bg-surface-muted rounded-lg border border-border shadow-sm">
+              <div className="w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center flex-shrink-0">
+                <FiShoppingBag className="text-black text-[10px]" />
               </div>
-              <span className="text-sm font-bold text-primary-700 flex-1">{vendorGroup.vendorName}</span>
-              <span className="text-xs font-semibold text-primary-600 bg-white px-2 py-0.5 rounded-md">
+              <span className="text-sm font-bold text-content flex-1">{vendorGroup.vendorName}</span>
+              <span className="text-xs font-semibold text-brand-primary bg-surface px-2 py-0.5 rounded-md border border-border">
                 <Price amount={vendorGroup.subtotal} />
               </span>
             </div>
@@ -59,12 +59,12 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
                 >
                   <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate text-xs">{item.name}</p>
-                    <p className="text-gray-600 text-xs">
+                    <p className="font-semibold text-content truncate text-xs">{item.name}</p>
+                    <p className="text-content-secondary text-xs">
                       <Price amount={item.price} /> x {item.quantity}
                     </p>
                     {formatVariantLabel(item?.variant) && (
-                      <p className="text-[11px] text-gray-500">{formatVariantLabel(item?.variant)}</p>
+                      <p className="text-[11px] text-content-muted">{formatVariantLabel(item?.variant)}</p>
                     )}
                   </div>
                 </div>
@@ -75,29 +75,29 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
       </div>
 
       <div className="space-y-2 text-sm">
-        <div className="flex justify-between text-gray-600">
+        <div className="flex justify-between text-content-secondary">
           <span>{t('Subtotal')}</span>
           <Price amount={total} />
         </div>
         {discount > 0 && (
-          <div className="flex justify-between text-green-600">
+          <div className="flex justify-between text-status-success">
             <span>{t('Discount')}</span>
             <Price amount={discount} prefix="-" />
           </div>
         )}
-        <div className="flex justify-between text-gray-600">
+        <div className="flex justify-between text-content-secondary">
           <span>{t('Shipping')}</span>
           <span>
-            {shipping === 0 ? <span className="text-green-600 font-semibold">{t('FREE')}</span> : <Price amount={shipping} />}
+            {shipping === 0 ? <span className="text-status-success font-semibold">{t('FREE')}</span> : <Price amount={shipping} />}
           </span>
         </div>
-        <div className="flex justify-between text-gray-600">
+        <div className="flex justify-between text-content-secondary">
           <span>{t('Tax')}</span>
           <Price amount={tax} />
         </div>
-        <div className="flex justify-between text-lg font-bold text-gray-800 pt-2 border-t border-gray-200">
+        <div className="flex justify-between text-lg font-bold text-content pt-2 border-t border-border">
           <span>{t('Total')}</span>
-          <Price amount={finalTotal} className="text-primary-600" />
+          <Price amount={finalTotal} className="text-brand-primary" />
         </div>
       </div>
     </div>

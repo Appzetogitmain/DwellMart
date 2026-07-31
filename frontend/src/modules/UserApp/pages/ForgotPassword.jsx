@@ -115,17 +115,17 @@ const MobileForgotPassword = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-muted">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="bg-surface rounded-2xl p-6 shadow-xl border border-border">
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('Forgot Password')}</h1>
-                <p className="text-sm text-gray-600">
+                <h1 className="text-2xl font-bold text-content mb-2">{t('Forgot Password')}</h1>
+                <p className="text-sm text-content-secondary">
                   {step === 'request'
                     ? t('Enter your account email to receive OTP.')
                     : `${t('Enter the OTP sent to')} ${email}`}
@@ -135,15 +135,15 @@ const MobileForgotPassword = () => {
               {step === 'request' ? (
                 <form onSubmit={handleRequestOtp} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">{t('Email Address')}</label>
+                    <label className="block text-sm font-semibold text-content-secondary mb-2">{t('Email Address')}</label>
                     <div className="relative">
-                      <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder={t('your.email@example.com')}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors text-base"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-border bg-surface text-content focus:border-brand-primary focus:outline-none transition-colors text-base"
                         required
                       />
                     </div>
@@ -151,7 +151,7 @@ const MobileForgotPassword = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-brand-primary hover:bg-brand-primaryHover text-black py-3.5 rounded-xl font-semibold text-base transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? t('Sending OTP...') : t('Send OTP')}
                   </button>
@@ -170,7 +170,7 @@ const MobileForgotPassword = () => {
                         onChange={(e) => handleCodeChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         onPaste={index === 0 ? handlePaste : undefined}
-                        className="w-11 h-11 text-center text-lg font-bold bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800"
+                        className="w-11 h-11 text-center text-lg font-bold bg-surface border-2 border-border rounded-xl focus:outline-none focus:border-brand-primary text-content"
                       />
                     ))}
                   </div>
@@ -180,7 +180,7 @@ const MobileForgotPassword = () => {
                       type="button"
                       onClick={handleRequestOtp}
                       disabled={isLoading}
-                      className="text-sm text-primary-600 hover:text-primary-700 font-medium disabled:text-gray-400 inline-flex items-center gap-2"
+                      className="text-sm text-brand-primary hover:underline font-medium disabled:text-content-muted inline-flex items-center gap-2"
                     >
                       <FiRefreshCw />
                       {t('Resend OTP')}
@@ -188,7 +188,7 @@ const MobileForgotPassword = () => {
                     <button
                       type="button"
                       onClick={() => setStep('request')}
-                      className="text-sm text-gray-600 hover:text-gray-800 font-medium"
+                      className="text-sm text-content-secondary hover:text-content font-medium"
                     >
                       {t('Change Email')}
                     </button>
@@ -197,7 +197,7 @@ const MobileForgotPassword = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-primary-500 hover:bg-primary-600 text-white py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full bg-brand-primary hover:bg-brand-primaryHover text-black py-3.5 rounded-xl font-semibold text-base transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isLoading ? t('Verifying...') : <><FiCheck /> {t('Verify OTP')}</>}
                   </button>
@@ -205,7 +205,7 @@ const MobileForgotPassword = () => {
               )}
 
               <div className="text-center pt-6">
-                <Link to="/login" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 font-medium">
+                <Link to="/login" className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content font-medium">
                   <FiArrowLeft />
                   {t('Back to Login')}
                 </Link>

@@ -18,7 +18,7 @@ const BrandCard = ({ brand }) => {
           }}
         />
       </div>
-      <p className="text-xs font-bold text-gray-800 text-center group-hover:text-gradient transition-colors">{brand.name}</p>
+      <p className="text-xs font-bold text-content text-center group-hover:text-brand-primary transition-colors">{brand.name}</p>
     </motion.div>
   );
 };

@@ -40,12 +40,12 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
     if (!activeConversation) {
         return (
-            <div className="h-full min-h-[550px] bg-white border border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
+            <div className="h-full min-h-[550px] bg-surface border border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
                 <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center text-primary-600 mb-4">
                     <FiMessageSquare className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">DwellMart Support Desk</h3>
-                <p className="text-sm text-gray-500 max-w-sm">
+                <h3 className="text-xl font-bold text-content mb-2">DwellMart Support Desk</h3>
+                <p className="text-sm text-content-muted max-w-sm">
                     Select an active support conversation from the list or click "New Ticket" to contact DwellMart Support.
                 </p>
             </div>
@@ -126,20 +126,20 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
     };
 
     return (
-        <div className="flex flex-col h-[620px] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex flex-col h-[620px] bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
             {/* Header (Flex Shrink 0) */}
-            <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-gray-50/70 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex-shrink-0 p-4 border-b border-border bg-surface-muted flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
                         {userName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 text-base">{reasonLabel}</h3>
-                        <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                        <h3 className="font-bold text-content text-base">{reasonLabel}</h3>
+                        <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5">
                             <FiUser className="w-3.5 h-3.5" />
                             <span>{userName}</span>
                             <span>•</span>
-                            <span className="capitalize font-medium text-gray-700">
+                            <span className="capitalize font-medium text-content-secondary">
                                 {activeConversation.userRole}
                             </span>
                         </p>
@@ -152,7 +152,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                         <select
                             value={activeConversation.status}
                             onChange={(e) => updateStatus(activeConversation._id, e.target.value)}
-                            className="px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 shadow-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                            className="px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-semibold text-content shadow-sm focus:ring-2 focus:ring-brand-primary focus:outline-none"
                         >
                             <option value="open">Status: Open</option>
                             <option value="in_progress">Status: In Progress</option>
@@ -173,8 +173,8 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
             {/* Description prompt if available */}
             {activeConversation.description && (
-                <div className="flex-shrink-0 px-4 py-2 bg-gray-50/80 border-b border-gray-100 text-xs text-gray-600 flex items-start gap-2">
-                    <span className="font-semibold text-gray-700 flex-shrink-0">Issue Detail:</span>
+                <div className="flex-shrink-0 px-4 py-2 bg-surface-muted border-b border-border-light text-xs text-content-secondary flex items-start gap-2">
+                    <span className="font-semibold text-content-secondary flex-shrink-0">Issue Detail:</span>
                     <span className="italic line-clamp-1">{activeConversation.description}</span>
                 </div>
             )}
@@ -214,7 +214,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                             className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                         >
                             <div className="flex items-center gap-1.5 mb-1 px-1">
-                                <span className="text-[11px] font-semibold text-gray-500">
+                                <span className="text-[11px] font-semibold text-content-muted">
                                     {getSenderLabel(msg.senderRole, isMe)}
                                 </span>
                             </div>
@@ -223,7 +223,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                 className={`max-w-xs md:max-w-md px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed ${
                                     isMe
                                         ? 'bg-primary-600 text-white rounded-br-none'
-                                        : 'bg-gray-100 text-gray-900 rounded-bl-none border border-gray-200/60'
+                                        : 'bg-surface-muted text-content rounded-bl-none border border-border'
                                 }`}
                             >
                                 {msg.message && <p className="whitespace-pre-line">{msg.message}</p>}
@@ -240,7 +240,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                                 className={`flex items-center gap-2 p-2 rounded-xl text-xs font-medium transition-opacity ${
                                                     isMe
                                                         ? 'bg-primary-700/60 text-white hover:bg-primary-700'
-                                                        : 'bg-white text-gray-800 border border-gray-200 hover:bg-gray-50'
+                                                        : 'bg-surface text-content border border-border hover:bg-surface-muted'
                                                 }`}
                                             >
                                                 {att.fileType === 'image' || att.url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
@@ -256,7 +256,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
                                 <div
                                     className={`text-[10px] mt-1.5 flex items-center justify-end gap-1 ${
-                                        isMe ? 'text-primary-100' : 'text-gray-400'
+                                        isMe ? 'text-primary-100' : 'text-content-muted'
                                     }`}
                                 >
                                     <span>
@@ -265,7 +265,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                             minute: '2-digit',
                                         })}
                                     </span>
-                                    {msg.readAt && isMe && <FiCheck className="w-3 h-3 text-emerald-300" />}
+                                    {msg.readAt && isMe && <FiCheck className="w-3 h-3 text-brand-primary/60" />}
                                 </div>
                             </div>
                         </div>
@@ -274,11 +274,11 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
                 {/* Typing Indicator */}
                 {typingUser && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 italic bg-gray-50 p-2 px-3 rounded-full w-fit">
+                    <div className="flex items-center gap-2 text-xs text-content-muted italic bg-surface-muted p-2 px-3 rounded-full w-fit">
                         <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
-                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce" />
+                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce [animation-delay:0.2s]" />
+                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce [animation-delay:0.4s]" />
                         </div>
                         <span>{typingUser} is typing...</span>
                     </div>
@@ -288,14 +288,14 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
             {/* Attachments Draft Preview (Flex Shrink 0) */}
             {attachments.length > 0 && (
-                <div className="flex-shrink-0 px-4 py-2 bg-gray-50 border-t border-gray-100 flex flex-wrap gap-2">
+                <div className="flex-shrink-0 px-4 py-2 bg-surface-muted border-t border-border-light flex flex-wrap gap-2">
                     {attachments.map((att, i) => (
                         <div
                             key={i}
-                            className="flex items-center gap-1.5 bg-white border border-gray-200 px-3 py-1 rounded-lg text-xs text-gray-700 shadow-xs"
+                            className="flex items-center gap-1.5 bg-surface border border-border px-3 py-1 rounded-lg text-xs text-content-secondary shadow-xs"
                         >
                             <span className="truncate max-w-[120px]">{att.filename}</span>
-                            <button onClick={() => removeAttachment(i)} className="text-gray-400 hover:text-red-500">
+                            <button onClick={() => removeAttachment(i)} className="text-content-muted hover:text-status-error">
                                 <FiX className="w-3.5 h-3.5" />
                             </button>
                         </div>
@@ -304,10 +304,10 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
             )}
 
             {/* Input Footer (Flex Shrink 0, ALWAYS VISIBLE AT BOTTOM) */}
-            <form onSubmit={handleSend} className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
+            <form onSubmit={handleSend} className="flex-shrink-0 p-3 border-t border-border bg-surface">
                 <div className="flex items-center gap-2">
                     <label
-                        className={`p-2.5 rounded-xl cursor-pointer text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors ${
+                        className={`p-2.5 rounded-xl cursor-pointer text-content-muted hover:text-content hover:bg-surface-muted transition-colors ${
                             isUserReadOnly || isUploading ? 'opacity-50 pointer-events-none' : ''
                         }`}
                         title="Attach JPG, PNG, PDF (max 10MB)"
@@ -332,7 +332,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                 ? 'This conversation is closed.'
                                 : 'Type your support message...'
                         }
-                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        className="flex-1 px-4 py-2.5 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder:text-content-muted focus:bg-surface focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all disabled:bg-surface-elevated disabled:cursor-not-allowed"
                     />
 
                     <button

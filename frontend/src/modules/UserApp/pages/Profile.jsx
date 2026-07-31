@@ -204,32 +204,32 @@ const MobileProfile = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-          <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
+          <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-surface-muted">
             {/* Desktop Header */}
             <div className="hidden lg:block px-4 py-8">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors bg-white shadow-sm border border-gray-200"
+                  className="p-2 hover:bg-surface-muted rounded-full transition-colors bg-surface shadow-sm border border-border"
                 >
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  <FiArrowLeft className="text-xl text-content-secondary" />
                 </button>
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-800">{t('My Profile')}</h1>
-                  <p className="text-gray-500 mt-1">{t('Manage your personal information and security settings')}</p>
+                  <h1 className="text-3xl font-bold text-content">{t('My Profile')}</h1>
+                  <p className="text-content-muted mt-1">{t('Manage your personal information and security settings')}</p>
                 </div>
               </div>
             </div>
 
-            <div className="lg:hidden px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
+            <div className="lg:hidden px-4 py-4 bg-surface border-b border-border sticky top-0 z-30">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => activeTab === 'menu' ? navigate(-1) : setActiveTab('menu')}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-muted rounded-full transition-colors"
                 >
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  <FiArrowLeft className="text-xl text-content-secondary" />
                 </button>
-                <h1 className="text-xl font-bold text-gray-800">
+                <h1 className="text-xl font-bold text-content">
                   {activeTab === 'menu' ? t('My Account') : activeTab === 'personal' ? t('Personal Info') : t('Security')}
                 </h1>
               </div>
@@ -238,13 +238,13 @@ const MobileProfile = () => {
             <div className="lg:grid lg:grid-cols-12 lg:gap-8 lg:px-4">
               {/* Desktop Sidebar */}
               <div className="hidden lg:block lg:col-span-3">
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm sticky top-24">
+                <div className="bg-surface rounded-2xl border border-border overflow-hidden shadow-sm sticky top-24">
                   <div className="p-2 space-y-1">
                     <button
                       onClick={() => setActiveTab('personal')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${activeTab === 'personal'
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-surface-muted text-brand-primary font-bold'
+                        : 'text-content-secondary hover:bg-surface-muted'
                         }`}
                     >
                       <FiUser className="text-lg" />
@@ -253,8 +253,8 @@ const MobileProfile = () => {
                     <button
                       onClick={() => setActiveTab('password')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${activeTab === 'password'
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-surface-muted text-brand-primary font-bold'
+                        : 'text-content-secondary hover:bg-surface-muted'
                         }`}
                     >
                       <FiLock className="text-lg" />
@@ -275,7 +275,7 @@ const MobileProfile = () => {
                   >
                     {/* User Profile Summary Card */}
                     <div className="glass-card rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
-                      <div className="w-20 h-20 rounded-full gradient-green flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
+                      <div className="w-20 h-20 rounded-full bg-brand-primary flex items-center justify-center text-black text-3xl font-bold mb-4 shadow-lg">
                         {user?.avatar ? (
                           <img
                             src={user.avatar}
@@ -286,12 +286,12 @@ const MobileProfile = () => {
                           user?.name?.charAt(0).toUpperCase() || 'U'
                         )}
                       </div>
-                      <h2 className="text-xl font-extrabold text-gray-800 mb-1">{user?.name}</h2>
-                      <p className="text-gray-500 text-sm mb-4 font-medium">{user?.email}</p>
+                      <h2 className="text-xl font-extrabold text-content mb-1">{user?.name}</h2>
+                      <p className="text-content-muted text-sm mb-4 font-medium">{user?.email}</p>
                       <div className="flex gap-2 w-full">
                         <button
                           onClick={() => setActiveTab('personal')}
-                          className="flex-1 py-3 rounded-xl bg-primary-50 text-primary-600 font-bold text-sm border border-primary-100"
+                          className="flex-1 py-3 rounded-xl bg-surface-muted text-brand-primary font-bold text-sm border border-border"
                         >
                           {t('View Profile')}
                         </button>
@@ -300,49 +300,49 @@ const MobileProfile = () => {
 
                     {/* Menu Options */}
                     <div className="space-y-3">
-                      <p className="px-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('Account Settings')}</p>
-                      <div className="glass-card rounded-2xl overflow-hidden divide-y divide-gray-50 shadow-sm border border-gray-100">
+                      <p className="px-2 text-xs font-bold text-content-muted uppercase tracking-wider">{t('Account Settings')}</p>
+                      <div className="glass-card rounded-2xl overflow-hidden divide-y divide-border-light shadow-sm border border-border">
                         {menuOptions.map((option) => (
                           option.link ? (
                             <Link
                               key={option.id}
                               to={option.link}
-                              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors bg-white"
+                              className="w-full flex items-center justify-between p-4 hover:bg-surface-muted transition-colors bg-surface"
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl ${option.bg} ${option.color} flex items-center justify-center`}>
                                   <option.icon className="text-lg" />
                                 </div>
-                                <span className="font-bold text-gray-700 text-sm">{option.label}</span>
+                                <span className="font-bold text-content-secondary text-sm">{option.label}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {option.badge ? (
-                                  <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                  <span className="min-w-[20px] h-5 px-1 rounded-full bg-status-error text-white text-[10px] font-bold flex items-center justify-center">
                                     {option.badge > 99 ? '99+' : option.badge}
                                   </span>
                                 ) : null}
-                                <FiChevronRight className="text-gray-400" />
+                                <FiChevronRight className="text-content-muted" />
                               </div>
                             </Link>
                           ) : (
                             <button
                               key={option.id}
                               onClick={() => setActiveTab(option.id)}
-                              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors bg-white"
+                              className="w-full flex items-center justify-between p-4 hover:bg-surface-muted transition-colors bg-surface"
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl ${option.bg} ${option.color} flex items-center justify-center`}>
                                   <option.icon className="text-lg" />
                                 </div>
-                                <span className="font-bold text-gray-700 text-sm">{option.label}</span>
+                                <span className="font-bold text-content-secondary text-sm">{option.label}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {option.badge ? (
-                                  <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                  <span className="min-w-[20px] h-5 px-1 rounded-full bg-status-error text-white text-[10px] font-bold flex items-center justify-center">
                                     {option.badge > 99 ? '99+' : option.badge}
                                   </span>
                                 ) : null}
-                                <FiChevronRight className="text-gray-400" />
+                                <FiChevronRight className="text-content-muted" />
                               </div>
                             </button>
                           )
@@ -354,7 +354,7 @@ const MobileProfile = () => {
                     <div className="pt-2">
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-600 font-bold text-sm shadow-sm border border-red-50 hover:bg-red-50 transition-colors bg-white"
+                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-status-error font-bold text-sm shadow-sm border border-status-errorBg hover:bg-status-errorBg transition-colors bg-surface"
                       >
                         <FiLogOut className="text-lg" />
                         <span>{t('Sign Out')}</span>
@@ -373,7 +373,7 @@ const MobileProfile = () => {
                     {/* Avatar */}
                     <div className="flex items-center gap-4 mb-6">
                       <div className="relative">
-                        <div className="w-20 h-20 rounded-full gradient-green flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                        <div className="w-20 h-20 rounded-full bg-brand-primary flex items-center justify-center text-black text-2xl font-bold overflow-hidden">
                           {user?.avatar ? (
                             <img
                               src={user.avatar}
@@ -395,24 +395,24 @@ const MobileProfile = () => {
                           type="button"
                           onClick={handleAvatarPick}
                           disabled={isLoading}
-                          className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="absolute bottom-0 right-0 w-8 h-8 bg-brand-primary rounded-full flex items-center justify-center text-black hover:bg-brand-primaryHover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                           <FiCamera className="text-sm" />
                         </button>
                       </div>
                       <div>
-                        <p className="text-gray-600 text-sm mb-1">{t('Profile Picture')}</p>
-                        <p className="text-xs text-gray-500">{t('JPG, PNG or GIF. Max size 5MB')}</p>
+                        <p className="text-content-secondary text-sm mb-1">{t('Profile Picture')}</p>
+                        <p className="text-xs text-content-muted">{t('JPG, PNG or GIF. Max size 5MB')}</p>
                       </div>
                     </div>
 
                     <form onSubmit={handleSubmitPersonal(onPersonalSubmit)} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Full Name')}
                         </label>
                         <div className="relative">
-                          <FiUser className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiUser className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type="text"
                             {...registerPersonal('name', {
@@ -423,9 +423,9 @@ const MobileProfile = () => {
                               },
                             })}
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.name
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-base`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-base bg-surface text-content`}
                             placeholder={t('Your full name')}
                           />
                         </div>
@@ -444,11 +444,11 @@ const MobileProfile = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Email Address')}
                         </label>
                         <div className="relative">
-                          <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type="email"
                             {...registerPersonal('email', {
@@ -458,13 +458,13 @@ const MobileProfile = () => {
                             })}
                             readOnly
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.email
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-base bg-gray-50 text-gray-500 cursor-not-allowed`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-base bg-surface-muted text-content-muted cursor-not-allowed`}
                             placeholder={t('your.email@example.com')}
                           />
                         </div>
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-xs text-content-muted">
                           {t('Email cannot be changed from profile settings.')}
                         </p>
                         <AnimatePresence>
@@ -482,11 +482,11 @@ const MobileProfile = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Phone Number')}
                         </label>
                         <div className="relative">
-                          <FiPhone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiPhone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type="tel"
                             {...registerPersonal('phone', {
@@ -494,9 +494,9 @@ const MobileProfile = () => {
                                 !value || isValidPhone(value) || t('Please enter a valid phone number'),
                             })}
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.phone
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-base`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-base bg-surface text-content`}
                             placeholder={t('1234567890')}
                           />
                         </div>
@@ -517,7 +517,7 @@ const MobileProfile = () => {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full gradient-green text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-brand-primary text-black py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <FiSave />
                         {isLoading ? t('Saving...') : t('Save Changes')}
@@ -533,30 +533,30 @@ const MobileProfile = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="glass-card rounded-2xl p-4 lg:p-8"
                   >
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">{t('Change Password')}</h2>
+                    <h2 className="text-lg font-bold text-content mb-4">{t('Change Password')}</h2>
 
                     <form onSubmit={handleSubmitPassword(onPasswordSubmit)} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Current Password')}
                         </label>
                         <div className="relative">
-                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type={showCurrentPassword ? 'text' : 'password'}
                             {...registerPassword('currentPassword', {
                               required: t('Current password is required'),
                             })}
                             className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 ${passwordErrors.currentPassword
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-sm sm:text-base`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-sm sm:text-base bg-surface text-content`}
                             placeholder={t('Current Password')}
                           />
                           <button
                             type="button"
                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-content-muted hover:text-content-secondary"
                           >
                             {showCurrentPassword ? <FiEyeOff /> : <FiEye />}
                           </button>
@@ -569,11 +569,11 @@ const MobileProfile = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('New Password')}
                         </label>
                         <div className="relative">
-                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type={showNewPassword ? 'text' : 'password'}
                             {...registerPassword('newPassword', {
@@ -584,15 +584,15 @@ const MobileProfile = () => {
                               },
                             })}
                             className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 ${passwordErrors.newPassword
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-sm sm:text-base`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-sm sm:text-base bg-surface text-content`}
                             placeholder={t('New Password')}
                           />
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-content-muted hover:text-content-secondary"
                           >
                             {showNewPassword ? <FiEyeOff /> : <FiEye />}
                           </button>
@@ -610,11 +610,11 @@ const MobileProfile = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Confirm New Password')}
                         </label>
                         <div className="relative">
-                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-muted" />
                           <input
                             type={showConfirmPassword ? 'text' : 'password'}
                             {...registerPassword('confirmPassword', {
@@ -623,15 +623,15 @@ const MobileProfile = () => {
                                 value === newPassword || t('Passwords do not match'),
                             })}
                             className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 ${passwordErrors.confirmPassword
-                              ? 'border-red-300 focus:border-red-500'
-                              : 'border-gray-200 focus:border-primary-500'
-                              } focus:outline-none transition-colors text-sm sm:text-base`}
+                              ? 'border-status-error focus:border-status-error'
+                              : 'border-border focus:border-brand-primary'
+                              } focus:outline-none transition-colors text-sm sm:text-base bg-surface text-content`}
                             placeholder={t('Confirm Password')}
                           />
                           <button
                             type="button"
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-content-muted hover:text-content-secondary"
                           >
                             {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
                           </button>
@@ -646,7 +646,7 @@ const MobileProfile = () => {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full gradient-green text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-glow-green transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-brand-primary text-black py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <FiSave />
                         {isLoading ? t('Changing Password...') : t('Change Password')}

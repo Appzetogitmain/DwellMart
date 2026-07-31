@@ -81,20 +81,20 @@ const ContactUs = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-slate-900 text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-surface-muted text-content py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           {/* Top Header */}
           <div className="mb-8">
             <Link
               to="/home"
-              className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-[#ffc101] transition-colors mb-4"
+              className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-brand-primary transition-colors mb-4"
             >
               <FiArrowLeft className="text-base" /> Back to Home
             </Link>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Contact <span className="text-[#ffc101]">{storeName}</span> Support
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-content tracking-tight">
+              Contact <span className="text-brand-primary">{storeName}</span> Support
             </h1>
-            <p className="text-gray-400 mt-2 text-base max-w-2xl">
+            <p className="text-content-secondary mt-2 text-base max-w-2xl">
               Have a question, feedback, or need assistance with your order or vendor partnership? We are here to help you.
             </p>
           </div>
@@ -102,65 +102,65 @@ const ContactUs = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Contact Info Sidebar */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-xl">
-                <h3 className="text-xl font-bold text-white mb-6 border-b border-slate-700 pb-3 flex items-center gap-2">
+              <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
+                <h3 className="text-xl font-bold text-content mb-6 border-b border-border pb-3 flex items-center gap-2">
                   Get in Touch
                 </h3>
 
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#ffc101]/10 border border-[#ffc101]/30 rounded-xl text-[#ffc101] text-xl shrink-0">
+                    <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
                       <FiMail />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Email Us</h4>
-                      <p className="text-white font-medium text-base mt-0.5">{email}</p>
-                      <p className="text-xs text-gray-400 mt-1">Our support team responds promptly.</p>
+                      <h4 className="text-sm font-semibold text-content-secondary">Email Us</h4>
+                      <p className="text-content font-medium text-base mt-0.5">{email}</p>
+                      <p className="text-xs text-content-muted mt-1">Our support team responds promptly.</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#ffc101]/10 border border-[#ffc101]/30 rounded-xl text-[#ffc101] text-xl shrink-0">
+                    <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
                       <FiPhone />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Call Us</h4>
-                      <p className="text-white font-medium text-base mt-0.5">{phone}</p>
-                      <p className="text-xs text-gray-400 mt-1">{hours}</p>
+                      <h4 className="text-sm font-semibold text-content-secondary">Call Us</h4>
+                      <p className="text-content font-medium text-base mt-0.5">{phone}</p>
+                      <p className="text-xs text-content-muted mt-1">{hours}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#ffc101]/10 border border-[#ffc101]/30 rounded-xl text-[#ffc101] text-xl shrink-0">
+                    <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
                       <FiMapPin />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Address</h4>
-                      <p className="text-white font-medium text-base mt-0.5">{address}</p>
+                      <h4 className="text-sm font-semibold text-content-secondary">Address</h4>
+                      <p className="text-content font-medium text-base mt-0.5">{address}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-[#ffc101]/10 border border-[#ffc101]/30 rounded-xl text-[#ffc101] text-xl shrink-0">
+                    <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
                       <FiClock />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-400">Business Hours</h4>
-                      <p className="text-white font-medium text-base mt-0.5">{hours}</p>
+                      <h4 className="text-sm font-semibold text-content-secondary">Business Hours</h4>
+                      <p className="text-content font-medium text-base mt-0.5">{hours}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Vendor Banner */}
-              <div className="bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-transparent border border-[#ffc101]/30 rounded-2xl p-6">
-                <h4 className="text-lg font-bold text-white">Are you a merchant or brand?</h4>
-                <p className="text-sm text-gray-300 mt-1">
+              <div className="bg-surface-elevated border border-brand-primary/30 rounded-2xl p-6">
+                <h4 className="text-lg font-bold text-content">Are you a merchant or brand?</h4>
+                <p className="text-sm text-content-secondary mt-1">
                   Sell your products nationwide on DwellMart with automated onboarding and billing.
                 </p>
                 <Link
                   to="/sell-on-dwellmart"
-                  className="inline-block mt-4 px-4 py-2 bg-[#ffc101] text-black font-extrabold text-xs rounded-lg hover:bg-[#e6ac00] transition-colors shadow-md"
+                  className="inline-block mt-4 px-4 py-2 bg-brand-primary text-black font-extrabold text-xs rounded-lg hover:bg-brand-primaryHover transition-colors shadow-md"
                 >
                   Register as Vendor
                 </Link>
@@ -169,38 +169,38 @@ const ContactUs = () => {
 
             {/* Contact Form */}
             <div className="lg:col-span-7">
-              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-xl">
+              <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-xl">
                 {isSubmitted ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="text-center py-12 space-y-4"
                   >
-                    <div className="w-16 h-16 bg-[#ffc101]/20 text-[#ffc101] rounded-full flex items-center justify-center mx-auto text-3xl border border-[#ffc101]/40">
+                    <div className="w-16 h-16 bg-brand-primary/20 text-brand-primary rounded-full flex items-center justify-center mx-auto text-3xl border border-brand-primary/40">
                       <FiCheckCircle />
                     </div>
-                    <h3 className="text-2xl font-bold text-white">Message Sent Successfully!</h3>
-                    <p className="text-gray-300 max-w-md mx-auto text-sm leading-relaxed">
+                    <h3 className="text-2xl font-bold text-content">Message Sent Successfully!</h3>
+                    <p className="text-content-secondary max-w-md mx-auto text-sm leading-relaxed">
                       Thank you for reaching out to DwellMart. Your inquiry has been routed directly to our support email inbox. We will get back to you shortly.
                     </p>
                     <button
                       onClick={() => setIsSubmitted(false)}
-                      className="mt-6 px-6 py-2.5 bg-[#ffc101] text-black font-extrabold text-sm rounded-xl hover:bg-[#e6ac00] transition-all shadow-md"
+                      className="mt-6 px-6 py-2.5 bg-brand-primary text-black font-extrabold text-sm rounded-xl hover:bg-brand-primaryHover transition-all shadow-md"
                     >
                       Send Another Message
                     </button>
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    <h3 className="text-xl font-bold text-white mb-2">Send Us a Direct Message</h3>
-                    <p className="text-xs text-gray-400 mb-6">
+                    <h3 className="text-xl font-bold text-content mb-2">Send Us a Direct Message</h3>
+                    <p className="text-xs text-content-secondary mb-6">
                       Fill in the details below and your message will be emailed directly to our customer support team.
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                          Your Full Name <span className="text-amber-400">*</span>
+                        <label className="block text-xs font-semibold text-content-secondary mb-1.5">
+                          Your Full Name <span className="text-status-warning">*</span>
                         </label>
                         <input
                           type="text"
@@ -209,13 +209,13 @@ const ContactUs = () => {
                           onChange={handleChange}
                           placeholder="e.g. John Doe"
                           required
-                          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ffc101] focus:ring-1 focus:ring-[#ffc101] transition-all"
+                          className="w-full px-4 py-3 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder-content-muted focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                          Email Address <span className="text-amber-400">*</span>
+                        <label className="block text-xs font-semibold text-content-secondary mb-1.5">
+                          Email Address <span className="text-status-warning">*</span>
                         </label>
                         <input
                           type="email"
@@ -224,14 +224,14 @@ const ContactUs = () => {
                           onChange={handleChange}
                           placeholder="name@example.com"
                           required
-                          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ffc101] focus:ring-1 focus:ring-[#ffc101] transition-all"
+                          className="w-full px-4 py-3 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder-content-muted focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                        <label className="block text-xs font-semibold text-content-secondary mb-1.5">
                           Phone Number (Optional)
                         </label>
                         <input
@@ -240,19 +240,19 @@ const ContactUs = () => {
                           value={formData.phone}
                           onChange={handleChange}
                           placeholder="+91 98765 43210"
-                          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ffc101] focus:ring-1 focus:ring-[#ffc101] transition-all"
+                          className="w-full px-4 py-3 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder-content-muted focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                        <label className="block text-xs font-semibold text-content-secondary mb-1.5">
                           Inquiry Subject
                         </label>
                         <select
                           name="subject"
                           value={formData.subject}
                           onChange={handleChange}
-                          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-[#ffc101] focus:ring-1 focus:ring-[#ffc101] transition-all"
+                          className="w-full px-4 py-3 bg-surface-muted border border-border rounded-xl text-sm text-content focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
                         >
                           <option value="General Inquiry">General Inquiry</option>
                           <option value="Order Status & Delivery">Order Status & Delivery</option>
@@ -264,8 +264,8 @@ const ContactUs = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                        Your Message <span className="text-amber-400">*</span>
+                      <label className="block text-xs font-semibold text-content-secondary mb-1.5">
+                        Your Message <span className="text-status-warning">*</span>
                       </label>
                       <textarea
                         name="message"
@@ -274,14 +274,14 @@ const ContactUs = () => {
                         onChange={handleChange}
                         placeholder="How can we assist you today? Please provide as many details as possible..."
                         required
-                        className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ffc101] focus:ring-1 focus:ring-[#ffc101] transition-all resize-none"
+                        className="w-full px-4 py-3 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder-content-muted focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all resize-none"
                       ></textarea>
                     </div>
 
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 px-6 bg-[#ffc101] text-black font-extrabold text-sm rounded-xl hover:bg-[#e6ac00] transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full py-3.5 px-6 bg-brand-primary text-black font-extrabold text-sm rounded-xl hover:bg-brand-primaryHover transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <span>Sending Email...</span>

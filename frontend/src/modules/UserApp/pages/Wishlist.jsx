@@ -12,13 +12,14 @@ import toast from "react-hot-toast";
 import PageTransition from '../../../shared/components/PageTransition';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
+import { Button, EmptyState, SkeletonLoader } from "../../../shared/components/ui";
 
 const MobileWishlist = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const { items, removeItem, moveToCart, clearWishlist, fetchWishlist, isLoading } = useWishlistStore();
   const { addItem } = useCartStore();
-  const [viewMode, setViewMode] = useState("list"); // 'list' or 'grid'
+  const [viewMode, setViewMode] = useState("list");
 
   const { getTranslatedText: t } = usePageTranslation([
     "My Wishlist", "item", "items", "saved", "Clear All", "Loading wishlist...",
@@ -71,47 +72,49 @@ const MobileWishlist = () => {
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div className="w-full pb-24">
             {/* Header */}
-            <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-40 shadow-sm">
+            <div className="px-4 py-4 bg-surface-card border-b border-borderToken-default sticky top-1 z-40 shadow-sm">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
-                  <FiArrowLeft className="text-xl text-gray-700" />
+                  className="p-2 hover:bg-borderToken-light rounded-full transition-colors flex-shrink-0">
+                  <FiArrowLeft className="text-xl text-textColor-primary" />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-lg font-bold text-gray-800 truncate">
+                  <h1 className="text-lg font-bold text-textColor-primary truncate">
                     {t('My Wishlist')}
                   </h1>
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-textColor-muted">
                     {items.length} {items.length === 1 ? t("item") : t("items")} {t('saved')}
                   </p>
                 </div>
                 {items.length > 0 && (
                   <div className="flex items-center gap-2">
                     {/* View Toggle Buttons */}
-                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                    <div className="flex items-center bg-borderToken-light rounded-lg p-1">
                       <button
                         onClick={() => setViewMode("list")}
                         className={`p-1.5 rounded transition-colors ${viewMode === "list"
-                          ? "bg-white text-primary-600 shadow-sm"
-                          : "text-gray-600"
+                          ? "bg-surface-card text-brand-primary shadow-sm font-bold"
+                          : "text-textColor-muted"
                           }`}>
                         <FiList className="text-lg" />
                       </button>
                       <button
                         onClick={() => setViewMode("grid")}
                         className={`p-1.5 rounded transition-colors ${viewMode === "grid"
-                          ? "bg-white text-primary-600 shadow-sm"
-                          : "text-gray-600"
+                          ? "bg-surface-card text-brand-primary shadow-sm font-bold"
+                          : "text-textColor-muted"
                           }`}>
                         <FiGrid className="text-lg" />
                       </button>
                     </div>
-                    <button
+                    <Button
+                      variant="danger"
+                      size="xs"
                       onClick={handleClearAll}
-                      className="text-xs text-red-600 font-semibold px-2 py-1 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0">
+                    >
                       {t('Clear All')}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -120,8 +123,10 @@ const MobileWishlist = () => {
             {/* Content */}
             <div className="px-4 py-4">
               {isLoading ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">{t('Loading wishlist...')}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <SkeletonLoader.Card />
+                  <SkeletonLoader.Card />
+                  <SkeletonLoader.Card />
                 </div>
               ) : items.length === 0 ? (
                 <EmptyWishlistState t={t} />
@@ -140,20 +145,18 @@ const MobileWishlist = () => {
   );
 };
 
-// Empty State Component
+// Empty State Component using UI Primitive
 const EmptyWishlistState = ({ t }) => (
-  <div className="text-center py-12">
-    <FiHeart className="text-6xl text-gray-300 mx-auto mb-4" />
-    <h3 className="text-xl font-bold text-gray-800 mb-2">
-      {t('Your wishlist is empty')}
-    </h3>
-    <p className="text-gray-600 mb-6">{t('Start adding items you love!')}</p>
-    <Link
-      to="/home"
-      className="gradient-green text-white px-6 py-3 rounded-xl font-semibold inline-block">
-      {t('Continue Shopping')}
-    </Link>
-  </div>
+  <EmptyState
+    variant="generic"
+    title={t('Your wishlist is empty')}
+    description={t('Start adding items you love!')}
+    action={
+      <Button as={Link} to="/home" variant="primary" size="md">
+        {t('Continue Shopping')}
+      </Button>
+    }
+  />
 );
 
 // Wishlist Items Component
