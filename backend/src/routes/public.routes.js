@@ -19,6 +19,7 @@ import Settings from '../models/Settings.model.js';
 import Feedback from '../models/Feedback.model.js';
 import Notification from '../models/Notification.model.js';
 import { calculateVendorShippingForGroups } from '../services/vendorShipping.service.js';
+import { resolvePriceForQuantity } from '../services/pricingEngine.service.js';
 import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { sendEmail } from '../services/email.service.js';
@@ -42,13 +43,31 @@ const toPublicVendor = (vendorDoc) => {
         ? vendorDoc.toObject()
         : (vendorDoc || {});
 
+    // ALLOWLIST — only these fields are exposed on public, unauthenticated
+    // endpoints. Deliberately an allowlist rather than a denylist so that any
+    // field added to the Vendor schema in future is private by default and must
+    // be opted in here. Previously this was a denylist, which silently exposed
+    // KYC documents (GST/PAN/Aadhaar URLs), payment-gateway customer IDs, and
+    // wholesale business details as soon as those fields were added.
     return {
-        ...vendor,
-        password: undefined,
-        otp: undefined,
-        otpExpiry: undefined,
-        bankDetails: undefined,
-        commissionRate: undefined,
+        _id: vendor._id,
+        id: vendor._id,
+        name: vendor.name,
+        storeName: vendor.storeName,
+        storeLogo: vendor.storeLogo,
+        storeDescription: vendor.storeDescription,
+        status: vendor.status,
+        isVerified: vendor.isVerified,
+        rating: vendor.rating,
+        reviewCount: vendor.reviewCount,
+        totalProducts: vendor.totalProducts,
+        // Drives the public "Wholesale Seller" badge. Only the boolean channel
+        // flags are public — never the wholesaleProfile KYC/business details.
+        sellingChannels: {
+            retail: { enabled: vendor?.sellingChannels?.retail?.enabled !== false },
+            wholesale: { enabled: vendor?.sellingChannels?.wholesale?.enabled === true },
+        },
+        createdAt: vendor.createdAt,
     };
 };
 
@@ -173,7 +192,10 @@ const listProducts = asyncHandler(async (req, res) => {
         isNewArrival,
         minPrice,
         maxPrice,
-        minRating
+        minRating,
+        sellingChannel,
+        bulkDiscount,
+        hasMoq,
     } = req.query;
     const numericPage = Math.max(Number(page) || 1, 1);
     const numericLimit = Math.min(Math.max(Number(limit) || 12, 1), 100);
@@ -192,6 +214,21 @@ const listProducts = asyncHandler(async (req, res) => {
     if (isNewArrival === 'true') filter.isNewArrival = true;
     if (minPrice || maxPrice) filter.price = { ...(minPrice && { $gte: Number(minPrice) }), ...(maxPrice && { $lte: Number(maxPrice) }) };
     if (minRating) filter.rating = { $gte: Number(minRating) };
+    // Wholesale facets. Legacy products have no wholesale fields, so "retail"
+    // matches anything not explicitly wholesale-only.
+    if (sellingChannel === 'wholesale') {
+        filter.wholesaleEnabled = true;
+    } else if (sellingChannel === 'retail') {
+        filter.retailEnabled = { $ne: false };
+    }
+    if (bulkDiscount === 'true') {
+        filter.wholesaleEnabled = true;
+        filter['wholesale.priceTiers.0'] = { $exists: true };
+    }
+    if (hasMoq === 'true') {
+        filter.wholesaleEnabled = true;
+        filter['wholesale.moqEnabled'] = true;
+    }
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
         const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -559,8 +596,8 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
     }
 
     const products = await Product.find({ _id: { $in: productIds }, isActive: true })
-        .populate('vendorId', 'shippingEnabled defaultShippingRate freeShippingThreshold')
-        .select('_id vendorId price variants.prices')
+        .populate('vendorId', 'shippingEnabled defaultShippingRate freeShippingThreshold sellingChannels')
+        .select('_id vendorId price variants.prices retailEnabled wholesaleEnabled wholesale')
         .lean();
 
     const productMap = new Map(products.map((product) => [String(product._id), product]));
@@ -572,7 +609,13 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
 
         const vendorId = String(product.vendorId._id || product.vendorId);
         const quantity = Math.max(1, Number(item?.quantity || 1));
-        const price = Math.max(0, Number(resolveVariantPrice(product, item?.variant) || 0));
+        const variantResolvedPrice = Math.max(0, Number(resolveVariantPrice(product, item?.variant) || 0));
+        // Use the same authoritative pricing engine as checkout so free-shipping
+        // thresholds are evaluated against the amount the customer will actually pay.
+        const pricing = resolvePriceForQuantity(product, variantResolvedPrice, quantity, {
+            vendorWholesaleEnabled: product.vendorId?.sellingChannels?.wholesale?.enabled === true,
+        });
+        const price = pricing.unitPrice;
         const subtotal = price * quantity;
 
         if (!vendorMap[vendorId]) {

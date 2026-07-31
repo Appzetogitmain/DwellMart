@@ -4,6 +4,7 @@ import api from "../../../shared/utils/api";
 import {
   registerVendor,
   updateVendorProfile,
+  updateVendorSellingChannels,
   forgotVendorPassword,
   verifyVendorResetOTP,
   resetVendorPassword,
@@ -144,6 +145,29 @@ export const useVendorAuthStore = create(
             data && (data._id || data.id)
               ? data
               : (data?.vendor ?? { ...get().vendor, ...profileData });
+
+          set({
+            vendor: updatedVendor,
+            isLoading: false,
+          });
+
+          return { success: true, vendor: updatedVendor };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Update vendor selling channels — calls real PUT /vendor/auth/selling-channels
+      updateSellingChannels: async (payload) => {
+        set({ isLoading: true });
+        try {
+          const response = await updateVendorSellingChannels(payload);
+          const data = response?.data ?? response;
+          const updatedVendor =
+            data && (data._id || data.id)
+              ? data
+              : (data?.vendor ?? { ...get().vendor, ...payload });
 
           set({
             vendor: updatedVendor,

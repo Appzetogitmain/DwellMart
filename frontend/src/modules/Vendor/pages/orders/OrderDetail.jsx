@@ -12,6 +12,7 @@ import { useVendorAuthStore } from '../../store/vendorAuthStore';
 import { getVendorOrderById, updateVendorOrderStatus } from '../../services/vendorService';
 import { formatPrice } from '../../../../shared/utils/helpers';
 import Badge from '../../../../shared/components/Badge';
+import WholesaleBadge from '../../../../shared/components/WholesaleBadge';
 import AnimatedSelect from '../../../Admin/components/AnimatedSelect';
 import toast from 'react-hot-toast';
 
@@ -151,9 +152,13 @@ const OrderDetail = () => {
                         <FiArrowLeft className="text-gray-600" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">
-                            Order #{order.orderId ?? order._id}
-                        </h1>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                Order #{order.orderId ?? order._id}
+                            </h1>
+                            {/* This vendor's own slice, not the whole order. */}
+                            <WholesaleBadge orderType={vendorItem?.orderType} />
+                        </div>
                         <p className="text-sm text-gray-500">
                             Placed on{' '}
                             {order.createdAt
@@ -209,9 +214,20 @@ const OrderDetail = () => {
                                                     <h3 className="font-medium text-gray-800">
                                                         {item.name}
                                                     </h3>
-                                                    <p className="text-sm text-gray-500">
-                                                        Qty: {item.quantity}
-                                                    </p>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="text-sm text-gray-500">
+                                                            Qty: {item.quantity}
+                                                        </p>
+                                                        <WholesaleBadge
+                                                            orderType={item.pricingType}
+                                                            context="item"
+                                                        />
+                                                        {item.appliedTier?.minQty && (
+                                                            <span className="text-xs text-gray-500">
+                                                                {item.appliedTier.minQty}+ tier
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <p className="font-semibold text-gray-800">
                                                     {formatPrice(

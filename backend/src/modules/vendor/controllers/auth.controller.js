@@ -20,6 +20,15 @@ import { uploadLocalFileToCloudinaryAndCleanup } from '../../../services/upload.
 import { resolvePlanSelection } from '../../../services/billing/planSelection.service.js';
 import { serializePlan } from '../../../services/billing/plan.service.js';
 import { getCurrentVendorSubscription, serializeSubscription } from '../../../services/billing/subscriptionState.service.js';
+import { isWholesaleMarketplaceEnabled } from '../../../services/featureFlags.service.js';
+
+const hasCompleteWholesaleProfile = (profile) => Boolean(
+    profile?.gstNumber
+    && profile?.businessName
+    && profile?.wholesaleContactName
+    && profile?.wholesaleContactPhone
+    && profile?.bulkOrderSupportEmail
+);
 
 const getVendorOnboardingState = async (vendorDoc) => {
     if (!vendorDoc) {
@@ -123,6 +132,8 @@ export const register = asyncHandler(async (req, res) => {
         selectedPlanId,
         selectionToken,
         documentType,
+        sellingChannels,
+        wholesaleProfile,
     } = req.body;
 
     if (!agreedToTerms) {
@@ -172,6 +183,19 @@ export const register = asyncHandler(async (req, res) => {
     const defaultCommRate = Number(generalSetting?.value?.defaultCommissionRate);
     const initialCommissionRate = (!Number.isNaN(defaultCommRate) && defaultCommRate >= 0) ? defaultCommRate : 10;
 
+    const documents = await uploadVendorDocument({ file: req.file, documentType });
+
+    const wholesaleRequested = sellingChannels?.wholesale?.enabled === true;
+    if (wholesaleRequested) {
+        const wholesaleMarketplaceEnabled = await isWholesaleMarketplaceEnabled();
+        if (!wholesaleMarketplaceEnabled) {
+            throw new ApiError(403, 'Wholesale Marketplace is not currently available on this platform.');
+        }
+        if (!hasCompleteWholesaleProfile(wholesaleProfile)) {
+            throw new ApiError(400, 'Please provide your GST number, business name, business address, wholesale contact, and bulk order support email to enable Wholesale Marketplace.');
+        }
+    }
+
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
@@ -189,6 +213,11 @@ export const register = asyncHandler(async (req, res) => {
         selectedPlan: plan._id,
         documents,
         isVerified: true, // Already verified inline
+        sellingChannels: {
+            retail: { enabled: sellingChannels?.retail?.enabled !== false },
+            wholesale: { enabled: wholesaleRequested },
+        },
+        wholesaleProfile: wholesaleRequested ? wholesaleProfile : undefined,
     });
 
     // Clean up verification record
@@ -530,6 +559,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
         'shippingMethods',
         'handlingTime',
         'processingTime',
+        'wholesaleProfile',
     ];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
 
@@ -541,6 +571,37 @@ export const updateProfile = asyncHandler(async (req, res) => {
         .select('-password -otp -otpExpiry')
         .populate('selectedPlan');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile updated.'));
+});
+
+export const updateSellingChannels = asyncHandler(async (req, res) => {
+    const { sellingChannels, wholesaleProfile } = req.body;
+
+    const vendor = await Vendor.findById(req.user.id).populate('selectedPlan');
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    if (sellingChannels.wholesale.enabled) {
+        const wholesaleMarketplaceEnabled = await isWholesaleMarketplaceEnabled();
+        if (!wholesaleMarketplaceEnabled) {
+            throw new ApiError(403, 'Wholesale Marketplace is not currently available on this platform.');
+        }
+
+        const mergedProfile = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...(wholesaleProfile || {}) };
+        if (!hasCompleteWholesaleProfile(mergedProfile)) {
+            throw new ApiError(400, 'Please provide your GST number, business name, wholesale contact, and bulk order support email to enable Wholesale Marketplace.');
+        }
+        vendor.wholesaleProfile = mergedProfile;
+    } else if (wholesaleProfile) {
+        vendor.wholesaleProfile = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...wholesaleProfile };
+    }
+
+    vendor.sellingChannels = {
+        retail: { enabled: sellingChannels.retail.enabled },
+        wholesale: { enabled: sellingChannels.wholesale.enabled },
+    };
+
+    await vendor.save();
+
+    res.status(200).json(new ApiResponse(200, vendor, 'Selling channels updated.'));
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

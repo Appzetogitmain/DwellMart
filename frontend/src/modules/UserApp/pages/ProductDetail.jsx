@@ -38,6 +38,12 @@ import ProductGrid from "../../../shared/components/ProductGrid";
 import ProductReviewCard from "../../../shared/components/ProductReviewCard";
 import { Button, Rating, QuantitySelector, Accordion, Tabs, Avatar } from "../../../shared/components/ui";
 import { getVariantSignature } from "../../../shared/utils/variant";
+import BulkPricingTable from "../../../shared/components/Product/BulkPricingTable";
+import {
+  resolvePriceForQuantity,
+  normalizeTiers,
+  isBelowMinimumOrder,
+} from "../../../shared/utils/resolvePriceForQuantity";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import LazyImage from "../../../shared/components/LazyImage";
@@ -256,6 +262,49 @@ const MobileProductDetail = () => {
     return getBrandById(product.brandId);
   }, [product]);
 
+  // ── Wholesale bulk pricing (preview only; checkout re-derives server-side) ──
+  const vendorWholesaleEnabled = vendor?.sellingChannels?.wholesale?.enabled !== false;
+  const wholesaleTiers = useMemo(
+    () => normalizeTiers(product?.wholesale?.priceTiers),
+    [product?.wholesale?.priceTiers]
+  );
+  const variantBasePrice = useMemo(
+    () => resolveVariantPrice(product, selectedVariant),
+    [product, selectedVariant]
+  );
+  const bulkPricing = useMemo(
+    () =>
+      resolvePriceForQuantity(product, variantBasePrice, quantity, {
+        vendorWholesaleEnabled,
+      }),
+    [product, variantBasePrice, quantity, vendorWholesaleEnabled]
+  );
+  const hasWholesale =
+    product?.wholesaleEnabled === true && vendorWholesaleEnabled && wholesaleTiers.length > 0;
+  const isRetailAvailable = product?.retailEnabled !== false;
+  const isWholesaleOnly = hasWholesale && !isRetailAvailable;
+  const belowMinimumOrder = isBelowMinimumOrder(bulkPricing);
+
+  // Wholesale-only products have a hard purchase floor. Hybrid products do not —
+  // they simply fall back to retail pricing below the tier threshold.
+  const minimumPurchaseQuantity = useMemo(() => {
+    if (!isWholesaleOnly) return 1;
+    const moqEnabled = product?.wholesale?.moqEnabled === true;
+    const rawMoq = Number(product?.wholesale?.moq);
+    const lowestTier = wholesaleTiers[0]?.minQty;
+    const floor = moqEnabled && Number.isFinite(rawMoq) && rawMoq >= 1
+      ? Math.max(rawMoq, lowestTier || 1)
+      : lowestTier;
+    return Number.isFinite(floor) && floor > 1 ? floor : 1;
+  }, [isWholesaleOnly, product?.wholesale?.moqEnabled, product?.wholesale?.moq, wholesaleTiers]);
+
+  // Open the page at a purchasable quantity instead of an unusable default of 1.
+  useEffect(() => {
+    if (minimumPurchaseQuantity > 1) {
+      setQuantity((current) => (current < minimumPurchaseQuantity ? minimumPurchaseQuantity : current));
+    }
+  }, [minimumPurchaseQuantity, product?.id]);
+
   // Stable logos to prevent flashing during re-renders/translations
   const stableBrandLogo = useMemo(() => {
     if (!brand) return null;
@@ -407,10 +456,17 @@ const MobileProductDetail = () => {
       toast.error(`${t('Only')} ${effectiveStock} ${t('item(s) available for selected variant')}`);
       return;
     }
+    if (belowMinimumOrder) {
+      toast.error(
+        `${t('Minimum order for this product is')} ${bulkPricing.minimumQuantity} ${t('units')}`
+      );
+      return;
+    }
 
     const addedToCart = addItem({
       id: product.id,
       name: product.name,
+      // Base retail/variant price — the cart re-applies tier pricing by quantity.
       price: finalPrice,
       image: product.image,
       quantity: quantity,
@@ -418,6 +474,15 @@ const MobileProductDetail = () => {
       stockQuantity: effectiveStock,
       vendorId: product.vendorId,
       vendorName: vendor?.storeName || vendor?.name || product.vendorName,
+      // Wholesale snapshot so the cart can price tiers without a round-trip.
+      retailEnabled: product.retailEnabled,
+      wholesaleEnabled: product.wholesaleEnabled,
+      wholesale: product.wholesale,
+      vendorWholesaleEnabled,
+      // Tax snapshot so the checkout preview matches the backend's per-product
+      // tax arithmetic instead of assuming a flat rate.
+      taxRate: product.taxRate,
+      taxIncluded: product.taxIncluded,
     });
     if (!addedToCart) return;
     triggerCartAnimation();
@@ -778,7 +843,7 @@ const MobileProductDetail = () => {
                       <QuantitySelector
                         value={quantity}
                         onChange={setQuantity}
-                        min={1}
+                        min={minimumPurchaseQuantity}
                         max={selectedAvailableStock || 10}
                         size="lg"
                       />
@@ -787,6 +852,22 @@ const MobileProductDetail = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Wholesale bulk pricing */}
+                  {hasWholesale && (
+                    <BulkPricingTable
+                      tiers={wholesaleTiers}
+                      pricing={bulkPricing}
+                      retailPrice={variantBasePrice}
+                      showRetailRow={isRetailAvailable}
+                    />
+                  )}
+
+                  {belowMinimumOrder && (
+                    <p className="text-sm font-semibold text-status-error">
+                      {t('Minimum Order')}: {bulkPricing.minimumQuantity} {t('Units')}
+                    </p>
+                  )}
                 </div>
 
                 {/* PRODUCT ACTIONS */}
@@ -806,13 +887,15 @@ const MobileProductDetail = () => {
                       variant="primary"
                       size="lg"
                       fullWidth
-                      disabled={product.stock === "out_of_stock"}
+                      disabled={product.stock === "out_of_stock" || belowMinimumOrder}
                       onClick={handleAddToCart}
                       leftIcon={<FiShoppingBag />}
                     >
                       {product.stock === "out_of_stock"
                         ? t("Out of Stock")
-                        : t("Add to Cart")}
+                        : belowMinimumOrder
+                          ? `${t("Minimum Order")}: ${bulkPricing.minimumQuantity} ${t("Units")}`
+                          : t("Add to Cart")}
                     </Button>
                   )}
 

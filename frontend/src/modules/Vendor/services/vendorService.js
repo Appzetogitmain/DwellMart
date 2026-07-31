@@ -92,6 +92,13 @@ export const getVendorProfile = () => api.get('/vendor/auth/profile');
 export const updateVendorProfile = (data) => api.put('/vendor/auth/profile', data);
 
 /**
+ * Update vendor selling channels (Retail / Wholesale) and, when enabling
+ * Wholesale, the associated wholesale business profile.
+ * @param {{ sellingChannels: { retail: { enabled: boolean }, wholesale: { enabled: boolean } }, wholesaleProfile?: object }} data
+ */
+export const updateVendorSellingChannels = (data) => api.put('/vendor/auth/selling-channels', data);
+
+/**
  * Update vendor password
  * @param {string} currentPassword 
  * @param {string} newPassword 

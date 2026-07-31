@@ -5,8 +5,16 @@ import Product from '../../../models/Product.model.js';
 import Category from '../../../models/Category.model.js';
 import Brand from '../../../models/Brand.model.js';
 import Settings from '../../../models/Settings.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
 import { seedCategoriesInDb } from '../../../../scripts/seedCategories.js';
+import { resolveWholesalePayload } from '../../../services/pricingValidation.service.js';
+
+const isVendorWholesaleEnabled = async (vendorId) => {
+    if (!vendorId) return false;
+    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
+    return vendor?.sellingChannels?.wholesale?.enabled === true;
+};
 
 const sanitizeFaqs = (faqs) => {
     if (!Array.isArray(faqs)) return [];
@@ -302,14 +310,29 @@ export const createProduct = asyncHandler(async (req, res) => {
             ? 'low_stock'
             : 'in_stock');
 
+    const resolvedWholesale = resolveWholesalePayload({
+        retailEnabled: rest.retailEnabled,
+        wholesaleEnabled: rest.wholesaleEnabled,
+        wholesale: rest.wholesale,
+        price: rest.price,
+        stockQuantity: finalStockQuantity,
+        vendorWholesaleEnabled: rest.wholesaleEnabled === true
+            ? await isVendorWholesaleEnabled(rest.vendorId)
+            : false,
+    });
+
+    // Drop any raw wholesale payload; resolvedWholesale is the only validated source.
+    const { wholesale: _rawWholesale, ...restWithoutWholesale } = rest;
+
     const product = await Product.create({
         name,
         slug,
         stock: normalizedStock,
         stockQuantity: finalStockQuantity,
-        ...rest,
+        ...restWithoutWholesale,
         variants: normalizedVariants,
         faqs: sanitizeFaqs(rest.faqs),
+        ...resolvedWholesale,
     });
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
@@ -353,6 +376,55 @@ export const updateProduct = asyncHandler(async (req, res) => {
                         ? 'low_stock'
                         : 'in_stock';
             }
+        }
+    }
+
+    // Only touch selling-channel data when the request explicitly references it,
+    // so partial updates never clear existing wholesale configuration.
+    // findByIdAndUpdate skips pre('save') hooks, so these rules are enforced here.
+    const touchesWholesale = ['retailEnabled', 'wholesaleEnabled', 'wholesale']
+        .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+    if (touchesWholesale) {
+        const existing = await Product.findById(req.params.id)
+            .select('retailEnabled wholesaleEnabled wholesale price stockQuantity vendorId')
+            .lean();
+        if (!existing) throw new ApiError(404, 'Product not found.');
+
+        const effectiveRetail = Object.prototype.hasOwnProperty.call(payload, 'retailEnabled')
+            ? payload.retailEnabled
+            : existing.retailEnabled;
+        const effectiveWholesale = Object.prototype.hasOwnProperty.call(payload, 'wholesaleEnabled')
+            ? payload.wholesaleEnabled
+            : existing.wholesaleEnabled;
+        const effectivePrice = Object.prototype.hasOwnProperty.call(payload, 'price')
+            ? payload.price
+            : existing.price;
+        const effectiveStock = Object.prototype.hasOwnProperty.call(payload, 'stockQuantity')
+            ? payload.stockQuantity
+            : existing.stockQuantity;
+        const effectiveVendorId = Object.prototype.hasOwnProperty.call(payload, 'vendorId')
+            ? payload.vendorId
+            : existing.vendorId;
+
+        const resolvedWholesale = resolveWholesalePayload({
+            retailEnabled: effectiveRetail,
+            wholesaleEnabled: effectiveWholesale,
+            wholesale: Object.prototype.hasOwnProperty.call(payload, 'wholesale')
+                ? payload.wholesale
+                : existing.wholesale,
+            price: effectivePrice,
+            stockQuantity: effectiveStock,
+            vendorWholesaleEnabled: effectiveWholesale === true
+                ? await isVendorWholesaleEnabled(effectiveVendorId)
+                : false,
+        });
+
+        payload.retailEnabled = resolvedWholesale.retailEnabled;
+        payload.wholesaleEnabled = resolvedWholesale.wholesaleEnabled;
+        if (resolvedWholesale.wholesale) {
+            payload.wholesale = resolvedWholesale.wholesale;
+        } else {
+            delete payload.wholesale;
         }
     }
 

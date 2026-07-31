@@ -17,6 +17,7 @@ import FlyingItem from "./FlyingItem";
 import VendorBadge from "../../../Vendor/components/VendorBadge";
 import { getVendorById } from "../../data/catalogData";
 import { getVariantSignature } from "../../../../shared/utils/variant";
+import { ProductWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const MobileProductCard = ({ product }) => {
   const navigate = useNavigate();
@@ -208,6 +209,11 @@ const MobileProductCard = ({ product }) => {
             </div>
 
             <p className="text-[10px] text-gray-500 mb-0 leading-none">{product.unit}</p>
+            {product.wholesaleEnabled === true && (
+              <div className="mt-1">
+                <ProductWholesaleBadge product={product} />
+              </div>
+            )}
 
             {/* Vendor Badge */}
             {product.vendorId && (

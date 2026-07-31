@@ -8,6 +8,7 @@ import ProductListItem from "../components/Mobile/ProductListItem";
 import { getCatalogProducts } from "../data/catalogData";
 import { categories as fallbackCategories } from "../../../data/categories";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
+import { useSettingsStore } from "../../../shared/store/settingsStore";
 import PageTransition from "../../../shared/components/PageTransition";
 import useInfiniteScroll from "../../../shared/hooks/useInfiniteScroll";
 import LazyImage from "../../../shared/components/LazyImage";
@@ -101,11 +102,15 @@ const MobileCategory = () => {
   const navigate = useNavigate();
   const categoryId = normalizeId(id);
   const { categories, initialize, getCategoryById } = useCategoryStore();
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const wholesaleMarketplaceEnabled =
+    settings?.features?.wholesaleMarketplaceEnabled === true;
 
   // Initialize store on mount
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    initializeSettings();
+  }, [initialize, initializeSettings]);
 
   // Get category from store or fallback
   const rawCategory = useMemo(() => {
@@ -143,6 +148,9 @@ const MobileCategory = () => {
     minPrice: "",
     maxPrice: "",
     minRating: "",
+    sellingChannel: "",
+    bulkDiscount: false,
+    hasMoq: false,
   });
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [isTranslatingCategory, setIsTranslatingCategory] = useState(false);
@@ -238,6 +246,27 @@ const MobileCategory = () => {
         (product) => product.rating >= parseFloat(filters.minRating)
       );
     }
+    // Wholesale facets, filtered client-side to match this page's existing
+    // in-memory filtering architecture.
+    if (filters.sellingChannel === "wholesale") {
+      result = result.filter((product) => product.wholesaleEnabled === true);
+    } else if (filters.sellingChannel === "retail") {
+      result = result.filter((product) => product.retailEnabled !== false);
+    }
+    if (filters.bulkDiscount) {
+      result = result.filter(
+        (product) =>
+          product.wholesaleEnabled === true &&
+          Array.isArray(product.wholesale?.priceTiers) &&
+          product.wholesale.priceTiers.length > 0
+      );
+    }
+    if (filters.hasMoq) {
+      result = result.filter(
+        (product) =>
+          product.wholesaleEnabled === true && product.wholesale?.moqEnabled === true
+      );
+    }
 
     return result;
   }, [category, categoryProductsFeed, filters, searchQuery]);
@@ -256,15 +285,29 @@ const MobileCategory = () => {
       minPrice: "",
       maxPrice: "",
       minRating: "",
+      sellingChannel: "",
+      bulkDiscount: false,
+      hasMoq: false,
     });
     setSearchQuery("");
   };
+
+  const toggleWholesaleFilter = (name) =>
+    setFilters((prev) => ({ ...prev, [name]: !prev[name] }));
+  const setChannelFilter = (channel) =>
+    setFilters((prev) => ({
+      ...prev,
+      sellingChannel: prev.sellingChannel === channel ? "" : channel,
+    }));
 
   // Check if any filter is active
   const hasActiveFilters =
     filters.minPrice ||
     filters.maxPrice ||
-    filters.minRating;
+    filters.minRating ||
+    filters.sellingChannel ||
+    filters.bulkDiscount ||
+    filters.hasMoq;
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -462,6 +505,36 @@ const MobileCategory = () => {
                                   ))}
                                 </select>
                               </div>
+
+                              {/* Wholesale facets */}
+                              {wholesaleMarketplaceEnabled && (
+                                <div>
+                                  <h4 className="font-semibold text-gray-700 mb-1 text-xs">
+                                    {t('Selling Channel')}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { key: 'channel-retail', label: t('Retail Only'), active: filters.sellingChannel === 'retail', onClick: () => setChannelFilter('retail') },
+                                      { key: 'channel-wholesale', label: t('Wholesale Available'), active: filters.sellingChannel === 'wholesale', onClick: () => setChannelFilter('wholesale') },
+                                      { key: 'bulk', label: t('Bulk Discount'), active: filters.bulkDiscount, onClick: () => toggleWholesaleFilter('bulkDiscount') },
+                                      { key: 'moq', label: t('MOQ Products'), active: filters.hasMoq, onClick: () => toggleWholesaleFilter('hasMoq') },
+                                    ].map((chip) => (
+                                      <button
+                                        key={chip.key}
+                                        type="button"
+                                        onClick={chip.onClick}
+                                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                                          chip.active
+                                            ? "bg-primary-600 text-white border-primary-600"
+                                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                                        }`}
+                                      >
+                                        {chip.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Price Range */}
                               <div>

@@ -19,6 +19,7 @@ import { useAddressStore } from "../../../shared/store/addressStore";
 import { useOrderStore } from "../../../shared/store/orderStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
+import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cartTotals";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -89,7 +90,8 @@ const MobileCheckout = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
-  const { items, getTotal, clearCart, getItemsByVendor } = useCartStore();
+  const { items, getTotal, getTotalSavings, getLinePricing, clearCart, getItemsByVendor } = useCartStore();
+  const getLineUnitPrice = (item) => getLinePricing(item).unitPrice;
   const { user, isAuthenticated } = useAuthStore();
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
   const { createOrder } = useOrderStore();
@@ -236,14 +238,21 @@ const MobileCheckout = () => {
   };
 
   const total = getTotal();
+  const bulkSavings = getTotalSavings();
   const shipping =
     typeof estimatedShipping === "number"
       ? estimatedShipping
       : calculateShippingFallback();
   const discount = appliedCoupon ? appliedDiscount : 0;
-  const taxableAmount = Math.max(0, total - discount);
-  const tax = taxableAmount * 0.18;
-  const finalTotal = Math.max(0, total + shipping + tax - discount);
+  // Mirror the backend's per-product tax arithmetic (inclusive vs exclusive)
+  // so the displayed total matches the amount actually charged.
+  const { displayTax: tax, taxAddedToTotal } = calculateCartTax(items, getLineUnitPrice);
+  const finalTotal = calculateCartTotal({
+    subtotal: total,
+    discount,
+    shipping,
+    taxAddedToTotal,
+  });
 
   useEffect(() => {
     if (appliedCoupon) {
@@ -852,6 +861,7 @@ const MobileCheckout = () => {
                         shipping={shipping}
                         tax={tax}
                         finalTotal={finalTotal}
+                        bulkSavings={bulkSavings}
                         formatPrice={formatPrice}
                       />
                     </div>
@@ -870,6 +880,7 @@ const MobileCheckout = () => {
                       shipping={shipping}
                       tax={tax}
                       finalTotal={finalTotal}
+                      bulkSavings={bulkSavings}
                       formatPrice={formatPrice}
                     />
                     <div className="p-4 border-t border-border bg-surface-muted">

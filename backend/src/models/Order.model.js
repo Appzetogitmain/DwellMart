@@ -25,6 +25,16 @@ const orderItemSchema = new mongoose.Schema({
     quantity: Number,
     variant: { type: mongoose.Schema.Types.Mixed, default: {} },
     variantKey: String,
+    // Wholesale pricing snapshot. Defaults reproduce pre-wholesale behaviour so
+    // historical orders remain valid without migration.
+    pricingType: { type: String, enum: ['retail', 'wholesale'], default: 'retail' },
+    appliedTier: {
+        _id: false,
+        minQty: Number,
+        price: Number,
+    },
+    unitRetailPrice: Number,
+    savings: { type: Number, default: 0 },
 });
 
 const vendorItemGroupSchema = new mongoose.Schema({
@@ -35,6 +45,7 @@ const vendorItemGroupSchema = new mongoose.Schema({
     shipping: Number,
     tax: Number,
     discount: Number,
+    orderType: { type: String, enum: ['retail', 'wholesale', 'mixed'], default: 'retail' },
     status: {
         type: String,
         enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
@@ -116,6 +127,13 @@ const orderSchema = new mongoose.Schema(
         tax: { type: Number, default: 0 },
         discount: { type: Number, default: 0 },
         total: { type: Number, default: 0 },
+        orderType: {
+            type: String,
+            enum: ['retail', 'wholesale', 'mixed'],
+            default: 'retail',
+            index: true,
+        },
+        totalSavings: { type: Number, default: 0 },
         couponCode: { type: String },
         couponDiscount: { type: Number, default: 0 },
         idempotencyKey: { type: String, sparse: true },

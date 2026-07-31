@@ -43,6 +43,13 @@ export const getFinancialSummary = (period = 'monthly', params = {}) =>
 export const getInventoryStats = () =>
     api.get('/admin/analytics/inventory-stats');
 
+/**
+ * Platform-wide wholesale marketplace metrics:
+ * vendor channel mix, wholesale product count, order split, and bulk revenue.
+ */
+export const getWholesaleStats = () =>
+    api.get('/admin/analytics/wholesale');
+
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const getAllOrders = (params = {}) =>
     api.get('/admin/orders', { params });

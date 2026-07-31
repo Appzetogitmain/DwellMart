@@ -4,9 +4,37 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "./authStore";
 import { setPostLoginAction, setPostLoginRedirect } from "../utils/postLoginAction";
 import { getVariantSignature } from "../utils/variant";
+import { resolvePriceForQuantity } from "../utils/resolvePriceForQuantity";
 
 const getCartLineKey = (id, variant = {}) =>
   `${String(id)}::${getVariantSignature(variant)}`;
+
+/**
+ * Preview pricing for a cart line using the wholesale tier data snapshotted at
+ * add-to-cart time. `item.price` remains the variant-resolved retail base price,
+ * exactly as before, so legacy cart lines (no wholesale data) resolve to retail.
+ *
+ * Display only — checkout re-derives every price server-side.
+ */
+const resolveCartLinePricing = (item) => {
+  const basePrice = Number(item?.price) || 0;
+  const quantity = Number(item?.quantity) || 0;
+  return resolvePriceForQuantity(
+    {
+      retailEnabled: item?.retailEnabled,
+      wholesaleEnabled: item?.wholesaleEnabled,
+      wholesale: item?.wholesale,
+    },
+    basePrice,
+    quantity,
+    { vendorWholesaleEnabled: item?.vendorWholesaleEnabled !== false }
+  );
+};
+
+const getCartLineUnitPrice = (item) => {
+  const pricing = resolveCartLinePricing(item);
+  return pricing.unitPrice;
+};
 const getCurrentAuthUserId = () => {
   const authState = useAuthStore.getState();
   return String(authState?.user?.id || authState?.user?._id || "").trim();
@@ -193,7 +221,17 @@ export const useCartStore = create(
         }
         const state = useCartStore.getState();
         return state.items.reduce(
-          (total, item) => total + item.price * item.quantity,
+          (total, item) => total + getCartLineUnitPrice(item) * item.quantity,
+          0
+        );
+      },
+      // Preview-only pricing for a single cart line, mirroring the backend engine.
+      // Checkout re-derives authoritatively; this only drives display.
+      getLinePricing: (item) => resolveCartLinePricing(item),
+      getTotalSavings: () => {
+        const state = useCartStore.getState();
+        return state.items.reduce(
+          (sum, item) => sum + (resolveCartLinePricing(item)?.savings || 0),
           0
         );
       },
@@ -245,7 +283,7 @@ export const useCartStore = create(
             };
           }
 
-          const itemSubtotal = item.price * item.quantity;
+          const itemSubtotal = getCartLineUnitPrice(item) * item.quantity;
           vendorGroups[vendorId].items.push(item);
           vendorGroups[vendorId].subtotal += itemSubtotal;
         });

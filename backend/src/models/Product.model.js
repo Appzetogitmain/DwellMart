@@ -43,6 +43,22 @@ const productSchema = new mongoose.Schema(
                 of: String,
             },
         },
+        retailEnabled: { type: Boolean, default: true },
+        wholesaleEnabled: { type: Boolean, default: false },
+        wholesale: {
+            moqEnabled: { type: Boolean, default: false },
+            moq: { type: Number, min: 1 },
+            priceTiers: {
+                type: [
+                    {
+                        _id: false,
+                        minQty: { type: Number, required: true, min: 1 },
+                        price: { type: Number, required: true, min: 0 },
+                    },
+                ],
+                default: [],
+            },
+        },
         flashSale: { type: Boolean, default: false, index: true },
         isNewArrival: { type: Boolean, default: false, index: true },
         isFeatured: { type: Boolean, default: false, index: true },
@@ -75,6 +91,17 @@ productSchema.index({ isActive: 1, reviewCount: -1, rating: -1 });
 productSchema.index({ isActive: 1, flashSale: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ vendorId: 1, wholesaleEnabled: 1 });
+productSchema.index({ isActive: 1, wholesaleEnabled: 1 });
+
+productSchema.pre('save', function enforceSellingChannel(next) {
+    const retailEnabled = this.retailEnabled !== false;
+    const wholesaleEnabled = this.wholesaleEnabled === true;
+    if (!retailEnabled && !wholesaleEnabled) {
+        return next(new Error('At least one selling channel (Retail or Wholesale) must be enabled for a product.'));
+    }
+    next();
+});
 
 const Product = mongoose.model('Product', productSchema);
 export { Product };

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import RevenueChart from '../components/Analytics/RevenueChart';
 import SalesChart from '../components/Analytics/SalesChart';
 import TimePeriodFilter from '../components/Analytics/TimePeriodFilter';
+import WholesaleOverviewPanel from '../components/Analytics/WholesaleOverviewPanel';
 import ExportButton from '../components/ExportButton';
 import { formatCurrency } from '../utils/adminHelpers';
 import { getDashboardStats, getRevenueData } from '../services/adminService';
@@ -188,6 +189,9 @@ const Analytics = () => {
         <RevenueChart data={visibleRevenueData} period={period} />
         <SalesChart data={visibleRevenueData} period={period} />
       </div>
+
+      {/* Renders only when the Wholesale Marketplace feature flag is enabled. */}
+      <WholesaleOverviewPanel />
     </motion.div>
   );
 };

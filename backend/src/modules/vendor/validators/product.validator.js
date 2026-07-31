@@ -2,6 +2,17 @@ import Joi from 'joi';
 
 const objectId = Joi.string().trim().hex().length(24);
 
+const priceTierSchema = Joi.object({
+    minQty: Joi.number().integer().min(1).required(),
+    price: Joi.number().min(0).required(),
+});
+
+const wholesaleSchema = Joi.object({
+    moqEnabled: Joi.boolean().optional(),
+    moq: Joi.number().integer().min(1).allow(null, '').optional(),
+    priceTiers: Joi.array().items(priceTierSchema).optional(),
+}).optional();
+
 export const createProductSchema = Joi.object({
     name: Joi.string().trim().min(2).max(200).required(),
     description: Joi.string().allow('').optional(),
@@ -40,6 +51,9 @@ export const createProductSchema = Joi.object({
             answer: Joi.string().trim().allow('').optional(),
         })
     ).optional(),
+    retailEnabled: Joi.boolean().optional(),
+    wholesaleEnabled: Joi.boolean().optional(),
+    wholesale: wholesaleSchema,
     variants: Joi.object({
         sizes: Joi.array().items(Joi.string()),
         colors: Joi.array().items(Joi.string()),
@@ -98,6 +112,9 @@ export const updateProductSchema = Joi.object({
             answer: Joi.string().trim().allow('').optional(),
         })
     ).optional(),
+    retailEnabled: Joi.boolean().optional(),
+    wholesaleEnabled: Joi.boolean().optional(),
+    wholesale: wholesaleSchema,
     variants: Joi.object({
         sizes: Joi.array().items(Joi.string()),
         colors: Joi.array().items(Joi.string()),

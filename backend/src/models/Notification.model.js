@@ -6,7 +6,11 @@ const notificationSchema = new mongoose.Schema(
         recipientType: { type: String, enum: ['user', 'vendor', 'delivery', 'admin'], required: true },
         title: { type: String, required: true },
         message: { type: String, required: true },
-        type: { type: String, enum: ['order', 'payment', 'system', 'promotion'], default: 'system' },
+        type: {
+            type: String,
+            enum: ['order', 'payment', 'system', 'promotion', 'bulk_order'],
+            default: 'system',
+        },
         isRead: { type: Boolean, default: false, index: true },
         data: { type: Map, of: String }, // extra metadata
     },

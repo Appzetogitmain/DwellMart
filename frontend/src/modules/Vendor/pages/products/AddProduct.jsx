@@ -9,7 +9,13 @@ import { useBrandStore } from "../../../../shared/store/brandStore";
 import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
+import WholesalePricingSection from "../../../../shared/components/WholesalePricingSection";
 import toast from "react-hot-toast";
+import {
+  emptyWholesaleState,
+  buildWholesalePayload,
+  validateWholesaleState,
+} from "../../../../shared/utils/wholesale";
 import {
   parseVariantAxis,
   buildVariantCombinations,
@@ -71,6 +77,7 @@ const AddProduct = () => {
     faqs: [],
   });
   const [taxRules, setTaxRules] = useState([]);
+  const [wholesaleState, setWholesaleState] = useState(emptyWholesaleState());
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
@@ -401,6 +408,16 @@ const AddProduct = () => {
       return;
     }
 
+    const wholesaleError = validateWholesaleState(
+      wholesaleState,
+      parsedPrice,
+      parsedStockQuantity
+    );
+    if (wholesaleError) {
+      toast.error(wholesaleError);
+      return;
+    }
+
     const payload = {
       ...formData,
       price: parsedPrice,
@@ -421,6 +438,7 @@ const AddProduct = () => {
         }))
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
+      ...buildWholesalePayload(wholesaleState),
     };
 
     const result = await addProduct(payload);
@@ -756,6 +774,16 @@ const AddProduct = () => {
             </div>
           </div>
         </div>
+
+        {/* Selling Channels & Bulk Pricing */}
+        <WholesalePricingSection
+          value={wholesaleState}
+          onChange={setWholesaleState}
+          retailPrice={formData.price}
+          stockQuantity={formData.stockQuantity}
+          vendorWholesaleEnabled={vendor?.sellingChannels?.wholesale?.enabled === true}
+          disabled={isSaving}
+        />
 
         {/* Product Variants */}
         <div>

@@ -14,8 +14,15 @@ import {
 } from "../services/adminService";
 import CategorySelector from "./CategorySelector";
 import AnimatedSelect from "./AnimatedSelect";
+import WholesalePricingSection from "../../../shared/components/WholesalePricingSection";
 import toast from "react-hot-toast";
 import Button from "./Button";
+import {
+  emptyWholesaleState,
+  wholesaleStateFromProduct,
+  buildWholesalePayload,
+  validateWholesaleState,
+} from "../../../shared/utils/wholesale";
 
 const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const location = useLocation();
@@ -25,6 +32,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [vendors, setVendors] = useState([]);
+  const [wholesaleState, setWholesaleState] = useState(emptyWholesaleState());
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
@@ -189,6 +197,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
             relatedProducts: product.relatedProducts || [],
             faqs: Array.isArray(product.faqs) ? product.faqs : [],
           });
+          setWholesaleState(wholesaleStateFromProduct(product));
         }
       } catch (error) {
         toast.error("Failed to fetch product details");
@@ -245,6 +254,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         relatedProducts: [],
         faqs: [],
       });
+      setWholesaleState(emptyWholesaleState());
     }
   }, [isOpen, isEdit, productId, onClose, categories]);
 
@@ -634,6 +644,16 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return;
     }
 
+    const wholesaleError = validateWholesaleState(
+      wholesaleState,
+      numericPrice,
+      numericStockQuantity
+    );
+    if (wholesaleError) {
+      toast.error(wholesaleError);
+      return;
+    }
+
     const submissionData = {
       ...formData,
       price: parseFloat(formData.price),
@@ -657,6 +677,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
           answer: String(faq?.answer || "").trim(),
         }))
         .filter((faq) => faq.question && faq.answer),
+      ...buildWholesalePayload(wholesaleState),
     };
 
     try {
@@ -680,6 +701,11 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   if (!isOpen) return null;
 
   const isVendorProductEdit = isEdit && Boolean(formData.vendorId);
+  const selectedVendor = vendors.find(
+    (vendor) => String(vendor._id || vendor.id) === String(formData.vendorId)
+  );
+  const selectedVendorWholesaleEnabled =
+    selectedVendor?.sellingChannels?.wholesale?.enabled === true;
 
   return (
     <AnimatePresence>
@@ -1190,6 +1216,15 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Selling Channels & Bulk Pricing */}
+                  <WholesalePricingSection
+                    value={wholesaleState}
+                    onChange={setWholesaleState}
+                    retailPrice={formData.price}
+                    stockQuantity={formData.stockQuantity}
+                    vendorWholesaleEnabled={selectedVendorWholesaleEnabled}
+                  />
 
                   {/* Product Variants */}
                   <div>

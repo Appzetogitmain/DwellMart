@@ -1,5 +1,22 @@
 import Joi from 'joi';
 
+const wholesaleProfileSchema = Joi.object({
+    gstNumber: Joi.string().trim().max(30).required(),
+    businessName: Joi.string().trim().max(150).required(),
+    businessAddress: Joi.object({
+        street: Joi.string().trim().allow('').optional(),
+        city: Joi.string().trim().allow('').optional(),
+        state: Joi.string().trim().allow('').optional(),
+        zipCode: Joi.string().trim().allow('').optional(),
+        country: Joi.string().trim().allow('').optional(),
+    }).required(),
+    wholesaleContactName: Joi.string().trim().max(100).required(),
+    wholesaleContactPhone: Joi.string().trim().max(30).required(),
+    bulkOrderSupportEmail: Joi.string().trim().email().required(),
+}).messages({
+    'any.required': 'This field is required when Wholesale Marketplace is enabled.',
+});
+
 export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).required(),
     email: Joi.string().email().lowercase().required(),
@@ -24,7 +41,45 @@ export const registerSchema = Joi.object({
         'any.only': 'You must agree to the Terms & Conditions.',
         'any.required': 'You must agree to the Terms & Conditions.',
     }),
-}).or('selectionToken', 'selectedPlanId');
+    sellingChannels: Joi.object({
+        retail: Joi.object({ enabled: Joi.boolean().optional() }).optional(),
+        wholesale: Joi.object({ enabled: Joi.boolean().optional() }).optional(),
+    }).optional(),
+    wholesaleProfile: Joi.when('sellingChannels.wholesale.enabled', {
+        is: true,
+        then: wholesaleProfileSchema.required(),
+        otherwise: Joi.object().optional(),
+    }),
+}).or('selectionToken', 'selectedPlanId').custom((value, helpers) => {
+    const retail = value.sellingChannels?.retail?.enabled;
+    const wholesale = value.sellingChannels?.wholesale?.enabled;
+    if (retail === false && wholesale !== true) {
+        return helpers.error('any.invalid');
+    }
+    return value;
+}).messages({
+    'any.invalid': 'At least one selling channel (Retail or Wholesale) must be enabled.',
+});
+
+export const updateSellingChannelsSchema = Joi.object({
+    sellingChannels: Joi.object({
+        retail: Joi.object({ enabled: Joi.boolean().required() }).required(),
+        wholesale: Joi.object({ enabled: Joi.boolean().required() }).required(),
+    }).required(),
+    wholesaleProfile: Joi.when('sellingChannels.wholesale.enabled', {
+        is: true,
+        then: wholesaleProfileSchema.optional(),
+        otherwise: Joi.object().optional(),
+    }),
+}).custom((value, helpers) => {
+    const { retail, wholesale } = value.sellingChannels;
+    if (!retail.enabled && !wholesale.enabled) {
+        return helpers.error('any.invalid');
+    }
+    return value;
+}).messages({
+    'any.invalid': 'At least one selling channel (Retail or Wholesale) must remain enabled.',
+});
 
 export const initiateOnboardingSubscriptionSchema = Joi.object({
     email: Joi.string().email().lowercase().required(),

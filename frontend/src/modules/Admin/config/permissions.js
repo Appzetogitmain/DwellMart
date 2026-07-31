@@ -64,6 +64,11 @@ export const PERMISSIONS = {
   PROMOCODES_VIEW: 'promocodes.view',
   PROMOCODES_EDIT: 'promocodes.edit',
 
+  // Wholesale Marketplace
+  WHOLESALE_VENDORS_MANAGE: 'wholesale.vendors.manage',
+  WHOLESALE_PRODUCTS_MANAGE: 'wholesale.products.manage',
+  WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
+
   // Settings
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_EDIT: 'settings.edit',
@@ -102,6 +107,9 @@ export const PERMISSION_DEPENDENCIES = {
   'sliders.edit': 'sliders.view',
   'promocodes.edit': 'promocodes.view',
   'settings.edit': 'settings.view',
+  'wholesale.vendors.manage': 'vendors.view',
+  'wholesale.products.manage': 'products.view',
+  'wholesale.analytics.view': 'dashboard.view',
 };
 
 export const PRESET_ROLES = {
@@ -301,6 +309,16 @@ export const PERMISSION_GROUPS = [
       { key: PERMISSIONS.BANNERS_EDIT, label: 'Edit Banners' },
       { key: PERMISSIONS.PROMOCODES_VIEW, label: 'View Promo Codes' },
       { key: PERMISSIONS.PROMOCODES_EDIT, label: 'Edit Promo Codes' },
+    ],
+  },
+  {
+    id: 'wholesale',
+    name: 'Wholesale Marketplace',
+    description: 'Wholesale vendors, bulk pricing products, and wholesale analytics',
+    permissions: [
+      { key: PERMISSIONS.WHOLESALE_VENDORS_MANAGE, label: 'Manage Wholesale Vendors' },
+      { key: PERMISSIONS.WHOLESALE_PRODUCTS_MANAGE, label: 'Manage Bulk Pricing Products' },
+      { key: PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, label: 'View Wholesale Analytics' },
     ],
   },
   {

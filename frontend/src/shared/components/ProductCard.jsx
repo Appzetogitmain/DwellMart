@@ -14,6 +14,7 @@ import FlyingItem from "../../modules/UserApp/components/Mobile/FlyingItem";
 import { getVariantSignature } from "../utils/variant";
 import { usePageTranslation } from "../../hooks/usePageTranslation";
 import { Card, Button, Badge } from "./ui";
+import { ProductWholesaleBadge } from "./WholesaleBadge";
 
 
 export const PRODUCT_CARD_VARIANTS = {
@@ -297,6 +298,11 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           <p className="text-[10px] md:text-xs text-textColor-muted mb-1 font-medium lg:h-3 leading-none truncate">
             {product.unit}
           </p>
+          {product.wholesaleEnabled === true && (
+            <div className="mb-1">
+              <ProductWholesaleBadge product={product} />
+            </div>
+          )}
 
           {/* Rating */}
           <div className="flex items-center justify-between mb-1">

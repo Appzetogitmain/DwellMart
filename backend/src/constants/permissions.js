@@ -64,6 +64,11 @@ export const PERMISSIONS = {
     PROMOCODES_VIEW: 'promocodes.view',
     PROMOCODES_EDIT: 'promocodes.edit',
 
+    // Wholesale Marketplace
+    WHOLESALE_VENDORS_MANAGE: 'wholesale.vendors.manage',
+    WHOLESALE_PRODUCTS_MANAGE: 'wholesale.products.manage',
+    WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
+
     // Settings
     SETTINGS_VIEW: 'settings.view',
     SETTINGS_EDIT: 'settings.edit',
@@ -106,6 +111,9 @@ export const PERMISSION_DEPENDENCIES = {
     'sliders.edit': 'sliders.view',
     'promocodes.edit': 'promocodes.view',
     'settings.edit': 'settings.view',
+    'wholesale.vendors.manage': 'vendors.view',
+    'wholesale.products.manage': 'products.view',
+    'wholesale.analytics.view': 'dashboard.view',
 };
 
 /**

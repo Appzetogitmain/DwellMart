@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FiStar, FiShoppingBag, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import LazyImage from '../../../../shared/components/LazyImage';
+import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const VendorShowcaseCard = ({ vendor, index = 0 }) => {
   if (!vendor) return null;
@@ -43,6 +44,11 @@ const VendorShowcaseCard = ({ vendor, index = 0 }) => {
         <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2 min-h-[2.5rem]">
           {vendor.storeName || vendor.name}
         </h3>
+        {vendor.sellingChannels?.wholesale?.enabled === true && (
+          <div className="mb-1 flex justify-center">
+            <VendorWholesaleBadge vendor={vendor} />
+          </div>
+        )}
 
         {/* Rating */}
         {vendor.rating > 0 && (

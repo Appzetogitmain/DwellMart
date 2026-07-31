@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import DataTable from "../../../Admin/components/DataTable";
 import ExportButton from "../../../Admin/components/ExportButton";
 import Badge from "../../../../shared/components/Badge";
+import WholesaleBadge from "../../../../shared/components/WholesaleBadge";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import { formatPrice } from '../../../../shared/utils/helpers';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
@@ -80,6 +81,15 @@ const AllOrders = () => {
       (vi) => vi.vendorId?.toString() === vendorId?.toString()
     );
     return vendorItem?.status ?? order.status ?? 'pending';
+  };
+
+  // This vendor's own slice of the order is what matters here, not the whole
+  // order — another vendor's wholesale lines must not label this one's row.
+  const getVendorOrderType = (order) => {
+    const vendorItem = order.vendorItems?.find(
+      (vi) => vi.vendorId?.toString() === vendorId?.toString()
+    );
+    return vendorItem?.orderType ?? 'retail';
   };
 
   const handleStatusChange = async (orderId, newStatus) => {
@@ -157,6 +167,7 @@ const AllOrders = () => {
       render: (_, row) => {
         const status = getOrderStatus(row);
         return (
+          <div className="flex items-center gap-1.5 flex-wrap">
           <Badge
             variant={
               status === 'delivered'
@@ -169,6 +180,8 @@ const AllOrders = () => {
             }>
             {status?.toUpperCase() || 'N/A'}
           </Badge>
+          <WholesaleBadge orderType={getVendorOrderType(row)} />
+          </div>
         );
       },
     },

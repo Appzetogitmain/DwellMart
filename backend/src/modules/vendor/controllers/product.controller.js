@@ -2,7 +2,14 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Product from '../../../models/Product.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
+import { resolveWholesalePayload } from '../../../services/pricingValidation.service.js';
+
+const isVendorWholesaleEnabled = async (vendorId) => {
+    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
+    return vendor?.sellingChannels?.wholesale?.enabled === true;
+};
 
 const deriveStockStatus = (stockQuantity = 0, lowStockThreshold = 10) => {
     if (stockQuantity <= 0) return 'out_of_stock';
@@ -262,17 +269,32 @@ export const createProduct = asyncHandler(async (req, res) => {
         : stockQuantity;
     const stock = deriveStockStatus(finalStockQuantity, lowStockThreshold);
 
+    const resolvedWholesale = resolveWholesalePayload({
+        retailEnabled: rest.retailEnabled,
+        wholesaleEnabled: rest.wholesaleEnabled,
+        wholesale: rest.wholesale,
+        price,
+        stockQuantity: finalStockQuantity,
+        vendorWholesaleEnabled: rest.wholesaleEnabled === true
+            ? await isVendorWholesaleEnabled(req.user.id)
+            : false,
+    });
+
+    // Drop any raw wholesale payload; resolvedWholesale is the only validated source.
+    const { wholesale: _rawWholesale, ...restWithoutWholesale } = rest;
+
     const product = await Product.create({
         name,
         slug,
         vendorId: req.user.id,
-        ...rest,
+        ...restWithoutWholesale,
         price,
         variants: normalizedVariants,
         faqs: sanitizeFaqs(rest.faqs),
         stockQuantity: finalStockQuantity,
         lowStockThreshold,
         stock,
+        ...resolvedWholesale,
     });
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
@@ -281,6 +303,9 @@ export const createProduct = asyncHandler(async (req, res) => {
 export const updateProduct = asyncHandler(async (req, res) => {
     const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id });
     if (!product) throw new ApiError(404, 'Product not found or access denied.');
+    // Snapshot the stored wholesale config before the bulk assign, so incoming
+    // tier data is only ever persisted after passing validation below.
+    const storedWholesale = product.wholesale?.toObject?.() ?? product.wholesale;
     Object.assign(product, req.body);
     if (Object.prototype.hasOwnProperty.call(req.body, 'faqs')) {
         product.faqs = sanitizeFaqs(req.body.faqs);
@@ -317,6 +342,29 @@ export const updateProduct = asyncHandler(async (req, res) => {
         Number(product.stockQuantity ?? 0),
         Number(product.lowStockThreshold ?? 10)
     );
+
+    // Only touch selling-channel data when the request explicitly references it,
+    // so partial updates never clear existing wholesale configuration.
+    const touchesWholesale = ['retailEnabled', 'wholesaleEnabled', 'wholesale']
+        .some((key) => Object.prototype.hasOwnProperty.call(req.body, key));
+    if (touchesWholesale) {
+        const resolvedWholesale = resolveWholesalePayload({
+            retailEnabled: product.retailEnabled,
+            wholesaleEnabled: product.wholesaleEnabled,
+            wholesale: product.wholesale,
+            price: product.price,
+            stockQuantity: product.stockQuantity,
+            vendorWholesaleEnabled: product.wholesaleEnabled === true
+                ? await isVendorWholesaleEnabled(req.user.id)
+                : false,
+        });
+        product.retailEnabled = resolvedWholesale.retailEnabled;
+        product.wholesaleEnabled = resolvedWholesale.wholesaleEnabled;
+        // When wholesale is off, keep the previously stored configuration rather
+        // than persisting unvalidated tier data from the request body.
+        product.wholesale = resolvedWholesale.wholesale ?? storedWholesale;
+    }
+
     await product.save();
     res.status(200).json(new ApiResponse(200, product, 'Product updated.'));
 });

@@ -9,6 +9,11 @@ import Category from '../models/Category.model.js';
 import Brand from '../models/Brand.model.js';
 import Vendor from '../models/Vendor.model.js';
 import BulkImportHistory from '../models/BulkImportHistory.model.js';
+import {
+    parsePriceTiersCell,
+    serializePriceTiers,
+    validatePriceTiers,
+} from './pricingValidation.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,6 +70,13 @@ export const generateTemplate = async (format = 'xlsx', isAdmin = false) => {
         'Variant Price',
         'Variant Stock',
         'Variant Attributes',
+        // Wholesale / bulk pricing. "Bulk Pricing Tiers" uses quantity:price
+        // pairs separated by | (e.g. 10:950|25:900|50:850).
+        'Retail Enabled',
+        'Wholesale Enabled',
+        'MOQ Enabled',
+        'MOQ',
+        'Bulk Pricing Tiers',
     ];
 
     if (isAdmin) {
@@ -106,6 +118,11 @@ export const generateTemplate = async (format = 'xlsx', isAdmin = false) => {
         '',
         '',
         '',
+        'Yes',
+        'Yes',
+        'Yes',
+        20,
+        '10:750|25:700|50:650',
     ];
 
     if (isAdmin) {
@@ -147,6 +164,11 @@ export const generateTemplate = async (format = 'xlsx', isAdmin = false) => {
         849,
         50,
         'Size=L;Color=Red;Material=Cotton',
+        'Yes',
+        'No',
+        'No',
+        '',
+        '',
     ];
 
     if (isAdmin) {
@@ -328,6 +350,19 @@ export const validateBulkUpload = async ({
         const variantAttributes = String(raw['Variant Attributes'] || '').trim();
         const rowVendorEmail = String(raw['Vendor Email'] || '').trim().toLowerCase();
 
+        // Wholesale columns. Absent columns keep the legacy retail-only default,
+        // so pre-wholesale spreadsheets import exactly as before.
+        const retailEnabledStr = String(raw['Retail Enabled'] ?? '').trim().toLowerCase();
+        const wholesaleEnabledStr = String(raw['Wholesale Enabled'] ?? '').trim().toLowerCase();
+        const moqEnabledStr = String(raw['MOQ Enabled'] ?? '').trim().toLowerCase();
+        const rawMoq = raw['MOQ'];
+        const bulkTiersCell = raw['Bulk Pricing Tiers'];
+        const isTruthyCell = (value) => ['yes', 'true', '1', 'y'].includes(value);
+        const retailEnabled = retailEnabledStr === '' ? true : isTruthyCell(retailEnabledStr);
+        const wholesaleEnabled = wholesaleEnabledStr === '' ? false : isTruthyCell(wholesaleEnabledStr);
+        const moqEnabled = moqEnabledStr === '' ? false : isTruthyCell(moqEnabledStr);
+        const isVariantRow = isVariantStr === 'yes' || isVariantStr === 'true' || Boolean(parentSku);
+
         const errors = [];
         const warnings = [];
 
@@ -351,6 +386,45 @@ export const validateBulkUpload = async ({
             errors.push('GST % must be between 0 and 28.');
         } else if (raw['GST %'] === '') {
             warnings.push('Default GST 18% applied.');
+        }
+
+        // 2b. Wholesale / Bulk Pricing Rules
+        let wholesaleTiers = [];
+        let wholesaleMoq = null;
+        if (!retailEnabled && !wholesaleEnabled) {
+            errors.push('At least one selling channel (Retail Enabled or Wholesale Enabled) must be Yes.');
+        }
+        if (wholesaleEnabled) {
+            // V1 scope: wholesale bulk-import is limited to non-variant products.
+            if (isVariantRow) {
+                errors.push('Wholesale bulk pricing is not supported on variant rows in this version. Import variants without wholesale, then configure bulk pricing from the product form.');
+            }
+
+            const parsedTiers = parsePriceTiersCell(bulkTiersCell);
+            parsedTiers.errors.forEach((message) => errors.push(message));
+            wholesaleTiers = parsedTiers.tiers;
+
+            if (parsedTiers.errors.length === 0) {
+                try {
+                    // Same validator the product APIs use — one rule set, two entry points.
+                    wholesaleTiers = validatePriceTiers(priceNum, wholesaleTiers);
+                } catch (err) {
+                    errors.push(err?.message || 'Invalid bulk pricing tiers.');
+                }
+            }
+
+            if (moqEnabled) {
+                wholesaleMoq = rawMoq === '' || rawMoq === undefined || rawMoq === null
+                    ? NaN
+                    : parseInt(rawMoq, 10);
+                if (!Number.isInteger(wholesaleMoq) || wholesaleMoq < 1) {
+                    errors.push('MOQ must be a whole number of 1 or more when MOQ Enabled is Yes.');
+                } else if (!isNaN(stockNum) && wholesaleMoq > stockNum) {
+                    errors.push(`MOQ (${wholesaleMoq}) cannot exceed Stock (${stockNum}).`);
+                }
+            }
+        } else if (String(bulkTiersCell ?? '').trim()) {
+            warnings.push('Bulk Pricing Tiers provided but Wholesale Enabled is not Yes — tiers will be ignored.');
         }
 
         // 3. Category Lookup
@@ -470,6 +544,11 @@ export const validateBulkUpload = async ({
             variantPrice,
             variantStock,
             variantAttributes,
+            retailEnabled,
+            wholesaleEnabled,
+            wholesaleMoqEnabled: wholesaleEnabled ? moqEnabled : false,
+            wholesaleMoq: wholesaleEnabled && moqEnabled ? wholesaleMoq : null,
+            wholesalePriceTiers: wholesaleEnabled ? wholesaleTiers : [],
             errors,
             warnings,
             validationStatus,
@@ -586,6 +665,20 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
 
         for (const row of batch) {
             try {
+                // Wholesale fields, shared by every duplicate-mode branch below.
+                // Built once so insert and update paths cannot diverge.
+                const wholesaleFields = {
+                    retailEnabled: row.retailEnabled !== false,
+                    wholesaleEnabled: row.wholesaleEnabled === true,
+                    wholesale: {
+                        moqEnabled: row.wholesaleMoqEnabled === true,
+                        ...(row.wholesaleMoqEnabled === true && Number.isInteger(row.wholesaleMoq)
+                            ? { moq: row.wholesaleMoq }
+                            : {}),
+                        priceTiers: Array.isArray(row.wholesalePriceTiers) ? row.wholesalePriceTiers : [],
+                    },
+                };
+
                 // Auto create brand if requested
                 let finalBrandId = row.brandId;
                 if (!finalBrandId && row.brandInput && autoCreateBrands) {
@@ -632,6 +725,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                         tags: row.tags.length > 0 ? row.tags : existingProduct.tags,
                                         images: row.images.length > 0 ? row.images : existingProduct.images,
                                         image: row.image || existingProduct.image,
+                                        ...wholesaleFields,
                                     },
                                 },
                             },
@@ -664,6 +758,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                     tags: row.tags,
                                     images: row.images,
                                     image: row.image,
+                                    ...wholesaleFields,
                                 },
                             },
                         });
@@ -875,6 +970,11 @@ export const exportProductsCatalog = async ({ user, targetVendorId = null, forma
         'Status',
         'Tags',
         'Images',
+        'Retail Enabled',
+        'Wholesale Enabled',
+        'MOQ Enabled',
+        'MOQ',
+        'Bulk Pricing Tiers',
         'Vendor Email',
     ];
 
@@ -896,6 +996,11 @@ export const exportProductsCatalog = async ({ user, targetVendorId = null, forma
         p.isActive ? 'Active' : 'Inactive',
         Array.isArray(p.tags) ? p.tags.join(', ') : '',
         Array.isArray(p.images) ? p.images.join(', ') : p.image || '',
+        p.retailEnabled === false ? 'No' : 'Yes',
+        p.wholesaleEnabled === true ? 'Yes' : 'No',
+        p.wholesale?.moqEnabled === true ? 'Yes' : 'No',
+        p.wholesale?.moqEnabled === true && p.wholesale?.moq ? p.wholesale.moq : '',
+        serializePriceTiers(p.wholesale?.priceTiers),
         p.vendorId?.email || '',
     ]);
 

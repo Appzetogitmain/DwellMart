@@ -14,6 +14,7 @@ import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js
 import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
+import { resolvePriceForQuantity, deriveOrderType } from '../../../services/pricingEngine.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -247,6 +248,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
     let subtotal = 0;
     let totalTaxReporting = 0;
     let extraTaxToPay = 0;
+    let totalSavings = 0;
     const enrichedItems = [];
     const vendorMap = {};
 
@@ -256,7 +258,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
         const linkedVendorId = String(product?.vendorId || '').trim();
         const vendor = linkedVendorId
             ? await Vendor.findById(linkedVendorId).select(
-                'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold'
+                'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold sellingChannels'
             )
             : null;
         if (!vendor?._id) {
@@ -282,13 +284,36 @@ export const placeOrder = asyncHandler(async (req, res) => {
         if (product.stockQuantity < item.quantity) throw new ApiError(400, `Only ${product.stockQuantity} units of ${product.name} available.`);
 
         // Always trust server-side product pricing; never trust client-sent item.price.
-        const { price: itemPrice, variantKey, hasVariantAxes } = resolveVariantSelection(product, item.variant);
+        const { price: variantResolvedPrice, variantKey, hasVariantAxes } = resolveVariantSelection(product, item.variant);
         const variantStockValue = variantKey ? Number(product?.variants?.stockMap?.get?.(variantKey) ?? product?.variants?.stockMap?.[variantKey]) : null;
         if (hasVariantAxes && variantKey && Number.isFinite(variantStockValue) && variantStockValue < item.quantity) {
             throw new ApiError(400, `Only ${variantStockValue} units available for selected variant of ${product.name}.`);
         }
+
+        // Apply wholesale bulk pricing on top of the variant-resolved base price.
+        // The pricing engine is authoritative; client-sent pricing is never trusted.
+        const pricing = resolvePriceForQuantity(product, variantResolvedPrice, item.quantity, {
+            vendorWholesaleEnabled: vendor?.sellingChannels?.wholesale?.enabled === true,
+        });
+
+        if (!pricing.eligible) {
+            throw new ApiError(
+                422,
+                `${product.name} requires a minimum order of ${pricing.minimumQuantity} units. Please increase the quantity.`,
+                [{
+                    code: 'BELOW_MINIMUM_ORDER_QUANTITY',
+                    productId: String(product._id),
+                    productName: product.name,
+                    minimumQuantity: pricing.minimumQuantity,
+                    requestedQuantity: Number(item.quantity),
+                }]
+            );
+        }
+
+        const itemPrice = pricing.unitPrice;
         const itemSubtotal = itemPrice * item.quantity;
         subtotal += itemSubtotal;
+        totalSavings += pricing.savings;
 
         const variantImage =
             variantKey
@@ -303,6 +328,10 @@ export const placeOrder = asyncHandler(async (req, res) => {
             quantity: item.quantity,
             variant: item.variant,
             variantKey: variantKey || undefined,
+            pricingType: pricing.pricingType,
+            appliedTier: pricing.appliedTier || undefined,
+            unitRetailPrice: pricing.unitRetailPrice,
+            savings: pricing.savings,
         };
         enrichedItems.push(enriched);
 
@@ -392,8 +421,12 @@ export const placeOrder = asyncHandler(async (req, res) => {
         shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
         tax: parseFloat(v.tax.toFixed(2)),
         discount: 0,
+        orderType: deriveOrderType(v.items),
         status: 'pending',
     }));
+
+    const orderType = deriveOrderType(enrichedItems);
+    const orderSavings = parseFloat(totalSavings.toFixed(2));
 
     // 6-9. Transactional order creation to avoid partial writes.
     let order = null;
@@ -426,6 +459,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 tax,
                 discount: couponDiscount,
                 total,
+                orderType,
+                totalSavings: orderSavings,
                 couponCode: couponCode?.toUpperCase(),
                 couponDiscount,
                 trackingNumber: generateTrackingNumber(),
@@ -483,6 +518,12 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 commissionRate: v.commissionRate,
                 commission: parseFloat(((v.subtotal * v.commissionRate) / 100).toFixed(2)),
                 vendorEarnings: parseFloat((v.subtotal - (v.subtotal * v.commissionRate) / 100).toFixed(2)),
+                // Commission is always derived from the amount actually paid, so
+                // this classification simply labels that amount for reporting.
+                orderType: deriveOrderType(v.items),
+                savings: parseFloat(
+                    v.items.reduce((sum, line) => sum + Number(line?.savings || 0), 0).toFixed(2)
+                ),
             }));
             await Commission.insertMany(commissionDocs, { session });
 
@@ -527,6 +568,37 @@ export const placeOrder = asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
+    // 10. Notify vendors of bulk (wholesale) orders. Sent after the transaction
+    // commits so a rolled-back order never produces a notification, and failures
+    // here never fail an already-placed order.
+    if (!idempotentReplay && order?._id) {
+        const bulkVendorGroups = vendorItems.filter(
+            (group) => group.orderType === 'wholesale' || group.orderType === 'mixed'
+        );
+        await Promise.all(
+            bulkVendorGroups.map((group) => {
+                const unitCount = group.items.reduce((sum, line) => sum + Number(line?.quantity || 0), 0);
+                return createNotification({
+                    recipientId: group.vendorId,
+                    recipientType: 'vendor',
+                    title: 'Bulk Order Received',
+                    message: `You received a bulk order (${order.orderId}) for ${unitCount} unit${unitCount === 1 ? '' : 's'} worth Rs.${Number(group.subtotal || 0).toFixed(2)}.`,
+                    type: 'bulk_order',
+                    data: {
+                        event: 'bulk_order_received',
+                        orderId: String(order.orderId || ''),
+                        orderRefId: String(order._id),
+                        orderType: String(group.orderType),
+                        units: String(unitCount),
+                        subtotal: String(group.subtotal ?? 0),
+                    },
+                }).catch((err) => {
+                    console.warn(`[Bulk Order Notification] Failed for vendor ${group.vendorId}: ${err.message}`);
+                });
+            })
+        );
+    }
+
     const responseStatus = idempotentReplay ? 200 : 201;
     const responseMessage = idempotentReplay
         ? 'Duplicate order request ignored. Returning existing order.'
@@ -564,11 +636,24 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
 // PATCH /api/user/orders/:id/cancel
 export const cancelOrder = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
+    let cancelledBulkGroups = [];
+    let cancelledOrderRef = null;
     try {
         await session.withTransaction(async () => {
             const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id }).session(session);
             if (!order) throw new ApiError(404, 'Order not found.');
             if (!['pending', 'processing'].includes(order.status)) throw new ApiError(400, 'Order cannot be cancelled at this stage.');
+
+            // Capture bulk vendor groups before mutation so affected vendors can
+            // be notified once the cancellation is committed.
+            cancelledOrderRef = { orderId: order.orderId, _id: order._id };
+            cancelledBulkGroups = (order.vendorItems || [])
+                .filter((group) => group.orderType === 'wholesale' || group.orderType === 'mixed')
+                .map((group) => ({
+                    vendorId: group.vendorId,
+                    subtotal: Number(group.subtotal || 0),
+                    orderType: String(group.orderType),
+                }));
 
             order.status = 'cancelled';
             order.cancelledAt = new Date();
@@ -631,6 +716,29 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     } finally {
         await session.endSession();
     }
+
+    // Notify vendors whose bulk orders were cancelled. Runs after commit; a
+    // notification failure must never fail an already-cancelled order.
+    await Promise.all(
+        cancelledBulkGroups.map((group) =>
+            createNotification({
+                recipientId: group.vendorId,
+                recipientType: 'vendor',
+                title: 'Bulk Order Cancelled',
+                message: `A bulk order (${cancelledOrderRef?.orderId}) worth Rs.${group.subtotal.toFixed(2)} was cancelled by the customer.`,
+                type: 'bulk_order',
+                data: {
+                    event: 'bulk_order_cancelled',
+                    orderId: String(cancelledOrderRef?.orderId || ''),
+                    orderRefId: String(cancelledOrderRef?._id || ''),
+                    orderType: group.orderType,
+                    subtotal: String(group.subtotal),
+                },
+            }).catch((err) => {
+                console.warn(`[Bulk Order Cancel Notification] Failed for vendor ${group.vendorId}: ${err.message}`);
+            })
+        )
+    );
 
     res.status(200).json(new ApiResponse(200, null, 'Order cancelled successfully.'));
 });

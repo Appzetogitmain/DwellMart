@@ -27,6 +27,17 @@ const variantSchema = Joi.object({
     defaultSelection: Joi.object().optional(),
 }).optional();
 
+const priceTierSchema = Joi.object({
+    minQty: Joi.number().integer().min(1).required(),
+    price: Joi.number().min(0).required(),
+});
+
+const wholesaleSchema = Joi.object({
+    moqEnabled: Joi.boolean().optional(),
+    moq: Joi.number().integer().min(1).allow(null, '').optional(),
+    priceTiers: Joi.array().items(priceTierSchema).optional(),
+}).optional();
+
 const productBaseSchema = {
     name: Joi.string().trim().min(2).max(200),
     description: Joi.string().allow('').optional(),
@@ -61,6 +72,9 @@ const productBaseSchema = {
     seoDescription: Joi.string().allow('').optional(),
     relatedProducts: Joi.array().items(objectId).optional(),
     faqs: Joi.array().items(faqSchema).optional(),
+    retailEnabled: Joi.boolean().optional(),
+    wholesaleEnabled: Joi.boolean().optional(),
+    wholesale: wholesaleSchema,
     variants: variantSchema,
 };
 

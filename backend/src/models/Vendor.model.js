@@ -57,6 +57,28 @@ const vendorSchema = new mongoose.Schema(
                 fileType: { type: String, enum: ['image', 'pdf', 'word'] },
             },
         },
+        sellingChannels: {
+            retail: {
+                enabled: { type: Boolean, default: true },
+            },
+            wholesale: {
+                enabled: { type: Boolean, default: false },
+            },
+        },
+        wholesaleProfile: {
+            gstNumber: { type: String, trim: true },
+            businessName: { type: String, trim: true },
+            businessAddress: {
+                street: String,
+                city: String,
+                state: String,
+                zipCode: String,
+                country: String,
+            },
+            wholesaleContactName: { type: String, trim: true },
+            wholesaleContactPhone: { type: String, trim: true },
+            bulkOrderSupportEmail: { type: String, trim: true, lowercase: true },
+        },
         otp: { type: String, select: false },
         otpExpiry: { type: Date, select: false },
         resetOtp: { type: String, select: false },
@@ -110,6 +132,15 @@ vendorSchema.pre('save', function syncCountry(next) {
     if (!this.address?.country && this.country) {
         this.address = this.address || {};
         this.address.country = this.country;
+    }
+    next();
+});
+
+vendorSchema.pre('save', function enforceSellingChannel(next) {
+    const retailEnabled = this.sellingChannels?.retail?.enabled !== false;
+    const wholesaleEnabled = this.sellingChannels?.wholesale?.enabled === true;
+    if (!retailEnabled && !wholesaleEnabled) {
+        return next(new Error('At least one selling channel (Retail or Wholesale) must be enabled.'));
     }
     next();
 });

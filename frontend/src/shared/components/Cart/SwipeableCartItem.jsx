@@ -6,6 +6,7 @@ import { useCartStore } from "../../store/useStore";
 import { useWishlistStore } from "../../store/wishlistStore";
 import Price from "../Price";
 import { formatVariantLabel } from "../../utils/variant";
+import { resolvePriceForQuantity } from "../../utils/resolvePriceForQuantity";
 import useSwipeGesture from "../../../modules/UserApp/hooks/useSwipeGesture";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { Card, Button, QuantitySelector, Badge } from "../ui";
@@ -25,6 +26,28 @@ const SwipeableCartItem = ({ item, index }) => {
     const [isDeleted, setIsDeleted] = useState(false);
     const [hasAnimated, setHasAnimated] = useState(false);
     const deletedItemRef = useRef(null);
+
+    // Preview-only tier pricing for this line; checkout re-derives server-side.
+    const linePricing = resolvePriceForQuantity(
+        {
+            retailEnabled: item?.retailEnabled,
+            wholesaleEnabled: item?.wholesaleEnabled,
+            wholesale: item?.wholesale,
+        },
+        Number(item?.price) || 0,
+        Number(item?.quantity) || 0,
+        { vendorWholesaleEnabled: item?.vendorWholesaleEnabled !== false }
+    );
+    const isBulkApplied = linePricing.pricingType === "wholesale" && linePricing.savings > 0;
+    // Only wholesale-only lines have a hard purchase floor; hybrid lines may drop
+    // below the tier threshold and simply revert to retail pricing.
+    const isWholesaleOnlyLine =
+        item?.wholesaleEnabled === true
+        && item?.retailEnabled === false
+        && item?.vendorWholesaleEnabled !== false;
+    const minimumOrderQuantity = isWholesaleOnlyLine
+        ? Number(linePricing.minimumQuantity) || 1
+        : 1;
 
     const { removeItem, updateQuantity } = useCartStore();
     const { addItem: addToWishlist } = useWishlistStore();
@@ -46,6 +69,13 @@ const SwipeableCartItem = ({ item, index }) => {
 
         if (Number.isFinite(availableStock) && newQty > availableStock) {
             toast.error(`${t('Only')} ${availableStock} ${t('items available in stock')}`);
+            return;
+        }
+
+        // Wholesale-only lines cannot go below their minimum order quantity;
+        // block it here rather than letting checkout reject the whole order.
+        if (minimumOrderQuantity > 1 && newQty < minimumOrderQuantity) {
+            toast.error(`${t('Minimum order')}: ${minimumOrderQuantity} ${t('units')}`);
             return;
         }
 
@@ -137,7 +167,29 @@ const SwipeableCartItem = ({ item, index }) => {
                         <h3 className="font-bold text-textColor-primary text-sm mb-0.5 line-clamp-1">
                             {item.name}
                         </h3>
-                        <Price amount={item.price} className="text-sm font-black text-brand-primary mb-1" />
+                        <div className="flex items-center gap-2 mb-1">
+                            <Price amount={linePricing.unitPrice} className="text-sm font-black text-brand-primary" />
+                            {isBulkApplied && (
+                                <>
+                                    <Price
+                                        amount={linePricing.unitRetailPrice}
+                                        className="text-xs text-textColor-muted line-through"
+                                    />
+                                    <Badge variant="success" size="sm">Bulk</Badge>
+                                </>
+                            )}
+                        </div>
+                        {isBulkApplied && (
+                            <p className="text-[11px] font-bold text-status-success mb-1">
+                                {t('Bulk pricing applied')} — {t('you save')} <Price amount={linePricing.savings} />
+                            </p>
+                        )}
+                        {linePricing?.nextTier && (
+                            <p className="text-[11px] text-textColor-muted mb-1 font-medium">
+                                {t('Buy')} {Math.max(1, linePricing.nextTier.minQty - Number(item.quantity || 0))} {t('more to unlock')}{' '}
+                                <Price amount={linePricing.nextTier.price} /> {t('per unit')}
+                            </p>
+                        )}
                         {formatVariantLabel(item?.variant) && (
                             <p className="text-xs text-textColor-muted mb-1 font-medium">
                                 {formatVariantLabel(item?.variant)}
@@ -158,7 +210,7 @@ const SwipeableCartItem = ({ item, index }) => {
                         <QuantitySelector
                             value={item.quantity}
                             onChange={handleQuantityChange}
-                            min={1}
+                            min={minimumOrderQuantity}
                             max={item.stockQuantity || 99}
                             size="sm"
                         />
