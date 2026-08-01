@@ -442,10 +442,14 @@ router.get('/products/:id', detailCache, getProductDetail);
 // Scoped to the request's shopping experience — marketplace by default, so
 // existing storefront clients see exactly the tree they see today.
 router.get('/categories/all', catalogCache, asyncHandler(async (req, res) => {
-    const categories = await Category.find({
-        isActive: true,
-        experience: getRequestExperience(req),
-    })
+    const exp = getRequestExperience(req);
+    const filter = { isActive: true };
+    if (exp === EXPERIENCES.QUICK_COMMERCE) {
+        filter.experience = EXPERIENCES.QUICK_COMMERCE;
+    } else {
+        filter.experience = { $ne: EXPERIENCES.QUICK_COMMERCE };
+    }
+    const categories = await Category.find(filter)
         .sort({ order: 1, name: 1 })
         .lean();
     res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));

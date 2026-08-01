@@ -600,11 +600,6 @@ const MobileHome = () => {
             transform: `translateY(${Math.min(pullDistance, 80)}px)`,
             transition: isPulling ? "none" : "transform 0.3s ease-out",
           }}>
-          {/* Experience switcher — hidden unless Quick Commerce is enabled */}
-          <div className="px-4 pt-4">
-            <ExperienceSwitcher />
-          </div>
-
           {/* Hero Banner */}
           <div className="px-4 py-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -704,6 +699,9 @@ const MobileHome = () => {
               </div>
             </div>
           </div>
+
+          {/* Experience Selection Section — Quick Commerce & Marketplace Experience Selector */}
+          <ExperienceSwitcher />
 
           {/* Brand Logos Scroll */}
           <BrandLogosScroll brands={computedBrands} />

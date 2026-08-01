@@ -15,6 +15,15 @@ import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
 
+const DEFAULT_FOOTER_CATEGORIES = [
+  { _id: "fashion", name: "Fashion & Apparel" },
+  { _id: "electronics", name: "Electronics & Gadgets" },
+  { _id: "home", name: "Home & Furniture" },
+  { _id: "beauty", name: "Beauty & Personal Care" },
+  { _id: "groceries", name: "Groceries & Essentials" },
+  { _id: "footwear", name: "Footwear & Accessories" },
+];
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const [categories, setCategories] = useState([]);
@@ -52,23 +61,32 @@ const Footer = () => {
   useEffect(() => {
     let active = true;
     api.get("/categories/all")
-      .then(async (res) => {
+      .then((res) => {
         const data = res.data?.data || res.data || [];
         const sorted = data
           .filter((c) => c.isActive !== false)
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .slice(0, 6);
 
-        const translated = await Promise.all(
-          sorted.map(cat => translateObject(cat, ['name']))
-        );
-        if (active) setCategories(translated);
+        if (!active) return;
+        setCategories(sorted);
+
+        // Async translate in background without blocking initial render
+        if (sorted.length > 0) {
+          Promise.all(sorted.map(cat => translateObject(cat, ['name'])))
+            .then(translated => {
+              if (active) setCategories(translated);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         // Silently fail
       });
     return () => { active = false; };
-  }, [translateObject]);
+  }, []); // Run once on mount
+
+  const displayCategories = categories.length > 0 ? categories : DEFAULT_FOOTER_CATEGORIES;
 
   const customerServiceLinks = [
     { label: "Contact Us", path: "/contact" },
@@ -164,25 +182,17 @@ const Footer = () => {
             {/* Links List (Always visible on Desktop, collapsible on Mobile) */}
             <div className={`mt-3 space-y-2 sm:block ${openSection === "categories" ? "block" : "hidden sm:block"}`}>
               <ul className="space-y-2">
-                {categories.length > 0 ? (
-                  categories.map((cat) => (
-                    <li key={cat._id}>
-                      <Link
-                        to={`/category/${cat._id}`}
-                        className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-emerald-400 transition-colors py-0.5"
-                      >
-                        <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-emerald-400" />
-                        <span>{cat.name}</span>
-                      </Link>
-                    </li>
-                  ))
-                ) : (
-                  [...Array(4)].map((_, i) => (
-                    <li key={i}>
-                      <div className="h-3.5 bg-gray-800 rounded animate-pulse w-3/4" />
-                    </li>
-                  ))
-                )}
+                {displayCategories.map((cat, i) => (
+                  <li key={cat._id || i}>
+                    <Link
+                      to={cat._id && cat._id !== cat.name.toLowerCase() ? `/category/${cat._id}` : "/search"}
+                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-emerald-400 transition-colors py-0.5"
+                    >
+                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-emerald-400" />
+                      <span>{t(cat.name)}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
