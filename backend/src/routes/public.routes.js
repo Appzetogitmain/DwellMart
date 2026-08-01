@@ -203,9 +203,25 @@ const listProducts = asyncHandler(async (req, res) => {
     // can place the ids on whichever category field the experience uses.
     let categoryIds;
     if (category) {
-        const categoryId = String(category);
-        const childCategories = await Category.find({ parentId: categoryId }).select('_id').lean();
-        categoryIds = [categoryId, ...childCategories.map((cat) => String(cat._id))];
+        const rawCategory = String(category).trim();
+        let targetId = mongoose.Types.ObjectId.isValid(rawCategory) ? rawCategory : null;
+        if (!targetId) {
+            const matchedCategory = await Category.findOne({
+                $or: [
+                    { slug: rawCategory },
+                    { id: rawCategory },
+                    { name: new RegExp(`^${rawCategory.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+                ],
+            }).select('_id').lean();
+            if (matchedCategory) targetId = String(matchedCategory._id);
+        }
+
+        if (targetId) {
+            const childCategories = await Category.find({ parentId: targetId }).select('_id').lean();
+            categoryIds = [targetId, ...childCategories.map((cat) => String(cat._id))];
+        } else {
+            categoryIds = [];
+        }
     }
 
     const requestExperience = getRequestExperience(req);
@@ -236,14 +252,33 @@ const listProducts = asyncHandler(async (req, res) => {
         wholesaleMarketplaceEnabled: wholesaleEnabled,
     });
 
-    if (brand) filter.brandId = brand;
+    if (brand) {
+        const rawBrand = String(brand).trim();
+        if (mongoose.Types.ObjectId.isValid(rawBrand)) {
+            filter.brandId = rawBrand;
+        } else {
+            const matchedBrand = await Brand.findOne({
+                $or: [
+                    { slug: rawBrand },
+                    { id: rawBrand },
+                    { name: new RegExp(`^${rawBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+                ],
+            }).select('_id').lean();
+            filter.brandId = matchedBrand ? String(matchedBrand._id) : null;
+        }
+    }
+
     // An explicit vendor filter must still respect serviceability.
     if (vendor) {
-        if (Array.isArray(serviceableVendorIds)
-            && !serviceableVendorIds.some((id) => String(id) === String(vendor))) {
+        const rawVendor = String(vendor).trim();
+        const vendorId = mongoose.Types.ObjectId.isValid(rawVendor) ? rawVendor : null;
+        if (!vendorId) {
+            filter.vendorId = null;
+        } else if (Array.isArray(serviceableVendorIds)
+            && !serviceableVendorIds.some((id) => String(id) === String(vendorId))) {
             filter.vendorId = { $in: [] };
         } else {
-            filter.vendorId = vendor;
+            filter.vendorId = vendorId;
         }
     }
     if (flashSale === 'true') filter.flashSale = true;
