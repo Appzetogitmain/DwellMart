@@ -279,7 +279,11 @@ const MobileHome = () => {
 
   const computedNewArrivals = useMemo(() => {
     if (catalogProducts.length === 0) return fallbackNewArrivals;
-    return catalogProducts.filter((p) => p.isNew).slice(0, 6);
+    const flaggedNew = catalogProducts.filter((p) => p.isNew);
+    if (flaggedNew.length >= 6) return flaggedNew.slice(0, 6);
+    const flaggedIds = new Set(flaggedNew.map((p) => p.id));
+    const unflagged = catalogProducts.filter((p) => !flaggedIds.has(p.id));
+    return [...flaggedNew, ...unflagged].slice(0, 6);
   }, [catalogProducts, fallbackNewArrivals]);
 
   const computedDailyDeals = useMemo(() => {

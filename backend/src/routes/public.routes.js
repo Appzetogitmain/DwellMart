@@ -387,7 +387,7 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
         rating: { rating: -1 },
     };
 
-    const [products, total] = await Promise.all([
+    let [products, total] = await Promise.all([
         Product.find(filter)
             .select(PRODUCT_LIST_SELECT)
             .populate('categoryId', 'name')
@@ -400,11 +400,35 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
         Product.countDocuments(filter),
     ]);
 
+    // If explicit isNewArrival count is low, backfill with recent active products
+    if (products.length < numericLimit && numericPage === 1) {
+        const existingIds = new Set(products.map((p) => String(p._id)));
+        const fallbackFilter = { isActive: true };
+        if (activeSaleProductIds.length) {
+            fallbackFilter._id = { $nin: [...activeSaleProductIds, ...Array.from(existingIds)] };
+        } else {
+            fallbackFilter._id = { $nin: Array.from(existingIds) };
+        }
+        const needed = numericLimit - products.length;
+        const fallbackProducts = await Product.find(fallbackFilter)
+            .select(PRODUCT_LIST_SELECT)
+            .populate('categoryId', 'name')
+            .populate('brandId', 'name')
+            .populate('vendorId', 'storeName')
+            .sort({ createdAt: -1 })
+            .limit(needed)
+            .lean();
+
+        products = [...products, ...fallbackProducts];
+        const totalActive = await Product.countDocuments({ isActive: true });
+        total = Math.max(total, totalActive);
+    }
+
     res.status(200).json(new ApiResponse(200, {
         products,
         total,
         page: numericPage,
-        pages: Math.ceil(total / numericLimit),
+        pages: Math.ceil(total / numericLimit) || 1,
     }, 'New arrivals fetched.'));
 }));
 
