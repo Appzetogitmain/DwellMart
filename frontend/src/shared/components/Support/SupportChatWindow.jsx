@@ -14,7 +14,7 @@ import { useSupportChatStore } from '../../store/supportChatStore';
 import { emitTypingStart, emitTypingStop } from '../../services/socketService';
 import { getReasonLabel } from './NewConversationModal';
 
-const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
+const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light' }) => {
     const {
         activeConversation,
         messages,
@@ -31,6 +31,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
+    const isDark = theme === 'dark';
     const isClosed = activeConversation?.status === 'closed' || activeConversation?.isClosed;
     const isUserReadOnly = isClosed && !isAdmin;
 
@@ -40,12 +41,20 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
     if (!activeConversation) {
         return (
-            <div className="h-full min-h-[550px] bg-surface border border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
-                <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center text-primary-600 mb-4">
+            <div className={`h-full min-h-[400px] sm:min-h-[500px] border rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-sm ${
+                isDark
+                    ? 'bg-slate-800/90 border-slate-700/80 text-white shadow-xl'
+                    : 'bg-surface border-border text-content'
+            }`}>
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
+                    isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-primary-50 text-primary-600'
+                }`}>
                     <FiMessageSquare className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-content mb-2">DwellMart Support Desk</h3>
-                <p className="text-sm text-content-muted max-w-sm">
+                <h3 className={`text-xl font-extrabold mb-2 ${isDark ? 'text-white' : 'text-content'}`}>
+                    DwellMart Support Desk
+                </h3>
+                <p className={`text-xs sm:text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-content-muted'}`}>
                     Select an active support conversation from the list or click "New Ticket" to contact DwellMart Support.
                 </p>
             </div>
@@ -126,20 +135,28 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
     };
 
     return (
-        <div className="flex flex-col h-[620px] bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
-            {/* Header (Flex Shrink 0) */}
-            <div className="flex-shrink-0 p-4 border-b border-border bg-surface-muted flex flex-wrap items-center justify-between gap-3">
+        <div className={`flex flex-col h-full rounded-2xl border overflow-hidden shadow-sm transition-colors ${
+            isDark
+                ? 'bg-slate-800/90 border-slate-700/80 text-slate-100 shadow-xl'
+                : 'bg-surface border-border'
+        }`}>
+            {/* Header */}
+            <div className={`flex-shrink-0 p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                isDark ? 'bg-slate-950/80 border-slate-700/80' : 'bg-surface-muted border-border'
+            }`}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                    <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center text-sm shadow-sm ${
+                        isDark ? 'bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950' : 'bg-primary-600 text-white'
+                    }`}>
                         {userName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                        <h3 className="font-bold text-content text-base">{reasonLabel}</h3>
-                        <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5">
+                        <h3 className={`font-bold text-base ${isDark ? 'text-white' : 'text-content'}`}>{reasonLabel}</h3>
+                        <p className={`text-xs flex items-center gap-1.5 mt-0.5 ${isDark ? 'text-slate-400' : 'text-content-muted'}`}>
                             <FiUser className="w-3.5 h-3.5" />
                             <span>{userName}</span>
                             <span>•</span>
-                            <span className="capitalize font-medium text-content-secondary">
+                            <span className="capitalize font-medium">
                                 {activeConversation.userRole}
                             </span>
                         </p>
@@ -152,7 +169,11 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                         <select
                             value={activeConversation.status}
                             onChange={(e) => updateStatus(activeConversation._id, e.target.value)}
-                            className="px-3 py-1.5 bg-surface border border-border rounded-xl text-xs font-semibold text-content shadow-sm focus:ring-2 focus:ring-brand-primary focus:outline-none"
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm focus:outline-none ${
+                                isDark
+                                    ? 'bg-slate-900 border border-slate-700 text-white'
+                                    : 'bg-surface border border-border text-content'
+                            }`}
                         >
                             <option value="open">Status: Open</option>
                             <option value="in_progress">Status: In Progress</option>
@@ -165,22 +186,28 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
             {/* Closed Read-Only Banner */}
             {isClosed && (
-                <div className="flex-shrink-0 bg-amber-50 border-b border-amber-200 p-2.5 px-4 flex items-center gap-2 text-xs font-semibold text-amber-800">
-                    <FiLock className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                <div className={`flex-shrink-0 border-b p-2.5 px-4 flex items-center gap-2 text-xs font-semibold ${
+                    isDark
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        : 'bg-amber-50 border-amber-200 text-amber-800'
+                }`}>
+                    <FiLock className="w-4 h-4 flex-shrink-0" />
                     <span>This conversation is closed and read-only.</span>
                 </div>
             )}
 
-            {/* Description prompt if available */}
+            {/* Description prompt */}
             {activeConversation.description && (
-                <div className="flex-shrink-0 px-4 py-2 bg-surface-muted border-b border-border-light text-xs text-content-secondary flex items-start gap-2">
-                    <span className="font-semibold text-content-secondary flex-shrink-0">Issue Detail:</span>
+                <div className={`flex-shrink-0 px-4 py-2 border-b text-xs flex items-start gap-2 ${
+                    isDark ? 'bg-slate-950/40 border-slate-700/50 text-slate-300' : 'bg-surface-muted border-border-light text-content-secondary'
+                }`}>
+                    <span className="font-semibold flex-shrink-0">Issue Detail:</span>
                     <span className="italic line-clamp-1">{activeConversation.description}</span>
                 </div>
             )}
 
-            {/* Messages Feed (Flex 1, Overflow Y Auto, Min H 0) */}
-            <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
+            {/* Messages Feed */}
+            <div className={`flex-1 overflow-y-auto min-h-0 p-4 space-y-4 ${isDark ? 'bg-slate-900/40' : ''}`}>
                 {messages.map((msg, index) => {
                     const isSystem = msg.isSystemMessage || msg.senderRole === 'system';
                     const senderRole = String(msg.senderRole || '').toLowerCase();
@@ -192,14 +219,18 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                         return (
                             <div key={msg._id || index} className="flex flex-col items-start my-2">
                                 <div className="flex items-center gap-1.5 mb-1 px-1">
-                                    <span className="text-[11px] font-semibold text-blue-700">
+                                    <span className={`text-[11px] font-semibold ${isDark ? 'text-amber-400' : 'text-blue-700'}`}>
                                         DwellMart Support
                                     </span>
                                 </div>
-                                <div className="max-w-xs md:max-w-md px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed bg-blue-50/90 text-blue-950 border border-blue-100 rounded-bl-none">
+                                <div className={`max-w-xs md:max-w-md px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed border rounded-bl-none ${
+                                    isDark
+                                        ? 'bg-amber-500/10 text-amber-200 border-amber-500/30'
+                                        : 'bg-blue-50/90 text-blue-950 border-blue-100'
+                                }`}>
                                     <p className="whitespace-pre-line leading-relaxed">{msg.message}</p>
                                     {msg.createdAt && (
-                                        <span className="text-[10px] text-blue-500 block mt-1.5">
+                                        <span className={`text-[10px] block mt-1.5 ${isDark ? 'text-amber-400/70' : 'text-blue-500'}`}>
                                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     )}
@@ -214,7 +245,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                             className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                         >
                             <div className="flex items-center gap-1.5 mb-1 px-1">
-                                <span className="text-[11px] font-semibold text-content-muted">
+                                <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-content-muted'}`}>
                                     {getSenderLabel(msg.senderRole, isMe)}
                                 </span>
                             </div>
@@ -222,8 +253,12 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                             <div
                                 className={`max-w-xs md:max-w-md px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed ${
                                     isMe
-                                        ? 'bg-primary-600 text-white rounded-br-none'
-                                        : 'bg-surface-muted text-content rounded-bl-none border border-border'
+                                        ? isDark
+                                            ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-semibold rounded-br-none shadow-md'
+                                            : 'bg-primary-600 text-white rounded-br-none'
+                                        : isDark
+                                            ? 'bg-slate-950 text-slate-100 rounded-bl-none border border-slate-700/80'
+                                            : 'bg-surface-muted text-content rounded-bl-none border border-border'
                                 }`}
                             >
                                 {msg.message && <p className="whitespace-pre-line">{msg.message}</p>}
@@ -239,8 +274,8 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                                 rel="noreferrer"
                                                 className={`flex items-center gap-2 p-2 rounded-xl text-xs font-medium transition-opacity ${
                                                     isMe
-                                                        ? 'bg-primary-700/60 text-white hover:bg-primary-700'
-                                                        : 'bg-surface text-content border border-border hover:bg-surface-muted'
+                                                        ? isDark ? 'bg-slate-950/40 text-slate-950 hover:opacity-80' : 'bg-primary-700/60 text-white hover:bg-primary-700'
+                                                        : isDark ? 'bg-slate-900 text-amber-400 border border-slate-700' : 'bg-surface text-content border border-border'
                                                 }`}
                                             >
                                                 {att.fileType === 'image' || att.url.match(/\.(jpg|jpeg|png|webp)$/i) ? (
@@ -256,7 +291,9 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
                                 <div
                                     className={`text-[10px] mt-1.5 flex items-center justify-end gap-1 ${
-                                        isMe ? 'text-primary-100' : 'text-content-muted'
+                                        isMe
+                                            ? isDark ? 'text-slate-900 font-medium' : 'text-primary-100'
+                                            : isDark ? 'text-slate-400' : 'text-content-muted'
                                     }`}
                                 >
                                     <span>
@@ -265,7 +302,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                             minute: '2-digit',
                                         })}
                                     </span>
-                                    {msg.readAt && isMe && <FiCheck className="w-3 h-3 text-brand-primary/60" />}
+                                    {msg.readAt && isMe && <FiCheck className="w-3 h-3 opacity-80" />}
                                 </div>
                             </div>
                         </div>
@@ -274,11 +311,13 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
 
                 {/* Typing Indicator */}
                 {typingUser && (
-                    <div className="flex items-center gap-2 text-xs text-content-muted italic bg-surface-muted p-2 px-3 rounded-full w-fit">
+                    <div className={`flex items-center gap-2 text-xs italic p-2 px-3 rounded-full w-fit ${
+                        isDark ? 'bg-slate-900 text-slate-400 border border-slate-700' : 'bg-surface-muted text-content-muted'
+                    }`}>
                         <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce" />
-                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce [animation-delay:0.2s]" />
-                            <span className="w-1.5 h-1.5 bg-content-muted rounded-full animate-bounce [animation-delay:0.4s]" />
+                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce" />
+                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                            <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                         </div>
                         <span>{typingUser} is typing...</span>
                     </div>
@@ -286,16 +325,20 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Attachments Draft Preview (Flex Shrink 0) */}
+            {/* Attachments Draft Preview */}
             {attachments.length > 0 && (
-                <div className="flex-shrink-0 px-4 py-2 bg-surface-muted border-t border-border-light flex flex-wrap gap-2">
+                <div className={`flex-shrink-0 px-4 py-2 border-t flex flex-wrap gap-2 ${
+                    isDark ? 'bg-slate-950/80 border-slate-700' : 'bg-surface-muted border-border-light'
+                }`}>
                     {attachments.map((att, i) => (
                         <div
                             key={i}
-                            className="flex items-center gap-1.5 bg-surface border border-border px-3 py-1 rounded-lg text-xs text-content-secondary shadow-xs"
+                            className={`flex items-center gap-1.5 border px-3 py-1 rounded-lg text-xs shadow-xs ${
+                                isDark ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-surface border-border text-content-secondary'
+                            }`}
                         >
                             <span className="truncate max-w-[120px]">{att.filename}</span>
-                            <button onClick={() => removeAttachment(i)} className="text-content-muted hover:text-status-error">
+                            <button onClick={() => removeAttachment(i)} className="text-slate-400 hover:text-red-400">
                                 <FiX className="w-3.5 h-3.5" />
                             </button>
                         </div>
@@ -303,13 +346,17 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                 </div>
             )}
 
-            {/* Input Footer (Flex Shrink 0, ALWAYS VISIBLE AT BOTTOM) */}
-            <form onSubmit={handleSend} className="flex-shrink-0 p-3 border-t border-border bg-surface">
+            {/* Input Footer */}
+            <form onSubmit={handleSend} className={`flex-shrink-0 p-3 border-t ${
+                isDark ? 'bg-slate-950/90 border-slate-700/80' : 'bg-surface border-border'
+            }`}>
                 <div className="flex items-center gap-2">
                     <label
-                        className={`p-2.5 rounded-xl cursor-pointer text-content-muted hover:text-content hover:bg-surface-muted transition-colors ${
-                            isUserReadOnly || isUploading ? 'opacity-50 pointer-events-none' : ''
-                        }`}
+                        className={`p-2.5 rounded-xl cursor-pointer transition-colors ${
+                            isDark
+                                ? 'text-slate-400 hover:text-amber-400 hover:bg-slate-900'
+                                : 'text-content-muted hover:text-content hover:bg-surface-muted'
+                        } ${isUserReadOnly || isUploading ? 'opacity-50 pointer-events-none' : ''}`}
                         title="Attach JPG, PNG, PDF (max 10MB)"
                     >
                         <FiPaperclip className="w-5 h-5" />
@@ -332,16 +379,24 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId }) => {
                                 ? 'This conversation is closed.'
                                 : 'Type your support message...'
                         }
-                        className="flex-1 px-4 py-2.5 bg-surface-muted border border-border rounded-xl text-sm text-content placeholder:text-content-muted focus:bg-surface focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all disabled:bg-surface-elevated disabled:cursor-not-allowed"
+                        className={`flex-1 px-4 py-2.5 border rounded-xl text-sm transition-all focus:outline-none ${
+                            isDark
+                                ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20'
+                                : 'bg-surface-muted border-border text-content placeholder:text-content-muted focus:bg-surface focus:ring-2 focus:ring-brand-primary'
+                        } disabled:cursor-not-allowed`}
                     />
 
                     <button
                         type="submit"
                         disabled={isUserReadOnly || isSending || (!inputMessage.trim() && attachments.length === 0)}
-                        className="p-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all flex items-center justify-center"
+                        className={`p-2.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all flex items-center justify-center ${
+                            isDark
+                                ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-bold hover:from-amber-400 hover:to-amber-500'
+                                : 'bg-primary-600 text-white hover:bg-primary-700'
+                        }`}
                     >
                         {isSending ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         ) : (
                             <FiSend className="w-5 h-5" />
                         )}

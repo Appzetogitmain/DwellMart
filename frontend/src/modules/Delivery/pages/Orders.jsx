@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiPackage, FiMapPin, FiClock, FiCheckCircle, FiXCircle, FiNavigation } from 'react-icons/fi';
+import {
+  FiPackage,
+  FiMapPin,
+  FiClock,
+  FiCheckCircle,
+  FiXCircle,
+  FiNavigation,
+  FiChevronRight,
+  FiRefreshCw,
+} from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
@@ -18,7 +27,7 @@ const DeliveryOrders = () => {
     acceptOrder,
     completeOrder,
   } = useDeliveryAuthStore();
-  const [filter, setFilter] = useState('all'); // all, pending(open), in-transit, completed
+  const [filter, setFilter] = useState('all'); // all, pending, in-transit, completed
   const [loadFailed, setLoadFailed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -41,7 +50,6 @@ const DeliveryOrders = () => {
       });
     } catch {
       setLoadFailed(true);
-      // Error toast handled by API interceptor.
     }
   };
 
@@ -49,33 +57,33 @@ const DeliveryOrders = () => {
     loadOrders(currentPage, filter);
   }, [fetchOrders, currentPage, filter]);
 
-  const getStatusColor = (status) => {
+  const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
       case 'in-transit':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
       case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'bg-red-500/10 text-red-400 border-red-500/30';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-slate-700/50 text-slate-400 border-slate-600/40';
     }
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
-        return <FiClock className="text-yellow-600" />;
+        return <FiClock className="text-yellow-400" />;
       case 'in-transit':
-        return <FiNavigation className="text-blue-600" />;
+        return <FiNavigation className="text-blue-400" />;
       case 'completed':
-        return <FiCheckCircle className="text-green-600" />;
+        return <FiCheckCircle className="text-emerald-400" />;
       case 'cancelled':
-        return <FiXCircle className="text-red-600" />;
+        return <FiXCircle className="text-red-400" />;
       default:
-        return <FiPackage className="text-gray-600" />;
+        return <FiPackage className="text-slate-400" />;
     }
   };
 
@@ -114,25 +122,34 @@ const DeliveryOrders = () => {
 
   return (
     <PageTransition>
-      <div className="px-4 py-6 space-y-4">
-        {/* Header */}
+      <div className="space-y-6 select-none">
+        {/* Header Banner */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-800/90 backdrop-blur-xl border border-amber-500/20 p-6 rounded-3xl shadow-xl"
         >
-          <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
-          <span className="text-sm text-gray-600">
-            {Number(ordersPagination?.total || orders.length)} orders
-          </span>
+          <div>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">Delivery Orders</h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Showing {Number(ordersPagination?.total || orders.length)} orders total
+            </p>
+          </div>
+
+          <button
+            onClick={() => loadOrders(currentPage, filter)}
+            className="px-4 py-2 rounded-xl bg-slate-950/80 border border-slate-700/80 text-amber-400 hover:border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <FiRefreshCw /> Refresh List
+          </button>
         </motion.div>
 
         {/* Filter Tabs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex gap-2 overflow-x-auto pb-2"
+          transition={{ delay: 0.05 }}
+          className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
         >
           {['all', 'pending', 'in-transit', 'completed'].map((tab) => (
             <button
@@ -141,10 +158,10 @@ const DeliveryOrders = () => {
                 setFilter(tab);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                 filter === tab
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 shadow-[0_4px_15px_rgba(212,175,55,0.3)]'
+                  : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1).replace('-', ' ')}
@@ -158,21 +175,21 @@ const DeliveryOrders = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              className="text-center py-16 bg-slate-800/90 rounded-3xl border border-slate-700/80 text-slate-400"
             >
-              <p className="text-gray-600">Loading orders...</p>
+              <p className="font-semibold">Loading orders...</p>
             </motion.div>
           ) : loadFailed ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              className="text-center py-16 bg-slate-800/90 rounded-3xl border border-slate-700/80 p-6"
             >
-              <FiXCircle className="text-red-400 text-5xl mx-auto mb-4" />
-              <p className="text-gray-700 mb-3">Could not load orders.</p>
+              <FiXCircle className="text-red-400 text-5xl mx-auto mb-3" />
+              <p className="text-slate-300 font-semibold mb-3">Could not load orders.</p>
               <button
                 onClick={() => loadOrders(currentPage, filter)}
-                className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-semibold"
+                className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm"
               >
                 Retry
               </button>
@@ -181,33 +198,36 @@ const DeliveryOrders = () => {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12"
+              className="text-center py-16 bg-slate-800/90 rounded-3xl border border-slate-700/80 p-6"
             >
-              <FiPackage className="text-gray-400 text-5xl mx-auto mb-4" />
-              <p className="text-gray-600">No orders found</p>
+              <FiPackage className="text-amber-500/50 text-5xl mx-auto mb-3" />
+              <p className="text-slate-300 font-bold text-base">No orders found</p>
+              <p className="text-xs text-slate-400 mt-1">There are no orders matching your current filter.</p>
             </motion.div>
           ) : (
             orders.map((order, index) => (
               <motion.div
                 key={order.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.04 }}
                 onClick={() => navigate(`/delivery/orders/${order.id}`)}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 hover:border-amber-500/40 rounded-3xl p-5 shadow-xl transition-all duration-200 cursor-pointer group"
               >
                 {/* Order Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       {getStatusIcon(order.status)}
-                      <p className="font-bold text-gray-800">{order.id}</p>
+                      <p className="font-extrabold text-white text-base group-hover:text-amber-400 transition-colors">
+                        Order #{order.id}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600">{order.customer}</p>
-                    <p className="text-xs text-gray-500">{order.phone || 'Phone unavailable'}</p>
+                    <p className="text-xs text-slate-300 font-medium">{order.customer}</p>
+                    <p className="text-[11px] text-slate-400">{order.phone || 'Phone unavailable'}</p>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                    className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getStatusBadge(
                       order.status
                     )}`}
                   >
@@ -215,33 +235,42 @@ const DeliveryOrders = () => {
                   </span>
                 </div>
 
-                {/* Address */}
-                <div className="flex items-start gap-2 mb-3 p-3 bg-gray-50 rounded-xl">
-                  <FiMapPin className="text-primary-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-gray-700">{order.address || 'Address unavailable'}</p>
+                {/* Address Box */}
+                <div className="flex items-start gap-2.5 mb-3 p-3 bg-slate-950/70 rounded-2xl border border-slate-800">
+                  <FiMapPin className="text-amber-400 mt-0.5 flex-shrink-0 text-sm" />
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    {order.address || 'Address unavailable'}
+                  </p>
                 </div>
 
-                {/* Order Details */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                {/* Details Bar */}
+                <div className="flex items-center justify-between mb-4 pt-1">
+                  <div className="flex items-center gap-4 text-xs text-slate-400">
                     <div className="flex items-center gap-1">
-                      <FiPackage />
-                      <span>{Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0)} items</span>
+                      <FiPackage className="text-slate-400" />
+                      <span>
+                        {Array.isArray(order.items)
+                          ? order.items.length
+                          : typeof order.items === 'number'
+                          ? order.items
+                          : 0}{' '}
+                        items
+                      </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <FiClock />
+                      <FiClock className="text-slate-400" />
                       <span>{order.estimatedTime || '-'}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <FiNavigation />
+                      <FiNavigation className="text-slate-400" />
                       <span>{order.distance || '-'}</span>
                     </div>
                   </div>
-                  <p className="font-bold text-primary-600">{formatPrice(order.amount)}</p>
+                  <p className="font-extrabold text-amber-400 text-base">{formatPrice(order.amount)}</p>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2">
+                {/* Actions Bar */}
+                <div className="flex gap-2 pt-1">
                   {order.status === 'pending' && (
                     <button
                       onClick={(e) => {
@@ -249,9 +278,9 @@ const DeliveryOrders = () => {
                         handleAcceptOrder(order.id);
                       }}
                       disabled={isUpdatingOrderStatus}
-                      className="flex-1 gradient-green text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-60"
                     >
-                      {isUpdatingOrderStatus ? 'Please wait...' : 'Accept Order'}
+                      {isUpdatingOrderStatus ? 'Accepting...' : 'Accept Order'}
                     </button>
                   )}
                   {order.status === 'in-transit' && (
@@ -261,9 +290,9 @@ const DeliveryOrders = () => {
                         handleCompleteOrder(order.id);
                       }}
                       disabled={isUpdatingOrderStatus}
-                      className="flex-1 gradient-green text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all disabled:opacity-60"
                     >
-                      {isUpdatingOrderStatus ? 'Please wait...' : 'Mark Complete'}
+                      {isUpdatingOrderStatus ? 'Completing...' : 'Mark Complete'}
                     </button>
                   )}
                   <button
@@ -271,9 +300,10 @@ const DeliveryOrders = () => {
                       e.stopPropagation();
                       navigate(`/delivery/orders/${order.id}`);
                     }}
-                    className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200"
+                    className="flex-1 py-3 bg-slate-950/80 border border-slate-700/80 text-slate-200 hover:text-white hover:border-amber-500/40 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1"
                   >
-                    View Details
+                    <span>View Details</span>
+                    <FiChevronRight className="text-xs" />
                   </button>
                 </div>
               </motion.div>
@@ -281,22 +311,24 @@ const DeliveryOrders = () => {
           )}
         </div>
 
+        {/* Pagination Bar */}
         {!isLoadingOrders && !loadFailed && Number(ordersPagination?.pages || 1) > 1 && (
-          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between bg-slate-800/90 border border-slate-700/80 rounded-2xl px-5 py-3 shadow-lg">
             <button
               onClick={handlePreviousPage}
               disabled={currentPage <= 1}
-              className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-300 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:border-amber-500/40 transition-colors"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-600">
-              Page {currentPage} of {Number(ordersPagination?.pages || 1)}
+            <span className="text-xs text-slate-400 font-semibold">
+              Page <strong className="text-white">{currentPage}</strong> of{' '}
+              <strong className="text-white">{Number(ordersPagination?.pages || 1)}</strong>
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage >= Number(ordersPagination?.pages || 1)}
-              className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-300 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:border-amber-500/40 transition-colors"
             >
               Next
             </button>
@@ -308,4 +340,3 @@ const DeliveryOrders = () => {
 };
 
 export default DeliveryOrders;
-

@@ -23,24 +23,8 @@ const DeliveryBottomNav = () => {
     return location.pathname.startsWith(path);
   };
 
-  // Animation variants for icon
-  const iconVariants = {
-    inactive: {
-      scale: 1,
-      color: "#878787",
-    },
-    active: {
-      scale: 1.1,
-      color: "#2874F0", // Primary color
-      transition: {
-        duration: 0.3,
-        ease: "easeOut",
-      },
-    },
-  };
-
   const navContent = (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-l border-r border-accent-200/30 z-[9999] safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t border-amber-500/20 z-[9999] safe-area-bottom lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.8)] select-none">
       <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -50,30 +34,30 @@ const DeliveryBottomNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center justify-center flex-1 h-full gap-1">
+              className="flex flex-col items-center justify-center flex-1 h-full gap-1"
+            >
               <motion.div
                 className="relative flex items-center justify-center"
-                variants={iconVariants}
-                initial="inactive"
-                animate={active ? "active" : "inactive"}>
+                initial={{ scale: 1 }}
+                animate={{ scale: active ? 1.15 : 1 }}
+                transition={{ duration: 0.2 }}
+              >
                 <Icon
-                  className="text-2xl"
-                  style={{
-                    fill: "none",
-                    stroke: "currentColor",
-                    strokeWidth: 2,
-                  }}
+                  className={`text-xl ${
+                    active ? "text-amber-400 drop-shadow-[0_0_8px_rgba(212,175,55,0.6)]" : "text-slate-400"
+                  }`}
                 />
                 {item.path === "/delivery/notifications" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-2 min-w-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold text-center leading-4">
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
               </motion.div>
               <span
-                className={`text-xs font-medium ${
-                  active ? "text-primary-600" : "text-gray-500"
-                }`}>
+                className={`text-[11px] font-bold ${
+                  active ? "text-amber-400" : "text-slate-400"
+                }`}
+              >
                 {item.label}
               </span>
             </Link>
@@ -83,7 +67,6 @@ const DeliveryBottomNav = () => {
     </nav>
   );
 
-  // Use portal to render outside of transformed containers (like PageTransition)
   return createPortal(navContent, document.body);
 };
 
