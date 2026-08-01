@@ -145,8 +145,8 @@ export const exportProductsCatalog = async (format = 'xlsx', vendorId = null) =>
 export const getAllCategories = (experience) =>
     api.get('/admin/categories', experience ? { params: { experience } } : undefined);
 
-export const getPublicCategories = () =>
-    api.get('/categories/all');
+export const getPublicCategories = (experience) =>
+    api.get('/categories', experience ? { params: { experience } } : undefined);
 
 /**
  * Quick Commerce category tree, for product forms.

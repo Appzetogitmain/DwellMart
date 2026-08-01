@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "seed:categories": "node scripts/seedCategories.js",
+    "seed:categories": "node src/scripts/seedCategories.js",
     "seed:policies": "node scripts/seedPolicies.js",
     "test": "node tests/run.mjs",
     "test:gate": "node tests/run.mjs",

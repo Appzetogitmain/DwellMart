@@ -67,10 +67,14 @@ export const toastService = {
       });
     }
 
+    // Suppress alarming 500 Server Error popups so users are not spammed with technical crash toasts
+    if (errorObj.type === ERROR_TYPES.SERVER_ERROR && !options.showServerErrorToast) {
+      return null;
+    }
+
     const title = errorObj.title !== 'Notice' ? errorObj.title : '';
-    const message = errorObj.requestId
-      ? `${errorObj.message} (Ref: ${errorObj.requestId})`
-      : errorObj.message;
+    // Show clean human-readable message without raw technical reference hashes
+    const message = errorObj.message;
 
     const toastType = errorObj.severity === ERROR_SEVERITY.INFO
       ? 'info'

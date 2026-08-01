@@ -22,10 +22,10 @@ import Notification from '../models/Notification.model.js';
 import { calculateVendorShippingForGroups } from '../services/vendorShipping.service.js';
 import { resolvePriceForQuantity } from '../services/pricingEngine.service.js';
 import { resolveVariantPrice } from '../services/variantPricing.service.js';
-import { getRequestExperience, EXPERIENCES } from '../constants/experiences.js';
+import { getRequestExperience, normalizeExperience, EXPERIENCES } from '../constants/experiences.js';
 import { buildCatalogFilter } from '../services/catalogQuery.service.js';
 import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
-import { isWholesaleMarketplaceEnabled } from '../services/featureFlags.service.js';
+import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../services/featureFlags.service.js';
 
 /**
  * Resolve which vendors can serve this customer, for Quick Commerce listings.
@@ -461,22 +461,70 @@ const getProductDetail = asyncHandler(async (req, res) => {
 // GET /api/products/:id
 router.get('/products/:id', detailCache, getProductDetail);
 
-// GET /api/categories (public)
-// Scoped to the request's shopping experience — marketplace by default, so
-// existing storefront clients see exactly the tree they see today.
-router.get('/categories/all', catalogCache, asyncHandler(async (req, res) => {
-    const exp = getRequestExperience(req);
-    const filter = { isActive: true };
+
+/**
+ * Shared category handler for GET /api/categories and GET /api/categories/all.
+ * Filters by experience query parameter (?experience=quick_commerce|marketplace|wholesale)
+ * and respects platform feature flags.
+ */
+const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
+    const rawExp = req.query?.experience || req.headers['x-experience'];
+    const exp = rawExp ? normalizeExperience(rawExp) : getRequestExperience(req);
+
+    // Feature flag enforcement
     if (exp === EXPERIENCES.QUICK_COMMERCE) {
-        filter.experience = EXPERIENCES.QUICK_COMMERCE;
-    } else {
-        filter.experience = { $ne: EXPERIENCES.QUICK_COMMERCE };
+        const qcOn = await isQuickCommerceEnabled();
+        if (!qcOn) {
+            return res.status(200).json(new ApiResponse(200, [], 'Quick Commerce is disabled.'));
+        }
+    } else if (exp === EXPERIENCES.WHOLESALE) {
+        const wholesaleOn = await isWholesaleMarketplaceEnabled();
+        if (!wholesaleOn) {
+            return res.status(200).json(new ApiResponse(200, [], 'Wholesale Marketplace is disabled.'));
+        }
     }
+
+    const filter = { isActive: true, supportedExperiences: exp };
+
     const categories = await Category.find(filter)
-        .sort({ order: 1, name: 1 })
+        .sort({ displayOrder: 1, order: 1, name: 1 })
         .lean();
-    res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));
-}));
+
+    // Compute product counts filtered by experience
+    let categoryMatch = { isActive: true };
+    const categoryIdField = exp === EXPERIENCES.QUICK_COMMERCE ? '$quickCommerceCategoryId' : '$categoryId';
+
+    if (exp === EXPERIENCES.QUICK_COMMERCE) {
+        categoryMatch.quickCommerceEnabled = true;
+    } else if (exp === EXPERIENCES.WHOLESALE) {
+        categoryMatch.wholesaleEnabled = true;
+    } else {
+        categoryMatch.retailEnabled = { $ne: false };
+    }
+
+    const productCounts = await Product.aggregate([
+        { $match: categoryMatch },
+        { $group: { _id: categoryIdField, count: { $sum: 1 } } },
+    ]);
+
+    const countMap = new Map();
+    productCounts.forEach((pc) => {
+        if (pc._id) countMap.set(String(pc._id), pc.count);
+    });
+
+    const normalized = categories.map((cat) => ({
+        ...cat,
+        id: cat._id,
+        experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
+        productCount: countMap.get(String(cat._id)) || 0,
+    }));
+
+    res.status(200).json(new ApiResponse(200, normalized, 'Categories fetched.'));
+});
+
+// GET /api/categories & GET /api/categories/all (public)
+router.get('/categories', catalogCache, getPublicCategoriesHandler);
+router.get('/categories/all', catalogCache, getPublicCategoriesHandler);
 
 // GET /api/brands (public)
 router.get('/brands/all', catalogCache, asyncHandler(async (req, res) => {

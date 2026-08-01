@@ -30,6 +30,8 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
     parentId: null,
     isActive: true,
     order: 0,
+    displayOrder: 0,
+    supportedExperiences: ["marketplace"],
   });
 
   useEffect(() => {
@@ -40,25 +42,44 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
         image: category.image || "",
         parentId: category.parentId || null,
         isActive: category.isActive !== undefined ? category.isActive : true,
-        order: category.order || 0,
+        order: category.displayOrder || category.order || 0,
+        displayOrder: category.displayOrder || category.order || 0,
+        supportedExperiences: Array.isArray(category.supportedExperiences) && category.supportedExperiences.length > 0
+          ? category.supportedExperiences
+          : [category.experience || "marketplace"],
       });
-    } else if (parentId !== null) {
+    } else {
       setFormData({
         name: "",
         description: "",
         image: "",
-        parentId: parentId,
+        parentId: parentId || null,
         isActive: true,
         order: 0,
+        displayOrder: 0,
+        supportedExperiences: experience ? [experience] : ["marketplace"],
       });
     }
-  }, [category, parentId]);
+  }, [category, parentId, experience]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value === "" ? null : value,
+    });
+  };
+
+  const handleExperienceToggle = (exp) => {
+    setFormData((prev) => {
+      const current = prev.supportedExperiences || [];
+      const updated = current.includes(exp)
+        ? current.filter((item) => item !== exp)
+        : [...current, exp];
+      return {
+        ...prev,
+        supportedExperiences: updated.length > 0 ? updated : ["marketplace"],
+      };
     });
   };
 
@@ -349,6 +370,43 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
                 </div>
               </div>
 
+              {/* Supported Experiences */}
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">
+                  Supported Experiences <span className="text-red-500">*</span>
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  Select which shopping experiences this category should appear in.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: "quick_commerce", label: "⚡ Quick Commerce (Express)" },
+                    { key: "marketplace", label: "📦 Marketplace (B2C)" },
+                    { key: "wholesale", label: "🏬 Wholesale (B2B)" },
+                  ].map((exp) => {
+                    const isChecked = (formData.supportedExperiences || []).includes(exp.key);
+                    return (
+                      <label
+                        key={exp.key}
+                        className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                          isChecked
+                            ? "border-primary-500 bg-primary-50/50 shadow-xs"
+                            : "border-gray-200 hover:border-gray-300 bg-gray-50/50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleExperienceToggle(exp.key)}
+                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-gray-800 select-none">{exp.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Settings */}
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4">
@@ -361,11 +419,12 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
                     </label>
                     <input
                       type="number"
-                      name="order"
-                      value={formData.order}
-                      onChange={handleChange}
+                      name="displayOrder"
+                      value={formData.displayOrder}
+                      onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) || 0, order: Number(e.target.value) || 0 })}
                       min="0"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="0 (Lower numbers appear first)"
                     />
                   </div>
 

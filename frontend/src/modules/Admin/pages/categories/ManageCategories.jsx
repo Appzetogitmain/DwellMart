@@ -118,18 +118,7 @@ const ManageCategories = () => {
           <p className="text-sm sm:text-base text-gray-600">View and manage product categories</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Seeding populates the standard Marketplace tree only. */}
-          {experience === 'marketplace' && (
-            <button
-              onClick={() => seedCategories()}
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all font-semibold text-sm disabled:opacity-50"
-              title="Populate/Refresh standard DwellMart Marketplace Categories"
-            >
-              <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
-              <span>Seed Categories</span>
-            </button>
-          )}
+
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"

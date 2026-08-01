@@ -167,11 +167,11 @@ router.get('/categories/feed', asyncHandler(async (req, res) => {
     const { vendors, method } = await resolveServiceableVendors(req.query, { orderableOnly: false });
 
     const categories = await Category.find({
-        experience: EXPERIENCES.QUICK_COMMERCE,
+        supportedExperiences: EXPERIENCES.QUICK_COMMERCE,
         isActive: true,
         parentId: null,
     })
-        .sort({ order: 1, name: 1 })
+        .sort({ displayOrder: 1, order: 1, name: 1 })
         .lean();
 
     // Without a location we can still render the taxonomy, just without counts.
@@ -188,7 +188,7 @@ router.get('/categories/feed', asyncHandler(async (req, res) => {
 
     // Children roll their counts up into their root.
     const children = await Category.find({
-        experience: EXPERIENCES.QUICK_COMMERCE,
+        supportedExperiences: EXPERIENCES.QUICK_COMMERCE,
         isActive: true,
         parentId: { $in: rootIds },
     })

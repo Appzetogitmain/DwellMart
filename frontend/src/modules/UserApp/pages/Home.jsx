@@ -706,9 +706,6 @@ const MobileHome = () => {
           {/* Brand Logos Scroll */}
           <BrandLogosScroll brands={computedBrands} />
 
-          {/* Categories */}
-          <MobileCategoryGrid />
-
           {/* Featured Vendors Section (Best Sellers) */}
           <FeaturedVendorsSection vendors={computedVendors} />
 

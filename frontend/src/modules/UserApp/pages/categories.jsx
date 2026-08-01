@@ -13,6 +13,7 @@ import ProductGrid from "../../../shared/components/ProductGrid";
 import api from "../../../shared/utils/api";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
+import CategoryImage from "../../../shared/components/CategoryImage";
 import { Input, EmptyState, Badge, Chip, Button, SkeletonLoader } from "../../../shared/components/ui";
 import PageSkeleton from "../../../shared/components/Skeletons/PageSkeleton";
 
@@ -97,7 +98,7 @@ const MobileCategories = () => {
 
   // Initialize store on mount
   useEffect(() => {
-    initialize();
+    initialize("marketplace");
   }, [initialize]);
 
   // Get root categories (categories without parent) and merge with fallback.
@@ -677,23 +678,15 @@ const MobileCategories = () => {
                         {isActive && (
                           <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-brand-primary shadow-sm" />
                         )}
-                        <div
-                          className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-surface-muted flex-shrink-0 transition-all duration-200 shadow-xs border ${isActive
+                        <CategoryImage
+                          src={category.image}
+                          alt={category.name}
+                          name={category.name}
+                          containerClassName={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl overflow-hidden bg-surface-muted flex-shrink-0 transition-all duration-200 shadow-xs border ${isActive
                             ? 'ring-2 ring-brand-primary ring-offset-2 scale-105 border-brand-primary shadow-md'
                             : 'border-border hover:border-brand-primary/50'
                             }`}
-                          style={{
-                            willChange: isActive ? "transform" : "auto",
-                          }}>
-                          <LazyImage
-                            src={category.image}
-                            alt={category.name}
-                            className="w-full h-full object-cover"
-                            placeholderWidth={64}
-                            placeholderHeight={64}
-                            placeholderText={category.name}
-                          />
-                        </div>
+                        />
                         <span
                           className={`text-xs sm:text-xs md:text-sm font-semibold text-center leading-snug transition-colors line-clamp-2 px-1 ${isActive ? 'text-brand-primary font-bold' : 'text-content-secondary'
                             }`}>

@@ -220,55 +220,7 @@ const calculateVariantAggregateStock = (variants = {}) => {
     }, 0);
 };
 
-const sanitizeCategoryPayload = (payload = {}) => {
-    const allowed = ['name', 'description', 'image', 'icon', 'parentId', 'order', 'isActive', 'experience'];
-    const sanitized = {};
-    for (const key of allowed) {
-        if (Object.prototype.hasOwnProperty.call(payload, key)) {
-            sanitized[key] = payload[key];
-        }
-    }
-    if (Object.prototype.hasOwnProperty.call(sanitized, 'parentId')) {
-        sanitized.parentId = sanitized.parentId || null;
-    }
-    if (Object.prototype.hasOwnProperty.call(sanitized, 'experience')) {
-        sanitized.experience = normalizeExperience(sanitized.experience);
-    }
-    return sanitized;
-};
 
-const assertValidCategoryParent = async ({ categoryId = null, parentId, experience }) => {
-    if (!parentId) return;
-
-    if (categoryId && String(categoryId) === String(parentId)) {
-        throw new ApiError(400, 'Category cannot be parent of itself.');
-    }
-
-    const parent = await Category.findById(parentId).select('_id parentId experience');
-    if (!parent) {
-        throw new ApiError(400, 'Selected parent category does not exist.');
-    }
-
-    // A category tree may never span experiences — a Quick Commerce category
-    // cannot hang off a Marketplace parent or vice versa.
-    if (experience) {
-        const parentExperience = normalizeExperience(parent.experience);
-        if (parentExperience !== experience) {
-            throw new ApiError(400, 'Parent category belongs to a different shopping experience.');
-        }
-    }
-
-    // Prevent cycles when changing parent during edit.
-    if (categoryId) {
-        let cursor = parent;
-        while (cursor?.parentId) {
-            if (String(cursor.parentId) === String(categoryId)) {
-                throw new ApiError(400, 'Invalid parent category hierarchy.');
-            }
-            cursor = await Category.findById(cursor.parentId).select('_id parentId');
-        }
-    }
-};
 
 const sanitizeBrandPayload = (payload = {}) => {
     const allowed = ['name', 'logo', 'description', 'website', 'isActive'];
@@ -568,26 +520,71 @@ export const updateTaxPricingRules = asyncHandler(async (req, res) => {
     );
 });
 
+const sanitizeCategoryPayload = (payload = {}) => {
+    const allowed = ['name', 'description', 'image', 'icon', 'parentId', 'order', 'displayOrder', 'isActive', 'experience', 'supportedExperiences'];
+    const sanitized = {};
+    for (const key of allowed) {
+        if (Object.prototype.hasOwnProperty.call(payload, key)) {
+            sanitized[key] = payload[key];
+        }
+    }
+    if (Object.prototype.hasOwnProperty.call(sanitized, 'parentId')) {
+        sanitized.parentId = sanitized.parentId || null;
+    }
+
+    // Convert legacy single experience to supportedExperiences array if provided
+    if (Array.isArray(sanitized.supportedExperiences) && sanitized.supportedExperiences.length > 0) {
+        sanitized.supportedExperiences = sanitized.supportedExperiences.map(normalizeExperience);
+    } else if (sanitized.experience) {
+        sanitized.supportedExperiences = [normalizeExperience(sanitized.experience)];
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sanitized, 'displayOrder')) {
+        sanitized.displayOrder = Number(sanitized.displayOrder) || 0;
+    }
+
+    return sanitized;
+};
+
+const assertValidCategoryParent = async ({ categoryId = null, parentId, supportedExperiences = [] }) => {
+    if (!parentId) return;
+
+    if (categoryId && String(categoryId) === String(parentId)) {
+        throw new ApiError(400, 'Category cannot be parent of itself.');
+    }
+
+    const parent = await Category.findById(parentId).select('_id parentId supportedExperiences');
+    if (!parent) {
+        throw new ApiError(400, 'Selected parent category does not exist.');
+    }
+};
+
 // GET /api/admin/categories
 export const getAllCategories = asyncHandler(async (req, res) => {
-    // Admin manages one tree at a time. An explicit `?experience=` wins; without
-    // it we fall back to the request experience (marketplace by default), so
-    // existing callers keep seeing exactly the tree they see today.
-    const filter = {
-        experience: normalizeExperience(req.query?.experience ?? req.experience),
-    };
-    const categories = await Category.find(filter).sort({ order: 1, name: 1 });
+    const requestedExp = req.query?.experience ? normalizeExperience(req.query.experience) : null;
+    const filter = {};
+    if (requestedExp) {
+        filter.supportedExperiences = requestedExp;
+    }
+    const categories = await Category.find(filter).sort({ displayOrder: 1, order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));
 });
 
 // POST /api/admin/categories
 export const createCategory = asyncHandler(async (req, res) => {
     const payload = sanitizeCategoryPayload(req.body);
-    const { name, experience: payloadExperience, ...rest } = payload;
-    const experience = normalizeExperience(payloadExperience ?? req.experience);
-    await assertValidCategoryParent({ parentId: rest.parentId, experience });
+    const { name, ...rest } = payload;
+
     const slug = slugify(name);
-    const category = await Category.create({ name, slug, experience, ...rest });
+    const existingSlug = await Category.findOne({ slug });
+    if (existingSlug) {
+        throw new ApiError(400, `Category slug '${slug}' already exists.`);
+    }
+
+    const supportedExperiences = rest.supportedExperiences || [normalizeExperience(req.experience || EXPERIENCES.MARKETPLACE)];
+    await assertValidCategoryParent({ parentId: rest.parentId, supportedExperiences });
+
+    const category = await Category.create({ name, slug, supportedExperiences, ...rest });
     res.status(201).json(new ApiResponse(201, category, 'Category created.'));
 });
 
@@ -597,20 +594,22 @@ export const updateCategory = asyncHandler(async (req, res) => {
     if (!existingCategory) throw new ApiError(404, 'Category not found.');
 
     const payload = sanitizeCategoryPayload(req.body);
-    // Experience is immutable after creation: moving a category between trees
-    // would strand its children and any products referencing it.
-    delete payload.experience;
-    const experience = normalizeExperience(existingCategory.experience);
 
+    if (payload.name) {
+        const slug = slugify(payload.name);
+        const duplicateSlug = await Category.findOne({ slug, _id: { $ne: req.params.id } });
+        if (duplicateSlug) {
+            throw new ApiError(400, `Category slug '${slug}' already exists.`);
+        }
+        payload.slug = slug;
+    }
+
+    const supportedExperiences = payload.supportedExperiences || existingCategory.supportedExperiences;
     await assertValidCategoryParent({
         categoryId: existingCategory._id,
         parentId: payload.parentId,
-        experience,
+        supportedExperiences,
     });
-
-    if (payload.name) {
-        payload.slug = slugify(payload.name);
-    }
 
     const category = await Category.findByIdAndUpdate(req.params.id, payload, {
         new: true,
@@ -656,23 +655,16 @@ export const reorderCategories = asyncHandler(async (req, res) => {
     const rootCategories = await Category.find({
         _id: { $in: uniqueIds },
         parentId: null,
-    }).select('_id experience');
+    }).select('_id supportedExperiences');
 
     if (rootCategories.length !== uniqueIds.length) {
         throw new ApiError(400, 'Only root categories can be reordered.');
     }
 
-    // Ordering is per-tree; a single reorder must not mix experiences.
-    const experiences = new Set(rootCategories.map((cat) => normalizeExperience(cat.experience)));
-    if (experiences.size > 1) {
-        throw new ApiError(400, 'Categories from different shopping experiences cannot be reordered together.');
-    }
-    const experience = experiences.values().next().value || normalizeExperience(req.experience);
-
     const bulkUpdates = uniqueIds.map((id, index) => ({
         updateOne: {
             filter: { _id: id },
-            update: { $set: { order: index + 1 } },
+            update: { $set: { displayOrder: index + 1, order: index + 1 } },
         },
     }));
 
@@ -680,7 +672,7 @@ export const reorderCategories = asyncHandler(async (req, res) => {
         await Category.bulkWrite(bulkUpdates);
     }
 
-    const categories = await Category.find({ experience }).sort({ order: 1, name: 1 });
+    const categories = await Category.find({}).sort({ displayOrder: 1, order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Category order updated.'));
 });
 
@@ -689,7 +681,7 @@ export const seedMarketplaceCategories = asyncHandler(async (req, res) => {
     const stats = await seedCategoriesInDb();
     // Seeded categories are Marketplace-only; return that tree explicitly so the
     // response cannot surface Quick Commerce categories.
-    const categories = await Category.find({ experience: EXPERIENCES.MARKETPLACE })
+    const categories = await Category.find({ supportedExperiences: EXPERIENCES.MARKETPLACE })
         .sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, { stats, categories }, 'Marketplace categories seeded successfully.'));
 });

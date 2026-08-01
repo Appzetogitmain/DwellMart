@@ -34,7 +34,7 @@ export const useCategoryStore = create(
             window.location.pathname.startsWith('/admin');
           const response = isAdminArea
             ? await getAllCategories(experience)
-            : await getPublicCategories();
+            : await getPublicCategories(experience);
           const normalizedCategories = response.data.map(cat => ({
             ...cat,
             id: cat._id // Ensure UI compatibility by aliasing _id to id

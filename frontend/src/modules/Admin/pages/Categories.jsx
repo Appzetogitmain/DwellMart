@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FiPlus, FiSearch, FiTrash2, FiFilter } from "react-icons/fi";
+import { FiPlus, FiSearch, FiTrash2, FiFilter, FiRefreshCw } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 import CategoryForm from "../components/Categories/CategoryForm";
@@ -7,7 +7,6 @@ import CategoryTree from "../components/Categories/CategoryTree";
 import ExportButton from "../components/ExportButton";
 import Pagination from "../components/Pagination";
 import AnimatedSelect from "../components/AnimatedSelect";
-import { formatCurrency } from "../utils/adminHelpers";
 import toast from "react-hot-toast";
 import Button from "../components/Button";
 
@@ -17,11 +16,13 @@ const Categories = () => {
     initialize,
     deleteCategory,
     bulkDeleteCategories,
-    getCategories,
+    seedCategories,
   } = useCategoryStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedExperience, setSelectedExperience] = useState("all");
+  const [isSeeding, setIsSeeding] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -34,6 +35,21 @@ const Categories = () => {
   useEffect(() => {
     initialize();
   }, []);
+
+  const handleSeed = async () => {
+    if (window.confirm("Seed default categories for Quick Commerce, Marketplace, and Wholesale? Existing matching categories will be updated.")) {
+      setIsSeeding(true);
+      try {
+        await seedCategories();
+        await initialize();
+        toast.success("Categories seeded successfully!");
+      } catch (err) {
+        toast.error("Failed to seed categories");
+      } finally {
+        setIsSeeding(false);
+      }
+    }
+  };
 
   // Filtered categories
   const filteredCategories = useMemo(() => {
@@ -51,9 +67,15 @@ const Categories = () => {
         (selectedStatus === "active" && category.isActive) ||
         (selectedStatus === "inactive" && !category.isActive);
 
-      return matchesSearch && matchesStatus;
+      const matchesExperience =
+        selectedExperience === "all" ||
+        (Array.isArray(category.supportedExperiences)
+          ? category.supportedExperiences.includes(selectedExperience)
+          : category.experience === selectedExperience);
+
+      return matchesSearch && matchesStatus && matchesExperience;
     });
-  }, [categories, searchQuery, selectedStatus]);
+  }, [categories, searchQuery, selectedStatus, selectedExperience]);
 
   // Pagination for list view
   const paginatedCategories = useMemo(() => {
@@ -179,6 +201,19 @@ const Categories = () => {
 
           {/* Filters Row - Desktop */}
           <div className="hidden sm:flex items-center gap-2 sm:gap-3 mt-3 sm:mt-0">
+            {/* Experience Filter */}
+            <AnimatedSelect
+              value={selectedExperience}
+              onChange={(e) => setSelectedExperience(e.target.value)}
+              options={[
+                { value: "all", label: "All Experiences" },
+                { value: "quick_commerce", label: "Quick Commerce" },
+                { value: "marketplace", label: "Marketplace" },
+                { value: "wholesale", label: "Wholesale" },
+              ]}
+              className="flex-shrink-0 min-w-[160px]"
+            />
+
             {/* Status Filter */}
             <AnimatedSelect
               value={selectedStatus}
