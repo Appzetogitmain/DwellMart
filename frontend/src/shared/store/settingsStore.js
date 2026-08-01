@@ -28,19 +28,12 @@ export const useSettingsStore = create((set, get) => ({
   isLoading: false,
   isInitialized: false,
 
-  // Initialize and fetch settings from API (with public fallback)
+  // Initialize and fetch public settings from API
   initialize: async () => {
     if (get().isInitialized && get().settings?.general?.storeName) return;
     set({ isLoading: true });
     try {
-      // Try admin endpoint first, fallback to public endpoint
-      let res;
-      try {
-        res = await api.get("/admin/settings/general");
-      } catch (err) {
-        res = await api.get("/settings/general");
-      }
-
+      const res = await api.get("/settings/general");
       const data = res?.data?.data || res?.data || {};
       const mergedGeneral = {
         ...defaultGeneralSettings,
@@ -54,22 +47,12 @@ export const useSettingsStore = create((set, get) => ({
       let features = {};
       let reviews = {};
       try {
-        let fRes;
-        try {
-          fRes = await api.get("/admin/settings/features");
-        } catch (e) {
-          fRes = await api.get("/settings/features");
-        }
+        const fRes = await api.get("/settings/features");
         features = fRes?.data?.data || fRes?.data || {};
       } catch (e) {}
 
       try {
-        let rRes;
-        try {
-          rRes = await api.get("/admin/settings/reviews");
-        } catch (e) {
-          rRes = await api.get("/settings/reviews");
-        }
+        const rRes = await api.get("/settings/reviews");
         reviews = rRes?.data?.data || rRes?.data || {};
       } catch (e) {}
 
