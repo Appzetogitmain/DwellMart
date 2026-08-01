@@ -158,6 +158,35 @@ export const useDeliveryStore = create(
                 toastService.error(error, 'Failed to settle cash');
                 return false;
             }
+        },
+
+        updateExperiences: async (id, experiences) => {
+            try {
+                const response = await adminService.updateDeliveryBoyExperiences(id, experiences);
+                const updated = response?.data || {};
+                set((state) => ({
+                    deliveryBoys: state.deliveryBoys.map((b) =>
+                        String(b.id) === String(id) ? { ...b, experiences: updated.experiences || experiences } : b
+                    )
+                }));
+                toastService.success('Rider experience updated successfully');
+                return true;
+            } catch (error) {
+                toastService.error(error, 'Failed to update rider experience');
+                return false;
+            }
+        },
+
+        bulkUpdateExperiences: async (deliveryBoyIds, experiences) => {
+            try {
+                await adminService.bulkUpdateDeliveryBoyExperiences(deliveryBoyIds, experiences);
+                await get().fetchDeliveryBoys();
+                toastService.success('Bulk rider experiences updated successfully');
+                return true;
+            } catch (error) {
+                toastService.error(error, 'Failed bulk update rider experiences');
+                return false;
+            }
         }
     })
 );

@@ -47,3 +47,20 @@ export const updateDeliveryApplicationStatusSchema = Joi.object({
 export const settleCashSchema = Joi.object({
     amount: Joi.number().min(0).optional(),
 });
+
+export const updateDeliveryBoyExperiencesSchema = Joi.object({
+    experiences: Joi.array()
+        .items(Joi.string().valid('marketplace', 'quick_commerce'))
+        .min(1)
+        .unique()
+        .required(),
+});
+
+export const bulkUpdateDeliveryBoyExperiencesSchema = Joi.object({
+    deliveryBoyIds: Joi.array().items(objectId).min(1).required(),
+    experiences: Joi.array()
+        .items(Joi.string().valid('marketplace', 'quick_commerce'))
+        .min(1)
+        .unique()
+        .required(),
+});

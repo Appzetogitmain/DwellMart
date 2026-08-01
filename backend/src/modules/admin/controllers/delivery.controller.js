@@ -448,3 +448,79 @@ export const settleCash = asyncHandler(async (req, res) => {
         )
     );
 });
+
+/**
+ * @desc    Update delivery boy experience enrolment (e.g. marketplace, quick_commerce)
+ * @route   PUT /api/admin/delivery-boys/:id/experiences
+ * @access  Private (Admin)
+ */
+export const updateDeliveryBoyExperiences = asyncHandler(async (req, res) => {
+    const { experiences } = req.body;
+    const { id } = req.params;
+
+    const boy = await DeliveryBoy.findById(id);
+    if (!boy) {
+        throw new ApiError(404, 'Delivery boy not found.');
+    }
+
+    const currentExperiences = Array.isArray(boy.experiences) ? boy.experiences : ['marketplace'];
+    const removingQuickCommerce = currentExperiences.includes('quick_commerce') && !experiences.includes('quick_commerce');
+
+    if (removingQuickCommerce) {
+        // Guard: Rider cannot be unenrolled from Quick Commerce if they hold an active QC order
+        const activeQcOrder = await Order.findOne({
+            deliveryBoyId: id,
+            experience: 'quick_commerce',
+            status: { $in: ['accepted', 'preparing', 'ready', 'picked_up', 'arriving'] },
+        });
+
+        if (activeQcOrder || boy.activeOrderId) {
+            throw new ApiError(400, 'Cannot remove Quick Commerce enrolment from a rider who holds an active Quick Commerce order.');
+        }
+    }
+
+    boy.experiences = experiences;
+    await boy.save();
+
+    res.status(200).json(new ApiResponse(200, boy, 'Rider experience enrolment updated.'));
+});
+
+/**
+ * @desc    Bulk update delivery boys experience enrolment
+ * @route   PUT /api/admin/delivery-boys/bulk-experiences
+ * @access  Private (Admin)
+ */
+export const bulkUpdateDeliveryBoyExperiences = asyncHandler(async (req, res) => {
+    const { deliveryBoyIds, experiences } = req.body;
+
+    const boys = await DeliveryBoy.find({ _id: { $in: deliveryBoyIds } });
+    if (!boys.length) {
+        throw new ApiError(404, 'No delivery boys found.');
+    }
+
+    const updatedIds = [];
+    const skippedIds = [];
+
+    for (const boy of boys) {
+        const currentExperiences = Array.isArray(boy.experiences) ? boy.experiences : ['marketplace'];
+        const removingQuickCommerce = currentExperiences.includes('quick_commerce') && !experiences.includes('quick_commerce');
+
+        if (removingQuickCommerce) {
+            const activeQcOrder = await Order.findOne({
+                deliveryBoyId: boy._id,
+                experience: 'quick_commerce',
+                status: { $in: ['accepted', 'preparing', 'ready', 'picked_up', 'arriving'] },
+            });
+            if (activeQcOrder || boy.activeOrderId) {
+                skippedIds.push(String(boy._id));
+                continue;
+            }
+        }
+
+        boy.experiences = experiences;
+        await boy.save();
+        updatedIds.push(String(boy._id));
+    }
+
+    res.status(200).json(new ApiResponse(200, { updatedIds, skippedIds }, `Enrolled ${updatedIds.length} riders.`));
+});

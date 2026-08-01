@@ -23,6 +23,7 @@ import {
   getVendorById,
   getBrandById,
 } from "../data/catalogData";
+import { useSettingsStore } from "../../../shared/store/settingsStore";
 import api from "../../../shared/utils/api";
 import { formatPrice, getImageUrl, calculateDiscount } from "../../../shared/utils/helpers";
 import Price from "../../../shared/components/Price";
@@ -263,10 +264,12 @@ const MobileProductDetail = () => {
   }, [product]);
 
   // ── Wholesale bulk pricing (preview only; checkout re-derives server-side) ──
-  const vendorWholesaleEnabled = vendor?.sellingChannels?.wholesale?.enabled !== false;
+  const { settings } = useSettingsStore();
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  const vendorWholesaleEnabled = wholesaleMarketplaceEnabled && vendor?.sellingChannels?.wholesale?.enabled === true;
   const wholesaleTiers = useMemo(
-    () => normalizeTiers(product?.wholesale?.priceTiers),
-    [product?.wholesale?.priceTiers]
+    () => (wholesaleMarketplaceEnabled ? normalizeTiers(product?.wholesale?.priceTiers) : []),
+    [wholesaleMarketplaceEnabled, product?.wholesale?.priceTiers]
   );
   const variantBasePrice = useMemo(
     () => resolveVariantPrice(product, selectedVariant),
@@ -280,7 +283,10 @@ const MobileProductDetail = () => {
     [product, variantBasePrice, quantity, vendorWholesaleEnabled]
   );
   const hasWholesale =
-    product?.wholesaleEnabled === true && vendorWholesaleEnabled && wholesaleTiers.length > 0;
+    wholesaleMarketplaceEnabled &&
+    product?.wholesaleEnabled === true &&
+    vendorWholesaleEnabled &&
+    wholesaleTiers.length > 0;
   const isRetailAvailable = product?.retailEnabled !== false;
   const isWholesaleOnly = hasWholesale && !isRetailAvailable;
   const belowMinimumOrder = isBelowMinimumOrder(bulkPricing);

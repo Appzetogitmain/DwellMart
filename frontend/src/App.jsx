@@ -57,6 +57,8 @@ import CustomerDetailPage from "./modules/Admin/pages/customers/CustomerDetailPa
 import DeliveryBoys from "./modules/Admin/pages/delivery/DeliveryBoys";
 import CashCollection from "./modules/Admin/pages/delivery/CashCollection";
 import AssignDelivery from "./modules/Admin/pages/delivery/AssignDelivery";
+import QuickCommerceOperations from "./modules/Admin/pages/QuickCommerceOperations";
+import QuickCommerceSettings from "./modules/Admin/pages/settings/QuickCommerceSettings";
 // Vendors child pages
 import Vendors from "./modules/Admin/pages/Vendors";
 import ManageVendors from "./modules/Admin/pages/vendors/ManageVendors";
@@ -207,7 +209,16 @@ import VendorReports from "./modules/Vendor/pages/Reports";
 import VendorLanguageSettings from "./modules/Vendor/pages/LanguageSettings";
 import VendorSubscriptionManagement from "./modules/Vendor/pages/SubscriptionManagement";
 import DesignSystemShowcase from "./shared/components/ui/Showcase/DesignSystemShowcase";
-import { ToastProvider } from "./shared/components/ui";
+import { useSettingsStore } from "./shared/store/settingsStore";
+
+const QuickCommerceRoute = ({ children }) => {
+  const { settings } = useSettingsStore();
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
+  if (!quickCommerceEnabled) {
+    return <Navigate to="/home" replace />;
+  }
+  return children;
+};
 
 // Inner component that has access to useLocation
 const AppRoutes = () => {
@@ -234,7 +245,9 @@ const AppRoutes = () => {
         path="/quick"
         element={
           <RouteWrapper>
-            <QuickCommerceHome />
+            <QuickCommerceRoute>
+              <QuickCommerceHome />
+            </QuickCommerceRoute>
           </RouteWrapper>
         }
       />
@@ -611,6 +624,14 @@ const AppRoutes = () => {
         <Route
           path="analytics/quick-commerce"
           element={<AdminRouteGuard permission="quickcommerce.analytics.view"><AdminQuickCommerceAnalytics /></AdminRouteGuard>}
+        />
+        <Route
+          path="quick-commerce/operations"
+          element={<AdminRouteGuard permission="quickcommerce.orders.manage"><QuickCommerceOperations /></AdminRouteGuard>}
+        />
+        <Route
+          path="settings/quick-commerce"
+          element={<AdminRouteGuard permission="quickcommerce.settings.manage"><QuickCommerceSettings /></AdminRouteGuard>}
         />
         <Route
           path="settings"

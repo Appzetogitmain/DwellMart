@@ -139,6 +139,7 @@ router.patch('/orders/:id/quick-status', ...vendorAuth, validate(vendorQuickComm
 router.post('/orders/:id/partial-fulfilment', ...vendorAuth, orderController.markPartialFulfilment);
 router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, orderController.acknowledgeQuickCommerceOrder);
 router.get('/quick-commerce/dashboard', ...vendorAuth, orderController.getQuickCommerceVendorDashboard);
+router.get('/quick-commerce/unacknowledged-alerts', ...vendorAuth, orderController.getUnacknowledgedVendorAlerts);
 
 // Customers
 router.get('/customers', ...vendorAuth, customerController.getVendorCustomers);

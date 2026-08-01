@@ -58,8 +58,37 @@ const QuickCommerceOrderAlert = () => {
   const audioContextRef = useRef(null);
 
   useEffect(() => {
+    let isMounted = true;
+    const fetchUnacknowledged = async () => {
+      try {
+        const res = await api.get('/vendor/quick-commerce/unacknowledged-alerts');
+        if (!isMounted) return;
+        const unack = res?.data || [];
+        if (Array.isArray(unack) && unack.length > 0) {
+          const mapped = unack.map((ord) => ({
+            orderRefId: String(ord._id || ord.orderId),
+            orderId: String(ord.orderId || ord._id),
+            items: Array.isArray(ord.items) ? ord.items.length : 1,
+            promisedEtaMinutes: ord.quickCommerce?.promisedEtaMinutes || 15,
+          }));
+          setAlerts((prev) => {
+            const existingIds = new Set(prev.map((a) => a.orderRefId));
+            const newAlerts = mapped.filter((a) => !existingIds.has(a.orderRefId));
+            if (newAlerts.length > 0) {
+              playAlertTone(audioContextRef);
+            }
+            return [...prev, ...newAlerts];
+          });
+        }
+      } catch {
+        // Silent catch
+      }
+    };
+
+    fetchUnacknowledged();
+
     const socket = connectSocket();
-    if (!socket) return undefined;
+    if (!socket) return () => { isMounted = false; };
 
     const handleAlert = (payload) => {
       if (!payload?.orderRefId) return;
@@ -73,6 +102,7 @@ const QuickCommerceOrderAlert = () => {
 
     socket.on("quick_commerce_order_alert", handleAlert);
     return () => {
+      isMounted = false;
       socket.off("quick_commerce_order_alert", handleAlert);
     };
   }, []);

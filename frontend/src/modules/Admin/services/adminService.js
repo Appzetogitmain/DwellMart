@@ -263,6 +263,12 @@ export const updateDeliveryBoy = (id, data) =>
 export const deleteDeliveryBoy = (id) =>
     api.delete(`/admin/delivery-boys/${id}`);
 
+export const updateDeliveryBoyExperiences = (id, experiences) =>
+    api.put(`/admin/delivery-boys/${id}/experiences`, { experiences });
+
+export const bulkUpdateDeliveryBoyExperiences = (deliveryBoyIds, experiences) =>
+    api.put('/admin/delivery-boys/bulk-experiences', { deliveryBoyIds, experiences });
+
 // ─── Return Requests ──────────────────────────────────────────────────────────
 export const getAllReturnRequests = (params = {}) =>
     api.get('/admin/return-requests', { params });

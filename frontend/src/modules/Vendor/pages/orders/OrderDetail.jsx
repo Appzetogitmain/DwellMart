@@ -14,6 +14,7 @@ import { formatPrice } from '../../../../shared/utils/helpers';
 import Badge from '../../../../shared/components/Badge';
 import WholesaleBadge from '../../../../shared/components/WholesaleBadge';
 import AnimatedSelect from '../../../Admin/components/AnimatedSelect';
+import QuickCommerceOrderPanel from '../../components/QuickCommerceOrderPanel';
 import toast from 'react-hot-toast';
 
 const OrderDetail = () => {
@@ -168,19 +169,40 @@ const OrderDetail = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <AnimatedSelect
-                        options={visibleStatusOptions}
-                        value={currentStatus}
-                        onChange={(e) => handleStatusChange(e.target.value)}
-                        disabled={updatingStatus}
-                        color={
-                            visibleStatusOptions.find((opt) => opt.value === currentStatus)
-                                ?.color || 'gray'
-                        }
-                    />
-                </div>
+                {order.experience !== 'quick_commerce' && (
+                    <div className="flex items-center gap-3">
+                        <AnimatedSelect
+                            options={visibleStatusOptions}
+                            value={currentStatus}
+                            onChange={(e) => handleStatusChange(e.target.value)}
+                            disabled={updatingStatus}
+                            color={
+                                visibleStatusOptions.find((opt) => opt.value === currentStatus)
+                                    ?.color || 'gray'
+                            }
+                        />
+                    </div>
+                )}
             </div>
+
+            {order.experience === 'quick_commerce' && (
+                <QuickCommerceOrderPanel
+                    order={order}
+                    vendorId={vendorId}
+                    onStatusUpdated={(updated) => {
+                        const newStatus = typeof updated === 'string' ? updated : (updated.status || 'accepted');
+                        setOrder((prev) => ({
+                            ...prev,
+                            status: newStatus,
+                            vendorItems: prev.vendorItems?.map((vi) =>
+                                vi.vendorId?.toString() === vendorId?.toString()
+                                    ? { ...vi, status: newStatus }
+                                    : vi
+                            ),
+                        }));
+                    }}
+                />
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Content */}

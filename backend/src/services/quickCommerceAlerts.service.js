@@ -143,6 +143,7 @@ export const escalateUnacknowledgedOrder = async (order) => {
 
     await Notification.updateMany(
         {
+            recipientType: 'vendor',
             priority: 'urgent',
             escalatedAt: { $exists: false },
             'data.orderRefId': String(order._id),
