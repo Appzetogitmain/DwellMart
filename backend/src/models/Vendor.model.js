@@ -241,6 +241,9 @@ vendorSchema.methods.toPublicVendor = function () {
     };
 };
 
+vendorSchema.index({ status: 1, 'sellingChannels.wholesale.enabled': 1 });
+vendorSchema.index({ 'sellingChannels.wholesale.enabled': 1 });
+
 const Vendor = mongoose.model('Vendor', vendorSchema);
 export { Vendor };
 export default Vendor;

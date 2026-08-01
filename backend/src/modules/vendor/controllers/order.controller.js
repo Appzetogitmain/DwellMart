@@ -48,14 +48,17 @@ const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
 
 // GET /api/vendor/orders
 export const getVendorOrders = asyncHandler(async (req, res) => {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, orderType, type, page = 1, limit = 20 } = req.query;
+    const targetOrderType = orderType || type;
     const numericPage = Math.max(1, Number(page) || 1);
     const numericLimit = Math.max(1, Number(limit) || 20);
     const skip = (numericPage - 1) * numericLimit;
 
-    const filter = status
-        ? { vendorItems: { $elemMatch: { vendorId: req.user.id, status } } }
-        : { 'vendorItems.vendorId': req.user.id };
+    const elemMatch = { vendorId: req.user.id };
+    if (status) elemMatch.status = status;
+    if (targetOrderType) elemMatch.orderType = targetOrderType;
+
+    const filter = { vendorItems: { $elemMatch: elemMatch } };
 
     const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit);
     const total = await Order.countDocuments(filter);
