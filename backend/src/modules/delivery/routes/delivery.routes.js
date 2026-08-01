@@ -62,6 +62,9 @@ router.patch(
     orderController.updateQuickCommerceStatus
 );
 router.post('/orders/:id/resend-delivery-otp', ...deliveryAuth, orderController.resendDeliveryOtp);
+router.post('/orders/:id/customer-unreachable', ...deliveryAuth, orderController.markCustomerUnreachable);
+router.post('/orders/:id/schedule-retry', ...deliveryAuth, orderController.scheduleDeliveryRetry);
+router.post('/orders/:id/return-to-store', ...deliveryAuth, orderController.returnToStore);
 
 // Live tracking — the rider reports position, the customer's order room receives it.
 router.patch(

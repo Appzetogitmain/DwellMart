@@ -15,6 +15,7 @@ import {
 import { EXPERIENCES } from '../../../constants/experiences.js';
 import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
 import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
+import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
 import {
     baseQuickCommerceMatch,
     resolveDateRange,
@@ -484,4 +485,20 @@ export const requestPayout = asyncHandler(async (req, res) => {
     });
 
     res.status(201).json(new ApiResponse(201, settlement, 'Payout request submitted successfully.'));
+});
+
+// POST /api/vendor/orders/:id/partial-fulfilment
+export const markPartialFulfilment = asyncHandler(async (req, res) => {
+    const { unavailableItems, reason, notes } = req.body;
+    const { id } = req.params;
+
+    const order = await processPartialFulfilment({
+        orderId: id,
+        vendorId: req.user.id,
+        unavailableItems,
+        reason,
+        notes,
+    });
+
+    res.status(200).json(new ApiResponse(200, order, 'Partial fulfilment processed successfully.'));
 });

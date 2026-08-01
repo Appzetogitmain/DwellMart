@@ -135,6 +135,7 @@ router.get('/orders/:id', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getO
 router.patch('/orders/:id/status', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.updateOrderStatus);
 router.patch('/orders/:id/assign-delivery', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.assignDeliveryBoy);
 router.post('/orders/:id/retry-assignment', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.retryQuickCommerceAssignment);
+router.post('/orders/:id/delivery-override', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.deliveryOverride);
 router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
 // ─── Products ─────────────────────────────────────────────────────────────────

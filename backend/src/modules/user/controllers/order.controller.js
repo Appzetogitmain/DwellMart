@@ -637,6 +637,13 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 total,
                 orderType,
                 experience,
+                returnPolicy: {
+                    type: experience === EXPERIENCES.QUICK_COMMERCE ? 'quick_commerce' : 'marketplace',
+                    windowHours: experience === EXPERIENCES.QUICK_COMMERCE ? 24 : 168,
+                    eligible: true,
+                    refundOnly: false,
+                    allowedReasons: ['damaged', 'wrong_item', 'expired', 'missing_item'],
+                },
                 ...(quickCommercePayload ? { quickCommerce: quickCommercePayload } : {}),
                 totalSavings: orderSavings,
                 couponCode: couponCode?.toUpperCase(),
@@ -990,6 +997,19 @@ export const createReturnRequest = asyncHandler(async (req, res) => {
     if (!order) throw new ApiError(404, 'Order not found.');
     if (order.status !== 'delivered') {
         throw new ApiError(400, 'Return can only be requested for delivered orders.');
+    }
+
+    // Experience-aware return policy validation
+    const windowHours = order.returnPolicy?.windowHours ?? (order.experience === EXPERIENCES.QUICK_COMMERCE ? 24 : 168);
+    const orderTime = order.deliveredAt ? new Date(order.deliveredAt).getTime() : new Date(order.createdAt).getTime();
+    const elapsedHours = (Date.now() - orderTime) / (1000 * 60 * 60);
+
+    if (elapsedHours > windowHours) {
+        throw new ApiError(400, `Return window expired. Quick Commerce returns must be requested within ${windowHours} hours of delivery.`);
+    }
+
+    if (order.returnPolicy?.eligible === false) {
+        throw new ApiError(400, 'Items in this order are not eligible for return.');
     }
 
     const requestedVendorId = String(req.body.vendorId || '').trim();

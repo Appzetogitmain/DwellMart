@@ -248,11 +248,62 @@ const orderSchema = new mongoose.Schema(
         cancellationReason: String,
         isDeleted: { type: Boolean, default: false, index: true },
         deletedAt: Date,
-        deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
         integration: { type: orderIntegrationSchema, default: () => ({}) },
+        // Phase 5 policy fields (optional with safe defaults for legacy orders)
+        returnPolicy: {
+            type: { type: String },
+            windowHours: { type: Number },
+            eligible: { type: Boolean, default: true },
+            refundOnly: { type: Boolean, default: false },
+            allowedReasons: [{ type: String }],
+        },
+        fulfilmentOutcome: {
+            status: { type: String, enum: ['fulfilled', 'partially_fulfilled', 'unfulfilled'] },
+            unavailableItems: [
+                {
+                    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+                    variantKey: String,
+                    name: String,
+                    quantity: Number,
+                    reason: String,
+                    refundAmount: Number,
+                },
+            ],
+            fulfilledItems: [{ type: mongoose.Schema.Types.Mixed }],
+            refundAmount: { type: Number, default: 0 },
+            refundStatus: { type: String, enum: ['pending', 'processed', 'failed'] },
+            notes: String,
+        },
+        deliveryFailureReason: String,
+        retryHistory: [
+            {
+                attemptNumber: Number,
+                attemptedAt: { type: Date, default: Date.now },
+                reason: String,
+                callAttempts: Number,
+                otpAttempts: Number,
+                notes: String,
+                gpsLocation: {
+                    type: { type: String, enum: ['Point'] },
+                    coordinates: [Number],
+                },
+            },
+        ],
+        adminOverride: {
+            action: String,
+            reason: String,
+            adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+            timestamp: { type: Date, default: Date.now },
+        },
     },
     { timestamps: true }
 );
+
+orderSchema.virtual('deliveryAttempts').get(function () {
+    return Array.isArray(this.retryHistory) ? this.retryHistory.length : 0;
+});
+orderSchema.set('toJSON', { virtuals: true });
+orderSchema.set('toObject', { virtuals: true });
 
 // Prevent duplicate order creation for the same retry key per actor (user/guest).
 orderSchema.index(

@@ -121,6 +121,69 @@ const QuickCommerceActions = ({ order, onUpdated }) => {
         </button>
       )}
 
+      {/* Customer Unreachable Action for Rider */}
+      {(currentStatus === "arriving" || currentStatus === "picked_up") && (
+        <button
+          type="button"
+          onClick={async () => {
+            const calls = window.prompt("Enter number of call attempts (min 1):", "2");
+            if (!calls || Number(calls) < 1) {
+              toast.error("At least 1 call attempt required");
+              return;
+            }
+            const notes = window.prompt("Enter failure notes (e.g. Customer phone unreachable at doorstep):");
+            if (!notes || notes.trim().length < 5) {
+              toast.error("Please enter detailed failure notes (at least 5 chars)");
+              return;
+            }
+            try {
+              setIsSubmitting(true);
+              const api = (await import('../../../shared/utils/api')).default;
+              await api.post(`/delivery/orders/${order.id}/customer-unreachable`, {
+                callAttempts: Number(calls),
+                notes: notes.trim(),
+                reason: "CUSTOMER_UNREACHABLE"
+              });
+              toast.success("Customer marked unreachable. Retry window scheduled.");
+              if (onUpdated) onUpdated();
+            } catch (err) {
+              toast.error(err?.response?.data?.message || "Failed to update status");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+          disabled={isSubmitting}
+          className="w-full py-2.5 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded-xl font-semibold text-xs hover:bg-amber-500/20"
+        >
+          Customer Unreachable
+        </button>
+      )}
+
+      {/* Return to Store Action */}
+      {(currentStatus === "customer_unreachable" || currentStatus === "retry_scheduled") && (
+        <button
+          type="button"
+          onClick={async () => {
+            if (!window.confirm("Are you sure you want to return this order to store and mark delivery failed?")) return;
+            try {
+              setIsSubmitting(true);
+              const api = (await import('../../../shared/utils/api')).default;
+              await api.post(`/delivery/orders/${order.id}/return-to-store`);
+              toast.success("Order returned to store.");
+              if (onUpdated) onUpdated();
+            } catch (err) {
+              toast.error(err?.response?.data?.message || "Failed to update status");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+          disabled={isSubmitting}
+          className="w-full py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl font-semibold text-xs hover:bg-rose-500/20"
+        >
+          Return Order to Store
+        </button>
+      )}
+
       {currentStatus === "delivered" && (
         <p className="text-sm font-semibold text-status-success text-center">Delivered</p>
       )}

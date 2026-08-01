@@ -360,6 +360,47 @@ const MobileOrderDetail = () => {
                 )}
               </div>
 
+              {/* Partial Fulfilment & Refund Banner */}
+              {order?.fulfilmentOutcome?.status === 'partially_fulfilled' && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-500 text-sm flex items-center gap-1.5">
+                      <FiPackage className="text-amber-500" />
+                      Partially Fulfilled Order
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-md">
+                      Refund Initiated: <Price amount={order.fulfilmentOutcome.refundAmount} />
+                    </span>
+                  </div>
+                  <p className="text-xs text-content-secondary">
+                    Some items were unavailable during store preparation. A partial refund of <Price amount={order.fulfilmentOutcome.refundAmount} /> has been processed to your original payment method / wallet.
+                  </p>
+                  {Array.isArray(order.fulfilmentOutcome.unavailableItems) && order.fulfilmentOutcome.unavailableItems.length > 0 && (
+                    <div className="pt-2 border-t border-amber-500/20">
+                      <p className="text-xs font-semibold text-content mb-1">Unavailable Items:</p>
+                      <ul className="text-xs text-content-secondary space-y-1">
+                        {order.fulfilmentOutcome.unavailableItems.map((uItem, idx) => (
+                          <li key={idx} className="flex justify-between">
+                            <span>• {uItem.name} (x{uItem.quantity})</span>
+                            <span className="text-status-error font-medium">{uItem.reason || 'Out of Stock'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Commerce Return Policy Badge */}
+              {order?.experience === 'quick_commerce' && (
+                <div className="p-3 bg-surface border border-border rounded-xl flex items-center justify-between text-xs">
+                  <span className="font-medium text-content-secondary">Return Policy:</span>
+                  <span className="font-semibold text-brand-primary">
+                    {order?.returnPolicy?.refundOnly ? 'Refund Only (No Return)' : '24-Hour Return Window'}
+                  </span>
+                </div>
+              )}
+
               {/* Shipping Address */}
               <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
                 <h2 className="text-base font-bold text-content mb-3 flex items-center gap-2">

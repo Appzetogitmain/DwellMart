@@ -369,6 +369,80 @@ const OrderDetail = () => {
               </div>
             </div>
           )}
+
+          {/* Quick Commerce Policy & Delivery Audit Panel */}
+          {order.experience === 'quick_commerce' && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-3">
+              <h2 className="text-sm font-bold text-gray-800 flex items-center justify-between">
+                <span>Quick Commerce Policy & Delivery Audit</span>
+                <span className="text-xs font-semibold px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                  Attempts: {order.deliveryAttempts || order.retryHistory?.length || 0}
+                </span>
+              </h2>
+
+              {order.returnPolicy && (
+                <div className="text-xs space-y-1 p-2.5 bg-gray-50 rounded-lg">
+                  <p><span className="font-semibold text-gray-700">Return Window:</span> {order.returnPolicy.windowHours} hours</p>
+                  <p><span className="font-semibold text-gray-700">Return Terms:</span> {order.returnPolicy.refundOnly ? 'Refund Only' : 'Return Eligible'}</p>
+                </div>
+              )}
+
+              {order.fulfilmentOutcome && (
+                <div className="text-xs space-y-1 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-800">
+                  <p className="font-bold">Partial Fulfilment Snapshot:</p>
+                  <p>Refund Amount: {formatCurrency(order.fulfilmentOutcome.refundAmount || 0)}</p>
+                  <p>Status: {order.fulfilmentOutcome.status}</p>
+                </div>
+              )}
+
+              {order.adminOverride && (
+                <div className="text-xs space-y-1 p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-blue-800">
+                  <p className="font-bold">Admin Override Trail:</p>
+                  <p>Action: {order.adminOverride.action}</p>
+                  <p>Reason: {order.adminOverride.reason}</p>
+                  <p>Timestamp: {formatDateTime(order.adminOverride.timestamp)}</p>
+                </div>
+              )}
+
+              {/* Admin Delivery Override Actions */}
+              <div className="pt-2 flex gap-2">
+                <button
+                  onClick={async () => {
+                    const reason = window.prompt("Reason for scheduling retry:");
+                    if (!reason) return;
+                    try {
+                      const api = (await import('../../../shared/utils/api')).default;
+                      await api.post(`/admin/orders/${order.id}/delivery-override`, { action: 'retry', reason });
+                      toast.success("Delivery retry override scheduled");
+                      window.location.reload();
+                    } catch (err) {
+                      toast.error(err?.response?.data?.message || "Override failed");
+                    }
+                  }}
+                  className="flex-1 py-1.5 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700"
+                >
+                  Override Retry
+                </button>
+                <button
+                  onClick={async () => {
+                    const reason = window.prompt("Reason for issuing refund:");
+                    if (!reason) return;
+                    try {
+                      const api = (await import('../../../shared/utils/api')).default;
+                      await api.post(`/admin/orders/${order.id}/delivery-override`, { action: 'refund', reason });
+                      toast.success("Refund override applied");
+                      window.location.reload();
+                    } catch (err) {
+                      toast.error(err?.response?.data?.message || "Override failed");
+                    }
+                  }}
+                  className="flex-1 py-1.5 bg-red-600 text-white rounded text-xs font-semibold hover:bg-red-700"
+                >
+                  Override Refund
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}

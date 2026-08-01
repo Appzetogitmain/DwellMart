@@ -62,6 +62,10 @@ export const QUICK_COMMERCE_ORDER_STATUS = {
     ARRIVING: 'arriving',
     DELIVERED: 'delivered',
     CANCELLED: 'cancelled',
+    CUSTOMER_UNREACHABLE: 'customer_unreachable',
+    RETRY_SCHEDULED: 'retry_scheduled',
+    RETURNED_TO_STORE: 'returned_to_store',
+    DELIVERY_FAILED: 'delivery_failed',
 };
 
 export const QUICK_COMMERCE_ORDER_STATUS_VALUES = Object.values(QUICK_COMMERCE_ORDER_STATUS);
@@ -76,6 +80,10 @@ export const QUICK_COMMERCE_STATUS_TO_ORDER_STATUS = {
     arriving: 'shipped',
     delivered: 'delivered',
     cancelled: 'cancelled',
+    customer_unreachable: 'shipped',
+    retry_scheduled: 'shipped',
+    returned_to_store: 'returned',
+    delivery_failed: 'cancelled',
 };
 
 /**
@@ -91,14 +99,18 @@ export const QUICK_COMMERCE_STATUS_TRANSITIONS = {
     preparing: ['ready', 'cancelled'],
     ready: ['picked_up', 'cancelled'],
     picked_up: ['arriving', 'delivered'],
-    arriving: ['delivered'],
+    arriving: ['delivered', 'customer_unreachable'],
+    customer_unreachable: ['retry_scheduled', 'returned_to_store'],
+    retry_scheduled: ['arriving', 'returned_to_store'],
+    returned_to_store: ['delivery_failed'],
+    delivery_failed: [],
     delivered: [],
     cancelled: [],
 };
 
 /** Which actor may move an order into each status. */
 export const QUICK_COMMERCE_VENDOR_STATUSES = ['accepted', 'preparing', 'ready'];
-export const QUICK_COMMERCE_RIDER_STATUSES = ['picked_up', 'arriving', 'delivered'];
+export const QUICK_COMMERCE_RIDER_STATUSES = ['picked_up', 'arriving', 'delivered', 'customer_unreachable', 'retry_scheduled', 'returned_to_store'];
 
 /**
  * Rider assignment lifecycle for a Quick Commerce order.

@@ -490,3 +490,37 @@ export const deleteOrder = asyncHandler(async (req, res) => {
     if (!order) throw new ApiError(404, 'Order not found.');
     res.status(200).json(new ApiResponse(200, null, 'Order archived.'));
 });
+
+// POST /api/admin/orders/:id/delivery-override
+export const deliveryOverride = asyncHandler(async (req, res) => {
+    const { action, reason } = req.body;
+    const allowedActions = ['retry', 'refund', 'return_to_store'];
+    if (!allowedActions.includes(action)) {
+        throw new ApiError(400, `Action must be one of: ${allowedActions.join(', ')}`);
+    }
+
+    const order = await Order.findOne({
+        $or: [{ orderId: req.params.id }, { _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null }],
+        isDeleted: { $ne: true },
+    });
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    order.adminOverride = {
+        action,
+        reason: String(reason || 'Admin override applied').trim(),
+        adminId: req.user.id,
+        timestamp: new Date(),
+    };
+
+    if (action === 'retry') {
+        order.status = 'processing';
+        if (order.quickCommerce) order.quickCommerce.status = 'retry_scheduled';
+    } else if (action === 'refund' || action === 'return_to_store') {
+        order.status = 'returned';
+        if (order.quickCommerce) order.quickCommerce.status = 'delivery_failed';
+        order.paymentStatus = 'refunded';
+    }
+
+    await order.save();
+    res.status(200).json(new ApiResponse(200, order, `Admin override '${action}' applied successfully.`));
+});

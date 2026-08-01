@@ -32,6 +32,10 @@ const STATUS_MESSAGES = {
     arriving: 'Your delivery partner is arriving.',
     delivered: 'Your order has been delivered.',
     cancelled: 'Your order has been cancelled.',
+    customer_unreachable: 'Delivery attempted. Please contact your delivery partner.',
+    retry_scheduled: 'Redelivery attempt has been scheduled.',
+    returned_to_store: 'Order returned to store due to delivery failure.',
+    delivery_failed: 'Delivery failed. Your order has been cancelled.',
 };
 
 const STATUS_TITLES = {
@@ -42,6 +46,10 @@ const STATUS_TITLES = {
     arriving: 'Arriving now',
     delivered: 'Order delivered',
     cancelled: 'Order cancelled',
+    customer_unreachable: 'Customer Unreachable',
+    retry_scheduled: 'Retry Scheduled',
+    returned_to_store: 'Returned to Store',
+    delivery_failed: 'Delivery Failed',
 };
 
 /**

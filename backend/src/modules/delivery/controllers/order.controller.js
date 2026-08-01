@@ -567,3 +567,102 @@ export const getDeliveryOtpForDebug = asyncHandler(async (req, res) => {
         expiresAt: order.deliveryOtpExpiry,
     }, 'Debug OTP fetched.'));
 });
+
+// POST /api/delivery/orders/:id/customer-unreachable
+export const markCustomerUnreachable = asyncHandler(async (req, res) => {
+    const { callAttempts, notes, reason = 'CUSTOMER_UNREACHABLE', longitude, latitude } = req.body;
+    const numCalls = Number(callAttempts || 0);
+
+    if (numCalls < 1) {
+        throw new ApiError(400, 'Rider must record at least 1 call attempt before marking customer unreachable.');
+    }
+    if (!notes || String(notes).trim().length < 5) {
+        throw new ApiError(400, 'Detailed notes (at least 5 characters) are required.');
+    }
+
+    const query = {
+        deliveryBoyId: req.user.id,
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    assertQuickCommerceTransition(order, QUICK_COMMERCE_ORDER_STATUS.CUSTOMER_UNREACHABLE, 'rider');
+
+    const history = Array.isArray(order.retryHistory) ? order.retryHistory : [];
+    const attemptNumber = history.length + 1;
+
+    order.retryHistory = order.retryHistory || [];
+    order.retryHistory.push({
+        attemptNumber,
+        attemptedAt: new Date(),
+        reason,
+        callAttempts: numCalls,
+        otpAttempts: Number(order.deliveryOtpAttempts || 0),
+        notes: String(notes).trim(),
+        gpsLocation: (longitude && latitude) ? { type: 'Point', coordinates: [Number(longitude), Number(latitude)] } : undefined,
+    });
+
+    order.deliveryFailureReason = reason;
+    applyQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.CUSTOMER_UNREACHABLE);
+    await order.save();
+
+    await publishQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.CUSTOMER_UNREACHABLE);
+
+    res.status(200).json(new ApiResponse(200, order, 'Customer marked unreachable. Retry window scheduled.'));
+});
+
+// POST /api/delivery/orders/:id/schedule-retry
+export const scheduleDeliveryRetry = asyncHandler(async (req, res) => {
+    const query = {
+        deliveryBoyId: req.user.id,
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    assertQuickCommerceTransition(order, QUICK_COMMERCE_ORDER_STATUS.RETRY_SCHEDULED, 'rider');
+
+    applyQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.RETRY_SCHEDULED);
+    await order.save();
+
+    await publishQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.RETRY_SCHEDULED);
+
+    res.status(200).json(new ApiResponse(200, order, 'Redelivery scheduled.'));
+});
+
+// POST /api/delivery/orders/:id/return-to-store
+export const returnToStore = asyncHandler(async (req, res) => {
+    const query = {
+        deliveryBoyId: req.user.id,
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    assertQuickCommerceTransition(order, QUICK_COMMERCE_ORDER_STATUS.RETURNED_TO_STORE, 'rider');
+
+    applyQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.RETURNED_TO_STORE);
+    applyQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.DELIVERY_FAILED);
+    await order.save();
+
+    await releaseRider(req.user.id, order._id, { incrementDeliveries: false });
+    await publishQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.DELIVERY_FAILED);
+
+    res.status(200).json(new ApiResponse(200, order, 'Order returned to store and marked delivery failed.'));
+});
