@@ -6,7 +6,7 @@ import {
   FiUserCheck,
   FiTruck,
   FiClock,
-  FiStore,
+  FiShoppingBag,
   FiCheckCircle,
   FiX,
 } from 'react-icons/fi';
@@ -220,7 +220,7 @@ export default function QuickCommerceOperations() {
                     </div>
                     <div className="flex items-center gap-4 text-xs text-gray-600 flex-wrap">
                       <span className="flex items-center gap-1 font-medium text-gray-800">
-                        <FiStore className="text-gray-400" /> {vendorName}
+                        <FiShoppingBag className="text-gray-400" /> {vendorName}
                       </span>
                       <span>City: {order.shippingAddress?.city || 'N/A'}</span>
                       <span className="font-bold text-gray-900">Total: ₹{order.total || 0}</span>
