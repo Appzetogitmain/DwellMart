@@ -893,11 +893,47 @@ const generateErrorReportFile = async (jobId, failedRows) => {
  * Generate Valid_Rows.xlsx clean export file
  */
 const generateValidRowsFile = async (jobId, validRows) => {
-    const headers = ['Product Name', 'Category', 'SKU', 'Price', 'Stock', 'Status'];
-    const rows = validRows.map((r) => [r.name, r.categoryName, r.sku, r.price, r.stockQuantity, r.isActive ? 'Active' : 'Inactive']);
+    const headers = [
+        'Product Name',
+        'Category',
+        'SKU',
+        'Price',
+        'Stock',
+        'Status',
+        'Retail Enabled',
+        'Wholesale Enabled',
+        'MOQ Enabled',
+        'MOQ',
+        'Bulk Pricing Tiers',
+    ];
+    const rows = validRows.map((r) => [
+        r.name,
+        r.categoryName,
+        r.sku,
+        r.price,
+        r.stockQuantity,
+        r.isActive ? 'Active' : 'Inactive',
+        r.retailEnabled !== false ? 'Yes' : 'No',
+        r.wholesaleEnabled === true ? 'Yes' : 'No',
+        r.wholesale?.moqEnabled ? 'Yes' : 'No',
+        r.wholesale?.moq || '',
+        serializePriceTiers(r.wholesale?.priceTiers),
+    ]);
 
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    worksheet['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    worksheet['!cols'] = [
+        { wch: 30 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 10 },
+        { wch: 30 },
+    ];
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Valid_Products');

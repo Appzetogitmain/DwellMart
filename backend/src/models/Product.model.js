@@ -110,6 +110,7 @@ productSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ vendorId: 1, wholesaleEnabled: 1 });
 productSchema.index({ isActive: 1, wholesaleEnabled: 1 });
+productSchema.index({ wholesaleEnabled: 1, isActive: 1, isDeleted: 1 });
 productSchema.index({ isActive: 1, quickCommerceEnabled: 1 });
 productSchema.index({ vendorId: 1, quickCommerceEnabled: 1 });
 productSchema.index({ quickCommerceCategoryId: 1, isActive: 1 });
