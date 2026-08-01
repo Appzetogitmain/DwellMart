@@ -7,6 +7,8 @@ import { getVariantSignature } from "../utils/variant";
 import { resolvePriceForQuantity } from "../utils/resolvePriceForQuantity";
 import { EXPERIENCES, getExperience, normalizeExperience } from "../utils/experience";
 
+import { useSettingsStore } from "./settingsStore";
+
 const getCartLineKey = (id, variant = {}) =>
   `${String(id)}::${getVariantSignature(variant)}`;
 
@@ -18,6 +20,9 @@ const getCartLineKey = (id, variant = {}) =>
  * Display only — checkout re-derives every price server-side.
  */
 const resolveCartLinePricing = (item) => {
+  const settingsState = useSettingsStore?.getState?.();
+  const wholesaleMarketplaceEnabled = settingsState?.settings?.features?.wholesaleMarketplaceEnabled === true;
+
   const basePrice = Number(item?.price) || 0;
   const quantity = Number(item?.quantity) || 0;
   return resolvePriceForQuantity(
@@ -28,7 +33,7 @@ const resolveCartLinePricing = (item) => {
     },
     basePrice,
     quantity,
-    { vendorWholesaleEnabled: item?.vendorWholesaleEnabled !== false }
+    { vendorWholesaleEnabled: wholesaleMarketplaceEnabled && (item?.vendorWholesaleEnabled !== false) }
   );
 };
 

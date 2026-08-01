@@ -138,6 +138,7 @@ router.patch('/orders/:id/status', ...vendorAuth, orderController.updateOrderSta
 router.patch('/orders/:id/quick-status', ...vendorAuth, validate(vendorQuickCommerceStatusSchema), orderController.updateQuickCommerceOrderStatus);
 router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, orderController.acknowledgeQuickCommerceOrder);
 router.get('/quick-commerce/dashboard', ...vendorAuth, orderController.getQuickCommerceVendorDashboard);
+router.get('/quick-commerce/unacknowledged-alerts', ...vendorAuth, orderController.getUnacknowledgedVendorAlerts);
 
 // Customers
 router.get('/customers', ...vendorAuth, customerController.getVendorCustomers);

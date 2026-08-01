@@ -228,10 +228,15 @@ const getChildRoute = (parentRoute, childName) => {
       "Tax Reports": "/admin/finance/tax-reports",
       "Refund Reports": "/admin/finance/refund-reports",
     },
+    "/admin/quick-commerce": {
+      "Operations Console": "/admin/quick-commerce/operations",
+      "Quick Commerce Analytics": "/admin/analytics/quick-commerce",
+    },
     "/admin/settings": {
       General: "/admin/settings/general",
       "Payment & Shipping": "/admin/settings/payment-shipping",
       "Content & Features": "/admin/settings/content-features",
+      "Quick Commerce Settings": "/admin/settings/quick-commerce",
     },
     "/admin/policies": {
       "Privacy Policy": "/admin/policies/privacy-policy",

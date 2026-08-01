@@ -20,6 +20,8 @@ const DeliveryBoys = () => {
     updateApplicationStatus,
     updateDeliveryBoyDetail,
     removeDeliveryBoy,
+    updateExperiences,
+    bulkUpdateExperiences,
     pagination
   } = useDeliveryStore();
 
@@ -170,6 +172,32 @@ const DeliveryBoys = () => {
       label: 'Application',
       sortable: true,
       render: (value) => renderApplicationBadge(value),
+    },
+    {
+      key: 'experiences',
+      label: 'Experiences',
+      sortable: false,
+      render: (_, row) => {
+        const experiences = Array.isArray(row.experiences) ? row.experiences : ['marketplace'];
+        const isQc = experiences.includes('quick_commerce');
+        return (
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-1 flex-wrap">
+              <Badge variant="neutral" size="sm">Marketplace</Badge>
+              {isQc && <Badge variant="success" size="sm">Quick Commerce</Badge>}
+            </div>
+            <button
+              onClick={() => {
+                const nextExps = isQc ? ['marketplace'] : ['marketplace', 'quick_commerce'];
+                updateExperiences(row.id, nextExps);
+              }}
+              className="text-[11px] underline text-primary-600 hover:text-primary-800 text-left font-medium"
+            >
+              {isQc ? 'Remove QC' : '+ Enrol QC'}
+            </button>
+          </div>
+        );
+      },
     },
     {
       key: 'documents',

@@ -16,7 +16,7 @@ import { createNotification } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
 import { resolvePriceForQuantity, deriveOrderType } from '../../../services/pricingEngine.service.js';
 import { getRequestExperience, EXPERIENCES } from '../../../constants/experiences.js';
-import { isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
+import { isQuickCommerceEnabled, isWholesaleMarketplaceEnabled } from '../../../services/featureFlags.service.js';
 import {
     QUICK_COMMERCE_ORDER_STATUS,
     QUICK_COMMERCE_POST_PREPARATION_STAGES,
@@ -292,6 +292,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
     const enrichedItems = [];
     const vendorMap = {};
 
+    const isWholesaleEnabled = await isWholesaleMarketplaceEnabled();
+
     for (const item of items) {
         const product = await Product.findById(item.productId);
         if (!product) throw new ApiError(404, `Product not found: ${item.productId}`);
@@ -300,8 +302,13 @@ export const placeOrder = asyncHandler(async (req, res) => {
         if (isQuickCommerceOrder && product.quickCommerceEnabled !== true) {
             throw new ApiError(400, `${product.name} is not available on Quick Commerce.`);
         }
-        if (!isQuickCommerceOrder && product.retailEnabled === false && product.wholesaleEnabled !== true) {
-            throw new ApiError(400, `${product.name} is not available on the Marketplace.`);
+        if (!isQuickCommerceOrder) {
+            if (product.retailEnabled === false && product.wholesaleEnabled !== true) {
+                throw new ApiError(400, `${product.name} is not available on the Marketplace.`);
+            }
+            if (!isWholesaleEnabled && product.retailEnabled === false && product.wholesaleEnabled === true) {
+                throw new ApiError(400, `${product.name} is not available because Wholesale Marketplace is currently disabled.`);
+            }
         }
 
         // Per-order cap protects quick-delivery stock from a single large order.
@@ -389,8 +396,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
         // Apply wholesale bulk pricing on top of the variant-resolved base price.
         // The pricing engine is authoritative; client-sent pricing is never trusted.
+        // If wholesale marketplace feature flag is OFF, wholesale pricing is disabled.
         const pricing = resolvePriceForQuantity(product, variantResolvedPrice, item.quantity, {
-            vendorWholesaleEnabled: vendor?.sellingChannels?.wholesale?.enabled === true,
+            vendorWholesaleEnabled: isWholesaleEnabled && vendor?.sellingChannels?.wholesale?.enabled === true,
         });
 
         if (!pricing.eligible) {

@@ -237,6 +237,28 @@ export const acknowledgeQuickCommerceOrder = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /api/vendor/quick-commerce/unacknowledged-alerts
+ *
+ * Hydrates vendor order alert popup on mount / page refresh for orders needing vendor action.
+ */
+export const getUnacknowledgedVendorAlerts = asyncHandler(async (req, res) => {
+    const vendorId = req.user.id;
+    const orders = await Order.find({
+        experience: EXPERIENCES.QUICK_COMMERCE,
+        isDeleted: { $ne: true },
+        'vendorItems.vendorId': vendorId,
+        'quickCommerce.status': { $in: ['placed', 'pending'] },
+        'quickCommerce.vendorAcknowledgedAt': { $exists: false },
+    })
+        .select('orderId createdAt vendorItems quickCommerce')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean();
+
+    res.status(200).json(new ApiResponse(200, orders, 'Unacknowledged vendor alerts.'));
+});
+
+/**
  * GET /api/vendor/quick-commerce/dashboard
  *
  * The store's operational view — built around "what do I need to do right now",
@@ -274,11 +296,13 @@ export const getQuickCommerceVendorDashboard = asyncHandler(async (req, res) => 
         vendorId
     );
 
-    const [vendor, live, today, volume, eta, responsiveness, peakHours, topProducts, daily] =
+    const vendor = await Vendor.findById(vendorId).select('sellingChannels quickCommerceProfile.availabilityStatus').lean();
+    if (vendor?.sellingChannels?.quickCommerce?.enabled !== true) {
+        throw new ApiError(403, 'Quick Commerce channel is not enabled for this store.');
+    }
+
+    const [live, today, volume, eta, responsiveness, peakHours, topProducts, daily] =
         await Promise.all([
-            // So the page can say "the channel is off" rather than rendering a
-            // wall of zeros that looks like a bad day of trading.
-            Vendor.findById(vendorId).select('sellingChannels quickCommerceProfile.availabilityStatus').lean(),
             getStageBreakdown(liveMatch),
             getVolumeStats(todayMatch),
             getVolumeStats(rangeMatch),

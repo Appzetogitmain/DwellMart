@@ -151,8 +151,11 @@
   },
   {
     "title": "Quick Commerce",
-    "route": "/admin/analytics/quick-commerce",
-    "children": []
+    "route": "/admin/quick-commerce/operations",
+    "children": [
+      "Operations Console",
+      "Quick Commerce Analytics"
+    ]
   },
   {
     "title": "Analytics & Finance",
@@ -172,7 +175,8 @@
     "children": [
       "General",
       "Payment & Shipping",
-      "Content & Features"
+      "Content & Features",
+      "Quick Commerce Settings"
     ]
   }
 ]

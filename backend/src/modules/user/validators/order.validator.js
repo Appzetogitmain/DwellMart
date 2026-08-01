@@ -22,6 +22,12 @@ export const placeOrderSchema = Joi.object({
     paymentMethod: Joi.string().valid('card', 'cash', 'cod', 'bank', 'wallet', 'upi').required(),
     couponCode: Joi.string().optional().allow(''),
     shippingOption: Joi.string().valid('standard', 'express').default('standard'),
+    customerLocation: Joi.object({
+        latitude: Joi.number().required(),
+        longitude: Joi.number().required(),
+        address: Joi.string().allow('', null).optional(),
+        pincode: Joi.string().allow('', null).optional(),
+    }).optional(),
 });
 
 export const createReturnRequestSchema = Joi.object({

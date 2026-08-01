@@ -25,6 +25,7 @@ import { resolveVariantPrice } from '../services/variantPricing.service.js';
 import { getRequestExperience, EXPERIENCES } from '../constants/experiences.js';
 import { buildCatalogFilter } from '../services/catalogQuery.service.js';
 import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
+import { isWholesaleMarketplaceEnabled } from '../services/featureFlags.service.js';
 
 /**
  * Resolve which vendors can serve this customer, for Quick Commerce listings.
@@ -222,12 +223,15 @@ const listProducts = asyncHandler(async (req, res) => {
         if (serviceableVendorIds === undefined) serviceableVendorIds = [];
     }
 
+    const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
+
     // All catalog reads go through the shared builder — it owns the experience
     // flag and the correct category field (see catalogQuery.service.js).
     const filter = buildCatalogFilter({
         experience: requestExperience,
         categoryIds,
         vendorIds: serviceableVendorIds,
+        wholesaleMarketplaceEnabled: wholesaleEnabled,
     });
 
     if (brand) filter.brandId = brand;
@@ -247,20 +251,27 @@ const listProducts = asyncHandler(async (req, res) => {
     // Wholesale facets are Marketplace-only concepts; applying them inside
     // Quick Commerce would silently contradict the experience filter.
     if (getRequestExperience(req) === EXPERIENCES.MARKETPLACE) {
-        // Legacy products have no wholesale fields, so "retail" matches anything
-        // not explicitly wholesale-only.
-        if (sellingChannel === 'wholesale') {
-            filter.wholesaleEnabled = true;
-        } else if (sellingChannel === 'retail') {
-            filter.retailEnabled = { $ne: false };
-        }
-        if (bulkDiscount === 'true') {
-            filter.wholesaleEnabled = true;
-            filter['wholesale.priceTiers.0'] = { $exists: true };
-        }
-        if (hasMoq === 'true') {
-            filter.wholesaleEnabled = true;
-            filter['wholesale.moqEnabled'] = true;
+        if (!wholesaleEnabled) {
+            // When wholesale feature flag is OFF, wholesale facet searches return no results
+            if (sellingChannel === 'wholesale' || bulkDiscount === 'true' || hasMoq === 'true') {
+                filter._id = { $in: [] };
+            }
+        } else {
+            // Legacy products have no wholesale fields, so "retail" matches anything
+            // not explicitly wholesale-only.
+            if (sellingChannel === 'wholesale') {
+                filter.wholesaleEnabled = true;
+            } else if (sellingChannel === 'retail') {
+                filter.retailEnabled = { $ne: false };
+            }
+            if (bulkDiscount === 'true') {
+                filter.wholesaleEnabled = true;
+                filter['wholesale.priceTiers.0'] = { $exists: true };
+            }
+            if (hasMoq === 'true') {
+                filter.wholesaleEnabled = true;
+                filter['wholesale.moqEnabled'] = true;
+            }
         }
     }
     const searchQuery = String(search || q || '').trim();
@@ -435,6 +446,15 @@ const getProductDetail = asyncHandler(async (req, res) => {
         .populate('vendorId', 'storeName storeLogo rating')
         .lean();
     if (!product) throw new ApiError(404, 'Product not found.');
+
+    const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
+    if (!wholesaleEnabled) {
+        if (product.retailEnabled === false && product.wholesaleEnabled === true) {
+            throw new ApiError(404, 'Product not found.');
+        }
+        product.wholesaleEnabled = false;
+    }
+
     res.status(200).json(new ApiResponse(200, product, 'Product detail.'));
 });
 

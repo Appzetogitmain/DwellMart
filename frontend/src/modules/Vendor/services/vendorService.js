@@ -267,6 +267,9 @@ export const getVendorOrderById = (id) =>
 export const updateVendorOrderStatus = (orderId, status) =>
     api.patch(`/vendor/orders/${orderId}/status`, { status });
 
+export const updateVendorQuickCommerceStatus = (orderId, status) =>
+    api.patch(`/vendor/orders/${orderId}/quick-status`, { status });
+
 /**
  * Get customers for the authenticated vendor
  * @param {{ search?: string }} params

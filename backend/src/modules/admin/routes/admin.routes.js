@@ -77,6 +77,8 @@ import {
     updateDeliveryStatusSchema,
     updateDeliveryApplicationStatusSchema,
     settleCashSchema,
+    updateDeliveryBoyExperiencesSchema,
+    bulkUpdateDeliveryBoyExperiencesSchema,
 } from '../validators/delivery.validator.js';
 import {
     vendorListQuerySchema,
@@ -198,6 +200,8 @@ router.delete('/delivery-boys/:id', ...perm(PERMISSIONS.DELIVERY_EDIT), validate
 router.patch('/delivery-boys/:id/status', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryStatusSchema), deliveryController.updateDeliveryBoyStatus);
 router.patch('/delivery-boys/:id/application-status', ...perm(PERMISSIONS.DELIVERY_APPROVE), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryApplicationStatusSchema), deliveryController.updateDeliveryBoyApplicationStatus);
 router.post('/delivery-boys/:id/settle-cash', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
+router.put('/delivery-boys/bulk-experiences', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(bulkUpdateDeliveryBoyExperiencesSchema), deliveryController.bulkUpdateDeliveryBoyExperiences);
+router.put('/delivery-boys/:id/experiences', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryBoyExperiencesSchema), deliveryController.updateDeliveryBoyExperiences);
 
 // ─── Return Requests ──────────────────────────────────────────────────────────
 router.get('/return-requests', ...perm(PERMISSIONS.ORDERS_VIEW), returnController.getAllReturnRequests);

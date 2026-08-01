@@ -1,4 +1,5 @@
 import { Badge } from "./ui";
+import { useSettingsStore } from "../store/settingsStore";
 
 /**
  * Canonical wholesale indicator.
@@ -15,6 +16,13 @@ import { Badge } from "./ui";
  * @param {'sm'|'md'} size Badge size.
  */
 const WholesaleBadge = ({ orderType, context = "order", size = "sm", className = "" }) => {
+  const settings = useSettingsStore((state) => state.settings);
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+
+  if ((context === "product" || context === "vendor") && !wholesaleMarketplaceEnabled) {
+    return null;
+  }
+
   const normalized = String(orderType || "retail").toLowerCase();
   if (normalized !== "wholesale" && normalized !== "mixed") return null;
 

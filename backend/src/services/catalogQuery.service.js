@@ -35,6 +35,7 @@ export const buildCatalogFilter = ({
     categoryIds,
     vendorIds,
     activeOnly = true,
+    wholesaleMarketplaceEnabled = true,
     extra = {},
 } = {}) => {
     const resolvedExperience = normalizeExperience(experience);
@@ -53,12 +54,19 @@ export const buildCatalogFilter = ({
     } else {
         // Marketplace: retail is opt-out (legacy products have no flag), so
         // "not explicitly false" is the correct test.
+        // If wholesale is disabled platform-wide, wholesale-only products
+        // (retailEnabled: false, wholesaleEnabled: true) must never be listed.
         filter.retailEnabled = { $ne: false };
 
         if (Array.isArray(categoryIds)) {
             filter.categoryId = { $in: categoryIds };
         } else if (category) {
             filter.categoryId = category;
+        }
+
+        if (!wholesaleMarketplaceEnabled && extra?.wholesaleEnabled) {
+            // Caller explicitly requested wholesale products when wholesale is OFF -> return no results
+            filter._id = { $in: [] };
         }
     }
 
