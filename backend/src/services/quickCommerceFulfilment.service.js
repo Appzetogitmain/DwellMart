@@ -120,7 +120,23 @@ export const processPartialFulfilment = async ({
     // Update order items array & totals
     order.items = orderItems;
     const newSubtotal = round2(orderItems.reduce((acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 1), 0));
-    const newTax = round2(Math.max(0, Number(order.tax || 0) - (Number(order.subtotal || 0) > 0 ? (Number(order.tax || 0) * (totalRefundAmount / Number(order.total || 1))) : 0)));
+    // Derive new tax proportionally from the remaining subtotal.
+    //
+    // The per-item refund loop above already uses `itemSubtotal / originalSubtotal`
+    // as the ratio when computing each item's tax slice. The order-level tax must
+    // use the same base so the displayed breakdown stays arithmetically consistent
+    // (subtotal + shipping + packaging − discount + tax = total).
+    //
+    // Previous formula (`order.tax * totalRefundAmount / order.total`) was wrong:
+    // totalRefundAmount is a subtotal-denominated value, but order.total includes
+    // shipping and packaging fees, making the denominator too large and the tax
+    // deduction too small — the stored tax was therefore always slightly overstated.
+    const originalSubtotal = Number(order.subtotal || 0);
+    const newTax = round2(
+        originalSubtotal > 0
+            ? Number(order.tax || 0) * (newSubtotal / originalSubtotal)
+            : 0
+    );
     const newTotal = round2(Math.max(0, Number(order.total || 0) - totalRefundAmount));
 
     order.subtotal = newSubtotal;

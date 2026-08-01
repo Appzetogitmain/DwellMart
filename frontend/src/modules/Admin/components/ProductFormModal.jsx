@@ -929,6 +929,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                             />
                           </div>
                         )}
+                      </div>
 
                       <div className="md:col-span-2">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
