@@ -157,7 +157,7 @@ const Drawer = ({
             exit="hidden"
             variants={slideVariants[position] || slideVariants.right}
             transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-            className={`fixed bg-surface-card border-borderToken-default shadow-drawer text-textColor-primary flex flex-col z-10 ${
+            className={`fixed bg-surface-header border-l border-border shadow-drawer text-white flex flex-col z-10 ${
               positionClasses[position] || positionClasses.right
             } ${sizeMap[size] || sizeMap.md} ${className}`}
             data-component="Drawer"
@@ -170,7 +170,7 @@ const Drawer = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute top-4 right-4 p-1.5 text-textColor-muted hover:text-textColor-primary rounded-button transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/40 z-20"
+                className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white rounded-button transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/40 z-20"
                 aria-label="Close panel"
               >
                 <FiX className="text-lg" />
@@ -194,16 +194,16 @@ const Drawer = ({
 // Compound Drawer Subcomponents
 const DrawerHeader = ({ title, subtitle, children, className = '' }) => (
   <div
-    className={`p-5 sm:p-6 border-b border-borderToken-light flex flex-col justify-center ${className}`}
+    className={`p-5 sm:p-6 border-b border-border flex flex-col justify-center ${className}`}
     data-component="DrawerHeader"
   >
     <div className="space-y-1 pr-6">
       {title && (
-        <h2 id="drawer-title" className="text-lg sm:text-xl font-bold tracking-tight text-textColor-primary">
+        <h2 id="drawer-title" className="text-lg sm:text-xl font-black tracking-tight text-white uppercase">
           {title}
         </h2>
       )}
-      {subtitle && <p className="text-xs text-textColor-muted font-normal">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-gray-400 font-normal">{subtitle}</p>}
       {children}
     </div>
   </div>

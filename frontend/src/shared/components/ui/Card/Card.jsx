@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 /**
@@ -40,7 +40,12 @@ const Card = forwardRef(({
     ${className}
   `.replace(/\s+/g, ' ').trim();
 
-  const MotionComponent = motion(Component);
+  const MotionComponent = useMemo(() => {
+    if (typeof Component === 'string' && motion[Component]) {
+      return motion[Component];
+    }
+    return motion(Component);
+  }, [Component]);
 
   return (
     <MotionComponent

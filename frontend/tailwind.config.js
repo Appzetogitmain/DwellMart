@@ -187,10 +187,6 @@ export default {
         'modal': 'var(--shadow-modal)',
         'button': 'var(--shadow-button)',
         'focus': 'var(--shadow-focus)',
-      },
-      borderRadius: {
-        'card': 'var(--radius-card)',
-        'button': 'var(--radius-button)',
         'input': 'var(--radius-input)',
         'modal': 'var(--radius-modal)',
         'badge': 'var(--radius-badge)',

@@ -21,11 +21,13 @@ const EmptyState = ({
   action,
   secondaryAction,
   className = '',
+  titleClassName = '',
+  descriptionClassName = '',
   ...props
 }) => {
   const presetConfig = {
     'no-data': {
-      icon: <FiFolder className="text-3xl text-textColor-muted" />,
+      icon: <FiFolder className="text-3xl text-content-muted" />,
       title: 'No Data Found',
       description: 'There are no items or records available in this view.',
     },
@@ -40,12 +42,12 @@ const EmptyState = ({
       description: 'Explore our catalog and discover amazing deals today.',
     },
     orders: {
-      icon: <FiInbox className="text-3xl text-textColor-brand" />,
+      icon: <FiInbox className="text-3xl text-content-brand" />,
       title: 'No Active Orders',
       description: 'You haven’t placed any orders yet. Start shopping now!',
     },
     offline: {
-      icon: <FiWifiOff className="text-3xl text-statusToken-error" />,
+      icon: <FiWifiOff className="text-3xl text-status-error" />,
       title: 'You are Offline',
       description: 'Please check your internet connection and try reloading.',
     },
@@ -60,12 +62,12 @@ const EmptyState = ({
       description: 'This section is undergoing scheduled maintenance. Please check back soon.',
     },
     error: {
-      icon: <FiAlertTriangle className="text-3xl text-statusToken-error" />,
+      icon: <FiAlertTriangle className="text-3xl text-status-error" />,
       title: 'Something Went Wrong',
       description: 'An unexpected error occurred while loading this page.',
     },
     generic: {
-      icon: <FiFolder className="text-3xl text-textColor-muted" />,
+      icon: <FiFolder className="text-3xl text-content-muted" />,
       title: 'Nothing Here Yet',
       description: 'Check back later for updates.',
     },
@@ -86,16 +88,16 @@ const EmptyState = ({
       {...props}
     >
       {/* Icon Graphic Container */}
-      <div className="w-16 h-16 rounded-full bg-surface-background border border-borderToken-light flex items-center justify-center mb-4 shadow-sm">
+      <div className="w-16 h-16 rounded-full bg-surface-muted border border-border flex items-center justify-center mb-4 shadow-sm">
         {displayIcon}
       </div>
 
       {/* Title & Description */}
-      <h3 className="text-lg sm:text-xl font-bold tracking-tight text-textColor-primary mb-1.5">
+      <h3 className={`text-lg sm:text-xl font-bold tracking-tight ${titleClassName || 'text-content'} mb-1.5`}>
         {displayTitle}
       </h3>
       {displayDescription && (
-        <p className="text-xs sm:text-sm text-textColor-muted font-normal max-w-md mb-6 leading-relaxed">
+        <p className={`text-xs sm:text-sm ${descriptionClassName || 'text-content-secondary'} font-normal max-w-md mb-6 leading-relaxed`}>
           {displayDescription}
         </p>
       )}

@@ -29,6 +29,8 @@ const vendorSchema = new mongoose.Schema(
         reviewCount: { type: Number, default: 0 },
         totalSales: { type: Number, default: 0 },
         totalEarnings: { type: Number, default: 0 },
+        bestSellerScore: { type: Number, default: 0, index: true },
+        followersCount: { type: Number, default: 0 },
         shippingEnabled: { type: Boolean, default: true },
         freeShippingThreshold: { type: Number, default: 100, min: 0 },
         defaultShippingRate: { type: Number, default: 5, min: 0 },
@@ -168,6 +170,7 @@ const vendorSchema = new mongoose.Schema(
     }
 );
 
+vendorSchema.index({ status: 1, bestSellerScore: -1, rating: -1, createdAt: -1 });
 vendorSchema.index({ status: 1, rating: -1, reviewCount: -1, createdAt: -1 });
 vendorSchema.index({ status: 1, createdAt: -1 });
 // Sparse: only Quick Commerce vendors carry a location, so non-QC vendors are
@@ -176,6 +179,13 @@ vendorSchema.index({ 'quickCommerceProfile.location': '2dsphere' }, { sparse: tr
 vendorSchema.index({ 'sellingChannels.quickCommerce.enabled': 1, status: 1 });
 
 vendorSchema.pre('save', async function (next) {
+    // Calculate Best Seller Score
+    const salesScore = (Number(this.totalSales) || 0) * 0.40;
+    const ratingScore = (Number(this.rating) || 0) * 10 * 0.30;
+    const reviewScore = (Number(this.reviewCount) || 0) * 0.15;
+    const verifiedBonus = this.isVerified ? 10 : 0;
+    this.bestSellerScore = salesScore + ratingScore + reviewScore + verifiedBonus;
+
     if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
     next();

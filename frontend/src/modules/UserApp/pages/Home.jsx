@@ -189,6 +189,8 @@ const KNOWN_USER_ROUTE_PATTERNS = [
   "/category/:id",
   "/brand/:id",
   "/seller/:id",
+  "/sellers",
+  "/vendors",
   "/product/:id",
   "/sale/:slug",
   "/track-order/:orderId",
@@ -337,8 +339,8 @@ const MobileHome = () => {
       const [productsRes, vendorsRes, brandsRes, bannersRes, testimonialsRes] =
         await Promise.allSettled([
           api.get("/products", { params: { page: 1, limit: 120 } }),
-          api.get("/vendors/all", {
-            params: { status: "approved", page: 1, limit: 50 },
+          api.get("/vendors/best-sellers", {
+            params: { limit: 8 },
           }),
           api.get("/brands/all"),
           api.get("/banners"),

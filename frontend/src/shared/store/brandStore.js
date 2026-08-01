@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getAllBrands, getPublicBrands, createBrand, updateBrand, deleteBrand } from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useBrandStore = create(
   persist(
@@ -58,7 +58,7 @@ export const useBrandStore = create(
             brands: [...state.brands, newBrand],
             isLoading: false
           }));
-          toast.success('Brand created successfully');
+          toastService.success('Brand created successfully');
           return newBrand;
         } catch (error) {
           set({ isLoading: false });
@@ -82,7 +82,7 @@ export const useBrandStore = create(
             ),
             isLoading: false
           }));
-          toast.success('Brand updated successfully');
+          toastService.success('Brand updated successfully');
           return updatedBrand;
         } catch (error) {
           set({ isLoading: false });
@@ -99,7 +99,7 @@ export const useBrandStore = create(
             brands: state.brands.filter((brand) => String(brand.id) !== String(id)),
             isLoading: false
           }));
-          toast.success('Brand deleted successfully');
+          toastService.success('Brand deleted successfully');
           return true;
         } catch (error) {
           set({ isLoading: false });
@@ -118,7 +118,7 @@ export const useBrandStore = create(
             ),
             isLoading: false
           }));
-          toast.success(`${ids.length} brands deleted successfully`);
+          toastService.success(`${ids.length} brands deleted successfully`);
           return true;
         } catch (error) {
           set({ isLoading: false });

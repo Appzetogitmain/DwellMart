@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useReviewStore = create((set, get) => ({
     reviews: [],
@@ -24,7 +24,7 @@ export const useReviewStore = create((set, get) => ({
             });
         } catch (error) {
             set({ error: error.message, isLoading: false });
-            toast.error(error.message || 'Failed to fetch reviews');
+            toastService.error(error, 'Failed to fetch reviews');
         }
     },
 
@@ -36,10 +36,10 @@ export const useReviewStore = create((set, get) => ({
                     r.id === id ? { ...r, status } : r
                 )
             }));
-            toast.success(`Review ${status}`);
+            toastService.success(`Review ${status}`);
             return true;
         } catch (error) {
-            toast.error(error.message || 'Failed to update review status');
+            toastService.error(error, 'Failed to update review status');
             return false;
         }
     },
@@ -52,10 +52,10 @@ export const useReviewStore = create((set, get) => ({
             set((state) => ({
                 reviews: state.reviews.filter(r => r.id !== id)
             }));
-            toast.success('Review deleted successfully');
+            toastService.success('Review deleted successfully');
             return true;
         } catch (error) {
-            toast.error(error.message || 'Failed to delete review');
+            toastService.error(error, 'Failed to delete review');
             return false;
         }
     }

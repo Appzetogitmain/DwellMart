@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useCustomerStore = create(
   persist(
@@ -78,7 +78,7 @@ export const useCustomerStore = create(
             isLoading: false
           }));
 
-          toast.success('Customer updated successfully');
+          toastService.success('Customer updated successfully');
           return {
             ...updatedCustomer,
             id: updatedCustomer._id,
@@ -117,7 +117,7 @@ export const useCustomerStore = create(
             isLoading: false
           }));
 
-          toast.success(`Customer ${updatedCustomer.isActive ? 'activated' : 'blocked'} successfully`);
+          toastService.success(`Customer ${updatedCustomer.isActive ? 'activated' : 'blocked'} successfully`);
           return {
             ...updatedCustomer,
             id: updatedCustomer._id,

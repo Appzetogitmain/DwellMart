@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import * as supportApi from '../services/supportApi';
 import { joinConversationRoom, leaveConversationRoom } from '../services/socketService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 const sortByLastMessageAt = (list = []) => {
     return [...list].sort((a, b) => {
@@ -84,7 +84,7 @@ export const useSupportChatStore = create((set, get) => ({
             }));
         } catch (err) {
             set({ isLoading: false });
-            toast.error(err.message || 'Failed to load conversation details.');
+            toastService.error(err, 'Failed to load conversation details.');
         }
     },
 
@@ -93,7 +93,7 @@ export const useSupportChatStore = create((set, get) => ({
         try {
             const res = await supportApi.createConversation(payload);
             const data = res?.data || {};
-            toast.success('Support ticket created successfully!');
+            toastService.success('Support ticket created successfully!');
             await get().fetchConversations();
             if (data.conversation?._id) {
                 await get().selectConversation(data.conversation._id);
@@ -102,7 +102,7 @@ export const useSupportChatStore = create((set, get) => ({
             return true;
         } catch (err) {
             set({ isSending: false });
-            toast.error(err.message || 'Failed to create support ticket.');
+            toastService.error(err, 'Failed to create support ticket.');
             return false;
         }
     },
@@ -118,7 +118,7 @@ export const useSupportChatStore = create((set, get) => ({
             return true;
         } catch (err) {
             set({ isSending: false });
-            toast.error(err.message || 'Failed to send message.');
+            toastService.error(err, 'Failed to send message.');
             return false;
         }
     },
@@ -127,7 +127,7 @@ export const useSupportChatStore = create((set, get) => ({
         try {
             const res = await supportApi.updateStatus(conversationId, status);
             const updated = res?.data;
-            toast.success(`Status updated to ${status.replace('_', ' ')}`);
+            toastService.success(`Status updated to ${status.replace('_', ' ')}`);
 
             set((state) => {
                 const nextActive =
@@ -146,7 +146,7 @@ export const useSupportChatStore = create((set, get) => ({
             });
             return true;
         } catch (err) {
-            toast.error(err.message || 'Failed to update status.');
+            toastService.error(err, 'Failed to update status.');
             return false;
         }
     },
@@ -156,7 +156,7 @@ export const useSupportChatStore = create((set, get) => ({
             const res = await supportApi.uploadAttachment(file);
             return res?.data;
         } catch (err) {
-            toast.error(err.message || 'Failed to upload file.');
+            toastService.error(err, 'Failed to upload file.');
             return null;
         }
     },

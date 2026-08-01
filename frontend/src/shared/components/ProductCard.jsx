@@ -264,18 +264,21 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           {/* Product Image */}
           <Link to={productLink} className="block">
             <div className="w-full aspect-[4/3] bg-surface-background flex items-center justify-center overflow-hidden relative group-hover:bg-borderToken-light/50 transition-colors">
-              {product.originalPrice && (
-                <div className="absolute top-2 left-2 z-10">
-                  <Badge variant={isFlashSale ? 'hot' : currentVariantConfig.badgeVariant}>
-                    {Math.round(
-                      ((product.originalPrice - product.price) / product.originalPrice) * 100
-                    )}% {t('OFF')}
-                  </Badge>
-                </div>
-              )}
-              {isFlashSale && (
-                <div className="absolute top-2 right-10 z-10">
-                  <Badge variant="hot">{t('Hot Deal')}</Badge>
+              {/* Offer & Discount Badges */}
+              {(product.originalPrice || isFlashSale) && (
+                <div className="absolute top-2 left-2 z-10 flex flex-wrap items-center gap-1 max-w-[calc(100%-2.5rem)]">
+                  {product.originalPrice > product.price && (
+                    <span className="px-1.5 py-0.5 bg-red-600 text-white font-black text-[9px] sm:text-[10px] md:text-xs rounded-md shadow-md uppercase tracking-wide leading-none select-none">
+                      {Math.round(
+                        ((product.originalPrice - product.price) / product.originalPrice) * 100
+                      )}% {t('OFF')}
+                    </span>
+                  )}
+                  {isFlashSale && (
+                    <span className="px-1.5 py-0.5 bg-amber-500 text-black font-black text-[9px] sm:text-[10px] md:text-xs rounded-md shadow-md uppercase tracking-wide leading-none select-none">
+                      {t('Hot Deal')}
+                    </span>
+                  )}
                 </div>
               )}
               <LazyImage

@@ -10,7 +10,7 @@ import {
   reorderCategories as reorderCategoriesApi,
   seedCategoriesApi,
 } from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useCategoryStore = create(
   persist(
@@ -78,7 +78,7 @@ export const useCategoryStore = create(
             categories: [...state.categories, newCategory],
             isLoading: false
           }));
-          toast.success('Category created successfully');
+          toastService.success('Category created successfully');
           return newCategory;
         } catch (error) {
           set({ isLoading: false });
@@ -102,7 +102,7 @@ export const useCategoryStore = create(
             ),
             isLoading: false
           }));
-          toast.success('Category updated successfully');
+          toastService.success('Category updated successfully');
           return updatedCategory;
         } catch (error) {
           set({ isLoading: false });
@@ -119,7 +119,7 @@ export const useCategoryStore = create(
             categories: state.categories.filter((cat) => String(cat.id) !== String(id)),
             isLoading: false
           }));
-          toast.success('Category deleted successfully');
+          toastService.success('Category deleted successfully');
           return true;
         } catch (error) {
           set({ isLoading: false });
@@ -141,7 +141,7 @@ export const useCategoryStore = create(
             ),
             isLoading: false
           }));
-          toast.success(`${ids.length} categories deleted successfully`);
+          toastService.success(`${ids.length} categories deleted successfully`);
           return true;
         } catch (error) {
           set({ isLoading: false });
@@ -184,7 +184,7 @@ export const useCategoryStore = create(
             id: cat._id,
           }));
           set({ categories: normalizedCategories, isLoading: false });
-          toast.success('Category order updated successfully');
+          toastService.success('Category order updated successfully');
           return true;
         } catch (error) {
           set({ isLoading: false });
@@ -203,7 +203,7 @@ export const useCategoryStore = create(
             id: cat._id,
           }));
           set({ categories: normalizedCategories, isLoading: false });
-          toast.success('Marketplace categories seeded successfully');
+          toastService.success('Marketplace categories seeded successfully');
           return true;
         } catch (error) {
           set({ isLoading: false });

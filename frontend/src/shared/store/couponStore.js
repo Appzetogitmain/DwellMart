@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useCouponStore = create((set, get) => ({
     coupons: [],
@@ -71,7 +71,7 @@ export const useCouponStore = create((set, get) => ({
             });
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to fetch coupons');
+            toastService.error(error, 'Failed to fetch coupons');
         }
     },
 
@@ -83,11 +83,11 @@ export const useCouponStore = create((set, get) => ({
                 coupons: [response.data, ...state.coupons],
                 isLoading: false
             }));
-            toast.success('Coupon created successfully');
+            toastService.success('Coupon created successfully');
             return response.data;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to create coupon');
+            toastService.error(error, 'Failed to create coupon');
             throw error;
         }
     },
@@ -100,11 +100,11 @@ export const useCouponStore = create((set, get) => ({
                 coupons: state.coupons.map(c => c._id === id ? response.data : c),
                 isLoading: false
             }));
-            toast.success('Coupon updated successfully');
+            toastService.success('Coupon updated successfully');
             return response.data;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to update coupon');
+            toastService.error(error, 'Failed to update coupon');
             throw error;
         }
     },
@@ -117,10 +117,10 @@ export const useCouponStore = create((set, get) => ({
                 coupons: state.coupons.filter(c => c._id !== id),
                 isLoading: false
             }));
-            toast.success('Coupon deleted successfully');
+            toastService.success('Coupon deleted successfully');
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to delete coupon');
+            toastService.error(error, 'Failed to delete coupon');
             throw error;
         }
     }

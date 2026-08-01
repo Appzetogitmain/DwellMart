@@ -1,5 +1,5 @@
 import axios from 'axios';
-import toast from 'react-hot-toast';
+import { toastService } from './toastService';
 import { API_BASE_URL } from './constants';
 import { getExperience } from './experience';
 
@@ -211,7 +211,7 @@ api.interceptors.response.use(
       error.message ||
       'Something went wrong';
 
-    const errorCode = error.response?.data?.errorCode || error.errorCode;
+    const errorCode = error.response?.data?.errorCode || error.response?.data?.code || error.errorCode;
     if (errorCode === 'SUBSCRIPTION_INACTIVE' || errorCode === 'SUBSCRIPTION_EXPIRED') {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('vendor-subscription-expired', {
@@ -219,11 +219,12 @@ api.interceptors.response.use(
         }));
       }
     }
-    
+
     // Auth components & silent background requests handle their own error UI
-    const isSilentUrl = originalRequest.url?.includes('/admin/notifications');
-    if (!isExcludedAuthRequest(scope, originalRequest.url) && !isSilentUrl) {
-      toast.error(message);
+    const isSilentUrl = originalRequest.silent || originalRequest.url?.includes('/admin/notifications');
+    if (!isExcludedAuthRequest(scope, originalRequest.url) && !isSilentUrl && !error._toastShown) {
+      toastService.error(error);
+      error._toastShown = true;
     }
 
     if (error.response?.status === 401) {
@@ -245,7 +246,10 @@ api.interceptors.response.use(
           redirectTo(routeConfig.loginPath);
         }
       } else if (currentPath.startsWith(routeConfig.areaPrefix) && currentPath !== routeConfig.loginPath) {
-        toast.error('Session expired. Please login again.');
+        if (!error._toastShown) {
+          toastService.error('Session expired. Please login again.');
+          error._toastShown = true;
+        }
         redirectTo(routeConfig.loginPath);
       }
     }

@@ -7,7 +7,7 @@ import {
     deleteVendorProduct,
     updateVendorStock,
 } from '../services/vendorService';
-import toast from 'react-hot-toast';
+import { toastService } from '../../../shared/utils/toastService';
 
 export const useVendorProductStore = create((set, get) => ({
     products: [],
@@ -108,7 +108,7 @@ export const useVendorProductStore = create((set, get) => ({
                 total: state.total + 1,
                 isSaving: false,
             }));
-            toast.success('Product created successfully');
+            toastService.success('Product created successfully');
             return product;
         } catch {
             set({ isSaving: false });
@@ -135,7 +135,7 @@ export const useVendorProductStore = create((set, get) => ({
                 ),
                 isSaving: false,
             }));
-            toast.success('Product updated successfully');
+            toastService.success('Product updated successfully');
             return updated;
         } catch {
             set({ isSaving: false });
@@ -159,7 +159,7 @@ export const useVendorProductStore = create((set, get) => ({
                 total: Math.max(0, state.total - 1),
                 isLoading: false,
             }));
-            toast.success('Product deleted successfully');
+            toastService.success('Product deleted successfully');
             return true;
         } catch {
             set({ isLoading: false });
@@ -186,7 +186,7 @@ export const useVendorProductStore = create((set, get) => ({
                 ),
                 isSaving: false,
             }));
-            toast.success('Stock updated successfully');
+            toastService.success('Stock updated successfully');
             return true;
         } catch {
             set({ isSaving: false });

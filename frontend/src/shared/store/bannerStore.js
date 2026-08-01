@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import * as adminService from "../../modules/Admin/services/adminService";
-import toast from "react-hot-toast";
+import { toastService } from "../utils/toastService";
 
 export const useBannerStore = create((set, get) => ({
   banners: [],
@@ -17,7 +17,7 @@ export const useBannerStore = create((set, get) => ({
       set({ banners: response.data, isLoading: false });
     } catch (error) {
       set({ isLoading: false });
-      toast.error(error.message || 'Failed to fetch banners');
+      toastService.error(error, 'Failed to fetch banners');
     }
   },
 
@@ -29,11 +29,11 @@ export const useBannerStore = create((set, get) => ({
         banners: [...state.banners, response.data],
         isLoading: false
       }));
-      toast.success("Banner created successfully");
+      toastService.success("Banner created successfully");
       return response.data;
     } catch (error) {
       set({ isLoading: false });
-      toast.error(error.message || "Failed to create banner");
+      toastService.error(error, "Failed to create banner");
       throw error;
     }
   },
@@ -46,11 +46,11 @@ export const useBannerStore = create((set, get) => ({
         banners: state.banners.map(b => b._id === id ? response.data : b),
         isLoading: false
       }));
-      toast.success("Banner updated successfully");
+      toastService.success("Banner updated successfully");
       return response.data;
     } catch (error) {
       set({ isLoading: false });
-      toast.error(error.message || "Failed to update banner");
+      toastService.error(error, "Failed to update banner");
       throw error;
     }
   },
@@ -63,10 +63,10 @@ export const useBannerStore = create((set, get) => ({
         banners: state.banners.filter(b => b._id !== id),
         isLoading: false
       }));
-      toast.success("Banner deleted successfully");
+      toastService.success("Banner deleted successfully");
     } catch (error) {
       set({ isLoading: false });
-      toast.error(error.message || "Failed to delete banner");
+      toastService.error(error, "Failed to delete banner");
       throw error;
     }
   },

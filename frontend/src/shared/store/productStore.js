@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 import { getPlaceholderImage } from '../utils/helpers';
 
 const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, 'Product');
@@ -19,7 +19,6 @@ export const useProductStore = create((set, get) => ({
         set({ isLoading: true });
         try {
             const response = await adminService.getAllProducts(params);
-            // Check if response.data is an array or object with products
             const productsData = Array.isArray(response.data) ? response.data : (response.data.products || []);
             const normalizedProducts = productsData.map(p => ({
                 ...p,
@@ -36,7 +35,7 @@ export const useProductStore = create((set, get) => ({
             });
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to fetch products');
+            toastService.error(error, 'Failed to fetch products');
         }
     }
 }));

@@ -25,12 +25,14 @@ import supportRoutes from './routes/support.routes.js';
 import bulkUploadRoutes from './routes/bulkUpload.routes.js';
 
 // Middleware imports
+import requestIdMiddleware from './middlewares/requestId.js';
 import { apiLimiter } from './middlewares/rateLimiter.js';
 import { resolveExperience } from './middlewares/resolveExperience.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
 
 const app = express();
+app.use(requestIdMiddleware);
 app.set('trust proxy', 1);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

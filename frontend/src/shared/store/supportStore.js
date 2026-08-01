@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useSupportStore = create((set, get) => ({
     tickets: [],
@@ -24,7 +24,7 @@ export const useSupportStore = create((set, get) => ({
             });
         } catch (error) {
             set({ error: error.message, isLoading: false });
-            toast.error(error.message || 'Failed to fetch tickets');
+            toastService.error(error, 'Failed to fetch tickets');
         }
     },
 
@@ -36,7 +36,7 @@ export const useSupportStore = create((set, get) => ({
             return response.data;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to fetch ticket details');
+            toastService.error(error, 'Failed to fetch ticket details');
             return null;
         }
     },
@@ -49,10 +49,10 @@ export const useSupportStore = create((set, get) => ({
                     t.id === id ? { ...t, status } : t
                 )
             }));
-            toast.success('Status updated successfully');
+            toastService.success('Status updated successfully');
             return true;
         } catch (error) {
-            toast.error(error.message || 'Failed to update status');
+            toastService.error(error, 'Failed to update status');
             return false;
         }
     },
@@ -62,11 +62,11 @@ export const useSupportStore = create((set, get) => ({
         try {
             const response = await adminService.addTicketMessage(id, message);
             set({ isLoading: false });
-            toast.success('Reply added successfully');
+            toastService.success('Reply added successfully');
             return response.data;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to add reply');
+            toastService.error(error, 'Failed to add reply');
             return null;
         }
     }

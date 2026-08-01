@@ -460,8 +460,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    const vendor = await Vendor.findOne({ email }).select('+password');
+    const vendor = await Vendor.findOne({ email: normalizedEmail }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
 

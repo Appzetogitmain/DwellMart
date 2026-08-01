@@ -56,7 +56,7 @@ export const QuantitySelector = ({
 
   return (
     <div
-      className={`inline-flex items-center rounded-btn border border-borderToken-default bg-surface-card shadow-sm ${
+      className={`inline-flex items-center rounded-btn border border-border bg-surface shadow-sm ${
         sizeClasses[size] || sizeClasses.md
       } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     >
@@ -70,8 +70,8 @@ export const QuantitySelector = ({
           buttonSizeClasses[size] || buttonSizeClasses.md
         } ${
           isDisabled || value <= min
-            ? 'opacity-40 cursor-not-allowed text-textColor-muted'
-            : 'hover:bg-borderToken-light text-textColor-primary cursor-pointer'
+            ? 'opacity-40 cursor-not-allowed text-content-muted'
+            : 'hover:bg-border/40 text-content cursor-pointer'
         }`}
       >
         <FiMinus />
@@ -92,10 +92,10 @@ export const QuantitySelector = ({
             step={step}
             disabled={isDisabled}
             onChange={handleInputChange}
-            className="w-full bg-transparent text-center font-bold text-textColor-primary focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-full bg-transparent text-center font-bold text-content focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         ) : (
-          <span className="font-bold text-textColor-primary select-none">{value}</span>
+          <span className="font-bold text-content select-none">{value}</span>
         )}
       </div>
 
@@ -109,8 +109,8 @@ export const QuantitySelector = ({
           buttonSizeClasses[size] || buttonSizeClasses.md
         } ${
           isDisabled || value >= max
-            ? 'opacity-40 cursor-not-allowed text-textColor-muted'
-            : 'hover:bg-borderToken-light text-textColor-primary cursor-pointer'
+            ? 'opacity-40 cursor-not-allowed text-content-muted'
+            : 'hover:bg-border/40 text-content cursor-pointer'
         }`}
       >
         <FiPlus />

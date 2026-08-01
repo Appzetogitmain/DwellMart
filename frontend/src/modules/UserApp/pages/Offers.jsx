@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
+import Pagination from "../../../shared/components/ui/Pagination/Pagination";
 
 const normalizeProduct = (raw) => {
   const vendorObj =
@@ -116,33 +117,58 @@ const MobileOffers = () => {
           .filter(Boolean);
 
         const uniqueSlugs = [...new Set(campaignSlugs)].slice(0, 20);
-        if (!uniqueSlugs.length) {
-          if (!cancelled) setLiveOffers([]);
-          return;
+        let products = [];
+
+        if (uniqueSlugs.length) {
+          const campaignDetails = await Promise.allSettled(
+            uniqueSlugs.map((slug) => api.get(`/campaigns/${slug}`))
+          );
+
+          const productsById = new Map();
+          campaignDetails
+            .filter((item) => item.status === "fulfilled")
+            .forEach((item) => {
+              const payload = item.value?.data ?? item.value;
+              const campaignProducts = Array.isArray(payload?.products) ? payload.products : [];
+              campaignProducts.forEach((product) => {
+                const normalized = normalizeProduct(product);
+                if (!normalized.id) return;
+                if (!productsById.has(normalized.id)) {
+                  productsById.set(normalized.id, normalized);
+                }
+              });
+            });
+          products = Array.from(productsById.values());
         }
 
-        const campaignDetails = await Promise.allSettled(
-          uniqueSlugs.map((slug) => api.get(`/campaigns/${slug}`))
-        );
+        // Fallback: If no campaign products found, fetch flash sales & active catalog products
+        if (!products.length) {
+          const [flashRes, allProductsRes] = await Promise.allSettled([
+            api.get("/flash-sale"),
+            api.get("/products", { params: { limit: 30 } })
+          ]);
 
-        const productsById = new Map();
-        campaignDetails
-          .filter((item) => item.status === "fulfilled")
-          .forEach((item) => {
-            const payload = item.value?.data ?? item.value;
-            const products = Array.isArray(payload?.products) ? payload.products : [];
-            products.forEach((product) => {
-              const normalized = normalizeProduct(product);
-              if (!normalized.id) return;
-              if (!productsById.has(normalized.id)) {
-                productsById.set(normalized.id, normalized);
-              }
+          const map = new Map();
+          if (flashRes.status === "fulfilled") {
+            const rawFlash = flashRes.value?.data ?? flashRes.value;
+            const flashList = Array.isArray(rawFlash) ? rawFlash : [];
+            flashList.forEach((p) => {
+              const norm = normalizeProduct(p);
+              if (norm.id) map.set(norm.id, norm);
             });
-          });
+          }
+          if (allProductsRes.status === "fulfilled") {
+            const rawProds = allProductsRes.value?.data?.products || allProductsRes.value?.products || (Array.isArray(allProductsRes.value?.data) ? allProductsRes.value.data : []);
+            (Array.isArray(rawProds) ? rawProds : []).forEach((p) => {
+              const norm = normalizeProduct(p);
+              if (norm.id && !map.has(norm.id)) map.set(norm.id, norm);
+            });
+          }
+          products = Array.from(map.values());
+        }
 
         if (!cancelled) {
-          const productList = Array.from(productsById.values());
-          const translatedProducts = await translateArray(productList, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+          const translatedProducts = await translateArray(products, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
           setLiveOffers(translatedProducts);
         }
       } catch {
@@ -203,8 +229,18 @@ const MobileOffers = () => {
     return result;
   }, [offersWithDiscount, filters]);
 
-  const { displayedItems, hasMore, isLoading, loadMore, loadMoreRef } =
-    useInfiniteScroll(filteredProducts, 10, 10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, liveOffers.length]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProducts, currentPage, itemsPerPage]);
 
   const filterButtonRef = useRef(null);
 
@@ -263,10 +299,10 @@ const MobileOffers = () => {
               <button
                 onClick={() => navigate(-1)}
                 className="p-2 hover:bg-surface-muted rounded-full transition-colors">
-                <FiArrowLeft className="text-xl text-content-secondary" />
+                <FiArrowLeft className="text-xl text-white" />
               </button>
               <div className="flex-1">
-                <h1 className="text-2xl font-black text-content tracking-tight uppercase">
+                <h1 className="text-2xl font-black text-white tracking-tight uppercase">
                   {t('Special Offers')}
                 </h1>
                 <p className="text-sm font-medium text-brand-primary">
@@ -490,50 +526,21 @@ const MobileOffers = () => {
             ) : viewMode === "grid" ? (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 md:gap-4 lg:gap-6">
-                  {displayedItems.map((product, index) => (
+                  {paginatedProducts.map((product, index) => (
                     <motion.div
                       key={product.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}>
+                      transition={{ delay: index * 0.03 }}>
                       <ProductCard product={product} isFlashSale={true} />
                     </motion.div>
                   ))}
                 </div>
-
-                {hasMore && (
-                  <div
-                    ref={loadMoreRef}
-                    className="mt-6 flex flex-col items-center gap-4">
-                    {isLoading && (
-                      <div className="flex items-center gap-2 text-content-secondary">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                          className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full"
-                        />
-                        <span className="text-sm">
-                          {t('Loading more products...')}
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoading}
-                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoading ? t("Loading...") : t("Load More")}
-                    </button>
-                  </div>
-                )}
               </>
             ) : (
               <>
                 <div className="space-y-3">
-                  {displayedItems.map((product, index) => (
+                  {paginatedProducts.map((product, index) => (
                     <ProductListItem
                       key={product.id}
                       product={product}
@@ -542,36 +549,28 @@ const MobileOffers = () => {
                     />
                   ))}
                 </div>
-
-                {hasMore && (
-                  <div
-                    ref={loadMoreRef}
-                    className="mt-6 flex flex-col items-center gap-4">
-                    {isLoading && (
-                      <div className="flex items-center gap-2 text-content-secondary">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                            ease: "linear",
-                          }}
-                          className="w-5 h-5 border-2 border-brand-primary border-t-transparent rounded-full"
-                        />
-                        <span className="text-sm">
-                          {t('Loading more products...')}
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoading}
-                      className="px-6 py-3 bg-brand-primary text-black rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                      {isLoading ? t("Loading...") : t("Load More")}
-                    </button>
-                  </div>
-                )}
               </>
+            )}
+
+            {filteredProducts.length > 0 && (
+              <div className="mt-8 border-t border-border pt-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredProducts.length}
+                  pageSize={itemsPerPage}
+                  showSizeChanger={true}
+                  pageSizeOptions={[12, 24, 48, 100]}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  onPageSizeChange={(size) => {
+                    setItemsPerPage(size);
+                    setCurrentPage(1);
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>

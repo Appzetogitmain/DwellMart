@@ -217,11 +217,15 @@ export const getRecommendedProducts = (limit = 6) => {
   return [...products].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, limit);
 };
 
+const DUMMY_STORE_REGEX = /test|sptest|qwerty|qa\s|audit|seeded|demo|dummy|sample|free\s*vendor|^sk\s*store|^sagar\s*store/i;
+
 export const getVendorById = (id) =>
   getCatalogVendors().find((v) => normalizeId(v.id) === normalizeId(id));
 
 export const getApprovedVendors = () =>
-  getCatalogVendors().filter((v) => v.status === "approved");
+  getCatalogVendors().filter(
+    (v) => v.status === "approved" && !DUMMY_STORE_REGEX.test(v.storeName || v.name || "")
+  );
 
 export const getBrandById = (id) =>
   getCatalogBrands().find((b) => normalizeId(b.id) === normalizeId(id));

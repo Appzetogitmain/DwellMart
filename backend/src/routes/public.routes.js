@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import asyncHandler from '../utils/asyncHandler.js';
 import axios from 'axios';
 import fs from 'fs/promises';
@@ -73,34 +74,56 @@ const toPublicVendor = (vendorDoc) => {
         ? vendorDoc.toObject()
         : (vendorDoc || {});
 
-    // ALLOWLIST — only these fields are exposed on public, unauthenticated
-    // endpoints. Deliberately an allowlist rather than a denylist so that any
-    // field added to the Vendor schema in future is private by default and must
-    // be opted in here. Previously this was a denylist, which silently exposed
-    // KYC documents (GST/PAN/Aadhaar URLs), payment-gateway customer IDs, and
-    // wholesale business details as soon as those fields were added.
+    const id = String(vendor.id || vendor._id || '');
+    const storeName = vendor.storeName || vendor.name || 'Store';
+    const storeLogo = vendor.storeLogo || vendor.logo || vendor.image || vendor.profileImage || '';
+    const profileImage = vendor.profileImage || vendor.image || storeLogo || '';
+    const rating = Number(vendor.rating) || 0;
+    const reviewCount = Number(vendor.reviewCount) || 0;
+    const followersCount = Number(vendor.followersCount || vendor.followers) || 0;
+    const isVerified = !!vendor.isVerified;
+
+    let location = '';
+    if (vendor.address?.city && vendor.address?.state) {
+        location = `${vendor.address.city}, ${vendor.address.state}`;
+    } else if (vendor.address?.city) {
+        location = vendor.address.city;
+    } else if (vendor.address?.state) {
+        location = vendor.address.state;
+    } else if (vendor.country) {
+        location = vendor.country;
+    }
+
+    const bestSellerScore = Math.round((Number(vendor.bestSellerScore) || 0) * 10) / 10;
+
     return {
-        _id: vendor._id,
-        id: vendor._id,
-        name: vendor.name,
-        storeName: vendor.storeName,
-        storeLogo: vendor.storeLogo,
-        storeDescription: vendor.storeDescription,
-        status: vendor.status,
-        isVerified: vendor.isVerified,
-        rating: vendor.rating,
-        reviewCount: vendor.reviewCount,
-        totalProducts: vendor.totalProducts,
-        // Drives the public "Wholesale Seller" badge. Only the boolean channel
-        // flags are public — never the wholesaleProfile KYC/business details.
+        _id: id,
+        id,
+        name: vendor.name || storeName,
+        storeName,
+        slug: vendor.slug || id,
+        storeLogo,
+        profileImage,
+        logo: storeLogo,
+        storeDescription: vendor.storeDescription || '',
+        isVerified,
+        rating,
+        reviewCount,
+        followersCount,
+        followers: followersCount,
+        bestSellerScore,
+        totalSales: Number(vendor.totalSales) || 0,
+        address: vendor.address || {},
+        location,
+        createdAt: vendor.createdAt || vendor.joinDate || new Date().toISOString(),
+        status: vendor.status || 'approved',
+        totalProducts: vendor.totalProducts || 0,
         sellingChannels: {
             retail: { enabled: vendor?.sellingChannels?.retail?.enabled !== false },
             wholesale: { enabled: vendor?.sellingChannels?.wholesale?.enabled === true },
         },
-        createdAt: vendor.createdAt,
     };
 };
-
 
 const activeCampaignWindowQuery = (now = new Date()) => {
     // Be more inclusive: check if it's within the day
@@ -434,41 +457,202 @@ router.get('/brands/all', catalogCache, asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, brands, 'Brands fetched.'));
 }));
 
-// GET /api/vendors/all (public)
-router.get('/vendors/all', detailCache, asyncHandler(async (req, res) => {
-    const { status = 'approved', page = 1, limit = 50, search } = req.query;
-    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.max(parseInt(limit, 10) || 50, 1);
-    const skip = (numericPage - 1) * numericLimit;
-    const filter = {};
+const getVendorProductCountsMap = async (vendorIds = []) => {
+    if (!vendorIds || vendorIds.length === 0) return new Map();
+    const validObjectIds = vendorIds
+        .map(id => {
+            try {
+                return new mongoose.Types.ObjectId(String(id));
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean);
 
-    if (status && status !== 'all') {
-        filter.status = status;
+    if (validObjectIds.length === 0) return new Map();
+
+    const counts = await Product.aggregate([
+        {
+            $match: {
+                vendorId: { $in: validObjectIds },
+                isApproved: true,
+                status: 'published',
+                isActive: { $ne: false },
+                isDeleted: { $ne: true },
+            }
+        },
+        {
+            $group: {
+                _id: '$vendorId',
+                count: { $sum: 1 }
+            }
+        }
+    ]);
+    const map = new Map();
+    counts.forEach(item => map.set(String(item._id), item.count));
+    return map;
+};
+
+const PUBLIC_TEST_VENDOR_REGEX = /test|sptest|qwerty|qa\s|audit|seeded|demo|dummy|sample|free\s*vendor|^sk\s*store|^sagar\s*store/i;
+
+// GET /api/vendors/best-sellers (public - top 8 cached home endpoint)
+router.get('/vendors/best-sellers', marketingCache, asyncHandler(async (req, res) => {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+    const filter = {
+        status: 'approved',
+        isActive: { $ne: false },
+        isDeleted: { $ne: true },
+        storeName: { $not: PUBLIC_TEST_VENDOR_REGEX },
+        name: { $not: PUBLIC_TEST_VENDOR_REGEX },
+    };
+
+    const vendors = await Vendor.find(filter)
+        .select('name storeName slug storeLogo profileImage isVerified rating reviewCount totalSales bestSellerScore followersCount address createdAt')
+        .sort({ bestSellerScore: -1, rating: -1, reviewCount: -1, createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+    const vendorIds = vendors.map(v => v._id);
+    const countsMap = await getVendorProductCountsMap(vendorIds);
+
+    const formattedVendors = vendors.map(v => {
+        const productCount = countsMap.get(String(v._id)) || 0;
+        return {
+            ...toPublicVendor(v),
+            productCount,
+            totalProducts: productCount,
+        };
+    });
+
+    res.status(200).json(new ApiResponse(200, {
+        vendors: formattedVendors
+    }, 'Top best-selling vendors fetched successfully.'));
+}));
+
+// GET /api/vendors and GET /api/vendors/all (public - searchable & filterable listing)
+const handleGetVendors = asyncHandler(async (req, res) => {
+    const {
+        status = 'approved',
+        page = 1,
+        limit = 12,
+        search,
+        minRating,
+        isVerified,
+        hasProducts,
+        city,
+        state,
+        sort = 'best_selling'
+    } = req.query;
+
+    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
+    const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 100);
+    const skip = (numericPage - 1) * numericLimit;
+
+    // Enforce approved, active, not-deleted, non-test vendors only for public listing
+    const filter = {
+        status: status && status !== 'all' ? status : 'approved',
+        isActive: { $ne: false },
+        isDeleted: { $ne: true }
+    };
+
+    if (!search) {
+        filter.storeName = { $not: PUBLIC_TEST_VENDOR_REGEX };
+        filter.name = { $not: PUBLIC_TEST_VENDOR_REGEX };
     }
 
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch) {
         const safeRegex = new RegExp(trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }];
+        filter.$or = [
+            { storeName: safeRegex },
+            { name: safeRegex },
+            { slug: safeRegex },
+            { email: safeRegex }
+        ];
     }
 
-    const [vendors, total] = await Promise.all([
+    if (minRating) {
+        const parsedRating = parseFloat(minRating);
+        if (!isNaN(parsedRating)) {
+            filter.rating = { $gte: parsedRating };
+        }
+    }
+
+    if (isVerified === 'true' || isVerified === true) {
+        filter.isVerified = true;
+    }
+
+    if (city) {
+        filter['address.city'] = new RegExp(String(city).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    }
+
+    if (state) {
+        filter['address.state'] = new RegExp(String(state).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    }
+
+    // Sorting logic
+    let sortOptions = { bestSellerScore: -1, rating: -1, createdAt: -1 };
+    if (sort === 'highest_rated' || sort === 'highest-rated') {
+        sortOptions = { rating: -1, reviewCount: -1, createdAt: -1 };
+    } else if (sort === 'newest') {
+        sortOptions = { createdAt: -1 };
+    } else if (sort === 'a-z' || sort === 'name_asc') {
+        sortOptions = { storeName: 1, name: 1 };
+    } else if (sort === 'most_products' || sort === 'most-products') {
+        sortOptions = { bestSellerScore: -1, reviewCount: -1 };
+    }
+
+    let [vendors, total] = await Promise.all([
         Vendor.find(filter)
-            .select('-password -otp -otpExpiry')
-            .sort({ rating: -1, reviewCount: -1, createdAt: -1 })
+            .select('-password -otp -otpExpiry -bankDetails -commissionRate')
+            .sort(sortOptions)
             .skip(skip)
             .limit(numericLimit)
             .lean(),
-        Vendor.countDocuments(filter),
+        Vendor.countDocuments(filter)
     ]);
 
+    const vendorIds = vendors.map(v => v._id);
+    const countsMap = await getVendorProductCountsMap(vendorIds);
+
+    let formattedVendors = vendors.map(v => {
+        const productCount = countsMap.get(String(v._id)) || 0;
+        return {
+            ...toPublicVendor(v),
+            productCount,
+            totalProducts: productCount
+        };
+    });
+
+    if (hasProducts === 'true' || hasProducts === true) {
+        formattedVendors = formattedVendors.filter(v => v.productCount > 0);
+    }
+
+    if (sort === 'most_products' || sort === 'most-products') {
+        formattedVendors.sort((a, b) => b.productCount - a.productCount);
+    }
+
+    const totalPages = Math.ceil(total / numericLimit) || 1;
+    const hasNext = numericPage < totalPages;
+    const hasPrev = numericPage > 1;
+
     res.status(200).json(new ApiResponse(200, {
-        vendors: vendors.map(toPublicVendor),
-        total,
-        page: numericPage,
-        pages: Math.ceil(total / numericLimit)
-    }, 'Vendors fetched.'));
-}));
+        vendors: formattedVendors,
+        pagination: {
+            page: numericPage,
+            limit: numericLimit,
+            pages: totalPages,
+            total,
+            hasNext,
+            hasPrev,
+            nextPage: hasNext ? numericPage + 1 : null,
+            prevPage: hasPrev ? numericPage - 1 : null,
+        }
+    }, 'Vendors fetched successfully.'));
+});
+
+router.get('/vendors', handleGetVendors);
+router.get('/vendors/all', handleGetVendors);
 
 // GET /api/vendors/:id (public)
 router.get('/vendors/:id', detailCache, asyncHandler(async (req, res) => {

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { FiSave, FiGlobe, FiShoppingBag, FiToggleRight, FiZap } from "react-icons/fi";
+import { FiSave, FiGlobe, FiShoppingBag, FiUpload, FiTrash2, FiLoader, FiToggleRight, FiZap } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
+import { uploadVendorImage } from "../../services/vendorService";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import QuickCommerceSettingsForm from "../../components/QuickCommerceSettingsForm";
-
 import toast from "react-hot-toast";
 
 const emptyWholesaleProfile = {
@@ -23,6 +23,7 @@ const StoreSettings = () => {
   const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [retailEnabled, setRetailEnabled] = useState(true);
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
   const [quickCommerceChannelEnabled, setQuickCommerceChannelEnabled] = useState(false);
@@ -104,6 +105,41 @@ const StoreSettings = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const res = await uploadVendorImage(file, "vendors/logos");
+      const uploaded = res?.data ?? res;
+      const imageUrl = uploaded?.url || uploaded?.secure_url || "";
+
+      if (imageUrl) {
+        setFormData((prev) => ({ ...prev, storeLogo: imageUrl }));
+        toast.success("Store logo uploaded successfully");
+      } else {
+        toast.error("Failed to retrieve uploaded image URL");
+      }
+    } catch (err) {
+      console.error("Logo upload error:", err);
+      toast.error("Failed to upload store logo");
+    } finally {
+      setIsUploadingLogo(false);
+      e.target.value = "";
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -395,16 +431,70 @@ const StoreSettings = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Store Logo URL
+                    Store Logo
                   </label>
-                  <input
-                    type="text"
-                    name="storeLogo"
-                    value={formData.storeLogo || ""}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="data/logos/logo.png"
-                  />
+                  <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    {/* Logo Preview */}
+                    <div className="w-16 h-16 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center overflow-hidden border-2 border-purple-200 shadow-sm flex-shrink-0">
+                      {formData.storeLogo ? (
+                        <img
+                          src={formData.storeLogo}
+                          alt="Store Logo"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xl">
+                          {(formData.storeName || vendor?.storeName || "S").charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Upload Actions */}
+                    <div className="flex-1 flex flex-wrap items-center gap-2">
+                      <label
+                        htmlFor="store-logo-upload"
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer text-xs font-semibold transition-all ${
+                          isUploadingLogo ? "opacity-50 pointer-events-none" : ""
+                        }`}
+                      >
+                        {isUploadingLogo ? (
+                          <>
+                            <FiLoader className="animate-spin text-sm" />
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FiUpload className="text-sm" />
+                            <span>Upload Logo</span>
+                          </>
+                        )}
+                      </label>
+                      <input
+                        id="store-logo-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                      />
+
+                      {formData.storeLogo && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, storeLogo: "" }))}
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 text-xs font-semibold transition-all"
+                        >
+                          <FiTrash2 className="text-sm" />
+                          <span>Remove</span>
+                        </button>
+                      )}
+                      <p className="w-full text-[11px] text-gray-500 mt-1">
+                        PNG, JPG, or WEBP up to 5MB. Recommended: square image.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="md:col-span-2">

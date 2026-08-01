@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useDeliveryStore = create(
     (set, get) => ({
@@ -35,7 +35,7 @@ export const useDeliveryStore = create(
                 });
             } catch (error) {
                 set({ error: error.message, isLoading: false });
-                toast.error(error.message || 'Failed to fetch delivery boys');
+                toastService.error(error, 'Failed to fetch delivery boys');
             }
         },
 
@@ -55,11 +55,11 @@ export const useDeliveryStore = create(
                     deliveryBoys: [createdBoy, ...state.deliveryBoys],
                     isLoading: false
                 }));
-                toast.success('Delivery boy added successfully');
+                toastService.success('Delivery boy added successfully');
                 return true;
             } catch (error) {
                 set({ isLoading: false });
-                toast.error(error.message || 'Failed to add delivery boy');
+                toastService.error(error, 'Failed to add delivery boy');
                 return false;
             }
         },
@@ -72,9 +72,9 @@ export const useDeliveryStore = create(
                         b.id === id ? { ...b, isActive, status: isActive ? 'active' : 'inactive' } : b
                     )
                 }));
-                toast.success('Status updated successfully');
+                toastService.success('Status updated successfully');
             } catch (error) {
-                toast.error(error.message || 'Failed to update status');
+                toastService.error(error, 'Failed to update status');
             }
         },
 
@@ -95,10 +95,10 @@ export const useDeliveryStore = create(
                             : boy
                     ),
                 }));
-                toast.success(`Application ${applicationStatus} successfully`);
+                toastService.success(`Application ${applicationStatus} successfully`);
                 return true;
             } catch (error) {
-                toast.error(error.message || `Failed to ${applicationStatus} application`);
+                toastService.error(error, `Failed to ${applicationStatus} application`);
                 return false;
             }
         },
@@ -118,11 +118,11 @@ export const useDeliveryStore = create(
                     ),
                     isLoading: false
                 }));
-                toast.success('Delivery boy updated successfully');
+                toastService.success('Delivery boy updated successfully');
                 return true;
             } catch (error) {
                 set({ isLoading: false });
-                toast.error(error.message || 'Failed to update delivery boy');
+                toastService.error(error, 'Failed to update delivery boy');
                 return false;
             }
         },
@@ -135,11 +135,11 @@ export const useDeliveryStore = create(
                     deliveryBoys: state.deliveryBoys.filter((boy) => String(boy.id) !== String(id)),
                     isLoading: false
                 }));
-                toast.success('Delivery boy deleted successfully');
+                toastService.success('Delivery boy deleted successfully');
                 return true;
             } catch (error) {
                 set({ isLoading: false });
-                toast.error(error.message || 'Failed to delete delivery boy');
+                toastService.error(error, 'Failed to delete delivery boy');
                 return false;
             }
         },
@@ -150,12 +150,12 @@ export const useDeliveryStore = create(
                 await adminService.settleCash(id, amount);
                 // Refresh data
                 await get().fetchDeliveryBoys();
-                toast.success('Cash settled successfully');
+                toastService.success('Cash settled successfully');
                 set({ isLoading: false });
                 return true;
             } catch (error) {
                 set({ isLoading: false });
-                toast.error(error.message || 'Failed to settle cash');
+                toastService.error(error, 'Failed to settle cash');
                 return false;
             }
         }

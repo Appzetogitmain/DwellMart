@@ -144,16 +144,16 @@ const SwipeableCartItem = ({ item, index }) => {
             onTouchStart={swipeHandlers.onTouchStart}
             onTouchMove={swipeHandlers.onTouchMove}
             onTouchEnd={swipeHandlers.onTouchEnd}>
-            <Card variant="default" padding="sm" className="relative flex gap-4 bg-surface-card border border-borderToken-default">
+            <Card variant="default" padding="sm" className="relative flex gap-4 bg-surface border border-border shadow-sm">
                 {/* Delete Background */}
                 {swipeOffset > 0 && (
                     <div className="absolute inset-0 bg-status-error rounded-card flex items-center justify-end pr-4">
-                        <FiTrash2 className="text-textColor-brand text-xl" />
+                        <FiTrash2 className="text-white text-xl" />
                     </div>
                 )}
 
                 {/* Product Image */}
-                <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-card overflow-hidden bg-surface-background border border-borderToken-default relative z-10">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-card overflow-hidden bg-surface-muted border border-border relative z-10">
                     <img
                         src={item.image}
                         alt={item.name}
@@ -164,7 +164,7 @@ const SwipeableCartItem = ({ item, index }) => {
                 {/* Product Info */}
                 <div className="flex-1 min-w-0 relative z-10 flex flex-col justify-between">
                     <div>
-                        <h3 className="font-bold text-textColor-primary text-sm mb-0.5 line-clamp-1">
+                        <h3 className="font-bold text-content text-sm mb-0.5 line-clamp-1">
                             {item.name}
                         </h3>
                         <div className="flex items-center gap-2 mb-1">
@@ -191,7 +191,7 @@ const SwipeableCartItem = ({ item, index }) => {
                             </p>
                         )}
                         {formatVariantLabel(item?.variant) && (
-                            <p className="text-xs text-textColor-muted mb-1 font-medium">
+                            <p className="text-xs text-content-secondary mb-1 font-medium">
                                 {formatVariantLabel(item?.variant)}
                             </p>
                         )}
@@ -206,7 +206,7 @@ const SwipeableCartItem = ({ item, index }) => {
                     </div>
 
                     {/* Quantity & Actions Bar */}
-                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-borderToken-default">
+                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border">
                         <QuantitySelector
                             value={item.quantity}
                             onChange={handleQuantityChange}
