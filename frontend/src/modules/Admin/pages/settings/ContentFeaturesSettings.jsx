@@ -228,6 +228,22 @@ const ContentFeaturesSettings = () => {
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                 </label>
               </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 sm:p-4 border border-gray-200 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-800">Quick Commerce</h4>
+                  <p className="text-xs text-gray-600">Platform-wide switch for the hyperlocal Quick Commerce experience, its vendors, and its category tree. Turning this off hides all Quick Commerce UI instantly.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 sm:ml-4">
+                  <input
+                    type="checkbox"
+                    checked={featuresData.quickCommerceEnabled === true}
+                    onChange={() => handleFeatureToggle('quickCommerceEnabled')}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
             </div>
           )}
 

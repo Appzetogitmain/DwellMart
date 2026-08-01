@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { FiSave, FiGlobe, FiShoppingBag, FiToggleRight } from "react-icons/fi";
+import { FiSave, FiGlobe, FiShoppingBag, FiToggleRight, FiZap } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
+import QuickCommerceSettingsForm from "../../components/QuickCommerceSettingsForm";
 
 import toast from "react-hot-toast";
 
@@ -19,10 +20,12 @@ const StoreSettings = () => {
   const { vendor, updateProfile, updateSellingChannels } = useVendorAuthStore();
   const { settings, initialize: initializeSettings } = useSettingsStore();
   const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
   const [retailEnabled, setRetailEnabled] = useState(true);
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
+  const [quickCommerceChannelEnabled, setQuickCommerceChannelEnabled] = useState(false);
   const [wholesaleProfile, setWholesaleProfile] = useState(emptyWholesaleProfile);
   const [isSavingChannels, setIsSavingChannels] = useState(false);
 
@@ -44,6 +47,7 @@ const StoreSettings = () => {
       });
       setRetailEnabled(vendor.sellingChannels?.retail?.enabled !== false);
       setWholesaleEnabled(vendor.sellingChannels?.wholesale?.enabled === true);
+      setQuickCommerceChannelEnabled(vendor.sellingChannels?.quickCommerce?.enabled === true);
       setWholesaleProfile({
         ...emptyWholesaleProfile,
         ...(vendor.wholesaleProfile || {}),
@@ -67,8 +71,8 @@ const StoreSettings = () => {
   };
 
   const handleSaveSellingChannels = async () => {
-    if (!retailEnabled && !wholesaleEnabled) {
-      toast.error("Please enable at least one selling channel (Retail or Wholesale).");
+    if (!retailEnabled && !wholesaleEnabled && !quickCommerceChannelEnabled) {
+      toast.error("Please enable at least one selling channel (Retail, Wholesale, or Quick Commerce).");
       return;
     }
     if (wholesaleEnabled) {
@@ -85,6 +89,7 @@ const StoreSettings = () => {
         sellingChannels: {
           retail: { enabled: retailEnabled },
           wholesale: { enabled: wholesaleEnabled },
+          quickCommerce: { enabled: quickCommerceChannelEnabled },
         },
         wholesaleProfile,
       });
@@ -138,7 +143,14 @@ const StoreSettings = () => {
   const sections = [
     { id: "identity", label: "Store Identity", icon: FiShoppingBag },
     { id: "contact", label: "Contact Info", icon: FiGlobe },
-    ...(wholesaleMarketplaceEnabled ? [{ id: "wholesale", label: "Selling Channels", icon: FiToggleRight }] : []),
+    // Shown when any optional selling channel is available platform-wide.
+    ...(wholesaleMarketplaceEnabled || quickCommerceEnabled
+      ? [{ id: "wholesale", label: "Selling Channels", icon: FiToggleRight }]
+      : []),
+    // Operating profile is only meaningful once the vendor is on the channel.
+    ...(quickCommerceEnabled && vendor?.sellingChannels?.quickCommerce?.enabled === true
+      ? [{ id: "quickCommerce", label: "Quick Commerce", icon: FiZap }]
+      : []),
   ];
 
   if (!vendor) {
@@ -185,7 +197,11 @@ const StoreSettings = () => {
           </div>
         </div>
 
-        {activeSection === "wholesale" ? (
+        {activeSection === "quickCommerce" ? (
+          <div className="p-3 sm:p-4 md:p-6">
+            <QuickCommerceSettingsForm vendor={vendor} />
+          </div>
+        ) : activeSection === "wholesale" ? (
           <div className="p-3 sm:p-4 md:p-6 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg">
               <div className="flex-1 min-w-0">
@@ -203,21 +219,41 @@ const StoreSettings = () => {
               </label>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg">
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-800">Wholesale Marketplace</h4>
-                <p className="text-xs text-gray-600">Sell in bulk with quantity-based pricing tiers</p>
+            {wholesaleMarketplaceEnabled && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-800">Wholesale Marketplace</h4>
+                  <p className="text-xs text-gray-600">Sell in bulk with quantity-based pricing tiers</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={wholesaleEnabled}
+                    onChange={(e) => setWholesaleEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={wholesaleEnabled}
-                  onChange={(e) => setWholesaleEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-              </label>
-            </div>
+            )}
+
+            {quickCommerceEnabled && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-800">Quick Commerce</h4>
+                  <p className="text-xs text-gray-600">Sell to nearby customers with fast, hyperlocal delivery</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={quickCommerceChannelEnabled}
+                    onChange={(e) => setQuickCommerceChannelEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+            )}
 
             <p className="text-xs text-gray-500">At least one selling channel must stay enabled.</p>
 

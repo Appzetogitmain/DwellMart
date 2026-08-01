@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
+import { QUICK_COMMERCE_ORDER_STATUS_VALUES } from '../constants/quickCommerce.js';
 
 export const INTEGRATION_PARTNER_STATUSES = [
     'NEW',
@@ -132,6 +134,43 @@ const orderSchema = new mongoose.Schema(
             enum: ['retail', 'wholesale', 'mixed'],
             default: 'retail',
             index: true,
+        },
+        // Which shopping experience produced this order. Historical orders
+        // default to marketplace, so no migration is required.
+        experience: {
+            type: String,
+            enum: EXPERIENCE_VALUES,
+            default: EXPERIENCES.MARKETPLACE,
+            index: true,
+        },
+        // Populated only for Quick Commerce orders.
+        quickCommerce: {
+            // The promise made to the customer, locked in at checkout.
+            promisedEtaMinutes: { type: Number },
+            promisedAt: { type: Date },
+            etaBreakdown: {
+                _id: false,
+                prepMins: Number,
+                travelMins: Number,
+            },
+            status: {
+                type: String,
+                enum: QUICK_COMMERCE_ORDER_STATUS_VALUES,
+            },
+            acceptedAt: { type: Date },
+            preparedAt: { type: Date },
+            pickedUpAt: { type: Date },
+            customerLocation: {
+                type: {
+                    type: String,
+                    enum: ['Point'],
+                },
+                coordinates: { type: [Number] },
+            },
+            deliveryDistanceKm: { type: Number },
+            deliveryFee: { type: Number, default: 0 },
+            packagingFee: { type: Number, default: 0 },
+            slaBreached: { type: Boolean, default: false },
         },
         totalSavings: { type: Number, default: 0 },
         couponCode: { type: String },

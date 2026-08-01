@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import {
+    QUICK_COMMERCE_STORE_TYPES,
+    QUICK_COMMERCE_AVAILABILITY,
+    QUICK_COMMERCE_AVAILABILITY_VALUES,
+} from '../constants/quickCommerce.js';
 
 const vendorSchema = new mongoose.Schema(
     {
@@ -64,6 +69,53 @@ const vendorSchema = new mongoose.Schema(
             wholesale: {
                 enabled: { type: Boolean, default: false },
             },
+            // Quick Commerce is a separate shopping experience, not a marketplace
+            // channel. Defaults false so every existing vendor is unaffected.
+            quickCommerce: {
+                enabled: { type: Boolean, default: false },
+            },
+        },
+        // Quick Commerce operating profile. Populated only for vendors on the
+        // Quick Commerce channel; every field is optional so existing vendor
+        // documents remain valid without migration.
+        quickCommerceProfile: {
+            storeType: {
+                type: String,
+                enum: QUICK_COMMERCE_STORE_TYPES,
+            },
+            // GeoJSON Point — note the [longitude, latitude] axis order.
+            location: {
+                type: {
+                    type: String,
+                    enum: ['Point'],
+                },
+                coordinates: {
+                    type: [Number],
+                },
+            },
+            serviceRadiusKm: { type: Number, min: 0.5, default: 5 },
+            // Fallback serviceability when a customer denies location access.
+            servicedPincodes: [{ type: String, trim: true }],
+            preparationTimeMins: { type: Number, min: 0, default: 10 },
+            businessHours: [
+                {
+                    _id: false,
+                    day: { type: Number, min: 0, max: 6, required: true },
+                    open: { type: String, trim: true },
+                    close: { type: String, trim: true },
+                    isClosed: { type: Boolean, default: false },
+                },
+            ],
+            availabilityStatus: {
+                type: String,
+                enum: QUICK_COMMERCE_AVAILABILITY_VALUES,
+                default: QUICK_COMMERCE_AVAILABILITY.OPEN,
+            },
+            // Added to the ETA while the store is marked busy.
+            busyExtraMins: { type: Number, min: 0, default: 10 },
+            pausedUntil: { type: Date },
+            minOrderValue: { type: Number, min: 0, default: 0 },
+            packagingFee: { type: Number, min: 0, default: 0 },
         },
         wholesaleProfile: {
             gstNumber: { type: String, trim: true },
@@ -118,6 +170,10 @@ const vendorSchema = new mongoose.Schema(
 
 vendorSchema.index({ status: 1, rating: -1, reviewCount: -1, createdAt: -1 });
 vendorSchema.index({ status: 1, createdAt: -1 });
+// Sparse: only Quick Commerce vendors carry a location, so non-QC vendors are
+// excluded from the geo index entirely.
+vendorSchema.index({ 'quickCommerceProfile.location': '2dsphere' }, { sparse: true });
+vendorSchema.index({ 'sellingChannels.quickCommerce.enabled': 1, status: 1 });
 
 vendorSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
@@ -139,8 +195,11 @@ vendorSchema.pre('save', function syncCountry(next) {
 vendorSchema.pre('save', function enforceSellingChannel(next) {
     const retailEnabled = this.sellingChannels?.retail?.enabled !== false;
     const wholesaleEnabled = this.sellingChannels?.wholesale?.enabled === true;
-    if (!retailEnabled && !wholesaleEnabled) {
-        return next(new Error('At least one selling channel (Retail or Wholesale) must be enabled.'));
+    // A Quick Commerce-only vendor (e.g. a dark store) is valid, so it counts
+    // toward the "at least one channel" requirement.
+    const quickCommerceEnabled = this.sellingChannels?.quickCommerce?.enabled === true;
+    if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
+        return next(new Error('At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.'));
     }
     next();
 });

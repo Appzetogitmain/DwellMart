@@ -99,6 +99,14 @@ export const updateVendorProfile = (data) => api.put('/vendor/auth/profile', dat
 export const updateVendorSellingChannels = (data) => api.put('/vendor/auth/selling-channels', data);
 
 /**
+ * Update the vendor's Quick Commerce operating profile — store type, location,
+ * radius, prep time, business hours, and availability.
+ * Coordinates are sent as latitude/longitude; the server stores GeoJSON.
+ */
+export const updateVendorQuickCommerceSettings = (data) =>
+    api.put('/vendor/quick-commerce/settings', data);
+
+/**
  * Update vendor password
  * @param {string} currentPassword 
  * @param {string} newPassword 

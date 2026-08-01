@@ -4,11 +4,26 @@ import ApiError from '../../../utils/ApiError.js';
 import Product from '../../../models/Product.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
-import { resolveWholesalePayload } from '../../../services/pricingValidation.service.js';
+import Category from '../../../models/Category.model.js';
+import {
+    resolveWholesalePayload,
+    resolveQuickCommercePayload,
+} from '../../../services/pricingValidation.service.js';
 
-const isVendorWholesaleEnabled = async (vendorId) => {
+const getVendorChannels = async (vendorId) => {
     const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
-    return vendor?.sellingChannels?.wholesale?.enabled === true;
+    return {
+        wholesale: vendor?.sellingChannels?.wholesale?.enabled === true,
+        quickCommerce: vendor?.sellingChannels?.quickCommerce?.enabled === true,
+    };
+};
+
+/** Look up which experience a category belongs to, for cross-tree validation. */
+const getCategoryExperience = async (categoryId) => {
+    if (!categoryId) return null;
+    const category = await Category.findById(categoryId).select('experience').lean();
+    if (!category) throw new ApiError(400, 'Selected category does not exist.');
+    return category.experience || 'marketplace';
 };
 
 const deriveStockStatus = (stockQuantity = 0, lowStockThreshold = 10) => {
@@ -269,25 +284,46 @@ export const createProduct = asyncHandler(async (req, res) => {
         : stockQuantity;
     const stock = deriveStockStatus(finalStockQuantity, lowStockThreshold);
 
+    const channels = await getVendorChannels(req.user.id);
+
     const resolvedWholesale = resolveWholesalePayload({
         retailEnabled: rest.retailEnabled,
         wholesaleEnabled: rest.wholesaleEnabled,
         wholesale: rest.wholesale,
         price,
         stockQuantity: finalStockQuantity,
-        vendorWholesaleEnabled: rest.wholesaleEnabled === true
-            ? await isVendorWholesaleEnabled(req.user.id)
-            : false,
+        vendorWholesaleEnabled: rest.wholesaleEnabled === true ? channels.wholesale : false,
     });
 
-    // Drop any raw wholesale payload; resolvedWholesale is the only validated source.
-    const { wholesale: _rawWholesale, ...restWithoutWholesale } = rest;
+    const resolvedQuickCommerce = resolveQuickCommercePayload({
+        quickCommerceEnabled: rest.quickCommerceEnabled,
+        quickCommerce: rest.quickCommerce,
+        quickCommerceCategoryId: rest.quickCommerceCategoryId,
+        vendorQuickCommerceEnabled: channels.quickCommerce,
+        categoryExperience: rest.quickCommerceEnabled === true
+            ? await getCategoryExperience(rest.quickCommerceCategoryId)
+            : null,
+    });
+
+    // A product must sell somewhere. Checked here as well as in the pre-save
+    // hook so the failure surfaces as a 400 rather than a 500.
+    if (rest.retailEnabled === false && resolvedWholesale.wholesaleEnabled !== true
+        && resolvedQuickCommerce.quickCommerceEnabled !== true) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
+    }
+
+    // Drop raw channel payloads; the resolvers are the only validated source.
+    const {
+        wholesale: _rawWholesale,
+        quickCommerce: _rawQuickCommerce,
+        ...restWithoutChannelPayloads
+    } = rest;
 
     const product = await Product.create({
         name,
         slug,
         vendorId: req.user.id,
-        ...restWithoutWholesale,
+        ...restWithoutChannelPayloads,
         price,
         variants: normalizedVariants,
         faqs: sanitizeFaqs(rest.faqs),
@@ -295,6 +331,7 @@ export const createProduct = asyncHandler(async (req, res) => {
         lowStockThreshold,
         stock,
         ...resolvedWholesale,
+        ...resolvedQuickCommerce,
     });
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
@@ -306,6 +343,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
     // Snapshot the stored wholesale config before the bulk assign, so incoming
     // tier data is only ever persisted after passing validation below.
     const storedWholesale = product.wholesale?.toObject?.() ?? product.wholesale;
+    const storedQuickCommerce = product.quickCommerce?.toObject?.() ?? product.quickCommerce;
+    const storedQuickCommerceCategoryId = product.quickCommerceCategoryId;
     Object.assign(product, req.body);
     if (Object.prototype.hasOwnProperty.call(req.body, 'faqs')) {
         product.faqs = sanitizeFaqs(req.body.faqs);
@@ -347,6 +386,13 @@ export const updateProduct = asyncHandler(async (req, res) => {
     // so partial updates never clear existing wholesale configuration.
     const touchesWholesale = ['retailEnabled', 'wholesaleEnabled', 'wholesale']
         .some((key) => Object.prototype.hasOwnProperty.call(req.body, key));
+    const touchesQuickCommerce = ['retailEnabled', 'quickCommerceEnabled', 'quickCommerce', 'quickCommerceCategoryId']
+        .some((key) => Object.prototype.hasOwnProperty.call(req.body, key));
+
+    const channels = (touchesWholesale || touchesQuickCommerce)
+        ? await getVendorChannels(req.user.id)
+        : null;
+
     if (touchesWholesale) {
         const resolvedWholesale = resolveWholesalePayload({
             retailEnabled: product.retailEnabled,
@@ -354,15 +400,39 @@ export const updateProduct = asyncHandler(async (req, res) => {
             wholesale: product.wholesale,
             price: product.price,
             stockQuantity: product.stockQuantity,
-            vendorWholesaleEnabled: product.wholesaleEnabled === true
-                ? await isVendorWholesaleEnabled(req.user.id)
-                : false,
+            vendorWholesaleEnabled: product.wholesaleEnabled === true ? channels.wholesale : false,
         });
         product.retailEnabled = resolvedWholesale.retailEnabled;
         product.wholesaleEnabled = resolvedWholesale.wholesaleEnabled;
         // When wholesale is off, keep the previously stored configuration rather
         // than persisting unvalidated tier data from the request body.
         product.wholesale = resolvedWholesale.wholesale ?? storedWholesale;
+    }
+
+    if (touchesQuickCommerce) {
+        const resolvedQuickCommerce = resolveQuickCommercePayload({
+            quickCommerceEnabled: product.quickCommerceEnabled,
+            quickCommerce: product.quickCommerce,
+            quickCommerceCategoryId: product.quickCommerceCategoryId,
+            vendorQuickCommerceEnabled: channels.quickCommerce,
+            categoryExperience: product.quickCommerceEnabled === true
+                ? await getCategoryExperience(product.quickCommerceCategoryId)
+                : null,
+        });
+        product.quickCommerceEnabled = resolvedQuickCommerce.quickCommerceEnabled;
+        // Disabling the channel preserves stored configuration rather than
+        // persisting unvalidated data from the request body.
+        if (resolvedQuickCommerce.quickCommerceEnabled) {
+            product.quickCommerceCategoryId = resolvedQuickCommerce.quickCommerceCategoryId;
+            product.quickCommerce = resolvedQuickCommerce.quickCommerce;
+        } else {
+            product.quickCommerceCategoryId = storedQuickCommerceCategoryId;
+            product.quickCommerce = storedQuickCommerce;
+        }
+    }
+
+    if (product.retailEnabled === false && product.wholesaleEnabled !== true && product.quickCommerceEnabled !== true) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
     }
 
     await product.save();

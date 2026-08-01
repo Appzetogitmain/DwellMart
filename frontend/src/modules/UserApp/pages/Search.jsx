@@ -12,6 +12,8 @@ import { useCategoryStore } from '../../../shared/store/categoryStore';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
+import { useExperienceStore } from '../../../shared/store/experienceStore';
+import { EXPERIENCES, getLocationQueryParams } from '../../../shared/utils/experience';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import ProductGrid from '../../../shared/components/ProductGrid';
@@ -119,6 +121,8 @@ const MobileSearch = ({ isShopPage = false }) => {
   });
   const [approvedVendors, setApprovedVendors] = useState([]);
   const { settings, initialize: initializeSettings } = useSettingsStore();
+  const { experience, location: customerLocation } = useExperienceStore();
+  const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
   const wholesaleMarketplaceEnabled =
     settings?.features?.wholesaleMarketplaceEnabled === true;
   const [products, setProducts] = useState([]);
@@ -272,6 +276,12 @@ const MobileSearch = ({ isShopPage = false }) => {
       if (filters.bulkDiscount) query.bulkDiscount = 'true';
       if (filters.hasMoq) query.hasMoq = 'true';
 
+      // Quick Commerce results must be limited to stores that can deliver here.
+      // The server enforces this; sending the hint is what makes it possible.
+      if (isQuickCommerce) {
+        Object.assign(query, getLocationQueryParams(customerLocation));
+      }
+
       return query;
     },
     [
@@ -283,6 +293,8 @@ const MobileSearch = ({ isShopPage = false }) => {
       filters.sellingChannel,
       filters.bulkDiscount,
       filters.hasMoq,
+      isQuickCommerce,
+      customerLocation,
       sortBy,
       searchParams,
     ]

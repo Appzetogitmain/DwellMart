@@ -15,6 +15,16 @@ import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
 import { resolvePriceForQuantity, deriveOrderType } from '../../../services/pricingEngine.service.js';
+import { getRequestExperience, EXPERIENCES } from '../../../constants/experiences.js';
+import { isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
+import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
+import {
+    resolveVendorAvailability,
+    pointToLatLng,
+    haversineDistanceKm,
+    calculateEta,
+    calculateDeliveryFee,
+} from '../../../services/quickCommerce.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -244,6 +254,27 @@ export const placeOrder = asyncHandler(async (req, res) => {
         throw new ApiError(400, `The selected payment method (${normalizedPaymentMethod}) is currently disabled.`);
     }
 
+    // 0b. Quick Commerce pre-flight.
+    // The experience determines which validation and fee model apply. The
+    // client's serviceability check was a preview; everything below is
+    // re-derived server-side because this is the money path.
+    const experience = getRequestExperience(req);
+    const isQuickCommerceOrder = experience === EXPERIENCES.QUICK_COMMERCE;
+    let quickCommerceContext = null;
+
+    if (isQuickCommerceOrder) {
+        if (!(await isQuickCommerceEnabled())) {
+            throw new ApiError(403, 'Quick Commerce is not currently available.');
+        }
+
+        const latitude = Number(req.body?.customerLocation?.latitude);
+        const longitude = Number(req.body?.customerLocation?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            throw new ApiError(400, 'A delivery location is required for Quick Commerce orders.');
+        }
+        quickCommerceContext = { latitude, longitude };
+    }
+
     // 1. Validate items and calculate subtotal
     let subtotal = 0;
     let totalTaxReporting = 0;
@@ -255,10 +286,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
     for (const item of items) {
         const product = await Product.findById(item.productId);
         if (!product) throw new ApiError(404, `Product not found: ${item.productId}`);
+
+        // A product must be sold on the experience it is being bought through.
+        if (isQuickCommerceOrder && product.quickCommerceEnabled !== true) {
+            throw new ApiError(400, `${product.name} is not available on Quick Commerce.`);
+        }
+        if (!isQuickCommerceOrder && product.retailEnabled === false && product.wholesaleEnabled !== true) {
+            throw new ApiError(400, `${product.name} is not available on the Marketplace.`);
+        }
+
+        // Per-order cap protects quick-delivery stock from a single large order.
+        const maxOrderQty = Number(product?.quickCommerce?.maxOrderQty);
+        if (isQuickCommerceOrder && Number.isFinite(maxOrderQty) && Number(item.quantity) > maxOrderQty) {
+            throw new ApiError(
+                400,
+                `${product.name} is limited to ${maxOrderQty} per order on Quick Commerce.`
+            );
+        }
+
         const linkedVendorId = String(product?.vendorId || '').trim();
         const vendor = linkedVendorId
             ? await Vendor.findById(linkedVendorId).select(
-                'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold sellingChannels'
+                'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold sellingChannels quickCommerceProfile'
             )
             : null;
         if (!vendor?._id) {
@@ -280,8 +329,47 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }]
             );
         }
+        // Stock is re-validated here on every order, and decremented atomically
+        // inside the transaction below. Carts never reserve stock, so this is
+        // the guarantee against overselling across both experiences.
         if (product.stock === 'out_of_stock') throw new ApiError(400, `${product.name} is out of stock.`);
         if (product.stockQuantity < item.quantity) throw new ApiError(400, `Only ${product.stockQuantity} units of ${product.name} available.`);
+
+        if (isQuickCommerceOrder) {
+            // Re-validate the store, not just the product: it may have closed,
+            // gone offline, or dropped the channel since the cart was filled.
+            if (vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+                throw new ApiError(409, `${vendor.storeName} is no longer available on Quick Commerce.`);
+            }
+
+            const availability = resolveVendorAvailability(vendor);
+            if (!availability.isOrderable) {
+                throw new ApiError(409, `${vendor.storeName} is not accepting orders right now.`, [{
+                    code: 'VENDOR_NOT_ORDERABLE',
+                    vendorId: String(vendor._id),
+                    reason: availability.reason,
+                }]);
+            }
+
+            const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
+            if (!vendorPoint) {
+                throw new ApiError(409, `${vendor.storeName} has no delivery location configured.`);
+            }
+
+            const distanceKm = haversineDistanceKm(vendorPoint, quickCommerceContext);
+            const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 5;
+            if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
+                throw new ApiError(409, `${vendor.storeName} does not deliver to your location.`, [{
+                    code: 'OUT_OF_DELIVERY_RANGE',
+                    vendorId: String(vendor._id),
+                }]);
+            }
+
+            // Captured for ETA and delivery-fee calculation after the loop.
+            quickCommerceContext.vendor = vendor;
+            quickCommerceContext.distanceKm = distanceKm;
+            quickCommerceContext.extraPrepMins = availability.extraPrepMins;
+        }
 
         // Always trust server-side product pricing; never trust client-sent item.price.
         const { price: variantResolvedPrice, variantKey, hasVariantAxes } = resolveVariantSelection(product, item.variant);
@@ -393,24 +481,77 @@ export const placeOrder = asyncHandler(async (req, res) => {
         appliedCoupon = coupon;
     }
 
-    // 3. Calculate shipping
-    const vendorShippingInput = Object.values(vendorMap).map((vendorGroup) => ({
-        vendorId: vendorGroup.vendorId,
-        subtotal: vendorGroup.subtotal,
-        shippingEnabled: vendorGroup.shippingEnabled,
-        defaultShippingRate: vendorGroup.defaultShippingRate,
-        freeShippingThreshold: vendorGroup.freeShippingThreshold,
-    }));
-    const { totalShipping: shipping, shippingByVendor } = await calculateVendorShippingForGroups({
-        vendorGroups: vendorShippingInput,
-        shippingAddress,
-        shippingOption,
-        couponType: appliedCoupon?.type || null,
-    });
+    // 3. Calculate shipping / delivery.
+    // Quick Commerce uses a distance-based delivery fee instead of the
+    // Marketplace per-vendor shipping-rate engine.
+    let shipping = 0;
+    let shippingByVendor = {};
+    let quickCommerceCharges = null;
+
+    if (isQuickCommerceOrder) {
+        const vendorGroups = Object.values(vendorMap);
+        // A Quick Commerce cart is pinned to a single store; multi-vendor here
+        // would have no coherent ETA or delivery fee.
+        if (vendorGroups.length !== 1) {
+            throw new ApiError(400, 'Quick Commerce orders must be placed with a single store.');
+        }
+
+        const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
+        const qcSettings = settingsDoc?.value || {};
+        const profile = quickCommerceContext.vendor.quickCommerceProfile || {};
+
+        const groupSubtotal = vendorGroups[0].subtotal;
+        const minOrderValue = Number(profile.minOrderValue) || 0;
+        if (minOrderValue > 0 && groupSubtotal < minOrderValue) {
+            throw new ApiError(400, `This store has a minimum order value of Rs.${minOrderValue}.`);
+        }
+
+        const deliveryFee = appliedCoupon?.type === 'freeship'
+            ? 0
+            : calculateDeliveryFee({
+                distanceKm: quickCommerceContext.distanceKm,
+                baseFee: qcSettings.baseDeliveryFee,
+                perKmFee: qcSettings.perKmDeliveryFee,
+                freeAboveSubtotal: qcSettings.freeDeliveryAboveSubtotal,
+                subtotal: groupSubtotal,
+            });
+        const packagingFee = Number(profile.packagingFee) || 0;
+
+        // The ETA promise is computed here, atomically with the order.
+        const eta = calculateEta({
+            preparationTimeMins: profile.preparationTimeMins,
+            extraPrepMins: quickCommerceContext.extraPrepMins,
+            distanceKm: quickCommerceContext.distanceKm,
+            averageSpeedKmph: qcSettings.averageSpeedKmph,
+        });
+
+        shipping = deliveryFee;
+        shippingByVendor = { [String(vendorGroups[0].vendorId)]: deliveryFee };
+        quickCommerceCharges = { deliveryFee, packagingFee, eta };
+    } else {
+        const vendorShippingInput = Object.values(vendorMap).map((vendorGroup) => ({
+            vendorId: vendorGroup.vendorId,
+            subtotal: vendorGroup.subtotal,
+            shippingEnabled: vendorGroup.shippingEnabled,
+            defaultShippingRate: vendorGroup.defaultShippingRate,
+            freeShippingThreshold: vendorGroup.freeShippingThreshold,
+        }));
+        const result = await calculateVendorShippingForGroups({
+            vendorGroups: vendorShippingInput,
+            shippingAddress,
+            shippingOption,
+            couponType: appliedCoupon?.type || null,
+        });
+        shipping = result.totalShipping;
+        shippingByVendor = result.shippingByVendor;
+    }
 
     // 4. Calculate final totals (using dynamic tax)
+    const packagingFee = quickCommerceCharges?.packagingFee || 0;
     const tax = parseFloat(totalTaxReporting.toFixed(2));
-    const total = parseFloat((subtotal - couponDiscount + shipping + extraTaxToPay).toFixed(2));
+    const total = parseFloat(
+        (subtotal - couponDiscount + shipping + packagingFee + extraTaxToPay).toFixed(2)
+    );
 
     // 5. Build vendor item groups
     const vendorItems = Object.values(vendorMap).map((v) => ({
@@ -427,6 +568,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
     const orderType = deriveOrderType(enrichedItems);
     const orderSavings = parseFloat(totalSavings.toFixed(2));
+
+    // The ETA promise and its inputs are persisted with the order so the
+    // commitment made at checkout is auditable against actual delivery.
+    const quickCommercePayload = isQuickCommerceOrder
+        ? {
+            promisedEtaMinutes: quickCommerceCharges.eta.etaMinutes,
+            promisedAt: new Date(),
+            etaBreakdown: {
+                prepMins: quickCommerceCharges.eta.prepMins,
+                travelMins: quickCommerceCharges.eta.travelMins,
+            },
+            status: QUICK_COMMERCE_ORDER_STATUS.PLACED,
+            customerLocation: {
+                type: 'Point',
+                coordinates: [quickCommerceContext.longitude, quickCommerceContext.latitude],
+            },
+            deliveryDistanceKm: quickCommerceContext.distanceKm,
+            deliveryFee: quickCommerceCharges.deliveryFee,
+            packagingFee: quickCommerceCharges.packagingFee,
+            slaBreached: false,
+        }
+        : undefined;
 
     // 6-9. Transactional order creation to avoid partial writes.
     let order = null;
@@ -460,6 +623,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 discount: couponDiscount,
                 total,
                 orderType,
+                experience,
+                ...(quickCommercePayload ? { quickCommerce: quickCommercePayload } : {}),
                 totalSavings: orderSavings,
                 couponCode: couponCode?.toUpperCase(),
                 couponDiscount,

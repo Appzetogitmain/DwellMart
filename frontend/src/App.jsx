@@ -115,6 +115,7 @@ import AppBootstrap from "./shared/components/AppBootstrap";
 
 // Mobile App Routes
 import MobileHome from "./modules/UserApp/pages/Home";
+import QuickCommerceHome from "./modules/UserApp/pages/QuickCommerceHome";
 import MobileProductDetail from "./modules/UserApp/pages/ProductDetail";
 import MobileSeller from "./modules/UserApp/pages/Seller";
 import MobileCategory from "./modules/UserApp/pages/Category";
@@ -223,6 +224,14 @@ const AppRoutes = () => {
         element={
           <RouteWrapper>
             <MobileHome />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/quick"
+        element={
+          <RouteWrapper>
+            <QuickCommerceHome />
           </RouteWrapper>
         }
       />

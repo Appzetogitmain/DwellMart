@@ -69,6 +69,12 @@ export const PERMISSIONS = {
     WHOLESALE_PRODUCTS_MANAGE: 'wholesale.products.manage',
     WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
 
+    // Quick Commerce
+    QUICKCOMMERCE_VENDORS_MANAGE: 'quickcommerce.vendors.manage',
+    QUICKCOMMERCE_ORDERS_MANAGE: 'quickcommerce.orders.manage',
+    QUICKCOMMERCE_ANALYTICS_VIEW: 'quickcommerce.analytics.view',
+    QUICKCOMMERCE_SETTINGS_MANAGE: 'quickcommerce.settings.manage',
+
     // Settings
     SETTINGS_VIEW: 'settings.view',
     SETTINGS_EDIT: 'settings.edit',
@@ -114,6 +120,10 @@ export const PERMISSION_DEPENDENCIES = {
     'wholesale.vendors.manage': 'vendors.view',
     'wholesale.products.manage': 'products.view',
     'wholesale.analytics.view': 'dashboard.view',
+    'quickcommerce.vendors.manage': 'vendors.view',
+    'quickcommerce.orders.manage': 'orders.view',
+    'quickcommerce.analytics.view': 'dashboard.view',
+    'quickcommerce.settings.manage': 'settings.view',
 };
 
 /**

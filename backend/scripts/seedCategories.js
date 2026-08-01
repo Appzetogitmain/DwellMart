@@ -5,6 +5,11 @@ import connectDB from '../src/config/db.js';
 import Category from '../src/models/Category.model.js';
 import Product from '../src/models/Product.model.js';
 import { slugify } from '../src/utils/slugify.js';
+import { EXPERIENCES } from '../src/constants/experiences.js';
+
+// This seeder owns the Marketplace category tree only. Every query below is
+// scoped to it so Quick Commerce categories are never matched or deleted.
+const MARKETPLACE_EXPERIENCE = EXPERIENCES.MARKETPLACE;
 
 export const MARKETPLACE_CATEGORIES = [
   {
@@ -517,8 +522,10 @@ export const seedCategoriesInDb = async () => {
   for (const catData of MARKETPLACE_CATEGORIES) {
     const parentSlug = slugify(catData.name);
 
-    // Upsert Root Category
+    // Upsert Root Category — scoped to the Marketplace tree so a Quick Commerce
+    // category sharing a slug is never matched or overwritten.
     let parentCat = await Category.findOne({
+      experience: MARKETPLACE_EXPERIENCE,
       $or: [
         { slug: parentSlug },
         { name: catData.name, parentId: null }
@@ -534,6 +541,7 @@ export const seedCategoriesInDb = async () => {
         order: catData.order,
         parentId: null,
         isActive: true,
+        experience: MARKETPLACE_EXPERIENCE,
       });
       createdCount++;
     } else {
@@ -565,6 +573,7 @@ export const seedCategoriesInDb = async () => {
       // Calculate unique slug
       let finalSlug = baseSubSlug;
       const existingSlugMatch = await Category.findOne({
+        experience: MARKETPLACE_EXPERIENCE,
         slug: finalSlug,
         _id: { $ne: subCat?._id },
       });
@@ -580,6 +589,7 @@ export const seedCategoriesInDb = async () => {
           parentId: parentCat._id,
           order: subOrder++,
           isActive: true,
+          experience: MARKETPLACE_EXPERIENCE,
         });
         createdCount++;
       } else {
@@ -597,15 +607,20 @@ export const seedCategoriesInDb = async () => {
     }
   }
 
-  // Remove any old category or subcategory that is NOT in validCategoryIds
-  const allCategories = await Category.find().select('_id name parentId');
+  // Remove any old Marketplace category not in validCategoryIds.
+  // Scoped to the Marketplace tree — seeding must never delete Quick Commerce
+  // categories, which this seeder knows nothing about.
+  const allCategories = await Category.find({ experience: MARKETPLACE_EXPERIENCE })
+    .select('_id name parentId');
   const idsToDelete = allCategories
     .filter(c => !validCategoryIds.has(String(c._id)))
     .map(c => c._id);
 
   if (idsToDelete.length > 0) {
     // Find a fallback new category for any products referencing deleted categories
-    const defaultFallbackCat = await Category.findOne({ parentId: { $ne: null } }) || await Category.findOne();
+    const defaultFallbackCat =
+      await Category.findOne({ experience: MARKETPLACE_EXPERIENCE, parentId: { $ne: null } })
+      || await Category.findOne({ experience: MARKETPLACE_EXPERIENCE });
     if (defaultFallbackCat) {
       await Product.updateMany(
         { categoryId: { $in: idsToDelete } },

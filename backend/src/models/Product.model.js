@@ -59,6 +59,23 @@ const productSchema = new mongoose.Schema(
                 default: [],
             },
         },
+        // Quick Commerce is a separate experience with its own category tree, so
+        // a dual-experience product carries a second category reference.
+        quickCommerceEnabled: { type: Boolean, default: false },
+        quickCommerceCategoryId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Category',
+            default: null,
+        },
+        quickCommerce: {
+            packSize: { type: String, trim: true },
+            shelfLifeDays: { type: Number, min: 0 },
+            isPerishable: { type: Boolean, default: false },
+            // Per-order cap; bounds how much a single order can drain a
+            // QC-critical SKU from the shared stock pool.
+            maxOrderQty: { type: Number, min: 1 },
+            handlingNote: { type: String, trim: true },
+        },
         flashSale: { type: Boolean, default: false, index: true },
         isNewArrival: { type: Boolean, default: false, index: true },
         isFeatured: { type: Boolean, default: false, index: true },
@@ -93,12 +110,18 @@ productSchema.index({ isActive: 1, isNewArrival: 1, createdAt: -1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ vendorId: 1, wholesaleEnabled: 1 });
 productSchema.index({ isActive: 1, wholesaleEnabled: 1 });
+productSchema.index({ isActive: 1, quickCommerceEnabled: 1 });
+productSchema.index({ vendorId: 1, quickCommerceEnabled: 1 });
+productSchema.index({ quickCommerceCategoryId: 1, isActive: 1 });
 
 productSchema.pre('save', function enforceSellingChannel(next) {
     const retailEnabled = this.retailEnabled !== false;
     const wholesaleEnabled = this.wholesaleEnabled === true;
-    if (!retailEnabled && !wholesaleEnabled) {
-        return next(new Error('At least one selling channel (Retail or Wholesale) must be enabled for a product.'));
+    // A Quick Commerce-only product is valid, so it satisfies the
+    // "at least one channel" requirement on its own.
+    const quickCommerceEnabled = this.quickCommerceEnabled === true;
+    if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
+        return next(new Error('At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for a product.'));
     }
     next();
 });

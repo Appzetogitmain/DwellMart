@@ -1,6 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { API_BASE_URL } from './constants';
+import { getExperience } from './experience';
 
 const AUTH_SCOPES = {
   admin: {
@@ -173,6 +174,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem(AUTH_SCOPES[scope].accessKey);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Tell the API which shopping experience the customer is in. The server
+    // defaults to marketplace, so sending this is additive and safe. An explicit
+    // ?experience= param on the request always wins.
+    if (!config.params?.experience) {
+      config.headers['X-Experience'] = getExperience();
     }
     return config;
   },

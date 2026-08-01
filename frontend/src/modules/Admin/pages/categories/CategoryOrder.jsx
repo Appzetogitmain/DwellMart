@@ -2,15 +2,24 @@ import { useState, useEffect } from 'react';
 import { FiArrowUp, FiArrowDown, FiSave } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useCategoryStore } from '../../../../shared/store/categoryStore';
+import { useSettingsStore } from '../../../../shared/store/settingsStore';
 import toast from 'react-hot-toast';
 
 const CategoryOrder = () => {
   const { categories, initialize, reorderCategories } = useCategoryStore();
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [orderedCategories, setOrderedCategories] = useState([]);
+  // Ordering is per-tree; the server rejects mixing experiences in one reorder.
+  const [experience, setExperience] = useState('marketplace');
 
   useEffect(() => {
-    initialize();
-  }, []);
+    initializeSettings();
+  }, [initializeSettings]);
+
+  useEffect(() => {
+    initialize(experience);
+  }, [experience]);
 
   useEffect(() => {
     // Filter out subcategories (only show root categories)
@@ -59,6 +68,29 @@ const CategoryOrder = () => {
           <span>Save Order</span>
         </button>
       </div>
+
+      {quickCommerceEnabled && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700 mr-1">Category Tree:</span>
+          {[
+            { value: 'marketplace', label: '🛒 Marketplace' },
+            { value: 'quick_commerce', label: '⚡ Quick Commerce' },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setExperience(option.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                experience === option.value
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         {orderedCategories.length === 0 ? (

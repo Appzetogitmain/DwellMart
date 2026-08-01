@@ -9,6 +9,84 @@ import ApiError from '../utils/ApiError.js';
  */
 
 /**
+ * Resolve and validate the Quick Commerce portion of a product payload.
+ *
+ * Enforces:
+ *   - Quick Commerce can only be enabled when the owning vendor has the channel.
+ *   - A Quick Commerce product must be filed in the Quick Commerce category tree.
+ *   - maxOrderQty, when set, must be a positive whole number.
+ *
+ * Mirrors `resolveWholesalePayload` so both channels validate the same way.
+ *
+ * @param {object} params
+ * @param {boolean} params.quickCommerceEnabled
+ * @param {object}  params.quickCommerce            Raw sub-document payload.
+ * @param {string}  params.quickCommerceCategoryId
+ * @param {boolean} params.vendorQuickCommerceEnabled
+ * @param {string}  [params.categoryExperience]     Experience of the referenced
+ *   category, resolved by the caller (cross-collection lookup).
+ * @returns {{ quickCommerceEnabled: boolean, quickCommerceCategoryId?: any, quickCommerce?: object }}
+ */
+export const resolveQuickCommercePayload = ({
+    quickCommerceEnabled,
+    quickCommerce,
+    quickCommerceCategoryId,
+    vendorQuickCommerceEnabled,
+    categoryExperience,
+}) => {
+    const isEnabled = quickCommerceEnabled === true;
+
+    if (!isEnabled) {
+        // Preserve any previously stored configuration; it is simply inactive.
+        return { quickCommerceEnabled: false };
+    }
+
+    if (!vendorQuickCommerceEnabled) {
+        throw new ApiError(
+            403,
+            'This vendor does not have the Quick Commerce channel enabled. Enable it in the vendor selling channels before adding Quick Commerce products.'
+        );
+    }
+
+    if (!quickCommerceCategoryId) {
+        throw new ApiError(400, 'Quick Commerce products require a Quick Commerce category.');
+    }
+
+    if (categoryExperience && categoryExperience !== 'quick_commerce') {
+        throw new ApiError(400, 'The selected category does not belong to the Quick Commerce category tree.');
+    }
+
+    const resolved = {
+        isPerishable: quickCommerce?.isPerishable === true,
+    };
+
+    if (quickCommerce?.packSize) resolved.packSize = String(quickCommerce.packSize).trim();
+    if (quickCommerce?.handlingNote) resolved.handlingNote = String(quickCommerce.handlingNote).trim();
+
+    if (quickCommerce?.shelfLifeDays !== undefined && quickCommerce?.shelfLifeDays !== null && quickCommerce?.shelfLifeDays !== '') {
+        const shelfLife = Number(quickCommerce.shelfLifeDays);
+        if (!Number.isInteger(shelfLife) || shelfLife < 0) {
+            throw new ApiError(400, 'Shelf life must be a whole number of days.');
+        }
+        resolved.shelfLifeDays = shelfLife;
+    }
+
+    if (quickCommerce?.maxOrderQty !== undefined && quickCommerce?.maxOrderQty !== null && quickCommerce?.maxOrderQty !== '') {
+        const maxOrderQty = Number(quickCommerce.maxOrderQty);
+        if (!Number.isInteger(maxOrderQty) || maxOrderQty < 1) {
+            throw new ApiError(400, 'Maximum order quantity must be a whole number of 1 or more.');
+        }
+        resolved.maxOrderQty = maxOrderQty;
+    }
+
+    return {
+        quickCommerceEnabled: true,
+        quickCommerceCategoryId,
+        quickCommerce: resolved,
+    };
+};
+
+/**
  * Serialize price tiers into the CSV cell format: "10:950|25:900|50:850".
  *
  * The database always stores a structured array; this delimited form exists

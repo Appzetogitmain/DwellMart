@@ -20,6 +20,36 @@ import Feedback from '../models/Feedback.model.js';
 import Notification from '../models/Notification.model.js';
 import { calculateVendorShippingForGroups } from '../services/vendorShipping.service.js';
 import { resolvePriceForQuantity } from '../services/pricingEngine.service.js';
+import { resolveVariantPrice } from '../services/variantPricing.service.js';
+import { getRequestExperience, EXPERIENCES } from '../constants/experiences.js';
+import { buildCatalogFilter } from '../services/catalogQuery.service.js';
+import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
+
+/**
+ * Resolve which vendors can serve this customer, for Quick Commerce listings.
+ *
+ * Returns an array (possibly empty) whenever a location hint is present, and
+ * `undefined` when none is — letting the caller distinguish "nothing reaches
+ * you" from "you haven't told us where you are".
+ */
+const resolveQuickCommerceVendorIds = async (query) => {
+    const latitude = Number(query?.lat);
+    const longitude = Number(query?.lng);
+    const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+
+    if (hasCoordinates) {
+        const vendors = await findNearbyVendors({ latitude, longitude, limit: 100 });
+        return vendors.map((vendor) => vendor._id);
+    }
+
+    const pincode = String(query?.pincode ?? '').trim();
+    if (pincode) {
+        const vendors = await findVendorsByPincode({ pincode, limit: 100 });
+        return vendors.map((vendor) => vendor._id);
+    }
+
+    return undefined;
+};
 import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { sendEmail } from '../services/email.service.js';
@@ -71,65 +101,6 @@ const toPublicVendor = (vendorDoc) => {
     };
 };
 
-const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
-const normalizeVariantKey = (key) => String(key || '').trim().toLowerCase();
-
-const toVariantPriceEntries = (variantPrices) => {
-    if (!variantPrices) return [];
-    if (variantPrices instanceof Map) return Array.from(variantPrices.entries());
-    if (typeof variantPrices === 'object') return Object.entries(variantPrices);
-    return [];
-};
-
-const resolveVariantPrice = (product, selectedVariant) => {
-    const basePrice = Number(product?.price);
-    if (!Number.isFinite(basePrice) || basePrice < 0) return 0;
-
-    const selectionEntries = Object.entries(selectedVariant || {})
-        .map(([axis, value]) => [String(axis || '').trim(), String(value || '').trim()])
-        .filter(([axis, value]) => axis && value);
-
-    const dynamicKey = selectionEntries.length
-        ? selectionEntries
-            .map(([axis, value]) => `${normalizeVariantPart(axis)}=${normalizeVariantPart(value)}`)
-            .sort()
-            .join('|')
-        : '';
-
-    const size = normalizeVariantPart(selectedVariant?.size);
-    const color = normalizeVariantPart(selectedVariant?.color);
-    const entries = toVariantPriceEntries(product?.variants?.prices);
-    if (!entries.length || (!dynamicKey && !size && !color)) return basePrice;
-
-    const candidateKeys = [
-        dynamicKey || null,
-        `${size}|${color}`,
-        `${size}-${color}`,
-        `${size}_${color}`,
-        `${size}:${color}`,
-        size && !color ? size : null,
-        color && !size ? color : null,
-    ].filter(Boolean);
-
-    for (const candidate of candidateKeys) {
-        if (!candidate) continue;
-        const exact = entries.find(([rawKey]) => String(rawKey).trim() === candidate);
-        if (exact) {
-            const price = Number(exact[1]);
-            if (Number.isFinite(price) && price >= 0) return price;
-        }
-
-        const normalized = entries.find(
-            ([rawKey]) => normalizeVariantKey(rawKey) === normalizeVariantKey(candidate)
-        );
-        if (normalized) {
-            const price = Number(normalized[1]);
-            if (Number.isFinite(price) && price >= 0) return price;
-        }
-    }
-
-    return basePrice;
-};
 
 const activeCampaignWindowQuery = (now = new Date()) => {
     // Be more inclusive: check if it's within the day
@@ -200,34 +171,71 @@ const listProducts = asyncHandler(async (req, res) => {
     const numericPage = Math.max(Number(page) || 1, 1);
     const numericLimit = Math.min(Math.max(Number(limit) || 12, 1), 100);
     const skip = (numericPage - 1) * numericLimit;
-    const filter = { isActive: true };
 
+    // Resolve the category subtree before building the filter, so the builder
+    // can place the ids on whichever category field the experience uses.
+    let categoryIds;
     if (category) {
         const categoryId = String(category);
         const childCategories = await Category.find({ parentId: categoryId }).select('_id').lean();
-        const categoryIds = [categoryId, ...childCategories.map((cat) => String(cat._id))];
-        filter.categoryId = { $in: categoryIds };
+        categoryIds = [categoryId, ...childCategories.map((cat) => String(cat._id))];
     }
+
+    const requestExperience = getRequestExperience(req);
+
+    // Quick Commerce results must only include stores that can actually deliver
+    // to this customer. Resolving the serviceable vendor set here (rather than
+    // filtering after the fact) means an out-of-range store can never leak into
+    // a listing. An empty array is a valid answer meaning "nothing reaches you".
+    let serviceableVendorIds;
+    if (requestExperience === EXPERIENCES.QUICK_COMMERCE) {
+        serviceableVendorIds = await resolveQuickCommerceVendorIds(req.query);
+        // No location hint means we cannot know which stores reach this
+        // customer — so we return nothing rather than listing products from
+        // stores that may be hundreds of kilometres away.
+        if (serviceableVendorIds === undefined) serviceableVendorIds = [];
+    }
+
+    // All catalog reads go through the shared builder — it owns the experience
+    // flag and the correct category field (see catalogQuery.service.js).
+    const filter = buildCatalogFilter({
+        experience: requestExperience,
+        categoryIds,
+        vendorIds: serviceableVendorIds,
+    });
+
     if (brand) filter.brandId = brand;
-    if (vendor) filter.vendorId = vendor;
+    // An explicit vendor filter must still respect serviceability.
+    if (vendor) {
+        if (Array.isArray(serviceableVendorIds)
+            && !serviceableVendorIds.some((id) => String(id) === String(vendor))) {
+            filter.vendorId = { $in: [] };
+        } else {
+            filter.vendorId = vendor;
+        }
+    }
     if (flashSale === 'true') filter.flashSale = true;
     if (isNewArrival === 'true') filter.isNewArrival = true;
     if (minPrice || maxPrice) filter.price = { ...(minPrice && { $gte: Number(minPrice) }), ...(maxPrice && { $lte: Number(maxPrice) }) };
     if (minRating) filter.rating = { $gte: Number(minRating) };
-    // Wholesale facets. Legacy products have no wholesale fields, so "retail"
-    // matches anything not explicitly wholesale-only.
-    if (sellingChannel === 'wholesale') {
-        filter.wholesaleEnabled = true;
-    } else if (sellingChannel === 'retail') {
-        filter.retailEnabled = { $ne: false };
-    }
-    if (bulkDiscount === 'true') {
-        filter.wholesaleEnabled = true;
-        filter['wholesale.priceTiers.0'] = { $exists: true };
-    }
-    if (hasMoq === 'true') {
-        filter.wholesaleEnabled = true;
-        filter['wholesale.moqEnabled'] = true;
+    // Wholesale facets are Marketplace-only concepts; applying them inside
+    // Quick Commerce would silently contradict the experience filter.
+    if (getRequestExperience(req) === EXPERIENCES.MARKETPLACE) {
+        // Legacy products have no wholesale fields, so "retail" matches anything
+        // not explicitly wholesale-only.
+        if (sellingChannel === 'wholesale') {
+            filter.wholesaleEnabled = true;
+        } else if (sellingChannel === 'retail') {
+            filter.retailEnabled = { $ne: false };
+        }
+        if (bulkDiscount === 'true') {
+            filter.wholesaleEnabled = true;
+            filter['wholesale.priceTiers.0'] = { $exists: true };
+        }
+        if (hasMoq === 'true') {
+            filter.wholesaleEnabled = true;
+            filter['wholesale.moqEnabled'] = true;
+        }
     }
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
@@ -408,8 +416,13 @@ const getProductDetail = asyncHandler(async (req, res) => {
 router.get('/products/:id', detailCache, getProductDetail);
 
 // GET /api/categories (public)
+// Scoped to the request's shopping experience — marketplace by default, so
+// existing storefront clients see exactly the tree they see today.
 router.get('/categories/all', catalogCache, asyncHandler(async (req, res) => {
-    const categories = await Category.find({ isActive: true })
+    const categories = await Category.find({
+        isActive: true,
+        experience: getRequestExperience(req),
+    })
         .sort({ order: 1, name: 1 })
         .lean();
     res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));

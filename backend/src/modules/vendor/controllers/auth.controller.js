@@ -20,7 +20,13 @@ import { uploadLocalFileToCloudinaryAndCleanup } from '../../../services/upload.
 import { resolvePlanSelection } from '../../../services/billing/planSelection.service.js';
 import { serializePlan } from '../../../services/billing/plan.service.js';
 import { getCurrentVendorSubscription, serializeSubscription } from '../../../services/billing/subscriptionState.service.js';
-import { isWholesaleMarketplaceEnabled } from '../../../services/featureFlags.service.js';
+import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
+import {
+    buildLocationPoint,
+    clampServiceRadius,
+    pointToLatLng,
+    resolveVendorAvailability,
+} from '../../../services/quickCommerce.service.js';
 
 const hasCompleteWholesaleProfile = (profile) => Boolean(
     profile?.gstNumber
@@ -196,6 +202,21 @@ export const register = asyncHandler(async (req, res) => {
         }
     }
 
+    const quickCommerceRequested = sellingChannels?.quickCommerce?.enabled === true;
+    if (quickCommerceRequested) {
+        const quickCommerceEnabled = await isQuickCommerceEnabled();
+        if (!quickCommerceEnabled) {
+            throw new ApiError(403, 'Quick Commerce is not currently available on this platform.');
+        }
+    }
+
+    // A vendor may opt out of retail entirely when selling only wholesale or
+    // only via Quick Commerce.
+    const retailRequested = sellingChannels?.retail?.enabled !== false;
+    if (!retailRequested && !wholesaleRequested && !quickCommerceRequested) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.');
+    }
+
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
@@ -214,8 +235,9 @@ export const register = asyncHandler(async (req, res) => {
         documents,
         isVerified: true, // Already verified inline
         sellingChannels: {
-            retail: { enabled: sellingChannels?.retail?.enabled !== false },
+            retail: { enabled: retailRequested },
             wholesale: { enabled: wholesaleRequested },
+            quickCommerce: { enabled: quickCommerceRequested },
         },
         wholesaleProfile: wholesaleRequested ? wholesaleProfile : undefined,
     });
@@ -573,11 +595,93 @@ export const updateProfile = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, vendor, 'Profile updated.'));
 });
 
+// PUT /api/vendor/quick-commerce/settings
+export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
+    const vendor = await Vendor.findById(req.user.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    if (vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+        throw new ApiError(403, 'Enable the Quick Commerce selling channel before configuring its settings.');
+    }
+
+    const quickCommerceEnabled = await isQuickCommerceEnabled();
+    if (!quickCommerceEnabled) {
+        throw new ApiError(403, 'Quick Commerce is not currently available on this platform.');
+    }
+
+    const {
+        latitude,
+        longitude,
+        serviceRadiusKm,
+        ...rest
+    } = req.body;
+
+    const profile = vendor.quickCommerceProfile?.toObject?.() ?? { ...(vendor.quickCommerceProfile || {}) };
+    const next = { ...profile, ...rest };
+
+    // Coordinates arrive as lat/lng and are stored as a GeoJSON Point.
+    if (latitude !== undefined && longitude !== undefined) {
+        try {
+            next.location = buildLocationPoint({ latitude, longitude });
+        } catch (err) {
+            throw new ApiError(400, err.message);
+        }
+    }
+
+    if (serviceRadiusKm !== undefined) {
+        const clamped = clampServiceRadius(serviceRadiusKm);
+        if (clamped === null) throw new ApiError(400, 'Invalid service radius.');
+        next.serviceRadiusKm = clamped;
+    }
+
+    // Clearing a pause is expressed as pausedUntil: null.
+    if (Object.prototype.hasOwnProperty.call(rest, 'pausedUntil') && !rest.pausedUntil) {
+        next.pausedUntil = undefined;
+    }
+
+    vendor.quickCommerceProfile = next;
+    await vendor.save();
+
+    const availability = resolveVendorAvailability(vendor);
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                quickCommerceProfile: vendor.quickCommerceProfile,
+                // Availability is derived server-side and returned so the UI
+                // never has to recompute it.
+                availability,
+                location: pointToLatLng(vendor.quickCommerceProfile?.location),
+            },
+            'Quick Commerce settings updated.'
+        )
+    );
+});
+
 export const updateSellingChannels = asyncHandler(async (req, res) => {
     const { sellingChannels, wholesaleProfile } = req.body;
 
     const vendor = await Vendor.findById(req.user.id).populate('selectedPlan');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    // `quickCommerce` is optional in the payload; when omitted, preserve what is
+    // already stored so older clients cannot silently disable the channel.
+    const quickCommerceRequested = Object.prototype.hasOwnProperty.call(sellingChannels, 'quickCommerce')
+        ? sellingChannels.quickCommerce.enabled === true
+        : vendor.sellingChannels?.quickCommerce?.enabled === true;
+
+    // Validated here rather than in Joi because the effective value depends on
+    // stored state that the validator cannot see.
+    if (!sellingChannels.retail.enabled && !sellingChannels.wholesale.enabled && !quickCommerceRequested) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must remain enabled.');
+    }
+
+    if (quickCommerceRequested && vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+        const quickCommerceEnabled = await isQuickCommerceEnabled();
+        if (!quickCommerceEnabled) {
+            throw new ApiError(403, 'Quick Commerce is not currently available on this platform.');
+        }
+    }
 
     if (sellingChannels.wholesale.enabled) {
         const wholesaleMarketplaceEnabled = await isWholesaleMarketplaceEnabled();
@@ -597,6 +701,7 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
     vendor.sellingChannels = {
         retail: { enabled: sellingChannels.retail.enabled },
         wholesale: { enabled: sellingChannels.wholesale.enabled },
+        quickCommerce: { enabled: quickCommerceRequested },
     };
 
     await vendor.save();

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../utils/api';
+import { EXPERIENCES, getExperience, getLocationQueryParams } from '../utils/experience';
 
 const isMongoId = (value) => /^[a-fA-F0-9]{24}$/.test(String(value || ''));
 
@@ -83,6 +84,15 @@ export const useOrderStore = create(
 
         set({ isLoading: true, lastError: null });
         try {
+          // Only sent for Quick Commerce; the server ignores it otherwise.
+          const locationParams = getLocationQueryParams();
+          const customerLocation =
+            getExperience() === EXPERIENCES.QUICK_COMMERCE
+            && Number.isFinite(locationParams.lat)
+            && Number.isFinite(locationParams.lng)
+              ? { latitude: locationParams.lat, longitude: locationParams.lng }
+              : null;
+
           const payload = {
             items: orderData.items.map((item) => ({
               productId: item.id,
@@ -94,6 +104,9 @@ export const useOrderStore = create(
             paymentMethod: orderData.paymentMethod,
             couponCode: orderData.couponCode || undefined,
             shippingOption: orderData.shippingOption || 'standard',
+            // Quick Commerce orders are validated against the delivery point
+            // server-side (serviceability, distance, ETA, delivery fee).
+            ...(customerLocation ? { customerLocation } : {}),
           };
           const idempotencyKey = buildIdempotencyKey(payload, orderData.userId);
 

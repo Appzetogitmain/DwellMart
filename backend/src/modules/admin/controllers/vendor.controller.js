@@ -7,6 +7,8 @@ import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
+import { clampServiceRadius, resolveVendorAvailability } from '../../../services/quickCommerce.service.js';
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -147,6 +149,73 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
 });
 
 // PATCH /api/admin/vendors/:id/commission
+// PATCH /api/admin/vendors/:id/quick-commerce
+export const updateVendorQuickCommerce = asyncHandler(async (req, res) => {
+    const { enabled, serviceRadiusKm, preparationTimeMins } = req.body;
+
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    if (enabled === true) {
+        const quickCommerceEnabled = await isQuickCommerceEnabled();
+        if (!quickCommerceEnabled) {
+            throw new ApiError(403, 'Quick Commerce is not currently available on this platform.');
+        }
+    }
+
+    // Revoking Quick Commerce must never strand the vendor with no channel.
+    if (enabled === false
+        && vendor.sellingChannels?.retail?.enabled === false
+        && vendor.sellingChannels?.wholesale?.enabled !== true) {
+        throw new ApiError(
+            400,
+            'Cannot disable Quick Commerce: it is this vendor\'s only selling channel. Enable Retail or Wholesale first.'
+        );
+    }
+
+    vendor.sellingChannels = {
+        retail: { enabled: vendor.sellingChannels?.retail?.enabled !== false },
+        wholesale: { enabled: vendor.sellingChannels?.wholesale?.enabled === true },
+        quickCommerce: { enabled: enabled === true },
+    };
+
+    // Optional admin overrides for operationally unrealistic vendor settings.
+    if (serviceRadiusKm !== undefined || preparationTimeMins !== undefined) {
+        const profile = vendor.quickCommerceProfile?.toObject?.() ?? { ...(vendor.quickCommerceProfile || {}) };
+        if (serviceRadiusKm !== undefined) {
+            const clamped = clampServiceRadius(serviceRadiusKm);
+            if (clamped === null) throw new ApiError(400, 'Invalid service radius.');
+            profile.serviceRadiusKm = clamped;
+        }
+        if (preparationTimeMins !== undefined) profile.preparationTimeMins = preparationTimeMins;
+        vendor.quickCommerceProfile = profile;
+    }
+
+    await vendor.save();
+
+    await createNotification({
+        recipientId: vendor._id,
+        recipientType: 'vendor',
+        title: enabled ? 'Quick Commerce Enabled' : 'Quick Commerce Disabled',
+        message: enabled
+            ? 'Your store has been approved for Quick Commerce. Configure your location, radius, and hours to start receiving orders.'
+            : 'Quick Commerce has been disabled for your store by the platform team.',
+        type: 'system',
+    }).catch(() => {});
+
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                sellingChannels: vendor.sellingChannels,
+                quickCommerceProfile: vendor.quickCommerceProfile,
+                availability: resolveVendorAvailability(vendor),
+            },
+            enabled ? 'Quick Commerce enabled for vendor.' : 'Quick Commerce disabled for vendor.'
+        )
+    );
+});
+
 export const updateCommissionRate = asyncHandler(async (req, res) => {
     const { commissionRate } = req.body;
     const parsedRate = Number(commissionRate);

@@ -8,12 +8,30 @@ import Settings from '../../../models/Settings.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
 import { seedCategoriesInDb } from '../../../../scripts/seedCategories.js';
-import { resolveWholesalePayload } from '../../../services/pricingValidation.service.js';
+import {
+    resolveWholesalePayload,
+    resolveQuickCommercePayload,
+} from '../../../services/pricingValidation.service.js';
+import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
     if (!vendorId) return false;
     const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
     return vendor?.sellingChannels?.wholesale?.enabled === true;
+};
+
+const isVendorQuickCommerceEnabled = async (vendorId) => {
+    if (!vendorId) return false;
+    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
+    return vendor?.sellingChannels?.quickCommerce?.enabled === true;
+};
+
+/** Which experience a category belongs to, for cross-tree validation. */
+const getCategoryExperience = async (categoryId) => {
+    if (!categoryId) return null;
+    const category = await Category.findById(categoryId).select('experience').lean();
+    if (!category) throw new ApiError(400, 'Selected category does not exist.');
+    return normalizeExperience(category.experience);
 };
 
 const sanitizeFaqs = (faqs) => {
@@ -203,7 +221,7 @@ const calculateVariantAggregateStock = (variants = {}) => {
 };
 
 const sanitizeCategoryPayload = (payload = {}) => {
-    const allowed = ['name', 'description', 'image', 'icon', 'parentId', 'order', 'isActive'];
+    const allowed = ['name', 'description', 'image', 'icon', 'parentId', 'order', 'isActive', 'experience'];
     const sanitized = {};
     for (const key of allowed) {
         if (Object.prototype.hasOwnProperty.call(payload, key)) {
@@ -213,19 +231,31 @@ const sanitizeCategoryPayload = (payload = {}) => {
     if (Object.prototype.hasOwnProperty.call(sanitized, 'parentId')) {
         sanitized.parentId = sanitized.parentId || null;
     }
+    if (Object.prototype.hasOwnProperty.call(sanitized, 'experience')) {
+        sanitized.experience = normalizeExperience(sanitized.experience);
+    }
     return sanitized;
 };
 
-const assertValidCategoryParent = async ({ categoryId = null, parentId }) => {
+const assertValidCategoryParent = async ({ categoryId = null, parentId, experience }) => {
     if (!parentId) return;
 
     if (categoryId && String(categoryId) === String(parentId)) {
         throw new ApiError(400, 'Category cannot be parent of itself.');
     }
 
-    const parent = await Category.findById(parentId).select('_id parentId');
+    const parent = await Category.findById(parentId).select('_id parentId experience');
     if (!parent) {
         throw new ApiError(400, 'Selected parent category does not exist.');
+    }
+
+    // A category tree may never span experiences — a Quick Commerce category
+    // cannot hang off a Marketplace parent or vice versa.
+    if (experience) {
+        const parentExperience = normalizeExperience(parent.experience);
+        if (parentExperience !== experience) {
+            throw new ApiError(400, 'Parent category belongs to a different shopping experience.');
+        }
     }
 
     // Prevent cycles when changing parent during edit.
@@ -321,18 +351,40 @@ export const createProduct = asyncHandler(async (req, res) => {
             : false,
     });
 
-    // Drop any raw wholesale payload; resolvedWholesale is the only validated source.
-    const { wholesale: _rawWholesale, ...restWithoutWholesale } = rest;
+    const resolvedQuickCommerce = resolveQuickCommercePayload({
+        quickCommerceEnabled: rest.quickCommerceEnabled,
+        quickCommerce: rest.quickCommerce,
+        quickCommerceCategoryId: rest.quickCommerceCategoryId,
+        vendorQuickCommerceEnabled: rest.quickCommerceEnabled === true
+            ? await isVendorQuickCommerceEnabled(rest.vendorId)
+            : false,
+        categoryExperience: rest.quickCommerceEnabled === true
+            ? await getCategoryExperience(rest.quickCommerceCategoryId)
+            : null,
+    });
+
+    if (rest.retailEnabled === false && resolvedWholesale.wholesaleEnabled !== true
+        && resolvedQuickCommerce.quickCommerceEnabled !== true) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
+    }
+
+    // Drop raw channel payloads; the resolvers are the only validated source.
+    const {
+        wholesale: _rawWholesale,
+        quickCommerce: _rawQuickCommerce,
+        ...restWithoutChannelPayloads
+    } = rest;
 
     const product = await Product.create({
         name,
         slug,
         stock: normalizedStock,
         stockQuantity: finalStockQuantity,
-        ...restWithoutWholesale,
+        ...restWithoutChannelPayloads,
         variants: normalizedVariants,
         faqs: sanitizeFaqs(rest.faqs),
         ...resolvedWholesale,
+        ...resolvedQuickCommerce,
     });
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
@@ -428,6 +480,51 @@ export const updateProduct = asyncHandler(async (req, res) => {
         }
     }
 
+    const touchesQuickCommerce = ['retailEnabled', 'quickCommerceEnabled', 'quickCommerce', 'quickCommerceCategoryId']
+        .some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+    if (touchesQuickCommerce) {
+        const existing = await Product.findById(req.params.id)
+            .select('retailEnabled wholesaleEnabled quickCommerceEnabled quickCommerce quickCommerceCategoryId vendorId')
+            .lean();
+        if (!existing) throw new ApiError(404, 'Product not found.');
+
+        const pick = (key) => (Object.prototype.hasOwnProperty.call(payload, key) ? payload[key] : existing[key]);
+        const effectiveQuickCommerce = pick('quickCommerceEnabled');
+        const effectiveCategoryId = pick('quickCommerceCategoryId');
+        const effectiveVendorId = pick('vendorId');
+
+        const resolvedQuickCommerce = resolveQuickCommercePayload({
+            quickCommerceEnabled: effectiveQuickCommerce,
+            quickCommerce: pick('quickCommerce'),
+            quickCommerceCategoryId: effectiveCategoryId,
+            vendorQuickCommerceEnabled: effectiveQuickCommerce === true
+                ? await isVendorQuickCommerceEnabled(effectiveVendorId)
+                : false,
+            categoryExperience: effectiveQuickCommerce === true
+                ? await getCategoryExperience(effectiveCategoryId)
+                : null,
+        });
+
+        payload.quickCommerceEnabled = resolvedQuickCommerce.quickCommerceEnabled;
+        if (resolvedQuickCommerce.quickCommerceEnabled) {
+            payload.quickCommerceCategoryId = resolvedQuickCommerce.quickCommerceCategoryId;
+            payload.quickCommerce = resolvedQuickCommerce.quickCommerce;
+        } else {
+            // Preserve stored configuration rather than writing unvalidated data.
+            delete payload.quickCommerce;
+            delete payload.quickCommerceCategoryId;
+        }
+
+        const effectiveRetail = pick('retailEnabled');
+        const effectiveWholesale = Object.prototype.hasOwnProperty.call(payload, 'wholesaleEnabled')
+            ? payload.wholesaleEnabled
+            : existing.wholesaleEnabled;
+        if (effectiveRetail === false && effectiveWholesale !== true
+            && resolvedQuickCommerce.quickCommerceEnabled !== true) {
+            throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
+        }
+    }
+
     const product = await Product.findByIdAndUpdate(req.params.id, payload, { new: true, runValidators: true });
     if (!product) throw new ApiError(404, 'Product not found.');
     res.status(200).json(new ApiResponse(200, product, 'Product updated.'));
@@ -473,17 +570,24 @@ export const updateTaxPricingRules = asyncHandler(async (req, res) => {
 
 // GET /api/admin/categories
 export const getAllCategories = asyncHandler(async (req, res) => {
-    const categories = await Category.find().sort({ order: 1, name: 1 });
+    // Admin manages one tree at a time. An explicit `?experience=` wins; without
+    // it we fall back to the request experience (marketplace by default), so
+    // existing callers keep seeing exactly the tree they see today.
+    const filter = {
+        experience: normalizeExperience(req.query?.experience ?? req.experience),
+    };
+    const categories = await Category.find(filter).sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));
 });
 
 // POST /api/admin/categories
 export const createCategory = asyncHandler(async (req, res) => {
     const payload = sanitizeCategoryPayload(req.body);
-    const { name, ...rest } = payload;
-    await assertValidCategoryParent({ parentId: rest.parentId });
+    const { name, experience: payloadExperience, ...rest } = payload;
+    const experience = normalizeExperience(payloadExperience ?? req.experience);
+    await assertValidCategoryParent({ parentId: rest.parentId, experience });
     const slug = slugify(name);
-    const category = await Category.create({ name, slug, ...rest });
+    const category = await Category.create({ name, slug, experience, ...rest });
     res.status(201).json(new ApiResponse(201, category, 'Category created.'));
 });
 
@@ -493,9 +597,15 @@ export const updateCategory = asyncHandler(async (req, res) => {
     if (!existingCategory) throw new ApiError(404, 'Category not found.');
 
     const payload = sanitizeCategoryPayload(req.body);
+    // Experience is immutable after creation: moving a category between trees
+    // would strand its children and any products referencing it.
+    delete payload.experience;
+    const experience = normalizeExperience(existingCategory.experience);
+
     await assertValidCategoryParent({
         categoryId: existingCategory._id,
         parentId: payload.parentId,
+        experience,
     });
 
     if (payload.name) {
@@ -517,9 +627,15 @@ export const deleteCategory = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'Category not found.');
     }
 
+    // A category may be referenced from either experience's category field.
     const [subcategoriesCount, productsCount] = await Promise.all([
         Category.countDocuments({ parentId: req.params.id }),
-        Product.countDocuments({ categoryId: req.params.id }),
+        Product.countDocuments({
+            $or: [
+                { categoryId: req.params.id },
+                { quickCommerceCategoryId: req.params.id },
+            ],
+        }),
     ]);
 
     if (subcategoriesCount > 0) {
@@ -540,11 +656,18 @@ export const reorderCategories = asyncHandler(async (req, res) => {
     const rootCategories = await Category.find({
         _id: { $in: uniqueIds },
         parentId: null,
-    }).select('_id');
+    }).select('_id experience');
 
     if (rootCategories.length !== uniqueIds.length) {
         throw new ApiError(400, 'Only root categories can be reordered.');
     }
+
+    // Ordering is per-tree; a single reorder must not mix experiences.
+    const experiences = new Set(rootCategories.map((cat) => normalizeExperience(cat.experience)));
+    if (experiences.size > 1) {
+        throw new ApiError(400, 'Categories from different shopping experiences cannot be reordered together.');
+    }
+    const experience = experiences.values().next().value || normalizeExperience(req.experience);
 
     const bulkUpdates = uniqueIds.map((id, index) => ({
         updateOne: {
@@ -557,14 +680,17 @@ export const reorderCategories = asyncHandler(async (req, res) => {
         await Category.bulkWrite(bulkUpdates);
     }
 
-    const categories = await Category.find().sort({ order: 1, name: 1 });
+    const categories = await Category.find({ experience }).sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Category order updated.'));
 });
 
 // POST /api/admin/categories/seed
 export const seedMarketplaceCategories = asyncHandler(async (req, res) => {
     const stats = await seedCategoriesInDb();
-    const categories = await Category.find().sort({ order: 1, name: 1 });
+    // Seeded categories are Marketplace-only; return that tree explicitly so the
+    // response cannot surface Quick Commerce categories.
+    const categories = await Category.find({ experience: EXPERIENCES.MARKETPLACE })
+        .sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, { stats, categories }, 'Marketplace categories seeded successfully.'));
 });
 

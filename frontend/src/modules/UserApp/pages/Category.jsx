@@ -9,6 +9,8 @@ import { getCatalogProducts } from "../data/catalogData";
 import { categories as fallbackCategories } from "../../../data/categories";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 import { useSettingsStore } from "../../../shared/store/settingsStore";
+import { useExperienceStore } from "../../../shared/store/experienceStore";
+import { EXPERIENCES, getLocationQueryParams } from "../../../shared/utils/experience";
 import PageTransition from "../../../shared/components/PageTransition";
 import useInfiniteScroll from "../../../shared/hooks/useInfiniteScroll";
 import LazyImage from "../../../shared/components/LazyImage";
@@ -103,6 +105,8 @@ const MobileCategory = () => {
   const categoryId = normalizeId(id);
   const { categories, initialize, getCategoryById } = useCategoryStore();
   const { settings, initialize: initializeSettings } = useSettingsStore();
+  const { experience, location: customerLocation } = useExperienceStore();
+  const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
   const wholesaleMarketplaceEnabled =
     settings?.features?.wholesaleMarketplaceEnabled === true;
 
@@ -175,6 +179,9 @@ const MobileCategory = () => {
             page: 1,
             limit: 200,
             sort: "newest",
+            // Quick Commerce results are limited to stores that can deliver
+            // here; without this hint the server correctly returns nothing.
+            ...(isQuickCommerce ? getLocationQueryParams(customerLocation) : {}),
           },
         });
         const payload = response?.data ?? response;
@@ -206,7 +213,7 @@ const MobileCategory = () => {
     return () => {
       cancelled = true;
     };
-  }, [categoryId, categories, translateArray]);
+  }, [categoryId, categories, translateArray, isQuickCommerce, customerLocation]);
 
   const [translatedRootCategories, setTranslatedRootCategories] = useState([]);
   useEffect(() => {

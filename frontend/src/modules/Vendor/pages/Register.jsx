@@ -31,6 +31,7 @@ const VendorRegister = () => {
   const navigate = useNavigate();
   const { settings, initialize: initializeSettings } = useSettingsStore();
   const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [currentStep, setCurrentStep] = useState(0);
   const [plans, setPlans] = useState([]);
   const [onboardingEmail, setOnboardingEmail] = useState('');
@@ -76,6 +77,7 @@ const VendorRegister = () => {
     sellingChannels: {
       retail: true,
       wholesale: false,
+      quickCommerce: false,
     },
     wholesaleProfile: {
       gstNumber: '',
@@ -261,6 +263,13 @@ const VendorRegister = () => {
     setFormData((prev) => ({
       ...prev,
       sellingChannels: { ...prev.sellingChannels, wholesale: checked },
+    }));
+  };
+
+  const handleQuickCommerceToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, quickCommerce: checked },
     }));
   };
 
@@ -450,7 +459,8 @@ const VendorRegister = () => {
     }
 
     const wholesaleRequested = wholesaleMarketplaceEnabled && formData.sellingChannels.wholesale;
-    if (!formData.sellingChannels.retail && !wholesaleRequested) {
+    const quickCommerceRequested = quickCommerceEnabled && formData.sellingChannels.quickCommerce;
+    if (!formData.sellingChannels.retail && !wholesaleRequested && !quickCommerceRequested) {
       toast.error('Please enable at least one selling channel (Retail or Wholesale).');
       return;
     }
@@ -479,6 +489,7 @@ const VendorRegister = () => {
       submitData.append('sellingChannels', JSON.stringify({
         retail: { enabled: formData.sellingChannels.retail },
         wholesale: { enabled: wholesaleRequested },
+        quickCommerce: { enabled: quickCommerceRequested },
       }));
       if (wholesaleRequested) {
         submitData.append('wholesaleProfile', JSON.stringify(formData.wholesaleProfile));
@@ -800,7 +811,7 @@ const VendorRegister = () => {
                       />
                     </div>
 
-                    {wholesaleMarketplaceEnabled && (
+                    {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
                       <div className="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
                         <p className="mb-3 text-sm font-semibold text-gray-700">Selling Channels</p>
                         <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
@@ -813,15 +824,28 @@ const VendorRegister = () => {
                             />
                             Retail Marketplace
                           </label>
-                          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-                            <input
-                              type="checkbox"
-                              checked={formData.sellingChannels.wholesale}
-                              onChange={(event) => handleWholesaleToggle(event.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
-                            />
-                            Wholesale Marketplace
-                          </label>
+                          {wholesaleMarketplaceEnabled && (
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={formData.sellingChannels.wholesale}
+                                onChange={(event) => handleWholesaleToggle(event.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
+                              />
+                              Wholesale Marketplace
+                            </label>
+                          )}
+                          {quickCommerceEnabled && (
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={formData.sellingChannels.quickCommerce}
+                                onChange={(event) => handleQuickCommerceToggle(event.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
+                              />
+                              Quick Commerce
+                            </label>
+                          )}
                         </div>
                         <p className="mt-2 text-xs text-gray-500">At least one selling channel must stay enabled.</p>
 

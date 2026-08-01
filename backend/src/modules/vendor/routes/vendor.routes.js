@@ -44,7 +44,8 @@ import {
     resetPasswordSchema,
     requestRegistrationOtpSchema,
     verifyRegistrationOtpSchema,
-    updateSellingChannelsSchema
+    updateSellingChannelsSchema,
+    updateQuickCommerceSettingsSchema
 } from '../validators/auth.validator.js';
 import { changePlanSchema } from '../validators/subscription.validator.js';
 import {
@@ -103,6 +104,7 @@ router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
 router.put('/auth/selling-channels', ...vendorAuth, validate(updateSellingChannelsSchema), authController.updateSellingChannels);
+router.put('/quick-commerce/settings', ...vendorAuth, validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
 router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
 

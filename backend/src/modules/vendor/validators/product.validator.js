@@ -7,6 +7,14 @@ const priceTierSchema = Joi.object({
     price: Joi.number().min(0).required(),
 });
 
+const quickCommerceSchema = Joi.object({
+    packSize: Joi.string().trim().max(60).allow('', null).optional(),
+    shelfLifeDays: Joi.number().integer().min(0).allow(null, '').optional(),
+    isPerishable: Joi.boolean().optional(),
+    maxOrderQty: Joi.number().integer().min(1).allow(null, '').optional(),
+    handlingNote: Joi.string().trim().max(200).allow('', null).optional(),
+}).optional();
+
 const wholesaleSchema = Joi.object({
     moqEnabled: Joi.boolean().optional(),
     moq: Joi.number().integer().min(1).allow(null, '').optional(),
@@ -54,6 +62,9 @@ export const createProductSchema = Joi.object({
     retailEnabled: Joi.boolean().optional(),
     wholesaleEnabled: Joi.boolean().optional(),
     wholesale: wholesaleSchema,
+    quickCommerceEnabled: Joi.boolean().optional(),
+    quickCommerceCategoryId: objectId.allow(null, '').optional(),
+    quickCommerce: quickCommerceSchema,
     variants: Joi.object({
         sizes: Joi.array().items(Joi.string()),
         colors: Joi.array().items(Joi.string()),
@@ -115,6 +126,9 @@ export const updateProductSchema = Joi.object({
     retailEnabled: Joi.boolean().optional(),
     wholesaleEnabled: Joi.boolean().optional(),
     wholesale: wholesaleSchema,
+    quickCommerceEnabled: Joi.boolean().optional(),
+    quickCommerceCategoryId: objectId.allow(null, '').optional(),
+    quickCommerce: quickCommerceSchema,
     variants: Joi.object({
         sizes: Joi.array().items(Joi.string()),
         colors: Joi.array().items(Joi.string()),

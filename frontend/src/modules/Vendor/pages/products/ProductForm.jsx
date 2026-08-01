@@ -10,6 +10,7 @@ import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from 
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import WholesalePricingSection from "../../../../shared/components/WholesalePricingSection";
+import QuickCommerceProductSection from "../../../../shared/components/QuickCommerceProductSection";
 import toast from "react-hot-toast";
 import {
   emptyWholesaleState,
@@ -17,6 +18,13 @@ import {
   buildWholesalePayload,
   validateWholesaleState,
 } from "../../../../shared/utils/wholesale";
+import {
+  emptyQuickCommerceState,
+  quickCommerceStateFromProduct,
+  buildQuickCommercePayload,
+  validateQuickCommerceState,
+} from "../../../../shared/utils/quickCommerceProduct";
+import { getQuickCommerceCategories } from "../../../Admin/services/adminService";
 import {
   parseVariantAxis,
   buildVariantCombinations,
@@ -84,6 +92,8 @@ const ProductForm = () => {
   });
   const [taxRules, setTaxRules] = useState([]);
   const [wholesaleState, setWholesaleState] = useState(emptyWholesaleState());
+  const [quickCommerceState, setQuickCommerceState] = useState(emptyQuickCommerceState());
+  const [quickCommerceCategories, setQuickCommerceCategories] = useState([]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
@@ -109,6 +119,25 @@ const ProductForm = () => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+// Quick Commerce categories live in a separate tree from Marketplace.
+  useEffect(() => {
+    if (vendor?.sellingChannels?.quickCommerce?.enabled !== true) return;
+    let cancelled = false;
+    const loadQuickCommerceCategories = async () => {
+      try {
+        const response = await getQuickCommerceCategories();
+        const list = response?.data ?? response;
+        if (!cancelled && Array.isArray(list)) {
+          setQuickCommerceCategories(list.map((cat) => ({ ...cat, id: cat._id || cat.id })));
+        }
+      } catch {
+        if (!cancelled) setQuickCommerceCategories([]);
+      }
+    };
+    loadQuickCommerceCategories();
+    return () => { cancelled = true; };
+  }, [vendor?.sellingChannels?.quickCommerce?.enabled]);
 
   useEffect(() => {
     const fetchTaxRules = async () => {
@@ -203,6 +232,7 @@ const ProductForm = () => {
       faqs: Array.isArray(product.faqs) ? product.faqs : [],
     });
     setWholesaleState(wholesaleStateFromProduct(product));
+    setQuickCommerceState(quickCommerceStateFromProduct(product));
   };
 
   const handleChange = (e) => {
@@ -491,6 +521,12 @@ const ProductForm = () => {
       return;
     }
 
+    const quickCommerceError = validateQuickCommerceState(quickCommerceState);
+    if (quickCommerceError) {
+      toast.error(quickCommerceError);
+      return;
+    }
+
     const wholesaleError = validateWholesaleState(
       wholesaleState,
       parsedPrice,
@@ -519,6 +555,7 @@ const ProductForm = () => {
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
       ...buildWholesalePayload(wholesaleState),
+      ...buildQuickCommercePayload(quickCommerceState),
     };
 
     let result;
@@ -868,6 +905,15 @@ const ProductForm = () => {
           retailPrice={formData.price}
           stockQuantity={formData.stockQuantity}
           vendorWholesaleEnabled={vendor?.sellingChannels?.wholesale?.enabled === true}
+          disabled={isSaving}
+        />
+
+        {/* Quick Commerce */}
+        <QuickCommerceProductSection
+          value={quickCommerceState}
+          onChange={setQuickCommerceState}
+          categories={quickCommerceCategories}
+          vendorQuickCommerceEnabled={vendor?.sellingChannels?.quickCommerce?.enabled === true}
           disabled={isSaving}
         />
 
