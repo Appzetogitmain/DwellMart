@@ -52,6 +52,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     subcategoryId: null,
     brandId: null,
     vendorId: "",
+    quickCommerceEnabled: false,
+    quickCommerceCategoryId: null,
     stock: "in_stock",
     stockQuantity: "",
     totalAllowedQuantity: "",
@@ -159,6 +161,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               : product.subcategoryId || null,
             brandId: productBrandId || null,
             vendorId: productVendorId || "",
+            quickCommerceEnabled: product.quickCommerceEnabled === true,
+            quickCommerceCategoryId: extractId(product.quickCommerceCategoryId) || null,
             stock: product.stock || "in_stock",
             stockQuantity: product.stockQuantity || "",
             totalAllowedQuantity: product.totalAllowedQuantity || "",
@@ -220,6 +224,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         subcategoryId: null,
         brandId: null,
         vendorId: "",
+        quickCommerceEnabled: false,
+        quickCommerceCategoryId: null,
         stock: "in_stock",
         stockQuantity: "",
         totalAllowedQuantity: "",
@@ -875,6 +881,54 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           ]}
                         />
                       </div>
+
+                      {/* Selling Channels — Quick Commerce Express */}
+                      <div className="md:col-span-2 bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-3">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="quickCommerceEnabled"
+                            checked={formData.quickCommerceEnabled === true}
+                            onChange={handleChange}
+                            className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer mt-0.5"
+                          />
+                          <div>
+                            <span className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                              ⚡ DwellMart Express (Quick Commerce 10-15 Min Delivery)
+                            </span>
+                            <p className="text-xs text-gray-600">
+                              Enable this product to appear in DwellMart Express categories and customer feeds.
+                            </p>
+                          </div>
+                        </label>
+
+                        {formData.quickCommerceEnabled && (
+                          <div className="pt-3 border-t border-emerald-200/80">
+                            <label className="block text-sm font-semibold text-gray-800 mb-2">
+                              Quick Commerce Express Category <span className="text-red-500">*</span>
+                            </label>
+                            <AnimatedSelect
+                              name="quickCommerceCategoryId"
+                              value={formData.quickCommerceCategoryId || ""}
+                              onChange={handleChange}
+                              placeholder="Select Express Category"
+                              options={[
+                                { value: "", label: "Select Express Category" },
+                                ...categories
+                                  .filter((cat) => {
+                                    const exps = Array.isArray(cat.supportedExperiences)
+                                      ? cat.supportedExperiences
+                                      : [cat.experience];
+                                    return exps.includes("quick_commerce");
+                                  })
+                                  .map((cat) => ({
+                                    value: String(cat.id || cat._id),
+                                    label: cat.name,
+                                  })),
+                              ]}
+                            />
+                          </div>
+                        )}
 
                       <div className="md:col-span-2">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">

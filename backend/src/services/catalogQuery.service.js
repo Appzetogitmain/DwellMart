@@ -47,9 +47,15 @@ export const buildCatalogFilter = ({
         filter.quickCommerceEnabled = true;
 
         if (Array.isArray(categoryIds)) {
-            filter.quickCommerceCategoryId = { $in: categoryIds };
+            filter.$or = [
+                { quickCommerceCategoryId: { $in: categoryIds } },
+                { categoryId: { $in: categoryIds } },
+            ];
         } else if (category) {
-            filter.quickCommerceCategoryId = category;
+            filter.$or = [
+                { quickCommerceCategoryId: category },
+                { categoryId: category },
+            ];
         }
     } else {
         // Marketplace: retail is opt-out (legacy products have no flag), so

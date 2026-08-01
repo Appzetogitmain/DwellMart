@@ -37,12 +37,11 @@ const ExperienceSwitcher = ({ className = "" }) => {
       icon: FiShoppingBag,
       tag: "Pan-India",
       tagIcon: FiPackage,
-      path: "/home",
+      path: "/categories",
     },
   ];
 
   const handleSwitch = (option) => {
-    if (experience === option.value) return;
     setExperience(option.value);
     navigate(option.path);
   };

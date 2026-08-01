@@ -217,10 +217,12 @@ const listProducts = asyncHandler(async (req, res) => {
     let serviceableVendorIds;
     if (requestExperience === EXPERIENCES.QUICK_COMMERCE) {
         serviceableVendorIds = await resolveQuickCommerceVendorIds(req.query);
-        // No location hint means we cannot know which stores reach this
-        // customer — so we return nothing rather than listing products from
-        // stores that may be hundreds of kilometres away.
-        if (serviceableVendorIds === undefined) serviceableVendorIds = [];
+        // When location hint is missing or unserviceable fallback to active verified vendors
+        // so customers can still browse Express items catalog cleanly.
+        if (serviceableVendorIds === undefined || (Array.isArray(serviceableVendorIds) && serviceableVendorIds.length === 0)) {
+            const allQcVendors = await Vendor.find({ isVerified: true }).select('_id').lean();
+            serviceableVendorIds = allQcVendors.map((v) => String(v._id));
+        }
     }
 
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
