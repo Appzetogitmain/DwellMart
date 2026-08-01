@@ -23,9 +23,8 @@ import { getPlaceholderImage } from '../../../shared/utils/helpers';
 import { getOrderById, updateOrderStatus } from '../services/adminService';
 import toast from 'react-hot-toast';
 
-const ORDER_PRODUCT_PLACEHOLDER = getPlaceholderImage(100, 100, 'Product');
-
 const OrderDetail = () => {
+  const ORDER_PRODUCT_PLACEHOLDER = getPlaceholderImage(100, 100, 'Product');
   const navigate = useNavigate();
   const { id } = useParams();
   const [order, setOrder] = useState(null);

@@ -21,9 +21,8 @@ import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
 import { getPlaceholderImage } from '../../../shared/utils/helpers';
 import { useReturnStore } from '../../../shared/store/returnStore';
 
-const RETURN_PRODUCT_PLACEHOLDER = getPlaceholderImage(100, 100, 'Product');
-
 const ReturnRequestDetail = () => {
+  const RETURN_PRODUCT_PLACEHOLDER = getPlaceholderImage(100, 100, 'Product');
   const navigate = useNavigate();
   const { id } = useParams();
   const { fetchReturnRequestById, updateReturnStatus } = useReturnStore();

@@ -19,9 +19,8 @@ import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
 import toast from "react-hot-toast";
 
-const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
-
 const StockManagement = () => {
+  const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, patchStock } = useVendorProductStore();
   const [searchQuery, setSearchQuery] = useState("");

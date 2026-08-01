@@ -19,9 +19,8 @@ import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
 import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
 import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
 
-const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
-
 const ManageProducts = () => {
+  const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();

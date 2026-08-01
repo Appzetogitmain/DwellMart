@@ -26,9 +26,8 @@ import Button from "../Button";
 import { uploadAdminImage } from "../../services/adminService";
 import { getAllProducts } from "../../services/adminService";
 
-const CAMPAIGN_PRODUCT_PLACEHOLDER = getPlaceholderImage(48, 48, "Product");
-
 const CampaignForm = ({ campaign, onClose, onSave }) => {
+  const CAMPAIGN_PRODUCT_PLACEHOLDER = getPlaceholderImage(48, 48, "Product");
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith("/app");
   const { campaigns, createCampaign, updateCampaign } = useCampaignStore();

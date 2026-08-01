@@ -10,9 +10,8 @@ import { getPlaceholderImage } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
 import { uploadAdminImage } from "../../services/adminService";
 
-const SLIDER_IMAGE_PLACEHOLDER = getPlaceholderImage(64, 64, "Image");
-
 const HomeSliders = () => {
+  const SLIDER_IMAGE_PLACEHOLDER = getPlaceholderImage(64, 64, "Image");
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith("/app");
   const { banners, initialize, createBanner, updateBanner, deleteBanner } =

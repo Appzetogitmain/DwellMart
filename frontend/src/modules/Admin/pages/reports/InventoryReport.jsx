@@ -6,9 +6,8 @@ import ExportButton from '../../components/ExportButton';
 import { formatPrice, getPlaceholderImage } from '../../../../shared/utils/helpers';
 import * as adminService from '../../services/adminService';
 
-const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, 'Product');
-
 const InventoryReport = () => {
+  const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, 'Product');
   const [products, setProducts] = useState([]);
   const [summary, setSummary] = useState({ totalProducts: 0, activeProducts: 0, lowStock: 0, outOfStock: 0, totalValue: 0 });
   const [productsLoading, setProductsLoading] = useState(true);
