@@ -37,6 +37,7 @@ const VendorDashboard = () => {
   const [plansLoading, setPlansLoading] = useState(true);
 
   const vendorId = vendor?.id;
+  const topProducts = useMemo(() => (Array.isArray(products) ? products.slice(0, 5) : []), [products]);
 
   useEffect(() => {
     if (!vendorId) return;

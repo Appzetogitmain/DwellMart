@@ -11,7 +11,7 @@ import {
     FiRefreshCw,
     FiList,
 } from 'react-icons/fi';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 import {
     validateBulkProductUpload,
     processBulkProductUpload,
@@ -67,10 +67,10 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                         setIsProcessing(false);
                         clearInterval(interval);
                         if (data.status === 'completed') {
-                            toast.success('Bulk product import completed!');
+                            toastService.success('Bulk product import completed!');
                             if (onSuccess) onSuccess();
                         } else if (data.status === 'cancelled') {
-                            toast.error('Import job was cancelled.');
+                            toastService.error('Import job was cancelled.');
                         }
                     }
                 } catch (err) {
@@ -107,15 +107,15 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
             } else {
                 await downloadVendorProductTemplate(format);
             }
-            toast.success(`Downloaded sample ${format.toUpperCase()} template.`);
+            toastService.success(`Downloaded sample ${format.toUpperCase()} template.`);
         } catch (err) {
-            toast.error('Failed to download template.');
+            toastService.error(err, 'Failed to download template.');
         }
     };
 
     const handleValidateUpload = async () => {
         if (!excelFile) {
-            toast.error('Please select a CSV or Excel file to upload.');
+            toastService.error('Please select a CSV or Excel file to upload.');
             return;
         }
 
@@ -135,9 +135,9 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
             setValidationResult(data);
             setPreviewRows(data.rows || []);
             setStep(3); // Go to preview
-            toast.success(`Validated ${data.totalRows} rows cleanly.`);
+            toastService.success(`Validated ${data.totalRows} rows cleanly.`);
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to validate file.');
+            toastService.error(err, 'Failed to validate file.');
         } finally {
             setIsValidating(false);
         }
@@ -146,12 +146,12 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
     const handleRemoveRow = (rowNumber) => {
         const updated = previewRows.filter((r) => r.rowNumber !== rowNumber);
         setPreviewRows(updated);
-        toast.success(`Removed row ${rowNumber} from import list.`);
+        toastService.success(`Removed row ${rowNumber} from import list.`);
     };
 
     const handleExecuteImport = async () => {
         if (previewRows.length === 0) {
-            toast.error('No rows available to import.');
+            toastService.error('No rows available to import.');
             return;
         }
 
@@ -176,7 +176,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
             setJobId(data.jobId);
         } catch (err) {
             setIsProcessing(false);
-            toast.error(err.response?.data?.message || 'Failed to start import job.');
+            toastService.error(err, 'Failed to start import job.');
         }
     };
 
@@ -188,9 +188,9 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
             } else {
                 await cancelVendorBulkProductJob(jobId);
             }
-            toast.success('Cancellation requested.');
+            toastService.success('Cancellation requested.');
         } catch (err) {
-            toast.error('Failed to cancel job.');
+            toastService.error(err, 'Failed to cancel job.');
         }
     };
 

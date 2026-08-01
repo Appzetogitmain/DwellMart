@@ -81,28 +81,47 @@
     ]
   },
   {
-    "title": "Offers & Sliders",
-    "route": "/admin/offers",
+    "title": "CMS",
     "children": [
-      "Home Sliders",
-      "Festival Offers",
-      "Campaigns"
+      {
+        "title": "Offers & Sliders",
+        "route": "/admin/offers",
+        "children": [
+          "Home Sliders",
+          "Festival Offers",
+          "Campaigns"
+        ]
+      },
+      {
+        "title": "Banners",
+        "route": "/admin/banners",
+        "children": []
+      },
+      {
+        "title": "Testimonials",
+        "route": "/admin/testimonials",
+        "children": []
+      },
+      {
+        "title": "Promo Codes",
+        "route": "/admin/promocodes",
+        "children": []
+      },
+      {
+        "title": "Policies",
+        "route": "/admin/policies",
+        "children": [
+          "Privacy Policy",
+          "Returns & Exchanges",
+          "Terms & Conditions",
+          "About Us",
+          "Contact Us",
+          "Shipping Policy",
+          "FAQs",
+          "Become a Partner"
+        ]
+      }
     ]
-  },
-  {
-    "title": "Banners",
-    "route": "/admin/banners",
-    "children": []
-  },
-  {
-    "title": "Testimonials",
-    "route": "/admin/testimonials",
-    "children": []
-  },
-  {
-    "title": "Promo Codes",
-    "route": "/admin/promocodes",
-    "children": []
   },
   {
     "title": "Notifications",
@@ -149,20 +168,6 @@
       "General",
       "Payment & Shipping",
       "Content & Features"
-    ]
-  },
-  {
-    "title": "Policies",
-    "route": "/admin/policies",
-    "children": [
-      "Privacy Policy",
-      "Returns & Exchanges",
-      "Terms & Conditions",
-      "About Us",
-      "Contact Us",
-      "Shipping Policy",
-      "FAQs",
-      "Become a Partner"
     ]
   }
 ]

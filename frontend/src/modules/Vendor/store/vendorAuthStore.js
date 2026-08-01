@@ -22,8 +22,9 @@ export const useVendorAuthStore = create(
       login: async (email, password, rememberMe = false) => {
         set({ isLoading: true });
         try {
+          const normalizedEmail = String(email || "").trim().toLowerCase();
           const response = await api.post("/vendor/auth/login", {
-            email,
+            email: normalizedEmail,
             password,
           });
           const authData = response?.data || {};

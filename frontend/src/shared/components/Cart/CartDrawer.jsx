@@ -86,6 +86,9 @@ const CartDrawer = () => {
               variant="cart"
               title={t('Your cart is empty')}
               description={t('Add some items to get started!')}
+              titleClassName="text-white font-bold"
+              descriptionClassName="text-gray-300 font-medium"
+              className="bg-slate-900/80 border border-amber-500/20 shadow-md"
               action={
                 <Button onClick={toggleCart} variant="primary" size="md">
                   {t('Explore Products')}
@@ -98,12 +101,12 @@ const CartDrawer = () => {
                 {displayGroups.map((vendorGroup) => (
                   <div key={vendorGroup.vendorId} className="space-y-3">
                     {/* Vendor Header Badge */}
-                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-brand-primary/10 rounded-card border border-brand-primary/20">
+                    <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-slate-900/90 rounded-card border border-amber-500/30 shadow-sm">
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center text-textColor-brand text-[10px]">
+                        <div className="w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center text-black font-black text-[10px]">
                           <FiShoppingBag />
                         </div>
-                        <span className="text-xs font-bold text-textColor-primary">
+                        <span className="text-xs font-black text-amber-400 tracking-wide uppercase">
                           {vendorGroup.vendorName}
                         </span>
                       </div>
@@ -131,9 +134,9 @@ const CartDrawer = () => {
 
         {/* Cart Drawer Footer */}
         {items.length > 0 && (
-          <div className="border-t border-borderToken-default p-4 sm:p-6 bg-surface-card space-y-3">
+          <div className="border-t border-border p-4 sm:p-6 bg-surface-header space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-textColor-muted">
+              <span className="text-sm font-black text-white uppercase tracking-wider">
                 {t('Total:')}
               </span>
               <span className="text-xl sm:text-2xl font-black text-brand-primary">
@@ -158,7 +161,7 @@ const CartDrawer = () => {
                 size="sm"
                 fullWidth
                 onClick={clearCart}
-                className="text-textColor-muted hover:text-status-error"
+                className="text-gray-400 hover:text-red-400 font-semibold"
               >
                 {t('Clear Cart')}
               </Button>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useReturnStore = create((set, get) => ({
     returnRequests: [],
@@ -72,7 +72,7 @@ export const useReturnStore = create((set, get) => ({
             });
         } catch (error) {
             set({ error: error.message, isLoading: false });
-            toast.error(error.message || 'Failed to fetch return requests');
+            toastService.error(error, 'Failed to fetch return requests');
         }
     },
 
@@ -84,7 +84,7 @@ export const useReturnStore = create((set, get) => ({
             return response.data;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to fetch return request details');
+            toastService.error(error, 'Failed to fetch return request details');
             return null;
         }
     },
@@ -100,11 +100,11 @@ export const useReturnStore = create((set, get) => ({
                 ),
                 isLoading: false
             }));
-            toast.success('Return status updated successfully');
+            toastService.success('Return status updated successfully');
             return true;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to update return status');
+            toastService.error(error, 'Failed to update return status');
             return false;
         }
     }

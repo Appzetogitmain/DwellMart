@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FiList, FiX, FiDownload, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw } from 'react-icons/fi';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 import { getBulkProductImportHistory } from '../../modules/Admin/services/adminService';
 import { getVendorBulkProductImportHistory } from '../../modules/Vendor/services/vendorService';
 
@@ -24,7 +24,7 @@ const ImportHistoryModal = ({ isOpen, onClose, mode = 'admin' }) => {
             const data = res?.data || res;
             setHistory(data.history || []);
         } catch (err) {
-            toast.error('Failed to load import history.');
+            toastService.error(err, 'Failed to load import history.');
         } finally {
             setLoading(false);
         }

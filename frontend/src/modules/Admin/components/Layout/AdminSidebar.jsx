@@ -25,6 +25,7 @@ import {
   FiX,
   FiUser,
   FiLock,
+  FiLayers,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
 import { usePermission } from "../../hooks/usePermission";
@@ -42,6 +43,7 @@ const iconMap = {
   Customers: FiUsers,
   "Delivery Management": FiTruck,
   Vendors: FiUsers,
+  CMS: FiLayers,
   "Offers & Sliders": FiImage,
   Banners: FiImage,
   Testimonials: FiStar,
@@ -146,6 +148,14 @@ export const CHILD_PERMISSION_MAP = {
   "Payment & Shipping": "settings.edit",
   "Orders & Customers": "settings.edit",
   "Content & Features": "settings.edit",
+  "Privacy Policy": "settings.view",
+  "Returns & Exchanges": "settings.view",
+  "Terms & Conditions": "settings.view",
+  "About Us": "settings.view",
+  "Contact Us": "settings.view",
+  "Shipping Policy": "settings.view",
+  "FAQs": "settings.view",
+  "Become a Partner": "settings.view",
 };
 
 // Helper function to convert child name to route path
@@ -241,6 +251,84 @@ const getChildRoute = (parentRoute, childName) => {
   return routeMap[parentRoute]?.[childName] || parentRoute;
 };
 
+// Check permissions recursively for a menu item
+const hasMenuPermission = (item, isSuperAdmin, hasPermission) => {
+  if (isSuperAdmin) return true;
+
+  if (typeof item === "string") {
+    const reqPerm = CHILD_PERMISSION_MAP[item];
+    if (!reqPerm) return true;
+    return hasPermission(reqPerm);
+  }
+
+  if (item.title) {
+    const requiredPerm = MENU_PERMISSION_MAP[item.title];
+    if (requiredPerm && hasPermission(requiredPerm)) {
+      return true;
+    }
+  }
+
+  if (item.children && item.children.length > 0) {
+    return item.children.some((child) =>
+      hasMenuPermission(child, isSuperAdmin, hasPermission)
+    );
+  }
+
+  return true;
+};
+
+// Recursively find active item and parent chain to expand
+const findActiveAncestors = (items, pathname, parentRoute = null) => {
+  if (!items || !Array.isArray(items)) return { isMatch: false, chain: [] };
+
+  for (const item of items) {
+    if (typeof item === "string") {
+      const childRoute = getChildRoute(parentRoute, item);
+      if (
+        pathname === childRoute ||
+        (childRoute !== parentRoute && pathname.startsWith(childRoute))
+      ) {
+        return { isMatch: true, chain: [] };
+      }
+    } else if (typeof item === "object" && item !== null) {
+      const currentRoute = item.route;
+
+      let isSelfMatch = false;
+      if (currentRoute) {
+        if (currentRoute === "/admin/dashboard") {
+          isSelfMatch = pathname === "/admin/dashboard";
+        } else {
+          isSelfMatch =
+            pathname === currentRoute || pathname.startsWith(currentRoute);
+        }
+      }
+
+      let childMatch = null;
+      if (item.children && item.children.length > 0) {
+        childMatch = findActiveAncestors(
+          item.children,
+          pathname,
+          currentRoute || parentRoute
+        );
+      }
+
+      if (childMatch && childMatch.isMatch) {
+        return {
+          isMatch: true,
+          chain: [item.title, ...childMatch.chain],
+        };
+      } else if (isSelfMatch) {
+        return {
+          isMatch: true,
+          chain: item.children && item.children.length > 0 ? [item.title] : [],
+        };
+      }
+    }
+  }
+
+  return { isMatch: false, chain: [] };
+};
+
 const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const showMobile = isOpenMobile !== undefined ? isOpenMobile : isOpen;
   const showDesktop = isOpenDesktop !== undefined ? isOpenDesktop : (isOpen ?? true);
@@ -248,8 +336,9 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const navigate = useNavigate();
   const { admin } = useAdminAuthStore();
   const { hasPermission, isSuperAdmin } = usePermission();
+  const prevPathRef = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
-  const [isMobile, setIsMobile] = useState(false);
+  const [, setIsMobile] = useState(false);
 
   // Construct complete admin menu inserting Admin Management after Dashboard for Super Admin
   const completeMenu = [];
@@ -265,11 +354,9 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   });
 
   // Dynamically filter menu items based on permissions
-  const adminMenu = completeMenu.filter((item) => {
-    const requiredPerm = MENU_PERMISSION_MAP[item.title];
-    if (!requiredPerm) return true;
-    return hasPermission(requiredPerm);
-  });
+  const adminMenu = completeMenu.filter((item) =>
+    hasMenuPermission(item, isSuperAdmin, hasPermission)
+  );
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -283,141 +370,137 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
   // Auto-close sidebar on mobile when route changes
   useEffect(() => {
-    // Only close when route actually changes, not when sidebar opens
     if (window.innerWidth < 1024) {
       onClose();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]); // Only trigger on route changes
-
-  // Auto-expand menu items when their route is active (only if viewing a child route)
-  useEffect(() => {
-    const activeItem = adminMenu.find((item) => {
-      if (item.route === "/admin/dashboard") {
-        return location.pathname === "/admin/dashboard";
-      }
-      // Check if current path is a child of this item (not just the parent route itself)
-      const isChildRoute =
-        location.pathname.startsWith(item.route) &&
-        location.pathname !== item.route;
-      return isChildRoute;
-    });
-    if (activeItem && activeItem.children && activeItem.children.length > 0) {
-      // Only expand if we're actually on a child route, keep the parent open
-      setExpandedItems((prev) => {
-        // If the parent is already expanded, keep it expanded (don't close others)
-        // This allows navigation between child items without closing the dropdown
-        if (prev[activeItem.title]) {
-          return prev;
-        }
-        // Otherwise, close all others and expand this one
-        return {
-          [activeItem.title]: true,
-        };
-      });
-    } else {
-      // If not on a child route, check if we should close expanded items
-      // Only close if we're navigating to a completely different parent route
-      const currentParent = adminMenu.find((item) => {
-        if (item.route === "/admin/dashboard") {
-          return location.pathname === "/admin/dashboard";
-        }
-        return location.pathname.startsWith(item.route);
-      });
-      // If we're on a parent route without children, close all expanded items
-      if (
-        currentParent &&
-        (!currentParent.children || currentParent.children.length === 0)
-      ) {
-        setExpandedItems({});
-      }
-      // If we're on a parent route with children, keep it expanded if it was already expanded
-    }
   }, [location.pathname]);
 
-  // Check if a menu item is active
-  const isActive = (route) => {
-    if (route === "/admin/dashboard") {
-      return location.pathname === "/admin/dashboard";
+  // Auto-expand menu items when route changes
+  useEffect(() => {
+    if (prevPathRef[0] !== location.pathname) {
+      prevPathRef[1](location.pathname);
+      const { isMatch, chain } = findActiveAncestors(adminMenu, location.pathname);
+      if (isMatch && chain.length > 0) {
+        setExpandedItems((prev) => {
+          const updated = { ...prev };
+          chain.forEach((title) => {
+            updated[title] = true;
+          });
+          return updated;
+        });
+      }
     }
-    return location.pathname.startsWith(route);
-  };
+  }, [location.pathname, adminMenu, prevPathRef]);
 
   // Toggle expanded state for menu items with children
-  const toggleExpand = (title, closeOthers = true) => {
-    setExpandedItems((prev) => {
-      if (closeOthers) {
-        // Close all other expanded items and toggle the clicked one
-        return {
-          [title]: !prev[title],
-        };
-      } else {
-        // Just toggle the clicked item
-        return {
-          ...prev,
-          [title]: !prev[title],
-        };
-      }
-    });
+  const toggleExpand = (title) => {
+    setExpandedItems((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
   };
 
-  // Close all expanded items
-  const closeAllExpanded = () => {
-    setExpandedItems({});
-  };
-
-  // Handle menu item click
-  const handleMenuItemClick = (route, parentTitle = null) => {
-    // If navigating to a child route, keep the parent expanded
-    if (parentTitle) {
-      setExpandedItems((prev) => {
-        // Close all other expanded items, but keep the current parent open
-        return {
-          [parentTitle]: true,
-        };
-      });
-    } else {
-      // If navigating to a parent route without children, close all expanded items
-      closeAllExpanded();
-    }
+  // Handle navigation click
+  const handleMenuItemClick = (route) => {
     navigate(route);
     if (window.innerWidth < 1024) {
       onClose();
     }
   };
 
-  // Render menu item
-  const renderMenuItem = (item) => {
+  // Generic recursive renderer for menu items
+  const renderMenuItem = (item, depth = 0, parentRoute = null) => {
+    // Case 1: String child item (e.g. "Privacy Policy")
+    if (typeof item === "string") {
+      const reqPerm = CHILD_PERMISSION_MAP[item];
+      if (reqPerm && !isSuperAdmin && !hasPermission(reqPerm)) {
+        return null;
+      }
+
+      const childRoute = getChildRoute(parentRoute, item);
+      const isChildActive =
+        location.pathname === childRoute ||
+        (childRoute !== parentRoute &&
+          location.pathname.startsWith(childRoute));
+
+      return (
+        <div
+          key={childRoute + "-" + item}
+          onClick={() => handleMenuItemClick(childRoute)}
+          className={`
+            px-3 py-2 text-xs rounded-lg transition-colors cursor-pointer
+            ${
+              isChildActive
+                ? "bg-primary-500/20 text-white font-semibold shadow-sm"
+                : "text-gray-400 hover:bg-slate-700/70 hover:text-gray-200"
+            }
+          `}>
+          {item}
+        </div>
+      );
+    }
+
+    // Case 2: Object item (e.g. { title: "CMS", children: [...] })
+    if (!hasMenuPermission(item, isSuperAdmin, hasPermission)) {
+      return null;
+    }
+
     const Icon = iconMap[item.title] || FiPackage;
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems[item.title];
-    const active = isActive(item.route);
+
+    const isExactRouteActive =
+      item.route &&
+      (item.route === "/admin/dashboard"
+        ? location.pathname === "/admin/dashboard"
+        : location.pathname === item.route);
+
+    const childMatch = hasChildren
+      ? findActiveAncestors(item.children, location.pathname, item.route || parentRoute)
+      : { isMatch: false };
+
+    const isActiveParentNode = childMatch.isMatch;
+    const isNodeActive = isExactRouteActive || isActiveParentNode;
+
+    let bgClasses = "text-gray-300 hover:bg-slate-700";
+    if (isExactRouteActive && !hasChildren) {
+      bgClasses = "bg-primary-600 text-white shadow-sm";
+    } else if (isNodeActive) {
+      bgClasses = "bg-slate-700/70 text-white font-medium";
+    }
+
+    const itemPadding =
+      depth === 0
+        ? "px-4 py-3 text-sm rounded-xl"
+        : depth === 1
+        ? "px-3 py-2.5 text-xs rounded-lg"
+        : "px-3 py-2 text-xs rounded-lg";
 
     return (
-      <div key={item.route} className="mb-1">
+      <div key={item.title || item.route} className={depth === 0 ? "mb-1" : "my-0.5"}>
         {/* Main Menu Item */}
         <div
           className={`
-            flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer
-            ${active
-              ? "bg-primary-600 text-white shadow-sm"
-              : "text-gray-300 hover:bg-slate-700"
-            }
+            flex items-center gap-3 transition-all duration-200 cursor-pointer ${itemPadding} ${bgClasses}
           `}
           onClick={() => {
             if (hasChildren) {
-              // Close all other expanded items when clicking on a parent with children
-              toggleExpand(item.title, true);
-            } else {
-              // Close all expanded items when clicking on a parent without children
+              toggleExpand(item.title);
+            } else if (item.route) {
               handleMenuItemClick(item.route);
             }
           }}>
-          <Icon
-            className={`text-xl flex-shrink-0 ${active ? "text-white" : "text-gray-400"
+          {depth === 0 && (
+            <Icon
+              className={`text-xl flex-shrink-0 ${
+                isNodeActive ? "text-white" : "text-gray-400"
               }`}
-          />
-          <span className="font-medium flex-1 text-sm">{item.title}</span>
+            />
+          )}
+          <span className={`flex-1 ${depth === 0 ? "font-medium" : "font-normal"}`}>
+            {item.title}
+          </span>
           {hasChildren && (
             <motion.div
               animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -427,7 +510,7 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
           )}
         </div>
 
-        {/* Children Items */}
+        {/* Children Submenu */}
         <AnimatePresence>
           {hasChildren && isExpanded && (
             <motion.div
@@ -436,36 +519,13 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden">
-              <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
-                {item.children.map((child, index) => {
-                  const reqPerm = CHILD_PERMISSION_MAP[child];
-                  if (reqPerm && !isSuperAdmin && !hasPermission(reqPerm)) {
-                    return null;
-                  }
-
-                  const childRoute = getChildRoute(item.route, child);
-                  const isChildActive =
-                    location.pathname === childRoute ||
-                    (childRoute !== item.route &&
-                      location.pathname.startsWith(childRoute));
-
-                  return (
-                    <div
-                      key={index}
-                      onClick={() =>
-                        handleMenuItemClick(childRoute, item.title)
-                      }
-                      className={`
-                        px-3 py-2 text-xs rounded-lg transition-colors cursor-pointer
-                        ${isChildActive
-                          ? "bg-primary-500/20 text-white font-medium"
-                          : "text-gray-400 hover:bg-slate-700"
-                        }
-                      `}>
-                      {child}
-                    </div>
-                  );
-                })}
+              <div
+                className={`mt-1 border-l-2 border-slate-600 space-y-1 ${
+                  depth === 0 ? "ml-4 pl-3" : "ml-3 pl-2"
+                }`}>
+                {item.children.map((child) =>
+                  renderMenuItem(child, depth + 1, item.route || parentRoute)
+                )}
               </div>
             </motion.div>
           )}

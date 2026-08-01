@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
-import toast from 'react-hot-toast';
+import { toastService } from '../utils/toastService';
 
 export const useAnalyticsStore = create((set, get) => ({
     dashboardStats: null,
@@ -27,7 +27,7 @@ export const useAnalyticsStore = create((set, get) => ({
             set({ financialSummary: response.data, isLoading: false });
         } catch (error) {
             set({ error: error.message, isLoading: false });
-            toast.error('Failed to fetch financial data');
+            toastService.error(error, 'Failed to fetch financial data');
         }
     },
 

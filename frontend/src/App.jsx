@@ -117,6 +117,7 @@ import AppBootstrap from "./shared/components/AppBootstrap";
 import MobileHome from "./modules/UserApp/pages/Home";
 import MobileProductDetail from "./modules/UserApp/pages/ProductDetail";
 import MobileSeller from "./modules/UserApp/pages/Seller";
+import MobileSellers from "./modules/UserApp/pages/Sellers";
 import MobileCategory from "./modules/UserApp/pages/Category";
 import MobileBrand from "./modules/UserApp/pages/Brand";
 import MobileCategories from "./modules/UserApp/pages/categories";
@@ -242,6 +243,23 @@ const AppRoutes = () => {
           </RouteWrapper>
         }
       />
+      <Route
+        path="/store/:id"
+        element={
+          <RouteWrapper>
+            <MobileSeller />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/sellers"
+        element={
+          <RouteWrapper>
+            <MobileSellers />
+          </RouteWrapper>
+        }
+      />
+      <Route path="/vendors" element={<Navigate to="/sellers" replace />} />
       <Route
         path="/category/:id"
         element={

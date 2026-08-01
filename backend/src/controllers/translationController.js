@@ -21,11 +21,9 @@ export const translateText = async (req, res, next) => {
         });
     } catch (error) {
         if (error.code === 429) {
-            res.set('Retry-After', '5'); // Example retry-after header
-            return res.status(429).json({ success: false, message: 'Rate limit exceeded' });
+            res.set('Retry-After', '5');
         }
-        console.error('Controller Error[translateText]:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        next(error);
     }
 };
 
@@ -55,10 +53,8 @@ export const translateBatch = async (req, res, next) => {
     } catch (error) {
         if (error.code === 429) {
             res.set('Retry-After', '5');
-            return res.status(429).json({ success: false, message: 'Rate limit exceeded' });
         }
-        console.error('Controller Error[translateBatch]:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        next(error);
     }
 };
 
@@ -84,9 +80,7 @@ export const translateObject = async (req, res, next) => {
     } catch (error) {
         if (error.code === 429) {
             res.set('Retry-After', '5');
-            return res.status(429).json({ success: false, message: 'Rate limit exceeded' });
         }
-        console.error('Controller Error[translateObject]:', error);
-        res.status(500).json({ success: false, message: 'Internal Server Error' });
+        next(error);
     }
 };
