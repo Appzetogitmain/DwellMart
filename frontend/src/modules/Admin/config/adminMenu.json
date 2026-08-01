@@ -150,6 +150,11 @@
     ]
   },
   {
+    "title": "Quick Commerce",
+    "route": "/admin/analytics/quick-commerce",
+    "children": []
+  },
+  {
     "title": "Analytics & Finance",
     "route": "/admin/finance",
     "children": [

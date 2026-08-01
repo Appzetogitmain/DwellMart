@@ -5,6 +5,7 @@ import VendorSidebar from './VendorSidebar';
 import VendorHeader from './VendorHeader';
 import VendorBottomNav from './VendorBottomNav';
 import SubscriptionExpiredOverlay from '../SubscriptionExpiredOverlay';
+import QuickCommerceOrderAlert from '../QuickCommerceOrderAlert';
 import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 import api from '../../../../shared/utils/api';
 
@@ -124,6 +125,9 @@ const VendorLayout = () => {
 
       {/* Dynamic Overlay when user attempts active actions */}
       <SubscriptionExpiredOverlay isOpen={false} />
+
+      {/* Urgent Quick Commerce order alerts. Renders only when one arrives. */}
+      <QuickCommerceOrderAlert />
     </div>
   );
 };

@@ -6,6 +6,14 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
+import {
+    assertQuickCommerceTransition,
+    applyQuickCommerceStatus,
+    publishQuickCommerceStatus,
+} from '../../../services/quickCommerceOrderStatus.service.js';
+import { releaseRider } from '../../../services/riderAssignment.service.js';
+import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
+import { EXPERIENCES } from '../../../constants/experiences.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -233,6 +241,16 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     const order = await Order.findOne(query).select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
     if (!order) throw new ApiError(404, 'Order not found.');
 
+    // Quick Commerce orders have their own finer lifecycle. Allowing them
+    // through here would let a rider jump straight to delivered, skipping the
+    // store's prepare/ready stages and invalidating the ETA promise.
+    if (order.experience === EXPERIENCES.QUICK_COMMERCE) {
+        throw new ApiError(
+            400,
+            'Use the Quick Commerce status endpoint for this order.'
+        );
+    }
+
     // Server-side transition guard (frontend guard already exists).
     const transitionAllowed =
         (status === 'shipped' && ['pending', 'processing'].includes(order.status)) ||
@@ -365,6 +383,106 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(new ApiResponse(200, order, 'Delivery status updated.'));
+});
+
+/**
+ * PATCH /api/delivery/orders/:id/quick-status
+ *
+ * Rider-side Quick Commerce transitions: picked_up → arriving → delivered.
+ *
+ * Deliberately a separate endpoint from `updateDeliveryStatus` rather than an
+ * extension of it: the Marketplace endpoint's two-status model is relied on by
+ * the existing delivery app, and widening its enum would change behaviour for
+ * orders that are not Quick Commerce.
+ *
+ * `delivered` reuses the existing OTP verification — the same customer proof,
+ * the same attempt limits, the same expiry.
+ */
+export const updateQuickCommerceStatus = asyncHandler(async (req, res) => {
+    const { status, otp } = req.body;
+
+    const query = {
+        deliveryBoyId: req.user.id,
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query).select(
+        '+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug'
+    );
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    assertQuickCommerceTransition(order, status, 'rider');
+
+    // Moving to picked_up is the point the customer starts watching a moving
+    // pin, so the OTP is issued here — the same moment the Marketplace flow
+    // issues it on `shipped`.
+    if (status === QUICK_COMMERCE_ORDER_STATUS.PICKED_UP) {
+        const generatedOtp = generateDeliveryOtp();
+        order.deliveryOtpHash = hashDeliveryOtp(generatedOtp);
+        order.deliveryOtpExpiry = new Date(Date.now() + DELIVERY_OTP_TTL_MS);
+        order.deliveryOtpSentAt = new Date();
+        order.deliveryOtpAttempts = 0;
+        order.deliveryOtpVerifiedAt = undefined;
+        if (!IS_PRODUCTION) {
+            order.deliveryOtpDebug = generatedOtp;
+        }
+
+        try {
+            const sent = await sendDeliveryOtpEmail(order, generatedOtp);
+            if (!sent) {
+                console.warn(`[Delivery OTP] Missing customer email for order ${order.orderId || order._id}`);
+            }
+        } catch (err) {
+            console.warn(`[Delivery OTP] Failed to send OTP email for order ${order.orderId || order._id}: ${err.message}`);
+        }
+    }
+
+    if (status === QUICK_COMMERCE_ORDER_STATUS.DELIVERED) {
+        const normalizedOtp = String(otp || '').trim();
+        if (!/^\d{6}$/.test(normalizedOtp)) {
+            throw new ApiError(400, 'Delivery OTP is required to complete delivery.');
+        }
+        if (!order.deliveryOtpHash || !order.deliveryOtpExpiry) {
+            throw new ApiError(400, 'Delivery OTP was not generated. Mark the order picked up first.');
+        }
+        if (order.deliveryOtpExpiry < new Date()) {
+            throw new ApiError(400, 'Delivery OTP has expired. Please resend OTP.');
+        }
+
+        const attempts = Number(order.deliveryOtpAttempts || 0);
+        if (attempts >= DELIVERY_OTP_MAX_ATTEMPTS) {
+            throw new ApiError(429, 'Maximum OTP attempts reached. Please resend OTP.');
+        }
+
+        if (order.deliveryOtpHash !== hashDeliveryOtp(normalizedOtp)) {
+            order.deliveryOtpAttempts = attempts + 1;
+            await order.save();
+            throw new ApiError(400, 'Invalid delivery OTP.');
+        }
+
+        order.deliveryOtpVerifiedAt = new Date();
+        order.deliveryOtpHash = undefined;
+        order.deliveryOtpExpiry = undefined;
+        order.deliveryOtpSentAt = undefined;
+        order.deliveryOtpAttempts = 0;
+        order.deliveryOtpDebug = undefined;
+    }
+
+    applyQuickCommerceStatus(order, status);
+    await order.save();
+
+    // Delivery frees the rider for the next order.
+    if (status === QUICK_COMMERCE_ORDER_STATUS.DELIVERED) {
+        await releaseRider(req.user.id, order._id, { incrementDeliveries: true });
+    }
+
+    await publishQuickCommerceStatus(order, status);
+
+    res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
 });
 
 // POST /api/delivery/orders/:id/resend-delivery-otp

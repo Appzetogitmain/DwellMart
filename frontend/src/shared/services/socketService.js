@@ -111,6 +111,43 @@ export const leaveConversationRoom = (conversationId) => {
     }
 };
 
+/**
+ * Join an order's live-tracking room.
+ *
+ * The server authorizes membership against the order — passing an id you do not
+ * own is rejected there, not here. Resolves to true only when the join was
+ * actually granted, so callers can fall back to polling.
+ *
+ * @param {string} orderRefId The order's ObjectId (not the human orderId).
+ */
+export const joinOrderTrackingRoom = (orderRefId) =>
+  new Promise((resolve) => {
+    const s = connectSocket();
+    if (!s || !orderRefId) {
+      resolve(false);
+      return;
+    }
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    // Don't hang a UI on a server that never acks.
+    const timer = setTimeout(() => finish(false), 5000);
+    s.emit("join_order_tracking", orderRefId, (response) => {
+      clearTimeout(timer);
+      finish(Boolean(response?.joined));
+    });
+  });
+
+export const leaveOrderTrackingRoom = (orderRefId) => {
+  const s = getSocket();
+  if (s && orderRefId) {
+    s.emit("leave_order_tracking", orderRefId);
+  }
+};
+
 export const emitTypingStart = (conversationId, name) => {
     const s = connectSocket();
     if (s && conversationId) {

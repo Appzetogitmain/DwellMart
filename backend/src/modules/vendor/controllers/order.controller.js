@@ -4,8 +4,30 @@ import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Settlement from '../../../models/Settlement.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
+import {
+    assertQuickCommerceTransition,
+    applyQuickCommerceStatus,
+    publishQuickCommerceStatus,
+} from '../../../services/quickCommerceOrderStatus.service.js';
+import { EXPERIENCES } from '../../../constants/experiences.js';
+import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
+import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
+import {
+    baseQuickCommerceMatch,
+    resolveDateRange,
+    startOfToday,
+    scopeToVendor,
+    getVolumeStats,
+    getEtaStats,
+    getStageBreakdown,
+    getPeakHours,
+    getTopProducts,
+    getVendorResponsiveness,
+    getDailySeries,
+} from '../../../services/quickCommerceAnalytics.service.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -80,6 +102,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
         'vendorItems.vendorId': req.user.id,
     });
     if (!order) throw new ApiError(404, 'Order not found.');
+
+    // Quick Commerce orders use accepted → preparing → ready, not the coarse
+    // Marketplace statuses. Routing them through here would desync
+    // `quickCommerce.status` from `status`.
+    if (order.experience === EXPERIENCES.QUICK_COMMERCE) {
+        throw new ApiError(400, 'Use the Quick Commerce status endpoint for this order.');
+    }
+
     const vendorItem = order.vendorItems.find((vi) => String(vi.vendorId) === String(req.user.id));
     if (!vendorItem) throw new ApiError(404, 'Vendor order item not found.');
 
@@ -131,6 +161,154 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     await Promise.allSettled(notificationTasks);
 
     res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
+});
+
+/**
+ * PATCH /api/vendor/orders/:id/quick-status
+ *
+ * Store-side Quick Commerce transitions: accepted → preparing → ready.
+ *
+ * Separate from `updateOrderStatus` because the Marketplace endpoint's status
+ * set and per-vendor transition map are relied on by the existing vendor
+ * dashboard; Quick Commerce needs a finer lifecycle without changing that one.
+ */
+export const updateQuickCommerceOrderStatus = asyncHandler(async (req, res) => {
+    const { status } = req.body;
+
+    const { id } = req.params;
+    const idFilter = [{ orderId: id }];
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        idFilter.push({ _id: id });
+    }
+
+    const order = await Order.findOne({
+        $or: idFilter,
+        'vendorItems.vendorId': req.user.id,
+        isDeleted: { $ne: true },
+    });
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    assertQuickCommerceTransition(order, status, 'vendor');
+
+    applyQuickCommerceStatus(order, status);
+    await order.save();
+
+    // Accepting IS acknowledging — a store that has started work does not also
+    // need to dismiss an alert, and leaving it open would escalate an order
+    // that is already being prepared.
+    if (status === QUICK_COMMERCE_ORDER_STATUS.ACCEPTED) {
+        await acknowledgeVendorOrderAlert(order._id, req.user.id).catch((err) => {
+            console.warn(`[QC Alert] Acknowledge failed for ${order.orderId}: ${err.message}`);
+        });
+    }
+
+    await publishQuickCommerceStatus(order, status);
+
+    res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
+});
+
+/**
+ * POST /api/vendor/quick-commerce/orders/:id/acknowledge
+ *
+ * Explicitly take responsibility for an order without yet accepting it —
+ * "I have seen this, stop the alarm". Stops the escalation clock; the store is
+ * still expected to accept.
+ */
+export const acknowledgeQuickCommerceOrder = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const idFilter = [{ orderId: id }];
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        idFilter.push({ _id: id });
+    }
+
+    const order = await Order.findOne({
+        $or: idFilter,
+        'vendorItems.vendorId': req.user.id,
+        isDeleted: { $ne: true },
+    }).select('_id orderId experience');
+    if (!order) throw new ApiError(404, 'Order not found.');
+    if (order.experience !== EXPERIENCES.QUICK_COMMERCE) {
+        throw new ApiError(400, 'This is not a Quick Commerce order.');
+    }
+
+    const acknowledgedAt = await acknowledgeVendorOrderAlert(order._id, req.user.id);
+
+    res.status(200).json(new ApiResponse(200, { acknowledgedAt }, 'Order acknowledged.'));
+});
+
+/**
+ * GET /api/vendor/quick-commerce/dashboard
+ *
+ * The store's operational view — built around "what do I need to do right now",
+ * not "how did last month go". Live stage counts come first; historical
+ * performance follows.
+ *
+ * `?days=` controls the historical window (default 30). Today's figures are
+ * always today's, regardless of that window.
+ */
+export const getQuickCommerceVendorDashboard = asyncHandler(async (req, res) => {
+    const vendorId = req.user.id;
+    const { start, end } = resolveDateRange({
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        days: Number(req.query.days) || 30,
+    });
+
+    // Hour/day buckets follow the store owner's clock, not the server's.
+    const timezone = req.query.timezone;
+
+    const rangeMatch = scopeToVendor(
+        baseQuickCommerceMatch({ createdAt: { $gte: start, $lte: end } }),
+        vendorId
+    );
+    const todayMatch = scopeToVendor(
+        baseQuickCommerceMatch({ createdAt: { $gte: startOfToday() } }),
+        vendorId
+    );
+    // Live orders are not date-bounded: an order placed before midnight that is
+    // still being prepared is still the store's problem this morning.
+    const liveMatch = scopeToVendor(
+        baseQuickCommerceMatch({
+            'quickCommerce.status': { $nin: ['delivered', 'cancelled'] },
+        }),
+        vendorId
+    );
+
+    const [vendor, live, today, volume, eta, responsiveness, peakHours, topProducts, daily] =
+        await Promise.all([
+            // So the page can say "the channel is off" rather than rendering a
+            // wall of zeros that looks like a bad day of trading.
+            Vendor.findById(vendorId).select('sellingChannels quickCommerceProfile.availabilityStatus').lean(),
+            getStageBreakdown(liveMatch),
+            getVolumeStats(todayMatch),
+            getVolumeStats(rangeMatch),
+            getEtaStats(rangeMatch),
+            getVendorResponsiveness(rangeMatch),
+            getPeakHours(rangeMatch, timezone),
+            getTopProducts(rangeMatch, 10),
+            getDailySeries(rangeMatch, timezone),
+        ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        range: { start, end },
+        channelEnabled: vendor?.sellingChannels?.quickCommerce?.enabled === true,
+        availabilityStatus: vendor?.quickCommerceProfile?.availabilityStatus || null,
+        // What needs attention now.
+        live: {
+            ...live,
+            actionRequired: live.placed,
+            inKitchen: live.accepted + live.preparing,
+            awaitingPickup: live.ready,
+            onTheWay: live.picked_up + live.arriving,
+        },
+        today,
+        performance: volume,
+        eta,
+        responsiveness,
+        peakHours,
+        topProducts,
+        daily,
+    }, 'Quick Commerce dashboard fetched.'));
 });
 
 // GET /api/vendor/earnings

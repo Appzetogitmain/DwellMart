@@ -7,6 +7,98 @@ import User from '../../../models/User.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import {
+    claimRider,
+    releaseRider,
+    retryAssignment,
+} from '../../../services/riderAssignment.service.js';
+import { pointToLatLng } from '../../../services/quickCommerce.service.js';
+import Vendor from '../../../models/Vendor.model.js';
+import { EXPERIENCES } from '../../../constants/experiences.js';
+import { QUICK_COMMERCE_ASSIGNMENT_STATUS } from '../../../constants/quickCommerce.js';
+
+/**
+ * GET /api/admin/orders/quick-commerce/unassigned
+ *
+ * The escalation queue. Quick Commerce orders that found no rider land here so
+ * an operator can intervene — the whole point of recording `escalated` as a
+ * state rather than inferring it from a null `deliveryBoyId`.
+ */
+export const getUnassignedQuickCommerceOrders = asyncHandler(async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+
+    const filter = {
+        experience: EXPERIENCES.QUICK_COMMERCE,
+        isDeleted: { $ne: true },
+        deliveryBoyId: null,
+        'quickCommerce.assignment.status': QUICK_COMMERCE_ASSIGNMENT_STATUS.ESCALATED,
+        status: { $nin: ['delivered', 'cancelled', 'returned'] },
+    };
+
+    const [orders, total] = await Promise.all([
+        Order.find(filter)
+            .sort({ createdAt: 1 }) // oldest first — longest-waiting customer first
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .select('orderId createdAt total status quickCommerce vendorItems.vendorId vendorItems.vendorName shippingAddress.city')
+            .lean(),
+        Order.countDocuments(filter),
+    ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        orders,
+        total,
+        page,
+        pages: Math.ceil(total / limit) || 1,
+    }, 'Unassigned Quick Commerce orders fetched.'));
+});
+
+/**
+ * POST /api/admin/orders/:id/retry-assignment
+ *
+ * Re-run automatic assignment for an escalated order. Cheaper for an operator
+ * than picking a rider by hand, and uses the identical claim path.
+ */
+export const retryQuickCommerceAssignment = asyncHandler(async (req, res) => {
+    const idFilter = [{ orderId: req.params.id }];
+    if (/^[0-9a-fA-F]{24}$/.test(req.params.id)) {
+        idFilter.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne({ $or: idFilter, isDeleted: { $ne: true } })
+        .select('orderId userId experience deliveryBoyId vendorItems.vendorId status');
+    if (!order) throw new ApiError(404, 'Order not found.');
+    if (order.experience !== EXPERIENCES.QUICK_COMMERCE) {
+        throw new ApiError(400, 'This is not a Quick Commerce order.');
+    }
+    if (order.deliveryBoyId) {
+        throw new ApiError(409, 'This order already has a delivery partner.');
+    }
+    if (['delivered', 'cancelled', 'returned'].includes(String(order.status))) {
+        throw new ApiError(409, `Cannot assign delivery for ${order.status} order.`);
+    }
+
+    const vendorId = order.vendorItems?.[0]?.vendorId;
+    const vendor = vendorId
+        ? await Vendor.findById(vendorId).select('quickCommerceProfile.location').lean()
+        : null;
+    const pickup = pointToLatLng(vendor?.quickCommerceProfile?.location);
+    if (!pickup) {
+        throw new ApiError(409, 'The store has no delivery location configured.');
+    }
+
+    const result = await retryAssignment(order._id, pickup);
+
+    res.status(200).json(new ApiResponse(200, {
+        assigned: result.assigned,
+        rider: result.rider
+            ? { id: String(result.rider._id), name: result.rider.name, phone: result.rider.phone }
+            : null,
+    }, result.assigned
+        ? 'Delivery partner assigned.'
+        : 'No delivery partner is available right now. The order remains in the queue.'));
+});
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
@@ -287,6 +379,27 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
 
     const previousDeliveryBoyId = order.deliveryBoyId ? String(order.deliveryBoyId) : '';
     const isReassigned = previousDeliveryBoyId && previousDeliveryBoyId !== String(deliveryBoyId);
+
+    // Quick Commerce riders carry one order at a time, so a manual assignment
+    // must take the same atomic claim the automatic path takes — otherwise an
+    // admin can hand a rider a second order while they are mid-delivery.
+    if (order.experience === EXPERIENCES.QUICK_COMMERCE) {
+        const claimed = await claimRider(deliveryBoyId, order._id);
+        if (!claimed) {
+            throw new ApiError(409, `${deliveryBoy.name} is not available for a Quick Commerce order right now.`);
+        }
+        if (previousDeliveryBoyId && previousDeliveryBoyId !== String(deliveryBoyId)) {
+            // Free the rider being replaced.
+            await releaseRider(previousDeliveryBoyId, order._id);
+        }
+        order.quickCommerce = order.quickCommerce || {};
+        order.quickCommerce.assignment = {
+            ...(order.quickCommerce.assignment?.toObject?.() || order.quickCommerce.assignment || {}),
+            status: QUICK_COMMERCE_ASSIGNMENT_STATUS.ASSIGNED,
+            assignedAt: new Date(),
+            lastAttemptAt: new Date(),
+        };
+    }
 
     order.deliveryBoyId = deliveryBoyId;
     if (order.status === 'pending') {

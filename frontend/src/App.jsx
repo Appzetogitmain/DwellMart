@@ -64,6 +64,7 @@ import PendingApprovals from "./modules/Admin/pages/vendors/PendingApprovals";
 import VendorDetail from "./modules/Admin/pages/vendors/VendorDetail";
 import CommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
 import AdminVendorAnalytics from "./modules/Admin/pages/vendors/VendorAnalytics";
+import AdminQuickCommerceAnalytics from "./modules/Admin/pages/QuickCommerceAnalytics";
 import VendorSubscriptions from "./modules/Admin/pages/vendors/VendorSubscriptions";
 import AdminSubscriptionPlans from "./modules/Admin/pages/SubscriptionPlans";
 import AdminVendorTerms from "./modules/Admin/pages/VendorTerms";
@@ -183,6 +184,7 @@ import VendorAllOrders from "./modules/Vendor/pages/orders/AllOrders";
 import VendorOrderTracking from "./modules/Vendor/pages/orders/OrderTracking";
 import VendorOrderDetail from "./modules/Vendor/pages/orders/OrderDetail";
 import VendorAnalytics from "./modules/Vendor/pages/Analytics";
+import VendorQuickCommerceDashboard from "./modules/Vendor/pages/QuickCommerceDashboard";
 import VendorEarnings from "./modules/Vendor/pages/Earnings";
 import VendorSettings from "./modules/Vendor/pages/Settings";
 import ProfileSettings from "./modules/Vendor/pages/settings/ProfileSettings";
@@ -607,6 +609,10 @@ const AppRoutes = () => {
         <Route path="finance/refund-reports" element={<RefundReports />} />
         <Route path="analytics" element={<Analytics />} />
         <Route
+          path="analytics/quick-commerce"
+          element={<AdminRouteGuard permission="quickcommerce.analytics.view"><AdminQuickCommerceAnalytics /></AdminRouteGuard>}
+        />
+        <Route
           path="settings"
           element={<Navigate to="/admin/settings/general" replace />}
         />
@@ -700,6 +706,7 @@ const AppRoutes = () => {
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />
         <Route path="orders/:id" element={<VendorOrderDetail />} />
         <Route path="analytics" element={<VendorAnalytics />} />
+        <Route path="quick-commerce" element={<VendorQuickCommerceDashboard />} />
         <Route path="reports" element={<VendorReports />} />
         <Route path="earnings" element={<VendorEarnings />} />
         <Route path="earnings/overview" element={<VendorEarnings />} />

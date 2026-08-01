@@ -4,6 +4,21 @@ import Order from '../../../models/Order.model.js';
 import User from '../../../models/User.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Product from '../../../models/Product.model.js';
+import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
+import {
+    baseQuickCommerceMatch,
+    resolveDateRange,
+    startOfToday,
+    getVolumeStats as qcVolumeStats,
+    getEtaStats as qcEtaStats,
+    getStageBreakdown as qcStageBreakdown,
+    getAssignmentStats as qcAssignmentStats,
+    getVendorResponsiveness as qcVendorResponsiveness,
+    getTopStores as qcTopStores,
+    getTopProducts as qcTopProducts,
+    getPeakHours as qcPeakHours,
+    getDailySeries as qcDailySeries,
+} from '../../../services/quickCommerceAnalytics.service.js';
 
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
@@ -308,4 +323,122 @@ export const getWholesaleStats = asyncHandler(async (req, res) => {
             revenue: parseFloat((product.revenue || 0).toFixed(2)),
         })),
     }, 'Wholesale stats fetched.'));
+});
+
+/**
+ * GET /api/admin/analytics/quick-commerce
+ *
+ * Platform view of Quick Commerce health.
+ *
+ * Ordered by what actually decides whether the experience is working: ETA
+ * performance first, then dispatch reliability, then commercial figures.
+ * Serviceability coverage is included because a healthy-looking ETA over three
+ * live stores is not the same signal as one over three hundred.
+ */
+export const getQuickCommerceStats = asyncHandler(async (req, res) => {
+    const { start, end } = resolveDateRange({
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        days: Number(req.query.days) || 30,
+    });
+
+    // Hour/day buckets follow the viewer's clock, not the server's.
+    const timezone = req.query.timezone;
+
+    const rangeMatch = baseQuickCommerceMatch({ createdAt: { $gte: start, $lte: end } });
+    const todayMatch = baseQuickCommerceMatch({ createdAt: { $gte: startOfToday() } });
+    const liveMatch = baseQuickCommerceMatch({
+        'quickCommerce.status': { $nin: ['delivered', 'cancelled'] },
+    });
+
+    const [
+        volume,
+        today,
+        eta,
+        live,
+        assignment,
+        responsiveness,
+        topStores,
+        topProducts,
+        peakHours,
+        daily,
+        quickCommerceVendors,
+        orderableVendors,
+        quickCommerceProducts,
+        quickCommerceRiders,
+        busyRiders,
+    ] = await Promise.all([
+        qcVolumeStats(rangeMatch),
+        qcVolumeStats(todayMatch),
+        qcEtaStats(rangeMatch),
+        qcStageBreakdown(liveMatch),
+        qcAssignmentStats(rangeMatch),
+        qcVendorResponsiveness(rangeMatch),
+        qcTopStores(rangeMatch, 10),
+        qcTopProducts(rangeMatch, 10),
+        qcPeakHours(rangeMatch, timezone),
+        qcDailySeries(rangeMatch, timezone),
+        Vendor.countDocuments({
+            status: 'approved',
+            'sellingChannels.quickCommerce.enabled': true,
+        }),
+        Vendor.countDocuments({
+            status: 'approved',
+            'sellingChannels.quickCommerce.enabled': true,
+            'quickCommerceProfile.availabilityStatus': { $in: ['open', 'busy'] },
+        }),
+        Product.countDocuments({ isActive: true, quickCommerceEnabled: true }),
+        DeliveryBoy.countDocuments({
+            isActive: true,
+            applicationStatus: 'approved',
+            experiences: 'quick_commerce',
+        }),
+        DeliveryBoy.countDocuments({
+            isActive: true,
+            applicationStatus: 'approved',
+            experiences: 'quick_commerce',
+            activeOrderId: { $ne: null },
+        }),
+    ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        range: { start, end },
+        // The leading indicator of Quick Commerce health.
+        eta,
+        volume,
+        today,
+        live,
+        assignment,
+        responsiveness,
+        coverage: {
+            quickCommerceVendors,
+            orderableVendors,
+            quickCommerceProducts,
+        },
+        riders: {
+            total: quickCommerceRiders,
+            busy: busyRiders,
+            available: Math.max(0, quickCommerceRiders - busyRiders),
+            // Share of the Quick Commerce fleet currently carrying an order.
+            utilisationRate: quickCommerceRiders > 0
+                ? Number(((busyRiders / quickCommerceRiders) * 100).toFixed(2))
+                : 0,
+        },
+        topStores: topStores.map((store) => ({
+            vendorId: String(store._id || ''),
+            storeName: store.storeName || 'Unknown store',
+            orders: store.orders,
+            revenue: store.revenue,
+            slaBreaches: store.slaBreaches,
+            slaBreachRate: store.slaBreachRate,
+        })),
+        topProducts: topProducts.map((product) => ({
+            productId: String(product._id || ''),
+            name: product.name || 'Unknown product',
+            unitsSold: product.unitsSold,
+            revenue: parseFloat((product.revenue || 0).toFixed(2)),
+        })),
+        peakHours,
+        daily,
+    }, 'Quick Commerce stats fetched.'));
 });

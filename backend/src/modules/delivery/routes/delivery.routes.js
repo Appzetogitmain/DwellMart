@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import * as orderController from '../controllers/order.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
+import * as locationController from '../controllers/location.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -16,6 +17,10 @@ import {
     refreshTokenSchema,
     logoutSchema,
 } from '../validators/auth.validator.js';
+import {
+    riderLocationSchema,
+    quickCommerceStatusSchema,
+} from '../validators/delivery.validator.js';
 
 const router = Router();
 const deliveryAuth = [authenticate, authorize('delivery'), enforceAccountStatus];
@@ -50,7 +55,22 @@ if (!IS_PRODUCTION) {
     router.get('/orders/:id/debug-otp', ...deliveryAuth, orderController.getDeliveryOtpForDebug);
 }
 router.patch('/orders/:id/status', ...deliveryAuth, orderController.updateDeliveryStatus);
+router.patch(
+    '/orders/:id/quick-status',
+    ...deliveryAuth,
+    validate(quickCommerceStatusSchema),
+    orderController.updateQuickCommerceStatus
+);
 router.post('/orders/:id/resend-delivery-otp', ...deliveryAuth, orderController.resendDeliveryOtp);
+
+// Live tracking — the rider reports position, the customer's order room receives it.
+router.patch(
+    '/location',
+    ...deliveryAuth,
+    validate(riderLocationSchema),
+    locationController.updateRiderLocation
+);
+router.get('/active-order', ...deliveryAuth, locationController.getActiveOrder);
 
 // Notifications
 router.get('/notifications', ...deliveryAuth, notificationController.getDeliveryNotifications);

@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
-import { QUICK_COMMERCE_ORDER_STATUS_VALUES } from '../constants/quickCommerce.js';
+import {
+    QUICK_COMMERCE_ORDER_STATUS_VALUES,
+    QUICK_COMMERCE_ASSIGNMENT_STATUS,
+    QUICK_COMMERCE_ASSIGNMENT_STATUS_VALUES,
+} from '../constants/quickCommerce.js';
 
 export const INTEGRATION_PARTNER_STATUSES = [
     'NEW',
@@ -171,6 +175,57 @@ const orderSchema = new mongoose.Schema(
             deliveryFee: { type: Number, default: 0 },
             packagingFee: { type: Number, default: 0 },
             slaBreached: { type: Boolean, default: false },
+            /**
+             * Measured door-to-door minutes, recorded at delivery.
+             *
+             * Stored rather than derived so "promised vs actual ETA" — the
+             * leading indicator of Quick Commerce health — is a single field to
+             * aggregate instead of a date subtraction repeated in every query.
+             */
+            actualEtaMinutes: { type: Number },
+            /**
+             * Urgent-alert acknowledgement for the store.
+             *
+             * A Quick Commerce vendor who misses a new-order alert breaks the
+             * promise, so the alert is tracked rather than fired and forgotten:
+             * unacknowledged past a threshold, it escalates to an admin.
+             */
+            vendorNotifiedAt: { type: Date },
+            vendorAcknowledgedAt: { type: Date },
+            vendorEscalatedAt: { type: Date },
+            /**
+             * Set when a customer cancels after the store had already begun
+             * preparing. The goods exist and someone has to absorb their cost —
+             * this records that the situation arose so it can be settled, rather
+             * than losing the distinction between "cancelled before any work"
+             * and "cancelled after the order was packed".
+             *
+             * The settlement policy itself is a business decision; this is the
+             * field it will be applied against.
+             */
+            cancelledAfterPreparation: { type: Boolean, default: false },
+            /** Quick Commerce status at the moment of cancellation. */
+            cancelledAtStage: { type: String },
+            /**
+             * Rider assignment outcome.
+             *
+             * Recorded explicitly rather than inferred from `deliveryBoyId`
+             * being null, because "no rider yet" and "no rider available, needs
+             * a human" are operationally different states. An order sitting in
+             * `escalated` is what the admin queue reads.
+             */
+            assignment: {
+                status: {
+                    type: String,
+                    enum: QUICK_COMMERCE_ASSIGNMENT_STATUS_VALUES,
+                    default: QUICK_COMMERCE_ASSIGNMENT_STATUS.PENDING,
+                },
+                attempts: { type: Number, default: 0 },
+                lastAttemptAt: { type: Date },
+                assignedAt: { type: Date },
+                escalatedAt: { type: Date },
+                searchRadiusKm: { type: Number },
+            },
         },
         totalSavings: { type: Number, default: 0 },
         couponCode: { type: String },
@@ -217,6 +272,9 @@ orderSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });
 orderSchema.index({ 'vendorItems.vendorId': 1, createdAt: -1 });
 orderSchema.index({ 'integration.eligibleForPartner': 1, status: 1, createdAt: -1 });
 orderSchema.index({ 'integration.partnerStatus': 1, createdAt: -1 });
+// Backs the admin escalation queue and the Quick Commerce live-order views.
+orderSchema.index({ experience: 1, 'quickCommerce.assignment.status': 1, createdAt: -1 });
+orderSchema.index({ experience: 1, 'quickCommerce.status': 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export { Order };

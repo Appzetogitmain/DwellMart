@@ -18,6 +18,7 @@ import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
+import QuickCommerceActions from '../components/QuickCommerceActions';
 
 const DeliveryOrderDetail = () => {
   const { id } = useParams();
@@ -34,6 +35,8 @@ const DeliveryOrderDetail = () => {
   const [loadFailed, setLoadFailed] = useState(false);
   const [deliveryOtp, setDeliveryOtp] = useState('');
   const [isResendingOtp, setIsResendingOtp] = useState(false);
+  // Quick Commerce has its own status lifecycle and its own rider controls.
+  const isQuickCommerceOrder = order?.experience === 'quick_commerce';
 
   const loadOrder = async () => {
     try {
@@ -351,7 +354,10 @@ const DeliveryOrderDetail = () => {
           transition={{ delay: 0.4 }}
           className="space-y-3 pt-2"
         >
-          {order.status === 'pending' && (
+          {isQuickCommerceOrder && (
+            <QuickCommerceActions order={order} onUpdated={loadOrder} />
+          )}
+          {!isQuickCommerceOrder && order.status === 'pending' && (
             <button
               onClick={handleAcceptOrder}
               disabled={isUpdatingOrderStatus}
@@ -361,8 +367,7 @@ const DeliveryOrderDetail = () => {
               {isUpdatingOrderStatus ? 'Accepting...' : 'Accept Order'}
             </button>
           )}
-
-          {order.status === 'in-transit' && (
+          {!isQuickCommerceOrder && order.status === 'in-transit' && (
             <div className="space-y-3 bg-slate-800/90 border border-amber-500/30 rounded-3xl p-5 shadow-xl">
               <label className="block text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
                 Enter Customer 6-Digit Delivery OTP

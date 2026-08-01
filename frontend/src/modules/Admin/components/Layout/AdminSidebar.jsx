@@ -75,6 +75,7 @@ const MENU_PERMISSION_MAP = {
   Notifications: "dashboard.view",
   "Support Desk": "support.view",
   Reports: "reports.view",
+  "Quick Commerce": "quickcommerce.analytics.view",
   "Analytics & Finance": "wallet.view",
   Settings: "settings.view",
   Policies: "settings.view",

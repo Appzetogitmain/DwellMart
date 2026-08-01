@@ -22,3 +22,13 @@ export const getNearbyQuickCommerceVendors = (params) =>
  */
 export const getQuickCommerceCategoryFeed = (params) =>
   api.get("/quick/categories/feed", { params });
+
+/**
+ * Delivery fee, packaging fee and ETA for the current cart.
+ *
+ * The server computes these with the same functions checkout uses, so the
+ * amounts shown are the amounts charged. The client must never derive them —
+ * they depend on distance and per-store configuration.
+ */
+export const getQuickCommerceCheckoutEstimate = (payload) =>
+  api.post("/quick/checkout/estimate", payload);
