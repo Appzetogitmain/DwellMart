@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./theme";
+import { ToastProvider } from "./shared/components/ui/Toast";
 
 import CartDrawer from "./shared/components/Cart/CartDrawer";
 import ProtectedRoute from "./shared/components/Auth/ProtectedRoute";
