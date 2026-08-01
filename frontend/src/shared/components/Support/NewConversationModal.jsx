@@ -42,7 +42,7 @@ export const getReasonLabel = (reasonKey) => {
     return reasonKey.replace('_', ' ');
 };
 
-const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
+const NewConversationModal = ({ isOpen, onClose, role = 'customer', theme = 'light' }) => {
     const { createNewConversation, isSending } = useSupportChatStore();
     const normalizedRole = String(role || '').toLowerCase() === 'user' ? 'customer' : role;
     const reasons = REASON_OPTIONS_BY_ROLE[normalizedRole] || REASON_OPTIONS_BY_ROLE.customer;
@@ -53,6 +53,7 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
 
     if (!isOpen) return null;
 
+    const isDark = theme === 'dark';
     const isOther = reasonKey === 'OTHER';
     const charCount = description.trim().length;
     const isOtherInvalid = isOther && charCount < 20;
@@ -78,22 +79,32 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-100 transform transition-all">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+            <div className={`rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border transform transition-all ${
+                isDark
+                    ? 'bg-slate-900 border-amber-500/30 text-white shadow-[0_25px_60px_rgba(0,0,0,0.8)]'
+                    : 'bg-white border-gray-100 text-gray-900'
+            }`}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+                <div className={`flex items-center justify-between p-5 border-b ${
+                    isDark ? 'bg-slate-950/80 border-slate-800' : 'bg-gray-50/50 border-gray-100'
+                }`}>
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-primary-100 text-primary-600 rounded-xl">
+                        <div className={`p-2.5 rounded-xl ${
+                            isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-primary-100 text-primary-600'
+                        }`}>
                             <FiMessageSquare className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">New Support Request</h3>
-                            <p className="text-xs text-gray-500">Contact DwellMart Support Desk</p>
+                            <h3 className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`}>New Support Request</h3>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Contact DwellMart Support Desk</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                        className={`p-2 rounded-lg transition-colors ${
+                            isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        }`}
                     >
                         <FiX className="w-5 h-5" />
                     </button>
@@ -102,7 +113,9 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     {error && (
-                        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 text-sm rounded-xl border border-red-100">
+                        <div className={`flex items-center gap-2 p-3 text-sm rounded-xl border ${
+                            isDark ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-red-50 text-red-700 border-red-100'
+                        }`}>
                             <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
                             <span>{error}</span>
                         </div>
@@ -110,7 +123,9 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
 
                     {/* Support Reason Dropdown */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
+                            isDark ? 'text-slate-300' : 'text-gray-700'
+                        }`}>
                             Select Support Reason <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -119,27 +134,33 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
                                 setReasonKey(e.target.value);
                                 setError('');
                             }}
-                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm text-gray-800 transition-shadow"
+                            className={`w-full px-4 py-3 rounded-xl text-sm transition-all focus:outline-none ${
+                                isDark
+                                    ? 'bg-slate-950 border border-slate-700 text-white focus:border-amber-400'
+                                    : 'bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-primary-500'
+                            }`}
                             required
                         >
                             {reasons.map((r) => (
-                                <option key={r.key} value={r.key}>
+                                <option key={r.key} value={r.key} className={isDark ? 'bg-slate-900 text-white' : ''}>
                                     {r.label}
                                 </option>
                             ))}
                         </select>
                     </div>
 
-                    {/* Description / Textarea */}
+                    {/* Description */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-semibold text-gray-700">
+                            <label className={`block text-xs font-bold uppercase tracking-wider ${
+                                isDark ? 'text-slate-300' : 'text-gray-700'
+                            }`}>
                                 Issue Description {isOther && <span className="text-red-500">*</span>}
                             </label>
                             {isOther && (
                                 <span
                                     className={`text-xs font-medium ${
-                                        charCount >= 20 ? 'text-green-600' : 'text-amber-600'
+                                        charCount >= 20 ? 'text-emerald-400' : 'text-amber-400'
                                     }`}
                                 >
                                     {charCount} / 20 chars min
@@ -158,28 +179,40 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer' }) => {
                                     ? 'Please describe your issue in detail (minimum 20 characters required)...'
                                     : 'Add additional details or references if applicable (optional)...'
                             }
-                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm text-gray-800 placeholder-gray-400 transition-shadow resize-none"
+                            className={`w-full px-4 py-3 rounded-xl text-sm transition-all resize-none focus:outline-none ${
+                                isDark
+                                    ? 'bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:border-amber-400'
+                                    : 'bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-primary-500'
+                            }`}
                             required={isOther}
                         />
                     </div>
 
                     {/* Buttons */}
-                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                    <div className={`flex items-center justify-end gap-3 pt-4 border-t ${
+                        isDark ? 'border-slate-800' : 'border-gray-100'
+                    }`}>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                            className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors ${
+                                isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSending || (isOther && isOtherInvalid)}
-                            className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md transition-all flex items-center gap-2"
+                            className={`px-6 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 ${
+                                isDark
+                                    ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500'
+                                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                            }`}
                         >
                             {isSending ? (
                                 <>
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     <span>Submitting...</span>
                                 </>
                             ) : (

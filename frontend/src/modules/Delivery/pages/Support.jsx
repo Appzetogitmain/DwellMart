@@ -11,7 +11,7 @@ const DeliverySupport = () => {
     const { deliveryBoy } = useDeliveryAuthStore();
     const { fetchConversations, activeConversation } = useSupportChatStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('list'); // 'list' | 'chat' for mobile
+    const [activeTab, setActiveTab] = useState('list'); // 'list' | 'chat' for mobile screens
 
     useEffect(() => {
         initNotificationListeners();
@@ -25,59 +25,63 @@ const DeliverySupport = () => {
     }, [activeConversation]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 select-none max-w-6xl mx-auto">
             {/* Header Banner */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary-50 text-primary-600 rounded-2xl">
-                        <FiHelpCircle className="w-6 h-6" />
+            <div className="bg-slate-800/90 backdrop-blur-xl rounded-3xl p-4 sm:p-6 shadow-xl border border-amber-500/20 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl shrink-0">
+                        <FiHelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                        <h1 className="text-lg sm:text-2xl font-extrabold text-white tracking-tight">
                             Delivery Partner Support
                         </h1>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                            Get support for delivery assignments, route issues, COD collection, or account queries
+                        <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
+                            Support for delivery assignments, route issues, COD collection, or account queries
                         </p>
                     </div>
                 </div>
 
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold text-sm rounded-xl shadow-md transition-all flex items-center gap-2"
+                    className="px-4 py-2.5 sm:px-5 sm:py-3 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm rounded-2xl shadow-md transition-all flex items-center gap-2 self-end sm:self-auto"
                 >
-                    <FiPlus className="w-4 h-4" />
+                    <FiPlus className="w-4 h-4 text-slate-950 font-bold" />
                     <span>New Ticket</span>
                 </button>
             </div>
 
-            {/* Main Content Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[650px]">
-                {/* Sidebar / Conversation List */}
+            {/* Responsive Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 h-[calc(100vh-230px)] min-h-[450px] max-h-[720px]">
+                {/* Conversation List Column */}
                 <div
                     className={`lg:col-span-4 h-full ${
                         activeTab === 'chat' ? 'hidden lg:block' : 'block'
                     }`}
                 >
-                    <ConversationList isAdmin={false} currentRole="delivery" />
+                    <ConversationList isAdmin={false} currentRole="delivery" theme="dark" />
                 </div>
 
-                {/* Chat Window */}
+                {/* Chat Window Column */}
                 <div
-                    className={`lg:col-span-8 h-full ${
-                        activeTab === 'list' ? 'hidden lg:block' : 'block'
+                    className={`lg:col-span-8 h-full flex flex-col ${
+                        activeTab === 'list' ? 'hidden lg:flex' : 'flex'
                     }`}
                 >
-                    {/* Mobile Back to List Button */}
-                    <div className="lg:hidden mb-2">
+                    {/* Mobile Back Button Bar */}
+                    <div className="lg:hidden mb-2 flex items-center">
                         <button
                             onClick={() => setActiveTab('list')}
-                            className="text-xs font-semibold text-primary-600 flex items-center gap-1 p-2"
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-amber-400 flex items-center gap-1.5 hover:bg-slate-700 transition-colors"
                         >
-                            <FiArrowLeft className="w-4 h-4" /> Back to list
+                            <FiArrowLeft className="w-4 h-4" />
+                            <span>Back to Ticket List</span>
                         </button>
                     </div>
-                    <SupportChatWindow isAdmin={false} currentUserId={deliveryBoy?.id || deliveryBoy?._id} />
+                    
+                    <div className="flex-1 min-h-0">
+                        <SupportChatWindow isAdmin={false} currentUserId={deliveryBoy?.id || deliveryBoy?._id} theme="dark" />
+                    </div>
                 </div>
             </div>
 
@@ -86,6 +90,7 @@ const DeliverySupport = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 role="delivery"
+                theme="dark"
             />
         </div>
     );
