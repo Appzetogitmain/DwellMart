@@ -272,8 +272,11 @@ router.get('/settings/general', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsCont
 router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateGeneralSettings);
 
 // ─── Dynamic Category Settings ───────────────────────────────────────────────
-router.get('/settings/:category', ...adminAuth, settingsController.getSettingsByCategory);
-router.put('/settings/:category', ...adminAuth, settingsController.updateSettingsByCategory);
+// Permission-gated, matching '/settings/general' above. These were bound to
+// adminAuth alone, which let any authenticated subadmin read and rewrite every
+// settings category — including feature flags and payment configuration.
+router.get('/settings/:category', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getSettingsByCategory);
+router.put('/settings/:category', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateSettingsByCategory);
 
 // ─── Settlements ──────────────────────────────────────────────────────────────
 router.get('/settlements', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);

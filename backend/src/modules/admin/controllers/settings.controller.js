@@ -2,6 +2,15 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Settings from '../../../models/Settings.model.js';
+import {
+    isPubliclyReadableSettingsCategory,
+    filterPublicSettings,
+} from '../../../constants/publicSettings.js';
+import {
+    isWritableSettingsCategory,
+    getSettingsCategorySchema,
+    WRITABLE_SETTINGS_CATEGORIES,
+} from '../validators/settings.validator.js';
 
 const GENERAL_SETTINGS_KEY = 'general';
 
@@ -129,6 +138,37 @@ export const getPublicGeneralSettings = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, publicSettings, 'Public general settings fetched successfully.'));
 });
 
+
+/**
+ * GET /api/settings/:category  (Public Endpoint)
+ *
+ * The storefront's read path. Deliberately a SEPARATE controller from the admin
+ * `getSettingsByCategory`, which returns whole documents to an authorised
+ * operator. Sharing one handler between a public route and an admin route is
+ * what made every settings category world-readable in the first place.
+ *
+ * Unknown or non-public categories return 404 rather than 403: whether a
+ * category exists is itself information an anonymous caller has no need for.
+ */
+export const getPublicSettingsByCategory = asyncHandler(async (req, res) => {
+    const { category } = req.params;
+
+    if (category === GENERAL_SETTINGS_KEY) {
+        return getPublicGeneralSettings(req, res);
+    }
+
+    if (!isPubliclyReadableSettingsCategory(category)) {
+        throw new ApiError(404, 'Route not found.');
+    }
+
+    const setting = await Settings.findOne({ key: category }).lean();
+    const publicValue = filterPublicSettings(category, setting?.value || {});
+
+    res.status(200).json(
+        new ApiResponse(200, publicValue, `${category} settings fetched successfully.`)
+    );
+});
+
 /**
  * GET /api/admin/settings/:category
  * Fetch specific category settings
@@ -151,14 +191,44 @@ export const getSettingsByCategory = asyncHandler(async (req, res) => {
  */
 export const updateSettingsByCategory = asyncHandler(async (req, res) => {
     const { category } = req.params;
-    
+
     if (category === GENERAL_SETTINGS_KEY) {
         return updateGeneralSettings(req, res);
     }
     
+    // Reject invented categories outright: the k/v store's flexibility is for
+    // values, not for letting a typo create a permanent orphan document.
+    if (!isWritableSettingsCategory(category)) {
+        throw new ApiError(
+            400,
+            `Unknown settings category "${category}". Allowed: ${WRITABLE_SETTINGS_CATEGORIES.join(', ')}.`
+        );
+    }
+
+    const schema = getSettingsCategorySchema(category);
+    const { error, value } = schema.validate(req.body, {
+        abortEarly: false,
+        // Strip rather than reject: the admin UI posts whole forms whose shape
+        // has grown over time, and rejecting extra keys would break existing
+        // screens without making the stored document any safer.
+        stripUnknown: false,
+        convert: true,
+    });
+
+    if (error) {
+        throw new ApiError(
+            400,
+            'Invalid settings payload.',
+            error.details.map((detail) => ({
+                field: detail.path.join('.'),
+                message: detail.message,
+            }))
+        );
+    }
+
     const setting = await Settings.findOneAndUpdate(
         { key: category },
-        { key: category, value: req.body },
+        { key: category, value },
         { upsert: true, new: true }
     );
     

@@ -8,7 +8,13 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed:categories": "node scripts/seedCategories.js",
-    "seed:policies": "node scripts/seedPolicies.js"
+    "seed:policies": "node scripts/seedPolicies.js",
+    "test": "node tests/run.mjs",
+    "test:gate": "node tests/run.mjs",
+    "test:contract": "node tests/run.mjs contract",
+    "test:integration": "node tests/run.mjs wholesale quick-commerce authorization",
+    "test:conformance": "node scripts/verifyPricingEngineParity.mjs && node scripts/verifyCheckoutPricingMath.mjs && node scripts/verifyWholesaleAnalytics.mjs && node scripts/verifyBulkWholesaleImport.mjs && node scripts/verifyQuickCommerceEtaParity.mjs && node scripts/verifyRiderAssignment.mjs && node scripts/verifyQuickCommercePolish.mjs",
+    "test:all": "npm run test:conformance && npm run test:gate"
   },
   "author": "furqan",
   "license": "ISC",

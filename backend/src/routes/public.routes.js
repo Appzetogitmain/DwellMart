@@ -55,14 +55,17 @@ import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { sendEmail } from '../services/email.service.js';
 
-import { getPublicGeneralSettings, getSettingsByCategory } from '../modules/admin/controllers/settings.controller.js';
+import { getPublicGeneralSettings, getPublicSettingsByCategory } from '../modules/admin/controllers/settings.controller.js';
 
 const router = Router();
 const listCache = cacheResponse({ ttlSeconds: 30, maxEntries: 1000 });
 
 // Public Settings (Storefront identity, features, and reviews)
 router.get('/settings/general', getPublicGeneralSettings);
-router.get('/settings/:category', getSettingsByCategory);
+// Allowlisted public reader. Must NOT be the admin controller — sharing one
+// handler between a public and an admin route made every settings category,
+// including payment configuration, world-readable.
+router.get('/settings/:category', getPublicSettingsByCategory);
 const detailCache = cacheResponse({ ttlSeconds: 60, maxEntries: 1000 });
 const catalogCache = cacheResponse({ ttlSeconds: 300, maxEntries: 200 });
 const marketingCache = cacheResponse({ ttlSeconds: 30, maxEntries: 300 });
