@@ -67,6 +67,8 @@ const DeliveryDashboard = () => {
     },
   ];
 
+  const [riderAnalytics, setRiderAnalytics] = useState(null);
+
   const loadDashboardData = async () => {
     try {
       setLoadFailed(false);
@@ -80,6 +82,15 @@ const DeliveryDashboard = () => {
         openOrders: Number(summary.openOrders || 0),
         earnings: Number(summary.earnings || 0),
       });
+
+      // Fetch Rider Analytics
+      try {
+        const api = (await import('../../../shared/utils/api')).default;
+        const res = await api.get('/delivery/orders/analytics');
+        setRiderAnalytics(res.data);
+      } catch (err) {
+        console.warn('Rider analytics fetch failed', err);
+      }
     } catch {
       setLoadFailed(true);
       setRecentOrders([]);
@@ -268,6 +279,28 @@ const DeliveryDashboard = () => {
             );
           })}
         </div>
+
+        {/* Performance KPIs Panel */}
+        {riderAnalytics && (
+          <div className="bg-slate-800/90 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-4 shadow-lg grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div>
+              <p className="text-slate-400 font-semibold mb-0.5">Acceptance Rate</p>
+              <p className="text-base font-extrabold text-amber-400">{riderAnalytics.acceptanceRate}%</p>
+            </div>
+            <div>
+              <p className="text-slate-400 font-semibold mb-0.5">Completion Rate</p>
+              <p className="text-base font-extrabold text-emerald-400">{riderAnalytics.completionRate}%</p>
+            </div>
+            <div>
+              <p className="text-slate-400 font-semibold mb-0.5">Avg Delivery Time</p>
+              <p className="text-base font-extrabold text-blue-400">{riderAnalytics.avgDeliveryTimeMinutes} min</p>
+            </div>
+            <div>
+              <p className="text-slate-400 font-semibold mb-0.5">Rider Rating</p>
+              <p className="text-base font-extrabold text-yellow-400">★ {riderAnalytics.averageRating}</p>
+            </div>
+          </div>
+        )}
 
         {/* Recent Orders Card */}
         <motion.div

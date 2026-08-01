@@ -24,6 +24,22 @@ const NEXT_ACTION = {
 const QuickCommerceActions = ({ order, onUpdated }) => {
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReturnConfirmOpen, setIsReturnConfirmOpen] = useState(false);
+
+  const handleReturnToStore = async () => {
+    try {
+      setIsSubmitting(true);
+      const api = (await import('../../../shared/utils/api')).default;
+      await api.post(`/delivery/orders/${order.id}/return-to-store`);
+      toast.success("Order returned to store.");
+      setIsReturnConfirmOpen(false);
+      if (onUpdated) onUpdated();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to update status");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const currentStatus = order?.quickCommerce?.status || "placed";
   const isActive = !["delivered", "cancelled"].includes(currentStatus);
@@ -161,27 +177,28 @@ const QuickCommerceActions = ({ order, onUpdated }) => {
 
       {/* Return to Store Action */}
       {(currentStatus === "customer_unreachable" || currentStatus === "retry_scheduled") && (
-        <button
-          type="button"
-          onClick={async () => {
-            if (!window.confirm("Are you sure you want to return this order to store and mark delivery failed?")) return;
-            try {
-              setIsSubmitting(true);
-              const api = (await import('../../../shared/utils/api')).default;
-              await api.post(`/delivery/orders/${order.id}/return-to-store`);
-              toast.success("Order returned to store.");
-              if (onUpdated) onUpdated();
-            } catch (err) {
-              toast.error(err?.response?.data?.message || "Failed to update status");
-            } finally {
-              setIsSubmitting(false);
-            }
-          }}
-          disabled={isSubmitting}
-          className="w-full py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl font-semibold text-xs hover:bg-rose-500/20"
-        >
-          Return Order to Store
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => setIsReturnConfirmOpen(true)}
+            disabled={isSubmitting}
+            className="w-full py-2.5 bg-rose-500/10 text-rose-500 border border-rose-500/30 rounded-xl font-semibold text-xs hover:bg-rose-500/20 transition-colors"
+          >
+            Return Order to Store
+          </button>
+
+          <ConfirmationModal
+            isOpen={isReturnConfirmOpen}
+            onClose={() => setIsReturnConfirmOpen(false)}
+            onConfirm={handleReturnToStore}
+            title="Return Order to Store"
+            subtitle="Are you sure you want to return this order to store and mark delivery as failed?"
+            warningText="Inventory will be restocked to the dark store and partial refund calculations will trigger automatically."
+            severity="danger"
+            confirmText="Return Order"
+            isLoading={isSubmitting}
+          />
+        </>
       )}
 
       {currentStatus === "delivered" && (

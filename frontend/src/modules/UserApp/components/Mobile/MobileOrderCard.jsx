@@ -9,6 +9,8 @@ import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
 import { useState, useEffect } from "react";
 
+import ExperienceBadge from '../../../../shared/components/ExperienceBadge';
+
 const MobileOrderCard = ({ order }) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Order",
@@ -138,6 +140,7 @@ const MobileOrderCard = ({ order }) => {
             >
               {t(order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Pending')}
             </span>
+            <ExperienceBadge experience={order.experience || (order.orderType === 'wholesale' ? 'wholesale' : 'marketplace')} />
             <WholesaleBadge orderType={order.orderType} />
           </div>
           <span className="text-xs text-content-muted">{t('View Details')}</span>

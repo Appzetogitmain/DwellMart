@@ -21,8 +21,8 @@ import { formatPrice } from "../../../shared/utils/helpers";
  * one number where delay directly breaks the customer's promise.
  */
 
-// Hour buckets are meaningless unless they follow the store owner's clock.
-const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// DEBT-3: browserTimezone is resolved lazily inside load() so it is never
+// captured at module scope — safe for SSR / hydration scenarios.
 
 const StatTile = ({ label, value, hint, tone = "default", icon: Icon }) => {
   const toneClasses = {
@@ -51,8 +51,10 @@ const QuickCommerceDashboard = () => {
 
   const load = useCallback(async () => {
     try {
+      // DEBT-3: lazy eval — resolved at call time, not module load time.
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const response = await api.get("/vendor/quick-commerce/dashboard", {
-        params: { timezone: browserTimezone },
+        params: { timezone: tz },
       });
       setData(response?.data ?? response);
       setError(null);
@@ -65,10 +67,18 @@ const QuickCommerceDashboard = () => {
 
   useEffect(() => {
     load();
-    // Live counts go stale fast on a 15-minute promise. Socket alerts cover new
-    // orders; this catches everything else without needing a second channel.
-    const timer = setInterval(load, 30000);
-    return () => clearInterval(timer);
+    // PERF-3: Skip the tick when the tab is hidden — on a 15-minute promise
+    // there is no point hitting the API when the vendor isn't looking at it.
+    // The visibilitychange listener catches the tab coming back into focus and
+    // refreshes immediately so the data is never stale when the vendor returns.
+    const tick = () => { if (!document.hidden) load(); };
+    const timer = setInterval(tick, 30000);
+    const onVisibility = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [load]);
 
   if (isLoading) {

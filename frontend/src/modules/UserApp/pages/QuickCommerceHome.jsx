@@ -121,11 +121,11 @@ const QuickCommerceHome = () => {
               <div className="bg-surface rounded-2xl border border-border p-6 text-center">
                 <FiZap className="text-3xl text-content-muted mx-auto mb-3" />
                 <h2 className="text-lg font-bold text-content mb-1">
-                  Quick Commerce isn&apos;t here yet
+                  DwellMart Express isn&apos;t here yet
                 </h2>
                 <p className="text-sm text-content-secondary mb-4">
                   No stores currently deliver to {location?.label || "this location"}.
-                  You can still shop the full Marketplace.
+                  You can still shop the full Marketplace (B2B & B2C).
                 </p>
                 <button
                   type="button"
@@ -151,7 +151,7 @@ const QuickCommerceHome = () => {
                   </div>
                 ) : categories.length === 0 ? (
                   <p className="text-sm text-content-secondary">
-                    No Quick Commerce categories are available yet.
+                    No DwellMart Express categories are available yet.
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">

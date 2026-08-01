@@ -34,6 +34,7 @@ import VariantSelector from "../../../shared/components/Product/VariantSelector"
 import ReviewForm from "../../../shared/components/Product/ReviewForm";
 import PageTransition from "../../../shared/components/PageTransition";
 import Badge from "../../../shared/components/Badge";
+import ExperienceBadge from "../../../shared/components/ExperienceBadge";
 import ProductCard from "../../../shared/components/ProductCard";
 import ProductGrid from "../../../shared/components/ProductGrid";
 import ProductReviewCard from "../../../shared/components/ProductReviewCard";
@@ -796,6 +797,57 @@ const MobileProductDetail = () => {
                   <h1 className="text-2xl lg:text-4xl font-extrabold text-content mb-4 leading-tight">
                     {product.name}
                   </h1>
+
+                  {/* Contextual Experience Specs Banner */}
+                  <div className="mb-5 p-4 rounded-2xl bg-surface border border-border space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ExperienceBadge experience={product.experience || (product.quickCommerceEnabled ? 'quick_commerce' : product.wholesaleEnabled ? 'wholesale' : 'marketplace')} size="md" />
+                      <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Experience Specific Specs</span>
+                    </div>
+
+                    {(product.quickCommerceEnabled || product.experience === 'quick_commerce') ? (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-700 dark:text-amber-300">
+                          <span className="font-semibold block text-[11px] uppercase">ETA Window</span>
+                          <span className="font-bold">15–30 Mins Express</span>
+                        </div>
+                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
+                          <span className="font-semibold block text-[11px] uppercase">Max Order Qty</span>
+                          <span className="font-bold">{product.quickCommerce?.maxQuantityPerOrder || 5} units</span>
+                        </div>
+                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
+                          <span className="font-semibold block text-[11px] uppercase">Perishable Item</span>
+                          <span className="font-bold">{product.quickCommerce?.isPerishable ? 'Yes (Refund Only)' : 'No'}</span>
+                        </div>
+                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
+                          <span className="font-semibold block text-[11px] uppercase">Return Policy</span>
+                          <span className="font-bold">{product.quickCommerce?.isPerishable ? 'Refund on damaged delivery' : '24-Hour QC Window'}</span>
+                        </div>
+                      </div>
+                    ) : (hasWholesale || product.wholesaleEnabled) ? (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-700 dark:text-purple-300">
+                          <span className="font-semibold block text-[11px] uppercase">B2B Wholesale</span>
+                          <span className="font-bold">MOQ: {minimumPurchaseQuantity} units</span>
+                        </div>
+                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
+                          <span className="font-semibold block text-[11px] uppercase">Tax Invoice</span>
+                          <span className="font-bold">GST Invoice Included</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                          <span className="font-semibold block text-[11px] uppercase">Shipping</span>
+                          <span className="font-bold">Standard 2–5 Days</span>
+                        </div>
+                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
+                          <span className="font-semibold block text-[11px] uppercase">Return Window</span>
+                          <span className="font-bold">7-Day Return Policy</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Rating & Reviews */}
                   {!!product.rating && (

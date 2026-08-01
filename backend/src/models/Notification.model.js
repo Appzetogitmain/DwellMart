@@ -44,6 +44,11 @@ const notificationSchema = new mongoose.Schema(
 
 // Backs the escalation sweep: unacknowledged urgent alerts, oldest first.
 notificationSchema.index({ priority: 1, acknowledgedAt: 1, createdAt: 1 });
+// PERF-5: Recipient inbox query — the most frequent read pattern.
+// Supports: GET /notifications?recipientId=X&recipientType=Y&isRead=false
+notificationSchema.index({ recipientId: 1, recipientType: 1, isRead: 1, createdAt: -1 });
+// Supports type-filtered queries (e.g. urgent order alerts by type)
+notificationSchema.index({ recipientId: 1, type: 1, createdAt: -1 });
 
 const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;

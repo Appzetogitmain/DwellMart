@@ -148,6 +148,11 @@ const orderSchema = new mongoose.Schema(
             index: true,
         },
         // Populated only for Quick Commerce orders.
+        // DEBT-2: Fields that are QC-specific carry no default so they are
+        // absent on Marketplace and Wholesale orders. Historical orders already
+        // have the values written; this only affects new documents.
+        // Queries like `slaBreached: { $ne: true }` continue to work correctly
+        // because undefined evaluates the same as false for that filter.
         quickCommerce: {
             // The promise made to the customer, locked in at checkout.
             promisedEtaMinutes: { type: Number },
@@ -172,9 +177,9 @@ const orderSchema = new mongoose.Schema(
                 coordinates: { type: [Number] },
             },
             deliveryDistanceKm: { type: Number },
-            deliveryFee: { type: Number, default: 0 },
-            packagingFee: { type: Number, default: 0 },
-            slaBreached: { type: Boolean, default: false },
+            deliveryFee: { type: Number },           // no default — absent on Marketplace orders
+            packagingFee: { type: Number },          // no default — absent on Marketplace orders
+            slaBreached: { type: Boolean },          // no default — absent on Marketplace orders
             /**
              * Measured door-to-door minutes, recorded at delivery.
              *
@@ -203,7 +208,7 @@ const orderSchema = new mongoose.Schema(
              * The settlement policy itself is a business decision; this is the
              * field it will be applied against.
              */
-            cancelledAfterPreparation: { type: Boolean, default: false },
+            cancelledAfterPreparation: { type: Boolean },  // no default — absent on Marketplace orders
             /** Quick Commerce status at the moment of cancellation. */
             cancelledAtStage: { type: String },
             /**
@@ -213,14 +218,16 @@ const orderSchema = new mongoose.Schema(
              * being null, because "no rider yet" and "no rider available, needs
              * a human" are operationally different states. An order sitting in
              * `escalated` is what the admin queue reads.
+             *
+             * Only initialized on QC orders — Marketplace orders have no
+             * assignment sub-document to avoid the pollution flagged in DEBT-2.
              */
             assignment: {
                 status: {
                     type: String,
                     enum: QUICK_COMMERCE_ASSIGNMENT_STATUS_VALUES,
-                    default: QUICK_COMMERCE_ASSIGNMENT_STATUS.PENDING,
                 },
-                attempts: { type: Number, default: 0 },
+                attempts: { type: Number },
                 lastAttemptAt: { type: Date },
                 assignedAt: { type: Date },
                 escalatedAt: { type: Date },
@@ -326,6 +333,8 @@ orderSchema.index({ 'integration.partnerStatus': 1, createdAt: -1 });
 // Backs the admin escalation queue and the Quick Commerce live-order views.
 orderSchema.index({ experience: 1, 'quickCommerce.assignment.status': 1, createdAt: -1 });
 orderSchema.index({ experience: 1, 'quickCommerce.status': 1, createdAt: -1 });
+orderSchema.index({ experience: 1, status: 1, createdAt: -1 });
+orderSchema.index({ deliveryBoyId: 1, status: 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export { Order };

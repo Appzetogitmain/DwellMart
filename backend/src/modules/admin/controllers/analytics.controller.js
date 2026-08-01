@@ -18,28 +18,55 @@ import {
     getTopProducts as qcTopProducts,
     getPeakHours as qcPeakHours,
     getDailySeries as qcDailySeries,
+    getAdminGlobalExperienceAnalytics,
 } from '../../../services/quickCommerceAnalytics.service.js';
+import { getOrComputeAnalyticsCache } from '../../../services/analyticsCache.service.js';
 
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
-    const activeOrderFilter = { isDeleted: { $ne: true } };
-    const [totalOrders, totalUsers, totalVendors, totalProducts, revenueAgg, pendingOrders] = await Promise.all([
-        Order.countDocuments(activeOrderFilter),
-        User.countDocuments({ role: 'customer' }),
-        Vendor.countDocuments({ status: 'approved' }),
-        Product.countDocuments({ isActive: true }),
-        Order.aggregate([{ $match: { ...activeOrderFilter, status: { $ne: 'cancelled' } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
-        Order.countDocuments({ ...activeOrderFilter, status: 'pending' }),
-    ]);
+    // PERF-2: Composed cache key — includes admin filters if any are added later.
+    // Cache is scoped to the overall platform view (no per-vendor or date-range
+    // params on this endpoint), but the key is structured so future params slot in.
+    const cacheKey = `admin:dashboard:overall`;
 
-    res.status(200).json(new ApiResponse(200, {
-        totalOrders,
-        totalUsers,
-        totalVendors,
-        totalProducts,
-        totalRevenue: revenueAgg[0]?.total || 0,
-        pendingOrders,
-    }, 'Dashboard stats fetched.'));
+    const data = await getOrComputeAnalyticsCache(cacheKey, async () => {
+        const activeOrderFilter = { isDeleted: { $ne: true } };
+
+        // Single $facet aggregation covers all Order-level stats in one round-trip.
+        const [facetResult, totalUsers, totalVendors, totalProducts] = await Promise.all([
+            Order.aggregate([
+                { $match: activeOrderFilter },
+                {
+                    $facet: {
+                        totalOrders: [{ $count: 'n' }],
+                        pendingOrders: [
+                            { $match: { status: 'pending' } },
+                            { $count: 'n' },
+                        ],
+                        revenue: [
+                            { $match: { status: { $ne: 'cancelled' } } },
+                            { $group: { _id: null, total: { $sum: '$total' } } },
+                        ],
+                    },
+                },
+            ]),
+            User.countDocuments({ role: 'customer' }),
+            Vendor.countDocuments({ status: 'approved' }),
+            Product.countDocuments({ isActive: true }),
+        ]);
+
+        const facet = facetResult[0] || {};
+        return {
+            totalOrders: facet.totalOrders?.[0]?.n || 0,
+            totalUsers,
+            totalVendors,
+            totalProducts,
+            totalRevenue: facet.revenue?.[0]?.total || 0,
+            pendingOrders: facet.pendingOrders?.[0]?.n || 0,
+        };
+    });
+
+    res.status(200).json(new ApiResponse(200, data, 'Dashboard stats fetched.'));
 });
 
 // GET /api/admin/analytics/revenue
@@ -441,4 +468,34 @@ export const getQuickCommerceStats = asyncHandler(async (req, res) => {
         peakHours,
         daily,
     }, 'Quick Commerce stats fetched.'));
+});
+
+// GET /api/admin/analytics/global-experience
+export const getGlobalExperienceAnalytics = asyncHandler(async (req, res) => {
+    const { startDate, endDate, days } = req.query;
+    const cacheKey = `admin_global_exp_${startDate}_${endDate}_${days}`;
+
+    const data = await getOrComputeAnalyticsCache(cacheKey, async () => {
+        return getAdminGlobalExperienceAnalytics({ startDate, endDate, days: Number(days || 30) });
+    });
+
+    res.status(200).json(new ApiResponse(200, data, 'Global experience analytics fetched successfully.'));
+});
+
+// GET /api/admin/analytics/export
+export const exportAnalyticsData = asyncHandler(async (req, res) => {
+    const { format = 'csv', startDate, endDate, days } = req.query;
+    const data = await getAdminGlobalExperienceAnalytics({ startDate, endDate, days: Number(days || 30) });
+
+    if (format === 'csv') {
+        let csv = 'Experience,Orders,Revenue,Completed,Cancelled,AOV\n';
+        Object.entries(data).forEach(([exp, row]) => {
+            csv += `${exp},${row.orders},${row.revenue},${row.completed},${row.cancelled},${row.aov}\n`;
+        });
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=analytics_report_${Date.now()}.csv`);
+        return res.status(200).send(csv);
+    }
+
+    res.status(200).json(new ApiResponse(200, data, 'Analytics report payload generated.'));
 });

@@ -376,6 +376,7 @@ const AllOrders = () => {
   const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedExperience, setSelectedExperience] = useState("all");
   const [dateRange, setDateRange] = useState({
     startDate: "",
     endDate: "",
@@ -738,6 +739,18 @@ const AllOrders = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
             />
           </div>
+
+          <AnimatedSelect
+            value={selectedExperience}
+            onChange={(e) => setSelectedExperience(e.target.value)}
+            options={[
+              { value: "all", label: "All Experiences" },
+              { value: "marketplace", label: "Marketplace" },
+              { value: "wholesale", label: "Wholesale" },
+              { value: "quick_commerce", label: "Quick Commerce" },
+            ]}
+            className="w-full sm:w-auto min-w-[150px]"
+          />
 
           <AnimatedSelect
             value={selectedStatus}

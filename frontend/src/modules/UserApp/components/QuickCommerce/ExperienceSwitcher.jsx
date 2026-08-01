@@ -23,7 +23,7 @@ const ExperienceSwitcher = ({ className = "" }) => {
   const options = [
     {
       value: EXPERIENCES.QUICK_COMMERCE,
-      title: "Quick Commerce",
+      title: "DwellMart Express",
       subtitle: "Groceries, Food, Pharmacy & Daily Essentials",
       icon: FiZap,
       tag: "10-30 Mins",
@@ -33,7 +33,7 @@ const ExperienceSwitcher = ({ className = "" }) => {
     {
       value: EXPERIENCES.MARKETPLACE,
       title: "Marketplace",
-      subtitle: "Fashion, Electronics, Home & Everything Else",
+      subtitle: "B2B & B2C • Fashion, Electronics, Home & Everything Else",
       icon: FiShoppingBag,
       tag: "Pan-India",
       tagIcon: FiPackage,
@@ -84,7 +84,7 @@ const ExperienceSwitcher = ({ className = "" }) => {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <h3 className="text-sm sm:text-base font-extrabold tracking-tight truncate">
                       {option.title}
                     </h3>
@@ -98,6 +98,28 @@ const ExperienceSwitcher = ({ className = "" }) => {
                       <TagIcon className="text-[11px]" />
                       {option.tag}
                     </span>
+                    {option.value === EXPERIENCES.MARKETPLACE && (
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${
+                            isActive
+                              ? "bg-slate-950/20 text-slate-950"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                          }`}
+                        >
+                          B2C
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${
+                            isActive
+                              ? "bg-slate-950/20 text-slate-950"
+                              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                          }`}
+                        >
+                          B2B
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <p
                     className={`text-xs truncate font-medium ${

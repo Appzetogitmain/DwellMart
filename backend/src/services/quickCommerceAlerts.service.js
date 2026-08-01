@@ -193,12 +193,82 @@ export const flagSlaBreach = async (order) => {
  * who have gone dark. All bounded, and the first two idempotent: an order is
  * only ever escalated or flagged once, because the query excludes rows that
  * already carry the marker.
+ */
+
+let sweepTimer = null;
+
+// ── PERF-4: Distributed Sweep Lease ──────────────────────────────────────────
+// In a PM2 cluster each worker would run the sweep independently, producing
+// duplicate escalations and SLA flags. A MongoDB lease ensures only the owner
+// instance executes; others skip immediately. The Settings collection is
+// already writable by the backend and requires no new model.
+//
+// The lease duration is slightly shorter than the sweep interval so it always
+// expires before the next tick if the owner crashes without releasing it.
+
+const SWEEP_LEASE_KEY = '_qc_sweep_lease';
+const LEASE_SECS = 25; // <30s sweep interval — always expires before next tick
+
+const INSTANCE_ID = `${process.pid}-${Date.now()}`;
+
+/**
+ * Try to acquire (or renew) the sweep lease.
+ * Returns true only for the owning instance.
+ */
+const acquireSweepLease = async () => {
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + LEASE_SECS * 1000);
+    try {
+        const result = await Settings.findOneAndUpdate(
+            {
+                key: SWEEP_LEASE_KEY,
+                $or: [
+                    { 'value.expiresAt': { $lt: now } },    // expired — claim it
+                    { 'value.ownerId': INSTANCE_ID },        // renew our own lease
+                ],
+            },
+            { $set: { key: SWEEP_LEASE_KEY, value: { ownerId: INSTANCE_ID, expiresAt } } },
+            { upsert: true, new: true }
+        );
+        return result?.value?.ownerId === INSTANCE_ID;
+    } catch (err) {
+        // Upsert race on first boot — another instance won; we skip this tick.
+        if (err.code === 11000) return false;
+        throw err;
+    }
+};
+
+/**
+ * Heartbeat: renew the lease mid-sweep so a long run doesn't lose ownership.
+ * Called once ~halfway through the sweep body.
+ */
+const renewSweepLease = async () => {
+    const expiresAt = new Date(Date.now() + LEASE_SECS * 1000);
+    await Settings.updateOne(
+        { key: SWEEP_LEASE_KEY, 'value.ownerId': INSTANCE_ID },
+        { $set: { 'value.expiresAt': expiresAt } }
+    );
+};
+
+/**
+ * One pass of the operational sweep.
+ *
+ * Three independent checks — unresponsive stores, blown promises, and riders
+ * who have gone dark. All bounded, and the first two idempotent: an order is
+ * only ever escalated or flagged once, because the query excludes rows that
+ * already carry the marker.
  *
  * @returns {Promise<{escalated:number, breached:number, staleRiders:number, skipped:boolean}>}
  */
 export const runQuickCommerceSweep = async () => {
     // With the flag off, Quick Commerce does not exist and neither does this work.
     if (!(await isQuickCommerceEnabled())) {
+        return { escalated: 0, breached: 0, staleRiders: 0, skipped: true };
+    }
+
+    // PERF-4: Only the lease owner runs; other instances return immediately.
+    const isOwner = await acquireSweepLease();
+    if (!isOwner) {
         return { escalated: 0, breached: 0, staleRiders: 0, skipped: true };
     }
 
@@ -225,6 +295,9 @@ export const runQuickCommerceSweep = async () => {
             console.warn(`[QC Sweep] Escalation failed for ${order.orderId}: ${err.message}`);
         }
     }
+
+    // Heartbeat mid-sweep so a cluster with slow DB doesn't lose the lease.
+    await renewSweepLease().catch(() => {});
 
     // ── 2. Orders that have already blown the promise ─────────────────────────
     // Compared in the query rather than in JS so the scan stays bounded: any
@@ -306,8 +379,6 @@ export const runQuickCommerceSweep = async () => {
 
     return { escalated: unacknowledged.length, breached, staleRiders, skipped: false };
 };
-
-let sweepTimer = null;
 
 /**
  * Start the periodic sweep.

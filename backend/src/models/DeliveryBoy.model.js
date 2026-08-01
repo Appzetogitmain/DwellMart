@@ -91,6 +91,8 @@ const deliveryBoySchema = new mongoose.Schema(
 deliveryBoySchema.index({ location: '2dsphere' }, { sparse: true });
 // Backs the assignment candidate query (free + approved + available riders).
 deliveryBoySchema.index({ activeOrderId: 1, status: 1, isAvailable: 1, applicationStatus: 1 });
+// PERF-5: Backs the QC sweep staleness check (riders who have gone dark mid-delivery).
+deliveryBoySchema.index({ lastLocationAt: 1, isAvailable: 1, status: 1 });
 
 deliveryBoySchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();

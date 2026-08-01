@@ -10,6 +10,7 @@ import DataTable from "../../../Admin/components/DataTable";
 import ExportButton from "../../../Admin/components/ExportButton";
 import Badge from "../../../../shared/components/Badge";
 import WholesaleBadge from "../../../../shared/components/WholesaleBadge";
+import ExperienceBadge from "../../../../shared/components/ExperienceBadge";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import { formatPrice } from '../../../../shared/utils/helpers';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
@@ -23,6 +24,7 @@ const AllOrders = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedExperience, setSelectedExperience] = useState('all');
 
   const vendorId = vendor?.id;
 
@@ -65,8 +67,15 @@ const AllOrders = () => {
       });
     }
 
+    if (selectedExperience !== 'all') {
+      filtered = filtered.filter((order) => {
+        const exp = String(order.experience || (order.orderType === 'wholesale' ? 'wholesale' : 'marketplace')).toLowerCase();
+        return exp === selectedExperience.toLowerCase();
+      });
+    }
+
     return filtered;
-  }, [orders, searchQuery, selectedStatus, vendorId]);
+  }, [orders, searchQuery, selectedStatus, selectedExperience, vendorId]);
 
   // Get per-vendor subtotal from vendorItems
   const getVendorSubtotal = (order) => {
@@ -180,6 +189,7 @@ const AllOrders = () => {
             }>
             {status?.toUpperCase() || 'N/A'}
           </Badge>
+          <ExperienceBadge experience={row.experience || (row.orderType === 'wholesale' ? 'wholesale' : 'marketplace')} />
           <WholesaleBadge orderType={getVendorOrderType(row)} />
           </div>
         );
@@ -237,6 +247,18 @@ const AllOrders = () => {
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
               />
             </div>
+
+            <AnimatedSelect
+              value={selectedExperience}
+              onChange={(e) => setSelectedExperience(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Experiences' },
+                { value: 'marketplace', label: 'Marketplace' },
+                { value: 'wholesale', label: 'Wholesale' },
+                { value: 'quick_commerce', label: 'Quick Commerce' },
+              ]}
+              className="w-full sm:w-auto min-w-[150px]"
+            />
 
             <AnimatedSelect
               value={selectedStatus}

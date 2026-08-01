@@ -226,6 +226,21 @@ vendorSchema.virtual('selectedPlanId')
         this.selectedPlan = value;
     });
 
+vendorSchema.methods.toPublicVendor = function () {
+    const obj = this.toObject ? this.toObject() : { ...this };
+    delete obj.password;
+    delete obj.bankDetails;
+    delete obj.otp;
+    delete obj.otpExpires;
+
+    return {
+        ...obj,
+        supportsMarketplace: this.sellingChannels?.retail?.enabled !== false,
+        supportsWholesale: this.sellingChannels?.wholesale?.enabled === true,
+        supportsQuickCommerce: this.sellingChannels?.quickCommerce?.enabled === true,
+    };
+};
+
 const Vendor = mongoose.model('Vendor', vendorSchema);
 export { Vendor };
 export default Vendor;

@@ -11,7 +11,8 @@ import WholesaleBadge from '../../../shared/components/WholesaleBadge';
 import { formatVariantLabel, getVariantSignature } from '../../../shared/utils/variant';
 import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
-import Badge from '../../../shared/components/Badge';
+import ExperienceBadge from '../../../shared/components/ExperienceBadge';
+import { FiZap } from 'react-icons/fi';
 import LazyImage from '../../../shared/components/LazyImage';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -260,13 +261,42 @@ const MobileOrderDetail = () => {
                   <p className="text-sm text-content-secondary">{t('Order')} #{order.id}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                  <Badge variant={order.status}>{t(order.status.toUpperCase())}</Badge>
+                  <ExperienceBadge experience={order.experience || (order.orderType === 'wholesale' ? 'wholesale' : 'marketplace')} />
                   <WholesaleBadge orderType={order.orderType} />
                 </div>
               </div>
             </div>
 
             <div className="px-4 py-4 space-y-4">
+              {/* Quick Commerce Live Stage Timeline */}
+              {(order.experience === 'quick_commerce' || order.quickCommerce) && (
+                <div className="glass-card rounded-2xl p-4 bg-amber-500/5 border border-amber-500/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <FiZap className="text-amber-500 text-lg" />
+                      <h3 className="font-bold text-content text-sm">Quick Commerce Live Stage</h3>
+                    </div>
+                    <span className="text-xs font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                      ETA ~{order.quickCommerce?.actualEtaMinutes || 15} Mins
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5 text-center">
+                    {['placed', 'accepted', 'preparing', 'arriving', 'delivered'].map((stage, idx) => {
+                      const currentStage = (order.quickCommerce?.status || order.status || 'placed').toLowerCase();
+                      const stages = ['placed', 'accepted', 'preparing', 'arriving', 'delivered'];
+                      const isPassed = stages.indexOf(currentStage) >= idx;
+                      return (
+                        <div key={stage} className="space-y-1">
+                          <div className={`h-2 rounded-full transition-all ${isPassed ? 'bg-amber-500 shadow-sm' : 'bg-surface-muted border border-border'}`} />
+                          <span className={`text-[10px] capitalize font-semibold block truncate ${isPassed ? 'text-amber-500' : 'text-content-muted'}`}>
+                            {stage}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* Order Items */}
               <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
                 <h2 className="text-base font-bold text-content mb-4">{t('Order Items')}</h2>

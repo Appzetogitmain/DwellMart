@@ -14,6 +14,8 @@ import {
 import { releaseRider } from '../../../services/riderAssignment.service.js';
 import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
 import { EXPERIENCES } from '../../../constants/experiences.js';
+import { getRiderAnalytics } from '../../../services/quickCommerceAnalytics.service.js';
+import { getOrComputeAnalyticsCache } from '../../../services/analyticsCache.service.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -665,4 +667,16 @@ export const returnToStore = asyncHandler(async (req, res) => {
     await publishQuickCommerceStatus(order, QUICK_COMMERCE_ORDER_STATUS.DELIVERY_FAILED);
 
     res.status(200).json(new ApiResponse(200, order, 'Order returned to store and marked delivery failed.'));
+});
+
+// GET /api/delivery/orders/analytics
+export const getRiderAnalyticsHandler = asyncHandler(async (req, res) => {
+    const { startDate, endDate, days } = req.query;
+    const cacheKey = `rider_analytics_${req.user.id}_${startDate}_${endDate}_${days}`;
+
+    const analytics = await getOrComputeAnalyticsCache(cacheKey, async () => {
+        return getRiderAnalytics(req.user.id, { startDate, endDate, days: Number(days || 30) });
+    });
+
+    res.status(200).json(new ApiResponse(200, analytics, 'Rider analytics fetched successfully.'));
 });
