@@ -63,7 +63,22 @@ export const calculateCartTax = (items = [], getUnitPrice = (item) => Number(ite
 
 /**
  * Compute the payable total exactly as the backend does.
- * total = subtotal - couponDiscount + shipping + taxAddedToTotal
+ * total = subtotal - couponDiscount + shipping + packagingFee + taxAddedToTotal
+ *
+ * `packagingFee` is Quick Commerce only and defaults to 0, so Marketplace
+ * callers are unaffected. For Quick Commerce, `shipping` is the server-returned
+ * delivery fee — never a client-side guess.
  */
-export const calculateCartTotal = ({ subtotal = 0, discount = 0, shipping = 0, taxAddedToTotal = 0 }) =>
-  Number(Math.max(0, Number(subtotal) - Number(discount) + Number(shipping) + Number(taxAddedToTotal)).toFixed(2));
+export const calculateCartTotal = ({
+  subtotal = 0,
+  discount = 0,
+  shipping = 0,
+  packagingFee = 0,
+  taxAddedToTotal = 0,
+}) =>
+  Number(
+    Math.max(
+      0,
+      Number(subtotal) - Number(discount) + Number(shipping) + Number(packagingFee) + Number(taxAddedToTotal)
+    ).toFixed(2)
+  );

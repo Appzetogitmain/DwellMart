@@ -17,7 +17,10 @@ import { calculateVendorShippingForGroups } from '../../../services/vendorShippi
 import { resolvePriceForQuantity, deriveOrderType } from '../../../services/pricingEngine.service.js';
 import { getRequestExperience, EXPERIENCES } from '../../../constants/experiences.js';
 import { isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
-import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
+import {
+    QUICK_COMMERCE_ORDER_STATUS,
+    QUICK_COMMERCE_POST_PREPARATION_STAGES,
+} from '../../../constants/quickCommerce.js';
 import {
     resolveVendorAvailability,
     pointToLatLng,
@@ -25,6 +28,12 @@ import {
     calculateEta,
     calculateDeliveryFee,
 } from '../../../services/quickCommerce.service.js';
+import {
+    assignRiderForQuickCommerceOrder,
+    escalateUnassignedOrder,
+    releaseRider,
+} from '../../../services/riderAssignment.service.js';
+import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -478,6 +487,10 @@ export const placeOrder = asyncHandler(async (req, res) => {
         } else if (coupon.type === 'fixed') {
             couponDiscount = coupon.value;
         }
+        // A discount can never exceed the goods it applies to. Without this cap
+        // a fixed coupon worth more than the cart produces a NEGATIVE order
+        // total, and the customer is shown 0 while being charged the negative.
+        couponDiscount = Math.min(couponDiscount, subtotal);
         appliedCoupon = coupon;
     }
 
@@ -764,6 +777,31 @@ export const placeOrder = asyncHandler(async (req, res) => {
         );
     }
 
+    // 11. Quick Commerce store alert.
+    // Urgent and tracked: the store has minutes to respond before the promise
+    // made to the customer is at risk, and silence escalates to an admin.
+    if (!idempotentReplay && isQuickCommerceOrder && order?._id) {
+        const qcVendorId = vendorItems?.[0]?.vendorId;
+        if (qcVendorId) {
+            await notifyVendorOfNewQuickCommerceOrder(order, qcVendorId);
+        }
+    }
+
+    // 12. Quick Commerce rider assignment.
+    // Runs after the transaction commits and never throws: a paid order must not
+    // be rolled back because no rider happened to be free. If assignment fails
+    // the order escalates to the admin queue instead of stalling.
+    if (!idempotentReplay && isQuickCommerceOrder && order?._id) {
+        const vendorPoint = pointToLatLng(quickCommerceContext?.vendor?.quickCommerceProfile?.location);
+        if (vendorPoint) {
+            await assignRiderForQuickCommerceOrder(order, vendorPoint);
+        } else {
+            await escalateUnassignedOrder(order, 0).catch((err) => {
+                console.warn(`[Rider Assignment] Escalation failed for order ${order.orderId}: ${err.message}`);
+            });
+        }
+    }
+
     const responseStatus = idempotentReplay ? 200 : 201;
     const responseMessage = idempotentReplay
         ? 'Duplicate order request ignored. Returning existing order.'
@@ -811,7 +849,12 @@ export const cancelOrder = asyncHandler(async (req, res) => {
 
             // Capture bulk vendor groups before mutation so affected vendors can
             // be notified once the cancellation is committed.
-            cancelledOrderRef = { orderId: order.orderId, _id: order._id };
+            cancelledOrderRef = {
+                orderId: order.orderId,
+                _id: order._id,
+                experience: order.experience,
+                deliveryBoyId: order.deliveryBoyId,
+            };
             cancelledBulkGroups = (order.vendorItems || [])
                 .filter((group) => group.orderType === 'wholesale' || group.orderType === 'mixed')
                 .map((group) => ({
@@ -823,6 +866,18 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             order.status = 'cancelled';
             order.cancelledAt = new Date();
             order.cancellationReason = req.body.reason || 'Cancelled by customer';
+            if (order.experience === EXPERIENCES.QUICK_COMMERCE) {
+                const stageAtCancellation = order.quickCommerce?.status || QUICK_COMMERCE_ORDER_STATUS.PLACED;
+                order.quickCommerce = order.quickCommerce || {};
+                // Record the stage BEFORE overwriting it — once the status is
+                // 'cancelled' there is no way to tell whether the store had
+                // already packed the goods, and that is exactly the question
+                // that has to be answered to settle the cost.
+                order.quickCommerce.cancelledAtStage = stageAtCancellation;
+                order.quickCommerce.cancelledAfterPreparation =
+                    QUICK_COMMERCE_POST_PREPARATION_STAGES.includes(stageAtCancellation);
+                order.quickCommerce.status = QUICK_COMMERCE_ORDER_STATUS.CANCELLED;
+            }
             if (Array.isArray(order.vendorItems)) {
                 order.vendorItems = order.vendorItems.map((vendorGroup) => ({
                     ...vendorGroup.toObject(),
@@ -880,6 +935,14 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         });
     } finally {
         await session.endSession();
+    }
+
+    // A cancelled Quick Commerce order must hand its rider back to the pool,
+    // otherwise that rider is stuck holding an order that no longer exists.
+    if (cancelledOrderRef?.experience === EXPERIENCES.QUICK_COMMERCE && cancelledOrderRef?.deliveryBoyId) {
+        await releaseRider(cancelledOrderRef.deliveryBoyId, cancelledOrderRef._id).catch((err) => {
+            console.warn(`[Rider Release] Failed for cancelled order ${cancelledOrderRef.orderId}: ${err.message}`);
+        });
     }
 
     // Notify vendors whose bulk orders were cancelled. Runs after commit; a

@@ -24,6 +24,7 @@ import {
   FiMessageSquare,
   FiTrendingUp,
   FiFile,
+  FiZap,
 } from "react-icons/fi";
 import { MdCurrencyRupee } from "react-icons/md";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
@@ -49,6 +50,7 @@ const iconMap = {
   "Inventory Reports": FiBarChart2,
   "Performance Metrics": FiTrendingUp,
   Documents: FiFile,
+  "Quick Commerce": FiZap,
   Analytics: FiBarChart2,
   Earnings: MdCurrencyRupee,
   Settings: FiSettings,

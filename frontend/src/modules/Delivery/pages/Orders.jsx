@@ -242,7 +242,7 @@ const DeliveryOrders = () => {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  {order.status === 'pending' && (
+                  {order.experience !== 'quick_commerce' && order.status === 'pending' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -254,7 +254,7 @@ const DeliveryOrders = () => {
                       {isUpdatingOrderStatus ? 'Please wait...' : 'Accept Order'}
                     </button>
                   )}
-                  {order.status === 'in-transit' && (
+                  {order.experience !== 'quick_commerce' && order.status === 'in-transit' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -125,12 +125,16 @@ router.get('/analytics/sales', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsCon
 router.get('/analytics/finance-summary', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.WALLET_VIEW), analyticsController.getFinancialSummary);
 router.get('/analytics/inventory-stats', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.PRODUCTS_VIEW), analyticsController.getInventoryStats);
 router.get('/analytics/wholesale', ...permAny(PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getWholesaleStats);
+router.get('/analytics/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_ANALYTICS_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getQuickCommerceStats);
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get('/orders', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getAllOrders);
+// Registered before '/orders/:id' — otherwise the param route swallows the path.
+router.get('/orders/quick-commerce/unassigned', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getUnassignedQuickCommerceOrders);
 router.get('/orders/:id', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getOrderById);
 router.patch('/orders/:id/status', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.updateOrderStatus);
 router.patch('/orders/:id/assign-delivery', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.assignDeliveryBoy);
+router.post('/orders/:id/retry-assignment', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.retryQuickCommerceAssignment);
 router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
 // ─── Products ─────────────────────────────────────────────────────────────────

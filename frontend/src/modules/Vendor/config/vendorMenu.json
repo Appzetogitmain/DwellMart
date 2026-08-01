@@ -1,127 +1,106 @@
 [
     {
-        "title":  "Dashboard",
-        "route":  "/vendor/dashboard",
-        "children":  [
-
-                     ]
+        "title": "Dashboard",
+        "route": "/vendor/dashboard",
+        "children": []
     },
     {
-        "title":  "Products",
-        "route":  "/vendor/products",
-        "children":  [
-                         "Manage Products",
-                         "Add Product"
-                     ]
+        "title": "Products",
+        "route": "/vendor/products",
+        "children": [
+            "Manage Products",
+            "Add Product"
+        ]
     },
     {
-        "title":  "Orders",
-        "route":  "/vendor/orders",
-        "children":  [
-                         "All Orders",
-                         "Order Tracking"
-                     ]
+        "title": "Orders",
+        "route": "/vendor/orders",
+        "children": [
+            "All Orders",
+            "Order Tracking"
+        ]
     },
     {
-        "title":  "Return Requests",
-        "route":  "/vendor/return-requests",
-        "children":  [
-
-                     ]
+        "title": "Return Requests",
+        "route": "/vendor/return-requests",
+        "children": []
     },
     {
-        "title":  "Product Reviews",
-        "route":  "/vendor/product-reviews",
-        "children":  [
-
-                     ]
+        "title": "Product Reviews",
+        "route": "/vendor/product-reviews",
+        "children": []
     },
     {
-        "title":  "Stock Management",
-        "route":  "/vendor/stock-management",
-        "children":  [
-
-                     ]
+        "title": "Stock Management",
+        "route": "/vendor/stock-management",
+        "children": []
     },
     {
-        "title":  "Wallet History",
-        "route":  "/vendor/wallet-history",
-        "children":  [
-
-                     ]
+        "title": "Wallet History",
+        "route": "/vendor/wallet-history",
+        "children": []
     },
     {
-        "title":  "Subscriptions",
-        "route":  "/vendor/subscription",
-        "children":  [
-
-                     ]
+        "title": "Subscriptions",
+        "route": "/vendor/subscription",
+        "children": []
     },
     {
-        "title":  "Support Desk",
-        "route":  "/vendor/support-tickets",
-        "children":  [
-
-                     ]
+        "title": "Support Desk",
+        "route": "/vendor/support-tickets",
+        "children": []
     },
     {
-        "title":  "Shipping Management",
-        "route":  "/vendor/shipping-management",
-        "children":  [
-
-                     ]
+        "title": "Shipping Management",
+        "route": "/vendor/shipping-management",
+        "children": []
     },
     {
-        "title":  "Customers",
-        "route":  "/vendor/customers",
-        "children":  [
-
-                     ]
+        "title": "Customers",
+        "route": "/vendor/customers",
+        "children": []
     },
     {
-        "title":  "Inventory Reports",
-        "route":  "/vendor/inventory-reports",
-        "children":  [
-
-                     ]
+        "title": "Inventory Reports",
+        "route": "/vendor/inventory-reports",
+        "children": []
     },
     {
-        "title":  "Performance Metrics",
-        "route":  "/vendor/performance-metrics",
-        "children":  [
-
-                     ]
+        "title": "Performance Metrics",
+        "route": "/vendor/performance-metrics",
+        "children": []
     },
     {
-        "title":  "Analytics",
-        "route":  "/vendor/analytics",
-        "children":  [
-
-                     ]
+        "title": "Quick Commerce",
+        "route": "/vendor/quick-commerce",
+        "children": []
     },
     {
-        "title":  "Earnings",
-        "route":  "/vendor/earnings",
-        "children":  [
-                         "Earnings Overview",
-                         "Commission History",
-                         "Settlement History"
-                     ]
+        "title": "Analytics",
+        "route": "/vendor/analytics",
+        "children": []
     },
     {
-        "title":  "Settings",
-        "route":  "/vendor/settings",
-        "children":  [
-                         "Store Settings",
-                         "Payment Settings",
-                         "Shipping Settings"
-                     ]
+        "title": "Earnings",
+        "route": "/vendor/earnings",
+        "children": [
+            "Earnings Overview",
+            "Commission History",
+            "Settlement History"
+        ]
     },
     {
-        "title":  "Profile",
-        "route":  "/vendor/profile",
-        "children":  [
-
-                     ]
+        "title": "Settings",
+        "route": "/vendor/settings",
+        "children": [
+            "Store Settings",
+            "Payment Settings",
+            "Shipping Settings"
+        ]
+    },
+    {
+        "title": "Profile",
+        "route": "/vendor/profile",
+        "children": []
     }
 ]

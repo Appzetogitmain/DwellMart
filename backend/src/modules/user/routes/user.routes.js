@@ -4,6 +4,9 @@ import * as addressController from '../controllers/address.controller.js';
 import * as wishlistController from '../controllers/wishlist.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as orderController from '../controllers/order.controller.js';
+// Tracking reads the rider's live position, so it lives with the rider location
+// controller rather than duplicating that logic here.
+import * as trackingController from '../../delivery/controllers/location.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
@@ -68,6 +71,7 @@ router.post('/reviews/:id/helpful', reviewController.voteHelpful);
 router.post('/orders', ...customerAuth, validate(placeOrderSchema), orderController.placeOrder);
 router.get('/orders', ...customerAuth, orderController.getUserOrders);
 router.get('/orders/:id', ...customerAuth, orderController.getOrderDetail);
+router.get('/orders/:id/tracking', ...customerAuth, trackingController.getOrderTracking);
 router.patch('/orders/:id/cancel', ...customerAuth, orderController.cancelOrder);
 router.post('/orders/:id/returns', ...customerAuth, validate(createReturnRequestSchema), orderController.createReturnRequest);
 router.get('/returns', ...customerAuth, orderController.getUserReturnRequests);

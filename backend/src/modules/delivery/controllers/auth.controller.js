@@ -7,6 +7,7 @@ import { generateTokens } from '../../../utils/generateToken.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { cleanupLocalFiles } from '../../../services/upload.service.js';
+import { LATITUDE_BOUNDS, LONGITUDE_BOUNDS } from '../../../constants/quickCommerce.js';
 import {
     clearRefreshSession,
     decodeRefreshTokenOrThrow,
@@ -285,7 +286,23 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
     if (typeof vehicleType === 'string') update.vehicleType = vehicleType.trim();
     if (typeof vehicleNumber === 'string') update.vehicleNumber = vehicleNumber.trim();
-    if (typeof currentLocation === 'object' && currentLocation !== null) update.currentLocation = currentLocation;
+    if (typeof currentLocation === 'object' && currentLocation !== null) {
+        update.currentLocation = currentLocation;
+
+        // Dual-write the GeoJSON shape too. Writing only the legacy field here
+        // would leave `location` stale while `currentLocation` moved, and
+        // assignment reads `location` — the rider would be matched against a
+        // position they have left.
+        const lat = Number(currentLocation.lat);
+        const lng = Number(currentLocation.lng);
+        const isValidLat = Number.isFinite(lat) && lat >= LATITUDE_BOUNDS.min && lat <= LATITUDE_BOUNDS.max;
+        const isValidLng = Number.isFinite(lng) && lng >= LONGITUDE_BOUNDS.min && lng <= LONGITUDE_BOUNDS.max;
+        if (isValidLat && isValidLng) {
+            // GeoJSON is [lng, lat] — reversed relative to the field above.
+            update.location = { type: 'Point', coordinates: [lng, lat] };
+            update.lastLocationAt = new Date();
+        }
+    }
 
     if (typeof status === 'string') {
         const normalized = status.toLowerCase();

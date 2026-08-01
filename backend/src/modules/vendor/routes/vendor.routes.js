@@ -48,6 +48,7 @@ import {
     updateQuickCommerceSettingsSchema
 } from '../validators/auth.validator.js';
 import { changePlanSchema } from '../validators/subscription.validator.js';
+import { vendorQuickCommerceStatusSchema } from '../validators/order.validator.js';
 import {
     createProductSchema,
     updateProductSchema,
@@ -134,6 +135,9 @@ router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
 router.get('/orders', ...vendorAuth, orderController.getVendorOrders);
 router.get('/orders/:id', ...vendorAuth, orderController.getVendorOrderById);
 router.patch('/orders/:id/status', ...vendorAuth, orderController.updateOrderStatus);
+router.patch('/orders/:id/quick-status', ...vendorAuth, validate(vendorQuickCommerceStatusSchema), orderController.updateQuickCommerceOrderStatus);
+router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, orderController.acknowledgeQuickCommerceOrder);
+router.get('/quick-commerce/dashboard', ...vendorAuth, orderController.getQuickCommerceVendorDashboard);
 
 // Customers
 router.get('/customers', ...vendorAuth, customerController.getVendorCustomers);

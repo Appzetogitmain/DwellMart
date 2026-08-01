@@ -20,6 +20,10 @@ import { useOrderStore } from "../../../shared/store/orderStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cartTotals";
+import { useExperienceStore } from "../../../shared/store/experienceStore";
+import { getQuickCommerceCheckoutEstimate } from "../../../shared/services/quickCommerceService";
+import { EXPERIENCES, getLocationQueryParams } from "../../../shared/utils/experience";
+import { formatEtaRange } from "../../../shared/utils/quickCommerceEta";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -52,6 +56,18 @@ const MobileCheckout = () => {
     "Cash on Delivery",
     "Bank Transfer",
     "Shipping Options",
+    "Delivery",
+    "Delivery Fee",
+    "Packaging Fee",
+    "Arriving in",
+    "FREE",
+    "Calculating delivery fee and ETA...",
+    "Delivery is not available for this cart right now.",
+    "Quick Commerce is not available for this cart.",
+    "Please wait for the delivery estimate to finish.",
+    "Set your exact delivery location to see the fee and ETA.",
+    "Add",
+    "more to reach this store's minimum order.",
     "Standard Shipping",
     "5-7 business days",
     "Express Shipping",
@@ -95,6 +111,9 @@ const MobileCheckout = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
   const { createOrder } = useOrderStore();
+  const experience = useExperienceStore((state) => state.experience);
+  const quickLocation = useExperienceStore((state) => state.location);
+  const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
 
   // Group items by vendor
   const itemsByVendor = useMemo(
@@ -113,6 +132,9 @@ const MobileCheckout = () => {
   const [shippingOption, setShippingOption] = useState("standard");
   const [estimatedShipping, setEstimatedShipping] = useState(null);
   const [isEstimatingShipping, setIsEstimatingShipping] = useState(false);
+  // Quick Commerce fees and ETA, always server-computed.
+  const [quickEstimate, setQuickEstimate] = useState(null);
+  const [isEstimatingQuick, setIsEstimatingQuick] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [formData, setFormData] = useState({
@@ -239,10 +261,15 @@ const MobileCheckout = () => {
 
   const total = getTotal();
   const bulkSavings = getTotalSavings();
-  const shipping =
-    typeof estimatedShipping === "number"
+  // Quick Commerce charges a distance-based delivery fee plus a per-store
+  // packaging fee. Both come from the server so the displayed total is the
+  // amount charged; the Marketplace keeps its own shipping estimate untouched.
+  const shipping = isQuickCommerce
+    ? Number(quickEstimate?.deliveryFee) || 0
+    : typeof estimatedShipping === "number"
       ? estimatedShipping
       : calculateShippingFallback();
+  const packagingFee = isQuickCommerce ? Number(quickEstimate?.packagingFee) || 0 : 0;
   const discount = appliedCoupon ? appliedDiscount : 0;
   // Mirror the backend's per-product tax arithmetic (inclusive vs exclusive)
   // so the displayed total matches the amount actually charged.
@@ -251,8 +278,33 @@ const MobileCheckout = () => {
     subtotal: total,
     discount,
     shipping,
+    packagingFee,
     taxAddedToTotal,
   });
+
+  // A pincode alone cannot produce a distance, so it cannot produce a fee or an
+  // ETA. `placeOrder` requires coordinates for the same reason.
+  const hasPreciseQuickLocation = (() => {
+    const params = getLocationQueryParams(quickLocation);
+    return params.lat !== undefined && params.lng !== undefined;
+  })();
+
+  // The server will reject these too — surfacing them here just avoids sending
+  // the customer into a failed order.
+  const quickBlockReason = !isQuickCommerce
+    ? null
+    : !hasPreciseQuickLocation
+    ? t("Set your exact delivery location to see the fee and ETA.")
+    : quickEstimate && quickEstimate.available === false
+      ? quickEstimate.message || t("Quick Commerce is not available for this cart.")
+      : quickEstimate?.minOrderShortfall > 0
+        ? `${t("Add")} ${formatPrice(quickEstimate.minOrderShortfall)} ${t("more to reach this store's minimum order.")}`
+        : null;
+
+  // Placing is blocked while the fees are unknown too — an order must never be
+  // submitted against a total the customer has not been shown.
+  const isQuickCommercePlacementBlocked =
+    isQuickCommerce && (Boolean(quickBlockReason) || isEstimatingQuick || !quickEstimate?.available);
 
   useEffect(() => {
     if (appliedCoupon) {
@@ -261,7 +313,66 @@ const MobileCheckout = () => {
     }
   }, [total, appliedCoupon]);
 
+  // Quick Commerce fees and ETA. Server-computed with the same functions
+  // checkout uses, so what is displayed here is what is charged.
   useEffect(() => {
+    if (!isQuickCommerce) {
+      setQuickEstimate(null);
+      return undefined;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      const validItems = items
+        .map((item) => ({
+          productId: item?.id,
+          quantity: Number(item?.quantity || 1),
+          variant: item?.variant || undefined,
+        }))
+        .filter((item) => item.productId);
+
+      const locationParams = getLocationQueryParams(quickLocation);
+      if (!validItems.length || locationParams.lat === undefined || locationParams.lng === undefined) {
+        if (active) setQuickEstimate(null);
+        return;
+      }
+
+      setIsEstimatingQuick(true);
+      try {
+        const response = await getQuickCommerceCheckoutEstimate({
+          items: validItems,
+          latitude: Number(locationParams.lat),
+          longitude: Number(locationParams.lng),
+          couponType: appliedCoupon?.type || null,
+        });
+        const payload = response?.data ?? response;
+        if (active) {
+          setQuickEstimate(
+            payload && typeof payload === "object"
+              ? { ...payload, message: response?.message || payload?.message || null }
+              : null
+          );
+        }
+      } catch {
+        // A failed estimate must not silently become "free delivery" — leave it
+        // null so the UI shows the fees as pending rather than as zero.
+        if (active) setQuickEstimate(null);
+      } finally {
+        if (active) setIsEstimatingQuick(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isQuickCommerce, items, quickLocation, appliedCoupon?.type]);
+
+  useEffect(() => {
+    // Quick Commerce has its own fee model; the Marketplace shipping engine
+    // does not apply to it.
+    if (isQuickCommerce) return undefined;
+
     let active = true;
     const timer = setTimeout(async () => {
       const validItems = items
@@ -308,7 +419,7 @@ const MobileCheckout = () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [items, formData.country, shippingOption, appliedCoupon?.type]);
+  }, [isQuickCommerce, items, formData.country, shippingOption, appliedCoupon?.type]);
 
   const handleApplyCoupon = async (codeOverride = "") => {
     const normalizedCode = String(codeOverride || couponCode).trim().toUpperCase();
@@ -333,7 +444,9 @@ const MobileCheckout = () => {
 
       setCouponCode(coupon.code || normalizedCode);
       setAppliedCoupon(coupon);
-      setAppliedDiscount(discountAmount);
+      // Mirror the server's cap: a discount never exceeds the goods it applies
+      // to, so an oversized fixed coupon shows the same figure that is charged.
+      setAppliedDiscount(Math.min(discountAmount, total));
       toast.success(t('Coupon applied!'));
     } catch {
       setAppliedCoupon(null);
@@ -424,6 +537,19 @@ const MobileCheckout = () => {
     }
     if (step === 2 && isPlacingOrder) {
       return;
+    }
+
+    // Quick Commerce: don't send the customer into an order the server will
+    // reject, and never place one while the fees are still unknown.
+    if (step === 2 && isQuickCommerce) {
+      if (quickBlockReason) {
+        toast.error(quickBlockReason);
+        return;
+      }
+      if (isEstimatingQuick || !quickEstimate?.available) {
+        toast.error(t("Please wait for the delivery estimate to finish."));
+        return;
+      }
     }
 
     if (step === 1) {
@@ -705,8 +831,54 @@ const MobileCheckout = () => {
                       ))}
                     </div>
 
+                    {/* Quick Commerce delivery — fees and ETA come from the server */}
+                    {isQuickCommerce && (
+                      <div className="mb-6">
+                        <h3 className="text-base font-semibold text-content mb-3">
+                          {t('Delivery')}
+                        </h3>
+                        <div className="rounded-xl border-2 border-border p-4 space-y-2 bg-surface-muted">
+                          {isEstimatingQuick && !quickEstimate ? (
+                            <p className="text-sm text-content-secondary">
+                              {t('Calculating delivery fee and ETA...')}
+                            </p>
+                          ) : quickEstimate?.available ? (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-content">
+                                  {t('Arriving in')}
+                                </span>
+                                <span className="text-sm font-bold text-brand-primary">
+                                  {formatEtaRange(quickEstimate?.eta?.etaMinutes)}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm text-content-secondary">
+                                <span>{t('Delivery Fee')}</span>
+                                <span>
+                                  {shipping === 0 ? t('FREE') : formatPrice(shipping)}
+                                </span>
+                              </div>
+                              {packagingFee > 0 && (
+                                <div className="flex items-center justify-between text-sm text-content-secondary">
+                                  <span>{t('Packaging Fee')}</span>
+                                  <span>{formatPrice(packagingFee)}</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-sm text-status-error">
+                              {quickBlockReason || t('Delivery is not available for this cart right now.')}
+                            </p>
+                          )}
+                          {quickEstimate?.available && quickBlockReason && (
+                            <p className="text-sm text-status-error pt-1">{quickBlockReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Shipping Options */}
-                    {total < 100 && (
+                    {!isQuickCommerce && total < 100 && (
                       <div className="mb-6">
                         <h3 className="text-base font-semibold text-content mb-3">
                           {t('Shipping Options')}
@@ -859,6 +1031,8 @@ const MobileCheckout = () => {
                         total={total}
                         discount={discount}
                         shipping={shipping}
+                        packagingFee={packagingFee}
+                        shippingLabel={isQuickCommerce ? "Delivery Fee" : null}
                         tax={tax}
                         finalTotal={finalTotal}
                         bulkSavings={bulkSavings}
@@ -878,6 +1052,8 @@ const MobileCheckout = () => {
                       total={total}
                       discount={discount}
                       shipping={shipping}
+                      packagingFee={packagingFee}
+                      shippingLabel={isQuickCommerce ? "Delivery Fee" : null}
                       tax={tax}
                       finalTotal={finalTotal}
                       bulkSavings={bulkSavings}
@@ -886,7 +1062,7 @@ const MobileCheckout = () => {
                     <div className="p-4 border-t border-border bg-surface-muted">
                       <button
                         type="submit"
-                        disabled={step === 2 && isPlacingOrder}
+                        disabled={step === 2 && (isPlacingOrder || isQuickCommercePlacementBlocked)}
                         className="w-full bg-brand-primary text-black py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-brand-primaryHover transition-all duration-300 transform hover:-translate-y-0.5">
                         {step === 2 ? (isPlacingOrder ? t("Placing Order...") : t("Place Order")) : t("Continue to Payment")}
                       </button>
@@ -923,7 +1099,7 @@ const MobileCheckout = () => {
                 )}
                 <button
                   type="submit"
-                  disabled={step === 2 && isPlacingOrder}
+                  disabled={step === 2 && (isPlacingOrder || isQuickCommercePlacementBlocked)}
                   className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300">
                   {step === 2 ? (isPlacingOrder ? "Placing..." : "Place Order") : "Continue"}
                 </button>

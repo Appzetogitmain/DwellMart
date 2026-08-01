@@ -11,6 +11,7 @@ import LazyImage from '../../../shared/components/LazyImage';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import { useAuthStore } from '../../../shared/store/authStore';
+import QuickCommerceTrackingPanel from '../components/QuickCommerceTrackingPanel';
 
 const MobileTrackOrder = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -205,6 +206,9 @@ const MobileTrackOrder = () => {
             </div>
 
             <div className="px-4 py-4 space-y-4">
+              {/* Quick Commerce live tracking. Renders nothing for Marketplace orders. */}
+              <QuickCommerceTrackingPanel orderId={orderId} />
+
               {/* Tracking Timeline */}
               <div className="glass-card rounded-2xl p-4 bg-surface border border-border">
                  <h2 className="text-base font-bold text-content mb-4">{t('Order Status')}</h2>

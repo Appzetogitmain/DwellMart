@@ -20,12 +20,25 @@ const lineUnitPrice = (item) =>
     { vendorWholesaleEnabled: item?.vendorWholesaleEnabled !== false }
   ).unitPrice;
 
-const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTotal, bulkSavings = 0 }) => {
+const OrderSummary = ({
+  itemsByVendor,
+  total,
+  discount,
+  shipping,
+  tax,
+  finalTotal,
+  bulkSavings = 0,
+  // Quick Commerce only. Defaults keep the Marketplace summary byte-identical.
+  packagingFee = 0,
+  shippingLabel = null,
+}) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Order Summary",
     "Subtotal",
     "Discount",
     "Shipping",
+    "Delivery Fee",
+    "Packaging Fee",
     "FREE",
     "Tax",
     "Total",
@@ -107,11 +120,17 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
           </div>
         )}
         <div className="flex justify-between text-content-secondary">
-          <span>{t('Shipping')}</span>
+          <span>{shippingLabel ? t(shippingLabel) : t('Shipping')}</span>
           <span>
             {shipping === 0 ? <span className="text-status-success font-semibold">{t('FREE')}</span> : <Price amount={shipping} />}
           </span>
         </div>
+        {packagingFee > 0 && (
+          <div className="flex justify-between text-content-secondary">
+            <span>{t('Packaging Fee')}</span>
+            <Price amount={packagingFee} />
+          </div>
+        )}
         <div className="flex justify-between text-content-secondary">
           <span>{t('Tax')}</span>
           <Price amount={tax} />
