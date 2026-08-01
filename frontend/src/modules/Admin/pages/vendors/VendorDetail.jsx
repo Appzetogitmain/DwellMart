@@ -487,6 +487,62 @@ const VendorDetail = () => {
                     </div>
                   )}
 
+                  {/* Wholesale Profile & B2B Capabilities */}
+                  {(vendor.sellingChannels?.wholesale?.enabled || vendor.wholesaleProfile) && (
+                    <div className="mt-8 pt-6 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                          <FiPackage className="text-purple-600" /> Wholesale Profile &amp; B2B Capabilities
+                        </h3>
+                        <Badge
+                          variant={
+                            vendor.sellingChannels?.wholesale?.enabled ? "success" : "neutral"
+                          }>
+                          {vendor.sellingChannels?.wholesale?.enabled
+                            ? "Wholesale Enabled"
+                            : "Retail Only"}
+                        </Badge>
+                      </div>
+
+                      <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">GST Number</p>
+                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.gstNumber || "Not Provided"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Business Name</p>
+                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.businessName || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Wholesale Contact</p>
+                            <p className="font-semibold text-gray-900">
+                              {vendor.wholesaleProfile?.wholesaleContactName || "N/A"}
+                              {vendor.wholesaleProfile?.wholesaleContactPhone ? ` (${vendor.wholesaleProfile.wholesaleContactPhone})` : ""}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Bulk Support Email</p>
+                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.bulkOrderSupportEmail || "N/A"}</p>
+                          </div>
+                        </div>
+
+                        {vendor.wholesaleProfile?.businessAddress && (
+                          <div className="pt-2 border-t border-purple-100">
+                            <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Registered Business Address</p>
+                            <p className="font-medium text-gray-800 text-xs mt-0.5">
+                              {vendor.wholesaleProfile.businessAddress.street || ""}
+                              {vendor.wholesaleProfile.businessAddress.city && `, ${vendor.wholesaleProfile.businessAddress.city}`}
+                              {vendor.wholesaleProfile.businessAddress.state && `, ${vendor.wholesaleProfile.businessAddress.state}`}
+                              {vendor.wholesaleProfile.businessAddress.zipCode && ` ${vendor.wholesaleProfile.businessAddress.zipCode}`}
+                              {vendor.wholesaleProfile.businessAddress.country && `, ${vendor.wholesaleProfile.businessAddress.country}`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {registrationDocument?.url && (
                     <div className="mt-8 pt-6 border-t border-gray-100">
                       <h3 className="text-sm font-bold text-gray-800 mb-3">Registration Documents</h3>

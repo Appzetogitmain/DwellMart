@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { FiPlus, FiTrash2, FiPackage } from "react-icons/fi";
+import { useSettingsStore } from "../store/settingsStore";
 
 /**
  * Shared Wholesale & Bulk Pricing editor.
@@ -24,6 +26,15 @@ const WholesalePricingSection = ({
   vendorWholesaleEnabled = false,
   disabled = false,
 }) => {
+  const { settings, initialize: initSettings } = useSettingsStore();
+
+  useEffect(() => {
+    initSettings();
+  }, [initSettings]);
+
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  if (!wholesaleMarketplaceEnabled) return null;
+
   const retailEnabled = value?.retailEnabled !== false;
   const wholesaleEnabled = value?.wholesaleEnabled === true;
   const moqEnabled = value?.wholesale?.moqEnabled === true;
