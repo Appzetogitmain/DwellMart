@@ -11,6 +11,9 @@ import PageTransition from '../../../shared/components/PageTransition';
 import { useCategoryStore } from '../../../shared/store/categoryStore';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
+import { useExperienceStore } from '../../../shared/store/experienceStore';
+import { EXPERIENCES, getLocationQueryParams } from '../../../shared/utils/experience';
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import ProductGrid from '../../../shared/components/ProductGrid';
@@ -117,6 +120,11 @@ const MobileSearch = ({ isShopPage = false }) => {
     return stored ? JSON.parse(stored) : [];
   });
   const [approvedVendors, setApprovedVendors] = useState([]);
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const { experience, location: customerLocation } = useExperienceStore();
+  const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
+  const wholesaleMarketplaceEnabled =
+    settings?.features?.wholesaleMarketplaceEnabled === true;
   const [products, setProducts] = useState([]);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
@@ -126,6 +134,9 @@ const MobileSearch = ({ isShopPage = false }) => {
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     minRating: searchParams.get('minRating') || '',
+    sellingChannel: searchParams.get('sellingChannel') || '',
+    bulkDiscount: searchParams.get('bulkDiscount') === 'true',
+    hasMoq: searchParams.get('hasMoq') === 'true',
   });
 
   // Sync searchQuery with URL params
@@ -140,12 +151,16 @@ const MobileSearch = ({ isShopPage = false }) => {
       minPrice: searchParams.get('minPrice') || '',
       maxPrice: searchParams.get('maxPrice') || '',
       minRating: searchParams.get('minRating') || '',
+      sellingChannel: searchParams.get('sellingChannel') || '',
+      bulkDiscount: searchParams.get('bulkDiscount') === 'true',
+      hasMoq: searchParams.get('hasMoq') === 'true',
     });
   }, [searchParams]);
 
   useEffect(() => {
     initializeCategories();
-  }, [initializeCategories]);
+    initializeSettings();
+  }, [initializeCategories, initializeSettings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,10 +272,32 @@ const MobileSearch = ({ isShopPage = false }) => {
       if (filters.minPrice) query.minPrice = filters.minPrice;
       if (filters.maxPrice) query.maxPrice = filters.maxPrice;
       if (filters.minRating) query.minRating = filters.minRating;
+      if (filters.sellingChannel) query.sellingChannel = filters.sellingChannel;
+      if (filters.bulkDiscount) query.bulkDiscount = 'true';
+      if (filters.hasMoq) query.hasMoq = 'true';
+
+      // Quick Commerce results must be limited to stores that can deliver here.
+      // The server enforces this; sending the hint is what makes it possible.
+      if (isQuickCommerce) {
+        Object.assign(query, getLocationQueryParams(customerLocation));
+      }
 
       return query;
     },
-    [filters.category, filters.vendor, filters.minPrice, filters.maxPrice, filters.minRating, sortBy, searchParams]
+    [
+      filters.category,
+      filters.vendor,
+      filters.minPrice,
+      filters.maxPrice,
+      filters.minRating,
+      filters.sellingChannel,
+      filters.bulkDiscount,
+      filters.hasMoq,
+      isQuickCommerce,
+      customerLocation,
+      sortBy,
+      searchParams,
+    ]
   );
 
   const fetchResults = useCallback(
@@ -326,9 +363,33 @@ const MobileSearch = ({ isShopPage = false }) => {
     setSearchParams(newParams);
   };
 
+  // Toggle a boolean wholesale facet in the URL (single source of truth).
+  const toggleBooleanFilter = (name) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('page');
+    if (searchParams.get(name) === 'true') {
+      newParams.delete(name);
+    } else {
+      newParams.set(name, 'true');
+    }
+    setSearchParams(newParams);
+  };
+
+  const setChannelFilter = (channel) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('page');
+    if (!channel || searchParams.get('sellingChannel') === channel) {
+      newParams.delete('sellingChannel');
+    } else {
+      newParams.set('sellingChannel', channel);
+    }
+    setSearchParams(newParams);
+  };
+
   // Check if any filter is active
   const hasActiveFilters =
-    filters.minPrice || filters.maxPrice || filters.minRating || filters.category || filters.vendor || searchQuery;
+    filters.minPrice || filters.maxPrice || filters.minRating || filters.category || filters.vendor ||
+    filters.sellingChannel || filters.bulkDiscount || filters.hasMoq || searchQuery;
 
   // Close filter dropdown when clicking outside
   useEffect(() => {
@@ -400,6 +461,9 @@ const MobileSearch = ({ isShopPage = false }) => {
       minPrice: '',
       maxPrice: '',
       minRating: '',
+      sellingChannel: '',
+      bulkDiscount: false,
+      hasMoq: false,
     });
     setSearchQuery('');
     setSortBy('newest');
@@ -565,6 +629,61 @@ const MobileSearch = ({ isShopPage = false }) => {
                           {/* Filter Content */}
                           <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
                             <div className="p-2 space-y-2">
+                              {/* Wholesale Filters — hidden unless the marketplace feature is on */}
+                              {wholesaleMarketplaceEnabled && (
+                                <div>
+                                  <h4 className="font-semibold text-content-secondary mb-1 text-xs">
+                                    {t('Selling Channel')}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setChannelFilter('retail')}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                                        filters.sellingChannel === 'retail'
+                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
+                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                      }`}
+                                    >
+                                      {t('Retail Only')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setChannelFilter('wholesale')}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                                        filters.sellingChannel === 'wholesale'
+                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
+                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                      }`}
+                                    >
+                                      {t('Wholesale Available')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleBooleanFilter('bulkDiscount')}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                                        filters.bulkDiscount
+                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
+                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                      }`}
+                                    >
+                                      {t('Bulk Discount')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleBooleanFilter('hasMoq')}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                                        filters.hasMoq
+                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
+                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                      }`}
+                                    >
+                                      {t('MOQ Products')}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Category Filter */}
                               <div>
                                 <h4 className="font-semibold text-content-secondary mb-1 text-xs">

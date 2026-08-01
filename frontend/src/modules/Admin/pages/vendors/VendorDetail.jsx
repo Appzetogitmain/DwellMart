@@ -18,7 +18,8 @@ import {
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders, getVendorCommissions, getVendorDocuments } from "../../services/adminService";
+import { getAllOrders, getVendorCommissions, getVendorDocuments, updateVendorQuickCommerce } from "../../services/adminService";
+import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
 import { formatPrice } from "../../../../shared/utils/helpers";
@@ -39,6 +40,9 @@ const VendorDetail = () => {
   const [additionalDocuments, setAdditionalDocuments] = useState([]);
   const [earningsSummary, setEarningsSummary] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
+  const [isSavingQuickCommerce, setIsSavingQuickCommerce] = useState(false);
   const [isEditingCommission, setIsEditingCommission] = useState(false);
   const [commissionRate, setCommissionRate] = useState("");
   const isSameVendorId = (a, b) => String(a) === String(b);
@@ -118,6 +122,10 @@ const VendorDetail = () => {
   }, [id, getVendor, navigate]);
 
   useEffect(() => {
+    initializeSettings();
+  }, [initializeSettings]);
+
+  useEffect(() => {
     if (!vendor) return;
 
     const summary = commissions.reduce(
@@ -164,6 +172,27 @@ const VendorDetail = () => {
       toast.success(`Vendor status updated to ${newStatus}`);
     } else {
       toast.error("Failed to update vendor status");
+    }
+  };
+
+  const vendorQuickCommerceEnabled = vendor?.sellingChannels?.quickCommerce?.enabled === true;
+
+  const handleToggleQuickCommerce = async () => {
+    const nextEnabled = !vendorQuickCommerceEnabled;
+    setIsSavingQuickCommerce(true);
+    try {
+      const response = await updateVendorQuickCommerce(vendor.id, { enabled: nextEnabled });
+      const data = response?.data ?? response;
+      setVendor((prev) => ({
+        ...prev,
+        sellingChannels: data?.sellingChannels ?? prev.sellingChannels,
+        quickCommerceProfile: data?.quickCommerceProfile ?? prev.quickCommerceProfile,
+      }));
+      toast.success(nextEnabled ? "Quick Commerce enabled for vendor" : "Quick Commerce disabled for vendor");
+    } catch {
+      // api.js surfaces the error toast
+    } finally {
+      setIsSavingQuickCommerce(false);
     }
   };
 
@@ -604,6 +633,51 @@ const VendorDetail = () => {
           {/* Settings Tab */}
           {activeTab === "settings" && (
             <div className="space-y-6">
+              {/* Quick Commerce capability — only when the platform feature is on */}
+              {quickCommerceEnabled && (
+                <div className="pb-6 border-b border-gray-200">
+                  <h2 className="text-lg font-bold text-gray-800 mb-1">Quick Commerce</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Grant or revoke this vendor's access to the Quick Commerce experience.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border border-gray-200 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {vendorQuickCommerceEnabled ? "Enabled" : "Disabled"}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {vendorQuickCommerceEnabled
+                          ? `${vendor.quickCommerceProfile?.serviceRadiusKm ?? 5} km radius · ${vendor.quickCommerceProfile?.preparationTimeMins ?? 10} min prep`
+                          : "Vendor cannot list Quick Commerce products."}
+                      </p>
+                      {vendorQuickCommerceEnabled
+                        && !vendor.quickCommerceProfile?.location?.coordinates?.length && (
+                        <p className="text-xs text-orange-600 mt-1">
+                          No store location set — this vendor will not appear in any nearby search.
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleQuickCommerce}
+                      disabled={isSavingQuickCommerce}
+                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 ${
+                        vendorQuickCommerceEnabled
+                          ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                          : "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                      }`}
+                    >
+                      {isSavingQuickCommerce
+                        ? "Saving..."
+                        : vendorQuickCommerceEnabled
+                          ? "Disable Quick Commerce"
+                          : "Enable Quick Commerce"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h2 className="text-lg font-bold text-gray-800 mb-4">
                   Commission Rate

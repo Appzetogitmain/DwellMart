@@ -17,22 +17,33 @@ export const useCategoryStore = create(
     (set, get) => ({
       categories: [],
       isLoading: false,
+      // Which category tree is currently loaded. Null means the default
+      // (Marketplace) tree, matching pre-Quick-Commerce behaviour.
+      loadedExperience: null,
 
-      // Initialize categories
-      initialize: async () => {
+      /**
+       * Initialize categories.
+       * @param {string} [experience] Admin only — which category tree to load.
+       *   Omitted loads the Marketplace tree, so existing callers are unchanged.
+       */
+      initialize: async (experience) => {
         set({ isLoading: true });
         try {
           const isAdminArea =
             typeof window !== 'undefined' &&
             window.location.pathname.startsWith('/admin');
           const response = isAdminArea
-            ? await getAllCategories()
+            ? await getAllCategories(experience)
             : await getPublicCategories();
           const normalizedCategories = response.data.map(cat => ({
             ...cat,
             id: cat._id // Ensure UI compatibility by aliasing _id to id
           }));
-          set({ categories: normalizedCategories, isLoading: false });
+          set({
+            categories: normalizedCategories,
+            loadedExperience: experience || null,
+            isLoading: false,
+          });
         } catch (error) {
           set({ isLoading: false });
           // Error toast is handled in api.js interceptor

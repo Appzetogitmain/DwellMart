@@ -4,6 +4,7 @@ import { MdCurrencyRupee } from 'react-icons/md';
 import { formatPrice } from '../../../../shared/utils/helpers';
 import { motion } from 'framer-motion';
 import { formatVariantLabel } from '../../../../shared/utils/variant';
+import WholesaleBadge from '../../../../shared/components/WholesaleBadge';
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
 import { useState, useEffect } from "react";
@@ -129,13 +130,16 @@ const MobileOrderCard = ({ order }) => {
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-border">
-          <span
-            className={`px-3 py-1 rounded-lg text-xs font-semibold ${getStatusColor(
-              order.status
-            )}`}
-          >
-            {t(order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Pending')}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span
+              className={`px-3 py-1 rounded-lg text-xs font-semibold ${getStatusColor(
+                order.status
+              )}`}
+            >
+              {t(order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Pending')}
+            </span>
+            <WholesaleBadge orderType={order.orderType} />
+          </div>
           <span className="text-xs text-content-muted">{t('View Details')}</span>
         </div>
       </Link>

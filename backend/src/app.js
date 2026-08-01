@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 
 // Route imports
 import publicRoutes from './routes/public.routes.js';
+import quickCommerceRoutes from './routes/quickCommerce.routes.js';
 import {
     subscriptionRouter,
     stripeWebhookRouter,
@@ -26,6 +27,7 @@ import bulkUploadRoutes from './routes/bulkUpload.routes.js';
 // Middleware imports
 import requestIdMiddleware from './middlewares/requestId.js';
 import { apiLimiter } from './middlewares/rateLimiter.js';
+import { resolveExperience } from './middlewares/resolveExperience.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
 
@@ -95,6 +97,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
 app.use('/api', apiLimiter);
 
+// ─── Shopping Experience Resolution ──────────────────────────────────────────
+// Must run before any route (and therefore before the response cache) so
+// `req.experience` is available to controllers and to cache key building.
+app.use('/api', resolveExperience);
+
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
     res.status(200).send('API running');
@@ -133,6 +140,7 @@ app.use(
     express.static(uploadsRoot)
 );
 app.use('/api/products', bulkUploadRoutes);         // Bulk Upload, Templates & Catalog Export
+app.use('/api/quick', quickCommerceRoutes); // Quick Commerce: serviceability, nearby stores, category feed
 app.use('/api', publicRoutes);            // Public: products, categories, brands, coupons, banners
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/user', userRoutes);         // Customer: auth, addresses, wishlist, reviews, orders

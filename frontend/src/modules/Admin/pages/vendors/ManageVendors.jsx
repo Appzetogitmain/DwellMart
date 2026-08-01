@@ -16,6 +16,7 @@ import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { useVendorStore } from "../../store/vendorStore";
 import toast from "react-hot-toast";
+import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const ManageVendors = () => {
   const navigate = useNavigate();
@@ -85,9 +86,12 @@ const ManageVendors = () => {
             />
           )}
           <div>
-            <span className="font-medium text-gray-800">
-              {value || row.name}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-gray-800">
+                {value || row.name}
+              </span>
+              <VendorWholesaleBadge vendor={row} />
+            </div>
             <p className="text-xs text-gray-500">{row.name}</p>
           </div>
         </div>

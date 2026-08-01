@@ -10,6 +10,7 @@ import VendorBadge from "../../../Vendor/components/VendorBadge";
 import { getVendorById } from "../../data/catalogData";
 import { getVariantSignature } from "../../../../shared/utils/variant";
 import { getPlaceholderImage } from "../../../../shared/utils/helpers";
+import { ProductWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const ProductListItem = ({ product, index, isFlashSale = false }) => {
   const navigate = useNavigate();
@@ -147,6 +148,9 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
               </div>
             )}
             <span className="text-[10px] md:text-xs text-gray-500 border-l border-gray-200 pl-2 leading-none">{product.unit}</span>
+            {product.wholesaleEnabled === true && (
+              <ProductWholesaleBadge product={product} />
+            )}
           </div>
 
           {/* Vendor */}

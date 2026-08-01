@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FiPlus, FiSearch, FiTrash2, FiEdit, FiRefreshCw } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useCategoryStore } from '../../../../shared/store/categoryStore';
+import { useSettingsStore } from '../../../../shared/store/settingsStore';
 import CategoryForm from '../../components/Categories/CategoryForm';
 import CategoryTree from '../../components/Categories/CategoryTree';
 import ExportButton from '../../components/ExportButton';
@@ -18,6 +19,9 @@ const ManageCategories = () => {
     isLoading,
   } = useCategoryStore();
 
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showForm, setShowForm] = useState(false);
@@ -25,11 +29,19 @@ const ManageCategories = () => {
   const [parentCategoryId, setParentCategoryId] = useState(null);
   const [viewMode, setViewMode] = useState('tree');
   const [currentPage, setCurrentPage] = useState(1);
+  // Which category tree is being managed. Marketplace is the default so the
+  // page behaves exactly as before when Quick Commerce is disabled.
+  const [experience, setExperience] = useState('marketplace');
   const itemsPerPage = 10;
 
   useEffect(() => {
-    initialize();
-  }, []);
+    initializeSettings();
+  }, [initializeSettings]);
+
+  useEffect(() => {
+    initialize(experience);
+    setCurrentPage(1);
+  }, [experience]);
 
   const filteredCategories = useMemo(() => {
     return categories.filter((category) => {
@@ -106,15 +118,18 @@ const ManageCategories = () => {
           <p className="text-sm sm:text-base text-gray-600">View and manage product categories</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => seedCategories()}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all font-semibold text-sm disabled:opacity-50"
-            title="Populate/Refresh standard DwellMart Marketplace Categories"
-          >
-            <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
-            <span>Seed Categories</span>
-          </button>
+          {/* Seeding populates the standard Marketplace tree only. */}
+          {experience === 'marketplace' && (
+            <button
+              onClick={() => seedCategories()}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all font-semibold text-sm disabled:opacity-50"
+              title="Populate/Refresh standard DwellMart Marketplace Categories"
+            >
+              <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />
+              <span>Seed Categories</span>
+            </button>
+          )}
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
@@ -124,6 +139,30 @@ const ManageCategories = () => {
           </button>
         </div>
       </div>
+
+      {/* Category tree switcher — the two experiences own independent trees */}
+      {quickCommerceEnabled && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700 mr-1">Category Tree:</span>
+          {[
+            { value: 'marketplace', label: '🛒 Marketplace' },
+            { value: 'quick_commerce', label: '⚡ Quick Commerce' },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setExperience(option.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                experience === option.value
+                  ? 'bg-primary-600 text-white border-primary-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
@@ -253,9 +292,10 @@ const ManageCategories = () => {
         <CategoryForm
           category={editingCategory}
           parentId={parentCategoryId}
+          experience={experience}
           onClose={handleFormClose}
           onSave={() => {
-            initialize();
+            initialize(experience);
             handleFormClose();
           }}
         />

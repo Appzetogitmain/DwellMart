@@ -1,3 +1,5 @@
+import { getRequestExperience } from '../constants/experiences.js';
+
 const DEFAULT_TTL_SECONDS = 60;
 const DEFAULT_MAX_ENTRIES = 500;
 
@@ -21,7 +23,20 @@ const enforceMaxEntries = (maxEntries) => {
     }
 };
 
-const buildDefaultCacheKey = (req) => req.originalUrl || req.url;
+/**
+ * Cache keys must include the resolved experience.
+ *
+ * The experience travels in a header (`X-Experience`), not the URL, so keying
+ * on the URL alone would let Marketplace and Quick Commerce share cache entries
+ * for the same path — surfacing the wrong catalog in the wrong experience.
+ * That is a correctness bug, not a performance concern, hence it lives in the
+ * default key builder rather than at individual call sites.
+ */
+const buildDefaultCacheKey = (req) => {
+    const url = req.originalUrl || req.url;
+    if (!url) return null;
+    return `${getRequestExperience(req)}::${url}`;
+};
 
 export const cacheResponse = ({
     ttlSeconds = DEFAULT_TTL_SECONDS,

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiStar, FiShoppingBag, FiCheckCircle, FiArrowRight, FiMapPin, FiUsers } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import LazyImage from '../../../../shared/components/LazyImage';
+import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const formatCount = (num) => {
   const n = Number(num) || 0;
@@ -71,6 +73,11 @@ const VendorShowcaseCard = ({ vendor, index = 0 }) => {
         <h3 className="font-bold text-content text-sm mb-1 line-clamp-2 min-h-[2.5rem] flex items-center justify-center group-hover:text-brand-primary transition-colors leading-tight">
           {storeName}
         </h3>
+        {vendor.sellingChannels?.wholesale?.enabled === true && (
+          <div className="mb-1 flex justify-center">
+            <VendorWholesaleBadge vendor={vendor} />
+          </div>
+        )}
 
         {/* Middle Metadata (Rating, Location, Products, Followers) */}
         <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5 my-1 overflow-hidden min-h-[3rem]">

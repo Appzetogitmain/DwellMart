@@ -20,6 +20,7 @@ const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
 import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
 import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
+import { ProductWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
@@ -124,7 +125,10 @@ const ManageProducts = () => {
               e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
             }}
           />
-          <span className="font-medium">{value}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium">{value}</span>
+            <ProductWholesaleBadge product={row} />
+          </div>
         </div>
       ),
     },

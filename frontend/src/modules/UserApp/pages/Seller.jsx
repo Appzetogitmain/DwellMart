@@ -12,6 +12,7 @@ import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
+import { VendorWholesaleBadge } from "../../../shared/components/WholesaleBadge";
 
 const normalizeVendor = (raw) => ({
     ...raw,
@@ -480,9 +481,10 @@ const Seller = () => {
                                     />
                                 </div>
                                 <div>
-                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                    <div className="flex items-center justify-center gap-1 mb-1 flex-wrap">
                                         <h2 className="font-bold text-content text-lg">{vendor.storeName || vendor.name}</h2>
                                         {vendor.isVerified && <FiCheckCircle className="text-status-info text-sm" />}
+                                        <VendorWholesaleBadge vendor={vendor} />
                                     </div>
                                     <div className="flex items-center justify-center gap-4 text-sm text-content-secondary">
                                         <div className="flex items-center gap-1">

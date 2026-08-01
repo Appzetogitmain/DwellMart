@@ -83,6 +83,7 @@ import {
     vendorIdParamSchema,
     vendorStatusUpdateSchema,
     vendorCommissionUpdateSchema,
+    vendorQuickCommerceUpdateSchema,
     vendorCommissionsQuerySchema,
 } from '../validators/vendor.validator.js';
 import {
@@ -123,6 +124,7 @@ router.get('/analytics/recent-orders', ...perm(PERMISSIONS.DASHBOARD_VIEW), anal
 router.get('/analytics/sales', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getSalesData);
 router.get('/analytics/finance-summary', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.WALLET_VIEW), analyticsController.getFinancialSummary);
 router.get('/analytics/inventory-stats', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.PRODUCTS_VIEW), analyticsController.getInventoryStats);
+router.get('/analytics/wholesale', ...permAny(PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getWholesaleStats);
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get('/orders', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getAllOrders);
@@ -171,6 +173,7 @@ router.patch('/vendors/documents/:id/status', ...perm(PERMISSIONS.VENDORS_APPROV
 router.get('/vendors/:id/commissions', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
 router.patch('/vendors/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
 router.patch('/vendors/:id/commission', ...perm(PERMISSIONS.VENDORS_EDIT), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
+router.patch('/vendors/:id/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_VENDORS_MANAGE, PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorQuickCommerceUpdateSchema), vendorController.updateVendorQuickCommerce);
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 router.get('/customers', ...perm(PERMISSIONS.USERS_VIEW), validate(customerListQuerySchema, 'query'), customerController.getAllCustomers);

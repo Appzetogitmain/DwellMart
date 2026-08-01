@@ -43,6 +43,13 @@ export const getFinancialSummary = (period = 'monthly', params = {}) =>
 export const getInventoryStats = () =>
     api.get('/admin/analytics/inventory-stats');
 
+/**
+ * Platform-wide wholesale marketplace metrics:
+ * vendor channel mix, wholesale product count, order split, and bulk revenue.
+ */
+export const getWholesaleStats = () =>
+    api.get('/admin/analytics/wholesale');
+
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const getAllOrders = (params = {}) =>
     api.get('/admin/orders', { params });
@@ -131,11 +138,23 @@ export const exportProductsCatalog = async (format = 'xlsx', vendorId = null) =>
 };
 
 // ─── Categories ───────────────────────────────────────────────────────────────
-export const getAllCategories = () =>
-    api.get('/admin/categories');
+/**
+ * Admin manages one category tree at a time. Omitting `experience` returns the
+ * Marketplace tree, preserving existing behaviour for all current callers.
+ */
+export const getAllCategories = (experience) =>
+    api.get('/admin/categories', experience ? { params: { experience } } : undefined);
 
 export const getPublicCategories = () =>
     api.get('/categories/all');
+
+/**
+ * Quick Commerce category tree, for product forms.
+ * Uses the public endpoint with an explicit experience so it works for both
+ * vendors and admins — the resolveExperience middleware accepts the query param.
+ */
+export const getQuickCommerceCategories = () =>
+    api.get('/categories/all', { params: { experience: 'quick_commerce' } });
 
 export const createCategory = (data) =>
     api.post('/admin/categories', data);
@@ -177,6 +196,13 @@ export const getVendorById = (id) =>
 
 export const updateVendorStatus = (id, status, reason = '') =>
     api.patch(`/admin/vendors/${id}/status`, { status, reason });
+
+/**
+ * Grant or revoke a vendor's Quick Commerce capability, with optional admin
+ * overrides for an unrealistic radius or preparation time.
+ */
+export const updateVendorQuickCommerce = (id, payload) =>
+    api.patch(`/admin/vendors/${id}/quick-commerce`, payload);
 
 export const updateCommissionRate = (id, commissionRate) =>
     api.patch(`/admin/vendors/${id}/commission`, { commissionRate });

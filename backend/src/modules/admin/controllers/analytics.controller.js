@@ -192,3 +192,120 @@ export const getInventoryStats = asyncHandler(async (req, res) => {
         activeProducts,
     }, 'Inventory stats fetched.'));
 });
+
+// GET /api/admin/analytics/wholesale
+export const getWholesaleStats = asyncHandler(async (req, res) => {
+    const activeOrderFilter = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
+    const approvedVendorFilter = { status: 'approved' };
+
+    const [
+        retailOnlyVendors,
+        wholesaleOnlyVendors,
+        hybridVendors,
+        wholesaleProducts,
+        totalProducts,
+        orderTypeAgg,
+        bulkRevenueAgg,
+        topBulkProducts,
+    ] = await Promise.all([
+        // Legacy vendors have no sellingChannels sub-document, so retail is
+        // matched as "not explicitly false" to keep historical data counted.
+        Vendor.countDocuments({
+            ...approvedVendorFilter,
+            'sellingChannels.retail.enabled': { $ne: false },
+            'sellingChannels.wholesale.enabled': { $ne: true },
+        }),
+        Vendor.countDocuments({
+            ...approvedVendorFilter,
+            'sellingChannels.retail.enabled': false,
+            'sellingChannels.wholesale.enabled': true,
+        }),
+        Vendor.countDocuments({
+            ...approvedVendorFilter,
+            'sellingChannels.retail.enabled': { $ne: false },
+            'sellingChannels.wholesale.enabled': true,
+        }),
+        Product.countDocuments({ isActive: true, wholesaleEnabled: true }),
+        Product.countDocuments({ isActive: true }),
+        Order.aggregate([
+            { $match: activeOrderFilter },
+            {
+                $group: {
+                    _id: { $ifNull: ['$orderType', 'retail'] },
+                    count: { $sum: 1 },
+                    revenue: { $sum: '$total' },
+                },
+            },
+        ]),
+        // Bulk revenue is summed from the wholesale order lines themselves so it
+        // reflects the amount actually paid at tier pricing.
+        Order.aggregate([
+            { $match: activeOrderFilter },
+            { $unwind: '$items' },
+            { $match: { 'items.pricingType': 'wholesale' } },
+            {
+                $group: {
+                    _id: null,
+                    bulkRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+                    unitsSold: { $sum: '$items.quantity' },
+                    customerSavings: { $sum: { $ifNull: ['$items.savings', 0] } },
+                },
+            },
+        ]),
+        Order.aggregate([
+            { $match: activeOrderFilter },
+            { $unwind: '$items' },
+            { $match: { 'items.pricingType': 'wholesale' } },
+            {
+                $group: {
+                    _id: '$items.productId',
+                    name: { $first: '$items.name' },
+                    unitsSold: { $sum: '$items.quantity' },
+                    revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+                },
+            },
+            { $sort: { revenue: -1 } },
+            { $limit: 5 },
+        ]),
+    ]);
+
+    const orderTypeCounts = orderTypeAgg.reduce(
+        (acc, row) => {
+            acc[row._id] = { count: row.count, revenue: row.revenue };
+            return acc;
+        },
+        {}
+    );
+    const wholesaleOrders = (orderTypeCounts.wholesale?.count || 0) + (orderTypeCounts.mixed?.count || 0);
+
+    res.status(200).json(new ApiResponse(200, {
+        vendors: {
+            retailOnly: retailOnlyVendors,
+            wholesaleOnly: wholesaleOnlyVendors,
+            hybrid: hybridVendors,
+            wholesaleCapable: wholesaleOnlyVendors + hybridVendors,
+        },
+        products: {
+            wholesaleProducts,
+            totalProducts,
+            retailProducts: Math.max(0, totalProducts - wholesaleProducts),
+        },
+        orders: {
+            retail: orderTypeCounts.retail?.count || 0,
+            wholesale: orderTypeCounts.wholesale?.count || 0,
+            mixed: orderTypeCounts.mixed?.count || 0,
+            wholesaleTotal: wholesaleOrders,
+        },
+        revenue: {
+            bulkRevenue: parseFloat((bulkRevenueAgg[0]?.bulkRevenue || 0).toFixed(2)),
+            unitsSold: bulkRevenueAgg[0]?.unitsSold || 0,
+            customerSavings: parseFloat((bulkRevenueAgg[0]?.customerSavings || 0).toFixed(2)),
+        },
+        topBulkProducts: topBulkProducts.map((product) => ({
+            productId: String(product._id || ''),
+            name: product.name || 'Unknown product',
+            unitsSold: product.unitsSold,
+            revenue: parseFloat((product.revenue || 0).toFixed(2)),
+        })),
+    }, 'Wholesale stats fetched.'));
+});

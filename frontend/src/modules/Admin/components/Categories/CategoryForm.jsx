@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import Button from "../Button";
 import { uploadAdminImage } from "../../services/adminService";
 
-const CategoryForm = ({ category, parentId, onClose, onSave }) => {
+const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith("/app");
   const { categories, createCategory, updateCategory, getCategoryById } =
@@ -75,9 +75,11 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
 
     try {
       if (isEdit) {
+        // Experience is immutable after creation — the server ignores it too.
         await updateCategory(category.id, formData);
       } else {
-        await createCategory(formData);
+        // New categories are created in whichever tree the admin is managing.
+        await createCategory({ ...formData, ...(experience ? { experience } : {}) });
       }
       onSave?.();
       onClose();

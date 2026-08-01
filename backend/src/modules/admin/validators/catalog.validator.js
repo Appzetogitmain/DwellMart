@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { EXPERIENCE_VALUES } from '../../../constants/experiences.js';
 
 const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
 
@@ -25,6 +26,25 @@ const variantSchema = Joi.object({
         color: Joi.string().trim().allow('').optional(),
     }).optional(),
     defaultSelection: Joi.object().optional(),
+}).optional();
+
+const priceTierSchema = Joi.object({
+    minQty: Joi.number().integer().min(1).required(),
+    price: Joi.number().min(0).required(),
+});
+
+const quickCommerceSchema = Joi.object({
+    packSize: Joi.string().trim().max(60).allow('', null).optional(),
+    shelfLifeDays: Joi.number().integer().min(0).allow(null, '').optional(),
+    isPerishable: Joi.boolean().optional(),
+    maxOrderQty: Joi.number().integer().min(1).allow(null, '').optional(),
+    handlingNote: Joi.string().trim().max(200).allow('', null).optional(),
+}).optional();
+
+const wholesaleSchema = Joi.object({
+    moqEnabled: Joi.boolean().optional(),
+    moq: Joi.number().integer().min(1).allow(null, '').optional(),
+    priceTiers: Joi.array().items(priceTierSchema).optional(),
 }).optional();
 
 const productBaseSchema = {
@@ -61,6 +81,12 @@ const productBaseSchema = {
     seoDescription: Joi.string().allow('').optional(),
     relatedProducts: Joi.array().items(objectId).optional(),
     faqs: Joi.array().items(faqSchema).optional(),
+    retailEnabled: Joi.boolean().optional(),
+    wholesaleEnabled: Joi.boolean().optional(),
+    wholesale: wholesaleSchema,
+    quickCommerceEnabled: Joi.boolean().optional(),
+    quickCommerceCategoryId: objectId.allow(null, '').optional(),
+    quickCommerce: quickCommerceSchema,
     variants: variantSchema,
 };
 
@@ -111,6 +137,8 @@ export const createCategorySchema = Joi.object({
     parentId: objectId.allow(null, '').optional(),
     order: Joi.number().integer().min(0).optional(),
     isActive: Joi.boolean().optional(),
+    // Which category tree this belongs to. Omitted → marketplace (unchanged).
+    experience: Joi.string().valid(...EXPERIENCE_VALUES).optional(),
 });
 
 export const updateCategorySchema = Joi.object({

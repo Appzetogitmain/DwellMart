@@ -4,6 +4,7 @@ import {
   FiTrendingUp,
   FiPackage,
   FiShoppingBag,
+  FiLayers,
 } from "react-icons/fi";
 import { MdCurrencyRupee } from "react-icons/md";
 import { motion } from "framer-motion";
@@ -29,9 +30,12 @@ const Analytics = () => {
     totalOrders: 0,
     totalProducts: 0,
   });
+  const [wholesale, setWholesale] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
+  // Wholesale analytics are only meaningful for vendors selling on that channel.
+  const showWholesale = vendor?.sellingChannels?.wholesale?.enabled === true;
 
   useEffect(() => {
     if (!vendorId) {
@@ -55,6 +59,7 @@ const Analytics = () => {
         const timeseries = Array.isArray(data?.timeseries) ? data.timeseries : [];
         setAnalyticsData(timeseries);
         setStatusData(Array.isArray(data?.statusBreakdown) ? data.statusBreakdown : []);
+        setWholesale(data?.wholesale ?? null);
         setSummary({
           totalRevenue: data?.summary?.totalRevenue ?? 0,
           pendingEarnings: data?.summary?.pendingEarnings ?? 0,
@@ -64,6 +69,7 @@ const Analytics = () => {
       } catch {
         setAnalyticsData([]);
         setStatusData([]);
+        setWholesale(null);
         setSummary({
           totalRevenue: 0,
           pendingEarnings: 0,
@@ -212,6 +218,86 @@ const Analytics = () => {
           <p className="text-xs text-gray-500 mt-2">Awaiting settlement</p>
         </div>
       </div>
+
+      {/* Wholesale Analytics — only for vendors on the wholesale channel */}
+      {showWholesale && wholesale && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-800">Wholesale Performance</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Retail Orders</p>
+                <FiShoppingBag className="text-blue-600" />
+              </div>
+              <p className="text-2xl font-bold text-gray-800">{wholesale.retailOrders ?? 0}</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Wholesale Orders</p>
+                <FiLayers className="text-emerald-600" />
+              </div>
+              <p className="text-2xl font-bold text-gray-800">{wholesale.wholesaleOrders ?? 0}</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Bulk Revenue</p>
+                <MdCurrencyRupee className="text-green-600" />
+              </div>
+              <p className="text-2xl font-bold text-gray-800">
+                {formatPrice(wholesale.bulkRevenue ?? 0)}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                {formatPrice(wholesale.customerSavings ?? 0)} passed to customers
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Most Used Tier</p>
+                <FiTrendingUp className="text-purple-600" />
+              </div>
+              <p className="text-2xl font-bold text-gray-800">
+                {wholesale.mostUsedTier ? `${wholesale.mostUsedTier.minQty}+ units` : "—"}
+              </p>
+              {wholesale.mostUsedTier && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Applied {wholesale.mostUsedTier.timesUsed} time
+                  {wholesale.mostUsedTier.timesUsed === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {wholesale.topBulkProducts?.length > 0 && (
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 overflow-x-auto">
+              <h3 className="text-base font-bold text-gray-800 mb-4">Top Bulk Products</h3>
+              <table className="w-full text-sm min-w-[420px]">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-200">
+                    <th className="pb-2 font-semibold">Product</th>
+                    <th className="pb-2 font-semibold text-right">Units</th>
+                    <th className="pb-2 font-semibold text-right">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wholesale.topBulkProducts.map((product) => (
+                    <tr key={product.productId} className="border-b border-gray-100 last:border-0">
+                      <td className="py-2 text-gray-800 font-medium">{product.name}</td>
+                      <td className="py-2 text-right text-gray-600">{product.unitsSold}</td>
+                      <td className="py-2 text-right text-gray-800 font-semibold">
+                        {formatPrice(product.revenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {analyticsData.length > 0 ? (
         <>

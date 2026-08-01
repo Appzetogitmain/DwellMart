@@ -253,7 +253,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 <div>
                                     <p className="font-semibold">Step 1: Download Official Template</p>
                                     <p className="text-xs text-blue-600 mt-1">
-                                        Use our pre-formatted spreadsheet template with predefined columns for Category, Brand, Price, Variants, and Multi-Images.
+                                        Use our pre-formatted spreadsheet template with predefined columns for Category, Brand, Price, Variants, Multi-Images, and Wholesale bulk pricing (tiers use the format 10:950|25:900).
                                     </p>
                                 </div>
                             </div>

@@ -56,7 +56,7 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
     const { start, end } = getDateRange(period);
     const vendorObjectId = new mongoose.Types.ObjectId(req.user.id);
 
-    const [orders, productsCount, commissions] = await Promise.all([
+    const [orders, productsCount, commissions, wholesaleProductsCount] = await Promise.all([
         Order.find({
             'vendorItems.vendorId': req.user.id,
             isDeleted: { $ne: true },
@@ -74,11 +74,20 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
         })
             .select('vendorEarnings status')
             .lean(),
+        Product.countDocuments({ vendorId: req.user.id, wholesaleEnabled: true }),
     ]);
 
     const dailyMap = {};
     const statusCounts = {};
     let activeOrdersCount = 0;
+    // Wholesale accumulators (blueprint §8).
+    let retailOrdersCount = 0;
+    let wholesaleOrdersCount = 0;
+    let bulkRevenue = 0;
+    let totalSavingsPassed = 0;
+    const tierUsage = {};
+    const bulkProductMap = {};
+
     for (const order of orders) {
         const vendorItem = order?.vendorItems?.find(
             (vi) => String(vi?.vendorId) === String(vendorObjectId)
@@ -99,6 +108,50 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
 
         const status = getVendorOrderStatus(order, req.user.id);
         statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+        // Classify this vendor's slice of the order. Legacy orders without
+        // orderType default to 'retail'.
+        const vendorOrderType = String(vendorItem?.orderType || 'retail');
+        if (vendorOrderType === 'retail') {
+            retailOrdersCount += 1;
+        } else {
+            wholesaleOrdersCount += 1;
+        }
+
+        for (const line of vendorItem?.items || []) {
+            if (String(line?.pricingType) !== 'wholesale') continue;
+
+            const lineRevenue = Number(line?.price || 0) * Number(line?.quantity || 0);
+            bulkRevenue += lineRevenue;
+            totalSavingsPassed += Number(line?.savings || 0);
+
+            const tierMinQty = line?.appliedTier?.minQty;
+            if (Number.isFinite(Number(tierMinQty))) {
+                const tierKey = String(tierMinQty);
+                if (!tierUsage[tierKey]) {
+                    tierUsage[tierKey] = { minQty: Number(tierMinQty), timesUsed: 0, unitsSold: 0, revenue: 0 };
+                }
+                tierUsage[tierKey].timesUsed += 1;
+                tierUsage[tierKey].unitsSold += Number(line?.quantity || 0);
+                tierUsage[tierKey].revenue += lineRevenue;
+            }
+
+            const productKey = String(line?.productId || '');
+            if (!productKey) continue;
+            if (!bulkProductMap[productKey]) {
+                bulkProductMap[productKey] = {
+                    productId: productKey,
+                    name: line?.name || 'Unknown product',
+                    image: line?.image || '',
+                    unitsSold: 0,
+                    revenue: 0,
+                    orders: 0,
+                };
+            }
+            bulkProductMap[productKey].unitsSold += Number(line?.quantity || 0);
+            bulkProductMap[productKey].revenue += lineRevenue;
+            bulkProductMap[productKey].orders += 1;
+        }
     }
 
     const timeseries = Object.values(dailyMap).sort(
@@ -122,10 +175,28 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
         count,
     }));
 
+    const pricingTiers = Object.values(tierUsage).sort((a, b) => b.timesUsed - a.timesUsed);
+    const wholesale = {
+        retailOrders: retailOrdersCount,
+        wholesaleOrders: wholesaleOrdersCount,
+        bulkRevenue: parseFloat(bulkRevenue.toFixed(2)),
+        customerSavings: parseFloat(totalSavingsPassed.toFixed(2)),
+        wholesaleProducts: wholesaleProductsCount,
+        mostUsedTier: pricingTiers[0] || null,
+        pricingTiers,
+        topBulkProducts: Object.values(bulkProductMap)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5)
+            .map((product) => ({
+                ...product,
+                revenue: parseFloat(product.revenue.toFixed(2)),
+            })),
+    };
+
     res.status(200).json(
         new ApiResponse(
             200,
-            { summary, timeseries, statusBreakdown },
+            { summary, timeseries, statusBreakdown, wholesale },
             'Analytics overview fetched.'
         )
     );

@@ -7,6 +7,7 @@ import { useOrderStore } from '../../../shared/store/orderStore';
 import { useCartStore } from '../../../shared/store/useStore';
 import { formatPrice } from '../../../shared/utils/helpers';
 import Price from '../../../shared/components/Price';
+import WholesaleBadge from '../../../shared/components/WholesaleBadge';
 import { formatVariantLabel, getVariantSignature } from '../../../shared/utils/variant';
 import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
@@ -258,7 +259,10 @@ const MobileOrderDetail = () => {
                   <h1 className="text-xl font-bold text-content">{t('Order Details')}</h1>
                   <p className="text-sm text-content-secondary">{t('Order')} #{order.id}</p>
                 </div>
-                <Badge variant={order.status}>{t(order.status.toUpperCase())}</Badge>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <Badge variant={order.status}>{t(order.status.toUpperCase())}</Badge>
+                  <WholesaleBadge orderType={order.orderType} />
+                </div>
               </div>
             </div>
 
@@ -295,9 +299,15 @@ const MobileOrderDetail = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-content text-sm mb-1">{item.name}</h3>
-                                <p className="text-xs text-content-secondary">
-                                  <Price amount={item.price} /> x {item.quantity}
+                                <p className="text-xs text-content-secondary flex items-center gap-2 flex-wrap">
+                                  <span><Price amount={item.price} /> x {item.quantity}</span>
+                                  <WholesaleBadge orderType={item.pricingType} context="item" />
                                 </p>
+                                {Number(item.savings) > 0 && (
+                                  <p className="text-[11px] font-semibold text-status-success">
+                                    Saved <Price amount={item.savings} />
+                                  </p>
+                                )}
                                 {formatVariantLabel(item?.variant) && (
                                   <p className="text-[11px] text-content-muted">
                                     {formatVariantLabel(item?.variant)}
@@ -326,9 +336,15 @@ const MobileOrderDetail = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-content text-sm mb-1">{item.name}</h3>
-                          <p className="text-xs text-content-secondary">
-                            <Price amount={item.price} /> x {item.quantity}
+                          <p className="text-xs text-content-secondary flex items-center gap-2 flex-wrap">
+                            <span><Price amount={item.price} /> x {item.quantity}</span>
+                            <WholesaleBadge orderType={item.pricingType} context="item" />
                           </p>
+                          {Number(item.savings) > 0 && (
+                            <p className="text-[11px] font-semibold text-status-success">
+                              Saved <Price amount={item.savings} />
+                            </p>
+                          )}
                           {formatVariantLabel(item?.variant) && (
                                   <p className="text-[11px] text-content-muted">
                                     {formatVariantLabel(item?.variant)}
@@ -417,6 +433,12 @@ const MobileOrderDetail = () => {
                     <span>{t('Total')}</span>
                     <Price amount={order.total} className="text-brand-primary" />
                   </div>
+                  {Number(order.totalSavings) > 0 && (
+                    <div className="flex justify-between text-sm font-semibold text-status-success pt-1">
+                      <span>{t('Bulk Savings')}</span>
+                      <Price amount={order.totalSavings} />
+                    </div>
+                  )}
                 </div>
               </div>
 

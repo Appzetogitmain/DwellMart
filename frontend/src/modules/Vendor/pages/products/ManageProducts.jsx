@@ -11,6 +11,7 @@ import { formatPrice, getPlaceholderImage, getImageUrl } from "../../../../share
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
+import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import { exportVendorProductsCatalog } from "../../services/vendorService";
 import api from "../../../../shared/utils/api";
 
@@ -25,6 +26,9 @@ const ManageProducts = () => {
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
   const { categories, initialize: initCategories } = useCategoryStore();
+  const { settings, initialize: initSettings } = useSettingsStore();
+  const wholesaleMarketplaceEnabled =
+    settings?.features?.wholesaleMarketplaceEnabled === true;
 
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -32,6 +36,7 @@ const ManageProducts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     productId: null,
@@ -41,10 +46,11 @@ const ManageProducts = () => {
 
   useEffect(() => {
     initCategories();
+    initSettings();
     if (vendorId) {
       fetchProducts({ fetchAll: true, limit: 200 });
     }
-  }, [vendorId, initCategories, fetchProducts]);
+  }, [vendorId, initCategories, initSettings, fetchProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -67,8 +73,14 @@ const ManageProducts = () => {
       );
     }
 
+    if (selectedChannel === "retail") {
+      filtered = filtered.filter((product) => product.retailEnabled !== false);
+    } else if (selectedChannel === "wholesale") {
+      filtered = filtered.filter((product) => product.wholesaleEnabled === true);
+    }
+
     return filtered;
-  }, [products, searchQuery, selectedStatus, selectedCategory]);
+  }, [products, searchQuery, selectedStatus, selectedCategory, selectedChannel]);
 
   const handleActionClick = (targetPath) => {
     api.get('/vendor/subscription')
@@ -140,6 +152,25 @@ const ManageProducts = () => {
         />
       ),
     },
+    ...(wholesaleMarketplaceEnabled
+      ? [
+          {
+            key: "wholesaleEnabled",
+            label: "Channels",
+            sortable: false,
+            render: (_, row) => {
+              const retail = row.retailEnabled !== false;
+              const wholesale = row.wholesaleEnabled === true;
+              return (
+                <div className="flex flex-wrap items-center gap-1">
+                  {retail && <Badge variant="info">Retail</Badge>}
+                  {wholesale && <Badge variant="success">Wholesale</Badge>}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: "actions",
       label: "Actions",
@@ -222,6 +253,29 @@ const ManageProducts = () => {
         </div>
       }
     >
+      {wholesaleMarketplaceEnabled && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
+          <label
+            htmlFor="channel-filter"
+            className="text-sm font-semibold text-gray-700"
+          >
+            Selling Channel
+          </label>
+          <div className="w-full sm:w-56">
+            <AnimatedSelect
+              name="channel-filter"
+              value={selectedChannel}
+              onChange={(e) => setSelectedChannel(e.target.value)}
+              options={[
+                { value: "all", label: "All Channels" },
+                { value: "retail", label: "Retail" },
+                { value: "wholesale", label: "Wholesale" },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         data={filteredProducts}

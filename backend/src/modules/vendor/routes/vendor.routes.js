@@ -43,7 +43,9 @@ import {
     verifyResetOtpSchema,
     resetPasswordSchema,
     requestRegistrationOtpSchema,
-    verifyRegistrationOtpSchema
+    verifyRegistrationOtpSchema,
+    updateSellingChannelsSchema,
+    updateQuickCommerceSettingsSchema
 } from '../validators/auth.validator.js';
 import { changePlanSchema } from '../validators/subscription.validator.js';
 import {
@@ -61,6 +63,12 @@ const parseJsonFields = (req, res, next) => {
     try {
         if (typeof req.body.address === 'string') {
             req.body.address = JSON.parse(req.body.address);
+        }
+        if (typeof req.body.sellingChannels === 'string') {
+            req.body.sellingChannels = JSON.parse(req.body.sellingChannels);
+        }
+        if (typeof req.body.wholesaleProfile === 'string') {
+            req.body.wholesaleProfile = JSON.parse(req.body.wholesaleProfile);
         }
         if (req.body.agreedToTerms === 'true') req.body.agreedToTerms = true;
         if (req.body.agreedToTerms === 'false') req.body.agreedToTerms = false;
@@ -95,6 +103,8 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
+router.put('/auth/selling-channels', ...vendorAuth, validate(updateSellingChannelsSchema), authController.updateSellingChannels);
+router.put('/quick-commerce/settings', ...vendorAuth, validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
 router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
 

@@ -5,8 +5,22 @@ import Price from "../../../../shared/components/Price";
 import { formatVariantLabel, getVariantSignature } from "../../../../shared/utils/variant";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../../hooks/useDynamicTranslation";
+import { resolvePriceForQuantity } from "../../../../shared/utils/resolvePriceForQuantity";
 
-const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTotal }) => {
+/** Preview unit price for a cart line, mirroring the backend pricing engine. */
+const lineUnitPrice = (item) =>
+  resolvePriceForQuantity(
+    {
+      retailEnabled: item?.retailEnabled,
+      wholesaleEnabled: item?.wholesaleEnabled,
+      wholesale: item?.wholesale,
+    },
+    Number(item?.price) || 0,
+    Number(item?.quantity) || 0,
+    { vendorWholesaleEnabled: item?.vendorWholesaleEnabled !== false }
+  ).unitPrice;
+
+const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTotal, bulkSavings = 0 }) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Order Summary",
     "Subtotal",
@@ -14,7 +28,8 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
     "Shipping",
     "FREE",
     "Tax",
-    "Total"
+    "Total",
+    "Bulk Savings"
   ]);
 
   const { translateArray } = useDynamicTranslation();
@@ -61,7 +76,7 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-content truncate text-xs">{item.name}</p>
                     <p className="text-content-secondary text-xs">
-                      <Price amount={item.price} /> x {item.quantity}
+                      <Price amount={lineUnitPrice(item)} /> x {item.quantity}
                     </p>
                     {formatVariantLabel(item?.variant) && (
                       <p className="text-[11px] text-content-muted">{formatVariantLabel(item?.variant)}</p>
@@ -79,6 +94,12 @@ const OrderSummary = ({ itemsByVendor, total, discount, shipping, tax, finalTota
           <span>{t('Subtotal')}</span>
           <Price amount={total} />
         </div>
+        {bulkSavings > 0 && (
+          <div className="flex justify-between text-status-success font-semibold">
+            <span>{t('Bulk Savings')}</span>
+            <Price amount={bulkSavings} prefix="-" />
+          </div>
+        )}
         {discount > 0 && (
           <div className="flex justify-between text-status-success">
             <span>{t('Discount')}</span>

@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
+import { QUICK_COMMERCE_ORDER_STATUS_VALUES } from '../constants/quickCommerce.js';
 
 export const INTEGRATION_PARTNER_STATUSES = [
     'NEW',
@@ -25,6 +27,16 @@ const orderItemSchema = new mongoose.Schema({
     quantity: Number,
     variant: { type: mongoose.Schema.Types.Mixed, default: {} },
     variantKey: String,
+    // Wholesale pricing snapshot. Defaults reproduce pre-wholesale behaviour so
+    // historical orders remain valid without migration.
+    pricingType: { type: String, enum: ['retail', 'wholesale'], default: 'retail' },
+    appliedTier: {
+        _id: false,
+        minQty: Number,
+        price: Number,
+    },
+    unitRetailPrice: Number,
+    savings: { type: Number, default: 0 },
 });
 
 const vendorItemGroupSchema = new mongoose.Schema({
@@ -35,6 +47,7 @@ const vendorItemGroupSchema = new mongoose.Schema({
     shipping: Number,
     tax: Number,
     discount: Number,
+    orderType: { type: String, enum: ['retail', 'wholesale', 'mixed'], default: 'retail' },
     status: {
         type: String,
         enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
@@ -116,6 +129,50 @@ const orderSchema = new mongoose.Schema(
         tax: { type: Number, default: 0 },
         discount: { type: Number, default: 0 },
         total: { type: Number, default: 0 },
+        orderType: {
+            type: String,
+            enum: ['retail', 'wholesale', 'mixed'],
+            default: 'retail',
+            index: true,
+        },
+        // Which shopping experience produced this order. Historical orders
+        // default to marketplace, so no migration is required.
+        experience: {
+            type: String,
+            enum: EXPERIENCE_VALUES,
+            default: EXPERIENCES.MARKETPLACE,
+            index: true,
+        },
+        // Populated only for Quick Commerce orders.
+        quickCommerce: {
+            // The promise made to the customer, locked in at checkout.
+            promisedEtaMinutes: { type: Number },
+            promisedAt: { type: Date },
+            etaBreakdown: {
+                _id: false,
+                prepMins: Number,
+                travelMins: Number,
+            },
+            status: {
+                type: String,
+                enum: QUICK_COMMERCE_ORDER_STATUS_VALUES,
+            },
+            acceptedAt: { type: Date },
+            preparedAt: { type: Date },
+            pickedUpAt: { type: Date },
+            customerLocation: {
+                type: {
+                    type: String,
+                    enum: ['Point'],
+                },
+                coordinates: { type: [Number] },
+            },
+            deliveryDistanceKm: { type: Number },
+            deliveryFee: { type: Number, default: 0 },
+            packagingFee: { type: Number, default: 0 },
+            slaBreached: { type: Boolean, default: false },
+        },
+        totalSavings: { type: Number, default: 0 },
         couponCode: { type: String },
         couponDiscount: { type: Number, default: 0 },
         idempotencyKey: { type: String, sparse: true },

@@ -21,6 +21,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
 import StripeSubscriptionForm from '../components/StripeSubscriptionForm';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS = ['Plans', 'Registration', 'Payment', 'Thank You'];
 const ONBOARDING_STORAGE_KEY = 'vendor-onboarding-email:/vendor/register';
@@ -28,6 +29,9 @@ const ONBOARDING_STORAGE_KEY = 'vendor-onboarding-email:/vendor/register';
 const VendorRegister = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { settings, initialize: initializeSettings } = useSettingsStore();
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [currentStep, setCurrentStep] = useState(0);
   const [plans, setPlans] = useState([]);
   const [onboardingEmail, setOnboardingEmail] = useState('');
@@ -69,6 +73,25 @@ const VendorRegister = () => {
       state: '',
       zipCode: '',
       country: '',
+    },
+    sellingChannels: {
+      retail: true,
+      wholesale: false,
+      quickCommerce: false,
+    },
+    wholesaleProfile: {
+      gstNumber: '',
+      businessName: '',
+      businessAddress: {
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+      },
+      wholesaleContactName: '',
+      wholesaleContactPhone: '',
+      bulkOrderSupportEmail: '',
     },
   });
 
@@ -197,6 +220,7 @@ const VendorRegister = () => {
       }
     };
     fetchData();
+    initializeSettings();
   }, [location.state, navigate]);
 
   const handleChange = (event) => {
@@ -208,9 +232,45 @@ const VendorRegister = () => {
         ...prev,
         address: { ...prev.address, [field]: value },
       }));
+    } else if (name.startsWith('wholesaleProfile.businessAddress.')) {
+      const field = name.split('.')[2];
+      setFormData((prev) => ({
+        ...prev,
+        wholesaleProfile: {
+          ...prev.wholesaleProfile,
+          businessAddress: { ...prev.wholesaleProfile.businessAddress, [field]: value },
+        },
+      }));
+    } else if (name.startsWith('wholesaleProfile.')) {
+      const field = name.split('.')[1];
+      setFormData((prev) => ({
+        ...prev,
+        wholesaleProfile: { ...prev.wholesaleProfile, [field]: value },
+      }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleRetailToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, retail: checked },
+    }));
+  };
+
+  const handleWholesaleToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, wholesale: checked },
+    }));
+  };
+
+  const handleQuickCommerceToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, quickCommerce: checked },
+    }));
   };
 
   const handleRequestOtp = async () => {
@@ -398,6 +458,20 @@ const VendorRegister = () => {
       return;
     }
 
+    const wholesaleRequested = wholesaleMarketplaceEnabled && formData.sellingChannels.wholesale;
+    const quickCommerceRequested = quickCommerceEnabled && formData.sellingChannels.quickCommerce;
+    if (!formData.sellingChannels.retail && !wholesaleRequested && !quickCommerceRequested) {
+      toast.error('Please enable at least one selling channel (Retail or Wholesale).');
+      return;
+    }
+    if (wholesaleRequested) {
+      const wp = formData.wholesaleProfile;
+      if (!wp.gstNumber || !wp.businessName || !wp.wholesaleContactName || !wp.wholesaleContactPhone || !wp.bulkOrderSupportEmail) {
+        toast.error('Please fill in all Wholesale business details (GST number, business name, wholesale contact, and support email).');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       const submitData = new FormData();
@@ -412,6 +486,14 @@ const VendorRegister = () => {
       submitData.append('address', JSON.stringify(formData.address));
       submitData.append('agreedToTerms', true);
       submitData.append('document', registrationDocument);
+      submitData.append('sellingChannels', JSON.stringify({
+        retail: { enabled: formData.sellingChannels.retail },
+        wholesale: { enabled: wholesaleRequested },
+        quickCommerce: { enabled: quickCommerceRequested },
+      }));
+      if (wholesaleRequested) {
+        submitData.append('wholesaleProfile', JSON.stringify(formData.wholesaleProfile));
+      }
 
       const response = await api.post('/vendor/auth/register', submitData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -436,6 +518,9 @@ const VendorRegister = () => {
         toast.success('Registration complete. Awaiting admin approval.');
         navigate('/vendor/login');
       }
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || 'Registration failed. Please try again.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -725,6 +810,157 @@ const VendorRegister = () => {
                         className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
                       />
                     </div>
+
+                    {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
+                      <div className="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                        <p className="mb-3 text-sm font-semibold text-gray-700">Selling Channels</p>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={formData.sellingChannels.retail}
+                              onChange={(event) => handleRetailToggle(event.target.checked)}
+                              className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
+                            />
+                            Retail Marketplace
+                          </label>
+                          {wholesaleMarketplaceEnabled && (
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={formData.sellingChannels.wholesale}
+                                onChange={(event) => handleWholesaleToggle(event.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
+                              />
+                              Wholesale Marketplace
+                            </label>
+                          )}
+                          {quickCommerceEnabled && (
+                            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={formData.sellingChannels.quickCommerce}
+                                onChange={(event) => handleQuickCommerceToggle(event.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#ffc101] focus:ring-[#ffc101]"
+                              />
+                              Quick Commerce
+                            </label>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-gray-500">At least one selling channel must stay enabled.</p>
+
+                        {formData.sellingChannels.wholesale && (
+                          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                                GST Number <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                name="wholesaleProfile.gstNumber"
+                                value={formData.wholesaleProfile.gstNumber}
+                                onChange={handleChange}
+                                required={formData.sellingChannels.wholesale}
+                                placeholder="22AAAAA0000A1Z5"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                                Business Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                name="wholesaleProfile.businessName"
+                                value={formData.wholesaleProfile.businessName}
+                                onChange={handleChange}
+                                required={formData.sellingChannels.wholesale}
+                                placeholder="Registered business name"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                                Wholesale Contact Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                name="wholesaleProfile.wholesaleContactName"
+                                value={formData.wholesaleProfile.wholesaleContactName}
+                                onChange={handleChange}
+                                required={formData.sellingChannels.wholesale}
+                                placeholder="Contact person for bulk orders"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                                Wholesale Contact Phone <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                name="wholesaleProfile.wholesaleContactPhone"
+                                value={formData.wholesaleProfile.wholesaleContactPhone}
+                                onChange={handleChange}
+                                required={formData.sellingChannels.wholesale}
+                                placeholder="+1234567890"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                                Bulk Order Support Email <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="email"
+                                name="wholesaleProfile.bulkOrderSupportEmail"
+                                value={formData.wholesaleProfile.bulkOrderSupportEmail}
+                                onChange={handleChange}
+                                required={formData.sellingChannels.wholesale}
+                                placeholder="bulkorders@yourstore.com"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="mb-1.5 block text-sm font-medium text-gray-600">Business Address</label>
+                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <input
+                                  name="wholesaleProfile.businessAddress.street"
+                                  value={formData.wholesaleProfile.businessAddress.street}
+                                  onChange={handleChange}
+                                  placeholder="Street"
+                                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                                />
+                                <input
+                                  name="wholesaleProfile.businessAddress.city"
+                                  value={formData.wholesaleProfile.businessAddress.city}
+                                  onChange={handleChange}
+                                  placeholder="City"
+                                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                                />
+                                <input
+                                  name="wholesaleProfile.businessAddress.state"
+                                  value={formData.wholesaleProfile.businessAddress.state}
+                                  onChange={handleChange}
+                                  placeholder="State"
+                                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                                />
+                                <input
+                                  name="wholesaleProfile.businessAddress.zipCode"
+                                  value={formData.wholesaleProfile.businessAddress.zipCode}
+                                  onChange={handleChange}
+                                  placeholder="Zip Code"
+                                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                                />
+                                <input
+                                  name="wholesaleProfile.businessAddress.country"
+                                  value={formData.wholesaleProfile.businessAddress.country}
+                                  onChange={handleChange}
+                                  placeholder="Country"
+                                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 sm:col-span-2"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
