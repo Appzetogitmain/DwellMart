@@ -573,14 +573,50 @@ const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
         if (pc._id) countMap.set(String(pc._id), pc.count);
     });
 
-    const normalized = categories.map((cat) => ({
+    const rootMap = new Map();
+    const rootCategories = [];
+
+    // First pass: identify root categories vs subcategories
+    categories.forEach((cat) => {
+        const catObj = {
+            ...cat,
+            id: cat._id,
+            experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
+            productCount: countMap.get(String(cat._id)) || 0,
+            children: [],
+            subcategories: [],
+        };
+        if (!cat.parentId) {
+            rootMap.set(String(cat._id), catObj);
+            rootCategories.push(catObj);
+        }
+    });
+
+    // Second pass: attach subcategories to their parent root category
+    categories.forEach((cat) => {
+        if (cat.parentId) {
+            const parent = rootMap.get(String(cat.parentId));
+            if (parent) {
+                const childObj = {
+                    ...cat,
+                    id: cat._id,
+                    experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
+                    productCount: countMap.get(String(cat._id)) || 0,
+                };
+                parent.children.push(childObj);
+                parent.subcategories.push(childObj);
+            }
+        }
+    });
+
+    const result = rootCategories.length > 0 ? rootCategories : categories.map((cat) => ({
         ...cat,
         id: cat._id,
         experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
         productCount: countMap.get(String(cat._id)) || 0,
     }));
 
-    res.status(200).json(new ApiResponse(200, normalized, 'Categories fetched.'));
+    res.status(200).json(new ApiResponse(200, result, 'Categories fetched.'));
 });
 
 // GET /api/categories & GET /api/categories/all (public)

@@ -18,14 +18,20 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
-  // Set selected category on mount, from initialCategoryId prop or default to first category
+  // Filter categories to only include root/main categories (parentId is null/undefined) for sidebar
+  const rootCategories = useMemo(() => {
+    const roots = categories.filter((cat) => !cat.parentId);
+    return roots.length > 0 ? roots : categories;
+  }, [categories]);
+
+  // Set selected category on mount, from initialCategoryId prop or default to first root category
   useEffect(() => {
     if (initialCategoryId) {
       setSelectedCategoryId(initialCategoryId);
-    } else if (categories.length > 0 && !selectedCategoryId) {
-      setSelectedCategoryId(categories[0]._id || categories[0].id);
+    } else if (rootCategories.length > 0 && !selectedCategoryId) {
+      setSelectedCategoryId(rootCategories[0]._id || rootCategories[0].id);
     }
-  }, [categories, initialCategoryId]);
+  }, [rootCategories, initialCategoryId]);
 
   // Extract selected category object
   const activeCategory = useMemo(() => {
@@ -34,11 +40,20 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
     );
   }, [categories, selectedCategoryId]);
 
-  // Extract subcategories if present
+  // Extract subcategories for active main category
   const subcategories = useMemo(() => {
-    if (!activeCategory?.children && !activeCategory?.subcategories) return [];
-    return activeCategory.children || activeCategory.subcategories || [];
-  }, [activeCategory]);
+    if (!activeCategory) return [];
+    if (Array.isArray(activeCategory.children) && activeCategory.children.length > 0) {
+      return activeCategory.children;
+    }
+    if (Array.isArray(activeCategory.subcategories) && activeCategory.subcategories.length > 0) {
+      return activeCategory.subcategories;
+    }
+    const actId = normalizeId(activeCategory._id || activeCategory.id);
+    return categories.filter(
+      (cat) => cat.parentId && normalizeId(typeof cat.parentId === 'object' ? cat.parentId._id : cat.parentId) === actId
+    );
+  }, [activeCategory, categories]);
 
   // Reset selected subcategory when main category changes
   useEffect(() => {
@@ -97,7 +112,7 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
       {/* Mobile-Only Horizontal Category Chips Row */}
       <div className="lg:hidden mb-3 overflow-x-auto scrollbar-hide px-1">
         <div className="flex items-center gap-2 py-1">
-          {categories.map((cat) => {
+          {rootCategories.map((cat) => {
             const catId = cat._id || cat.id;
             const isActive = normalizeId(catId) === normalizeId(selectedCategoryId);
             return (
@@ -133,12 +148,12 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
               Express Categories
             </h3>
             <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-              {categories.length}
+              {rootCategories.length}
             </span>
           </div>
 
           <div className="space-y-1">
-            {categories.map((category) => {
+            {rootCategories.map((category) => {
               const catId = category._id || category.id;
               const isActive = normalizeId(catId) === normalizeId(selectedCategoryId);
 
