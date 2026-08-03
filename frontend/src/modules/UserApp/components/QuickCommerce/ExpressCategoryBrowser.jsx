@@ -140,19 +140,10 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
       </div>
 
       {/* Main Split Layout — Sticky Sidebar (Desktop/Tablet) + Products Grid */}
-      <div className="flex gap-4 sm:gap-6 items-start">
-        {/* Left Vertical Sticky Sidebar (Desktop & Tablet) */}
-        <aside className="hidden lg:block w-64 shrink-0 bg-surface rounded-3xl border border-border p-3 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide shadow-xs">
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-border px-2">
-            <h3 className="text-xs uppercase font-extrabold tracking-wider text-content-muted">
-              Express Categories
-            </h3>
-            <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-              {rootCategories.length}
-            </span>
-          </div>
-
-          <div className="space-y-1">
+      <div className="flex gap-2 sm:gap-4 items-start min-h-[600px]">
+        {/* Left Vertical Sticky Sidebar (Matching Marketplace B2C/B2B UI) */}
+        <aside className="w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 bg-surface-muted border-r border-border rounded-2xl p-1 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide shadow-xs">
+          <div className="space-y-1 py-1">
             {rootCategories.map((category) => {
               const catId = category._id || category.id;
               const isActive = normalizeId(catId) === normalizeId(selectedCategoryId);
@@ -160,21 +151,16 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
               return (
                 <motion.button
                   key={catId}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={() => setSelectedCategoryId(catId)}
-                  className={`w-full p-2.5 rounded-2xl text-left transition-all relative flex items-center gap-3 ${
-                    isActive
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30 shadow-xs"
-                      : "hover:bg-surface-muted text-content font-medium border border-transparent"
+                  className={`w-full py-2.5 px-1.5 text-left transition-all duration-200 relative flex flex-col items-center gap-1.5 rounded-xl ${
+                    isActive ? "bg-surface shadow-sm" : "hover:bg-surface-muted/80"
                   }`}
                 >
                   {/* Left Active Accent Bar */}
                   {isActive && (
-                    <motion.div
-                      layoutId="activeCategoryIndicator"
-                      className="absolute left-0 top-2 bottom-2 w-1.5 bg-emerald-600 rounded-r-full"
-                    />
+                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-amber-400 rounded-r-full shadow-sm" />
                   )}
 
                   {/* Category Image Avatar */}
@@ -182,18 +168,21 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                     src={category.image || category.icon}
                     alt={category.name}
                     name={category.name}
-                    containerClassName="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-border shadow-xs"
+                    containerClassName={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-surface-muted shrink-0 transition-all duration-200 shadow-xs border ${
+                      isActive
+                        ? "ring-2 ring-amber-400 ring-offset-2 scale-105 border-amber-400 shadow-md"
+                        : "border-border hover:border-amber-400/50"
+                    }`}
                   />
 
                   {/* Title & Count */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs leading-tight truncate">{category.name}</p>
-                    {category.productCount > 0 && (
-                      <p className="text-[10px] text-content-muted font-normal mt-0.5">
-                        {category.productCount} items
-                      </p>
-                    )}
-                  </div>
+                  <span
+                    className={`text-[11px] sm:text-xs font-semibold text-center leading-snug transition-colors line-clamp-2 px-0.5 ${
+                      isActive ? "text-amber-500 font-bold" : "text-content-secondary"
+                    }`}
+                  >
+                    {category.name}
+                  </span>
                 </motion.button>
               );
             })}
@@ -201,33 +190,41 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
         </aside>
 
         {/* Right Content Area — Subcategories + Search + Products Grid */}
-        <main className="flex-1 min-w-0 bg-surface rounded-3xl border border-border p-3 sm:p-5 shadow-xs min-h-[500px]">
+        <main className="flex-1 min-w-0 bg-surface rounded-2xl border border-border p-2 sm:p-4 shadow-xs min-h-[500px]">
           {/* Header Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-border/80 mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-content tracking-tight">
-                  {activeCategory?.name || "Categories"}
-                </h2>
-                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <FiZap className="text-[11px] fill-amber-500" />
-                  10-15 min delivery
-                </span>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border mb-3">
+            <div className="flex items-center gap-2.5">
+              <CategoryImage
+                src={activeCategory?.image || activeCategory?.icon}
+                alt={activeCategory?.name}
+                name={activeCategory?.name}
+                containerClassName="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-surface-muted shrink-0 border border-border shadow-xs"
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-bold text-content tracking-tight">
+                    {activeCategory?.name || "Categories"}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <FiZap className="text-[11px] fill-amber-500" />
+                    10-15 min delivery
+                  </span>
+                </div>
+                <p className="text-xs text-content-muted font-medium mt-0.5">
+                  {filteredProducts.length} items available in this category
+                </p>
               </div>
-              <p className="text-xs text-content-muted font-medium mt-0.5">
-                {filteredProducts.length} items available in this category
-              </p>
             </div>
 
             {/* In-Category Search Box */}
             <div className="relative w-full sm:w-64">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted text-xs" />
+              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted text-xs" />
               <input
                 type="text"
                 placeholder={`Search in ${activeCategory?.name || 'category'}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-xs bg-surface-muted border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-content placeholder:text-content-muted"
+                className="w-full pl-9 pr-8 py-2 text-xs bg-surface-muted border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400 text-content placeholder:text-content-muted"
               />
               {searchQuery && (
                 <button
@@ -241,43 +238,45 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
             </div>
           </div>
 
-          {/* Subcategory Chips Selector (if available) */}
+          {/* Subcategory Chips Selector (Matching B2C/B2B Marketplace UI 1-to-1) */}
           {subcategories.length > 0 && (
-            <div className="mb-4 pb-3 border-b border-border/60 overflow-x-auto scrollbar-hide">
+            <div className="mb-4 pb-3 border-b border-border overflow-x-auto scrollbar-hide">
               <div className="flex items-center gap-2 py-1">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   type="button"
                   onClick={() => setSelectedSubcategoryId(null)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center gap-2 shrink-0 ${
+                  className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs ${
                     !selectedSubcategoryId
-                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 shadow-xs"
+                      ? "bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold"
                       : "bg-surface-muted text-content-secondary border-border hover:bg-border"
                   }`}
                 >
                   <span>All {activeCategory?.name}</span>
-                </button>
+                </motion.button>
                 {subcategories.map((sub) => {
                   const subId = sub._id || sub.id;
                   const isSubActive = normalizeId(subId) === normalizeId(selectedSubcategoryId);
                   return (
-                    <button
+                    <motion.button
                       key={subId}
+                      whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={() => setSelectedSubcategoryId(subId)}
-                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 ${
+                      className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs ${
                         isSubActive
-                          ? "bg-emerald-600 text-white border-emerald-500 shadow-xs"
+                          ? "bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold"
                           : "bg-surface-muted text-content-secondary border-border hover:bg-border"
                       }`}
                     >
                       <CategoryImage
-                        src={sub.image || sub.icon || activeCategory?.image}
+                        src={sub.image || sub.icon}
                         alt={sub.name}
                         name={sub.name}
-                        containerClassName="w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-white/40 shadow-xs"
+                        containerClassName="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden shrink-0 border border-white/40 shadow-xs"
                       />
                       <span>{sub.name}</span>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </div>
