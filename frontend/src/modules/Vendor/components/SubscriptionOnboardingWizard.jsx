@@ -592,51 +592,91 @@ const SubscriptionOnboardingWizard = ({
   return (
     <>
       <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-black text-slate-900 md:text-4xl">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-500 md:text-base">{subtitle}</p>
+        <div className="mb-8 text-center text-white">
+          <h2 className="text-3xl font-extrabold text-white md:text-4xl">{title}</h2>
+          <p className="mt-2 mx-auto max-w-3xl text-sm text-white/70 md:text-base">{subtitle}</p>
         </div>
 
         <div className="mb-10 flex items-center justify-center">
           {STEPS.map((label, index) => (
             <div key={label} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${index < step ? 'bg-teal-600 text-white' : index === step ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
+                    index < step
+                      ? 'bg-[#ffc101] text-black'
+                      : index === step
+                      ? 'bg-white text-[#5a3a00] ring-4 ring-[#ffc101]/20'
+                      : 'bg-white/10 text-white/60'
+                  }`}
+                >
                   {index < step ? <FiCheck /> : index + 1}
                 </div>
-                <span className={`mt-2 text-xs font-medium ${index <= step ? 'text-slate-800' : 'text-slate-400'}`}>{label}</span>
+                <span className={`mt-2 text-xs font-semibold ${index <= step ? 'text-white' : 'text-white/50'}`}>{label}</span>
               </div>
-              {index < STEPS.length - 1 ? <div className={`mx-2 h-1 w-14 rounded-full md:w-24 ${index < step ? 'bg-teal-500' : 'bg-slate-200'}`} /> : null}
+              {index < STEPS.length - 1 ? (
+                <div className={`mx-2 h-1 w-14 rounded-full md:w-24 ${index < step ? 'bg-[#ffc101]' : 'bg-white/10'}`} />
+              ) : null}
             </div>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
           {step === 0 ? (
-            <motion.div key="plans" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <motion.div key="plans" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+              <div className="mb-6 text-center text-white">
+                <h3 className="text-2xl font-bold">{t('Choose Your Membership Plan')}</h3>
+                <p className="mt-2 text-sm text-white/70">
+                  {t('Paid plans open the payment options first, then continue to registration.')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {translatedPlans.map((plan) => (
-                  <div key={plan._id} className={`relative rounded-[28px] border p-6 ${selectedPlan?._id === plan._id ? 'border-teal-500 bg-teal-50/80 shadow-lg shadow-teal-100' : 'border-slate-200 bg-white'}`}>
+                  <div
+                    key={plan._id}
+                    className={`relative rounded-3xl border p-6 text-white shadow-2xl backdrop-blur transition-all ${
+                      selectedPlan?._id === plan._id || plan.isMostPopular
+                        ? 'border-[#ffc101]/70 bg-white/10 ring-2 ring-[#ffc101]/30'
+                        : 'border-white/10 bg-white/5'
+                    }`}
+                  >
                     {plan.isMostPopular ? (
-                      <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold uppercase text-amber-700">
-                        <FiStar size={12} />
-                        {t('Popular')}
-                      </span>
+                      <div className="absolute right-0 top-0 flex items-center gap-1 rounded-bl-2xl bg-[#ffc101] px-3 py-1 text-xs font-bold text-black">
+                        <FiStar />
+                        {t('MOST POPULAR')}
+                      </div>
                     ) : null}
-                    <h2 className="text-xl font-bold text-slate-900">{plan.name}</h2>
-                    <p className="mt-3 text-3xl font-black text-slate-900">{formatPrice(plan, t)}</p>
-                    <p className="mt-1 text-sm text-slate-500">{t('per')} {getIntervalLabel(plan, t)}</p>
+                    <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+                    <div className="mt-3 flex flex-col gap-0">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-extrabold text-white">
+                          {formatPrice(plan, t)}
+                        </span>
+                      </div>
+                      <span className="mt-1 text-xs text-white/60">{t('per')} {getIntervalLabel(plan, t)}</span>
+                    </div>
+
                     <ul className="mt-5 space-y-2">
                       {getHighlights(plan).map((feature) => (
-                        <li key={`${plan._id}-${feature}`} className="flex items-start gap-2 text-sm text-slate-600">
-                          <FiCheck className="mt-0.5 text-teal-600" />
+                        <li key={`${plan._id}-${feature}`} className="flex items-start gap-2 text-sm text-white/80">
+                          <FiCheck className="mt-0.5 flex-shrink-0 text-[#ffd042]" />
                           <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
-                    <button type="button" onClick={() => handleSelectPlan(plan)} disabled={isLoading} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPlan(plan)}
+                      disabled={isLoading}
+                      className={`mt-6 flex w-full items-center justify-center gap-2 rounded-2xl py-3 font-bold transition disabled:opacity-60 ${
+                        selectedPlan?._id === plan._id || !plan.isFree
+                          ? 'bg-[#ffc101] text-black hover:bg-[#ffd042]'
+                          : 'bg-white text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
                       {isLoading && selectedPlan?._id === plan._id ? <FiLoader className="animate-spin" /> : null}
-                      {selectedPlan?._id === plan._id ? t('Selected') : t('Choose Plan')}
+                      {selectedPlan?._id === plan._id ? t('Continue with Plan') : t('Choose Plan')}
                     </button>
                   </div>
                 ))}
@@ -645,28 +685,28 @@ const SubscriptionOnboardingWizard = ({
           ) : null}
 
           {step === 1 ? (
-            <motion.div key="register" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mx-auto max-w-3xl">
-              <div className="mb-4 flex items-center justify-between">
-                <button type="button" onClick={() => setStep(0)} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900">
+            <motion.div key="register" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="mx-auto max-w-3xl">
+              <div className="mb-6 flex items-center justify-between">
+                <button type="button" onClick={() => setStep(0)} className="inline-flex items-center gap-2 text-sm font-semibold text-white/75 hover:text-white">
                   <FiArrowLeft />
                   {t('Back to plans')}
                 </button>
-                {selectedPlan ? <span className="rounded-full bg-teal-50 px-4 py-2 text-sm font-semibold text-teal-700">{selectedPlan.name}</span> : null}
+                {selectedPlan ? <span className="rounded-full bg-[#ffc101]/15 px-4 py-1.5 text-sm font-bold text-[#ffd042] border border-[#ffc101]/30">{selectedPlan.name}</span> : null}
               </div>
-              <form onSubmit={handleRegister} className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-xl md:p-8">
+              <form onSubmit={handleRegister} className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur md:p-8 text-white">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="relative">
-                    <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input name="name" value={formData.name} onChange={handleChange} required placeholder={t('Full name')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-teal-500" />
+                    <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input name="name" value={formData.name} onChange={handleChange} required placeholder={t('Full name')} className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
                   </label>
                   <label className="relative">
-                    <FiShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input name="storeName" value={formData.storeName} onChange={handleChange} required placeholder={t('Store name')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-teal-500" />
+                    <FiShoppingBag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input name="storeName" value={formData.storeName} onChange={handleChange} required placeholder={t('Store name')} className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
                   </label>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                       <label className="relative flex-1">
-                        <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
                         <input
                           type="email"
                           name="email"
@@ -676,11 +716,11 @@ const SubscriptionOnboardingWizard = ({
                           required
                           placeholder={t('Email')}
                           className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none ${
-                            isEmailVerified ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 focus:border-teal-500'
+                            isEmailVerified ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-white/10 border-white/10 text-white placeholder:text-white/40 focus:border-[#ffc101]'
                           }`}
                         />
                         {isEmailVerified && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600">
+                          <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-400">
                             <FiCheck className="stroke-[3]" />
                           </div>
                         )}
@@ -690,7 +730,7 @@ const SubscriptionOnboardingWizard = ({
                           type="button"
                           onClick={handleRequestOtp}
                           disabled={isSendingOtp || !formData.email}
-                          className="rounded-2xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                          className="rounded-2xl bg-[#ffc101] px-4 py-3 text-sm font-bold text-black hover:bg-[#ffd042] disabled:opacity-50"
                         >
                           {isSendingOtp ? t('Sending...') : showOtpInput ? t('Resend') : t('Verify')}
                         </button>
@@ -705,13 +745,13 @@ const SubscriptionOnboardingWizard = ({
                           value={emailOtp}
                           onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
                           placeholder="6-digit code"
-                          className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center text-sm font-bold tracking-widest text-slate-800 focus:border-teal-500 outline-none"
+                          className="flex-1 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-center text-sm font-bold tracking-widest text-white focus:border-[#ffc101] outline-none"
                         />
                         <button
                           type="button"
                           onClick={handleVerifyOtp}
                           disabled={isVerifyingOtp || emailOtp.length !== 6}
-                          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+                          className="rounded-2xl bg-white px-4 py-2 text-sm font-bold text-black hover:bg-slate-100 disabled:opacity-50"
                         >
                           {isVerifyingOtp ? '...' : t('Confirm')}
                         </button>
@@ -719,59 +759,59 @@ const SubscriptionOnboardingWizard = ({
                     )}
                   </div>
                   <label className="relative">
-                    <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input name="phone" value={formData.phone} onChange={handleChange} required placeholder={t('Phone')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-teal-500" />
+                    <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input name="phone" value={formData.phone} onChange={handleChange} required placeholder={t('Phone')} className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-10 pr-4 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
                   </label>
-                  <textarea name="storeDescription" value={formData.storeDescription} onChange={handleChange} rows={3} placeholder={t('Store description')} className="md:col-span-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input name="address.street" value={formData.address.street} onChange={handleChange} placeholder={t('Street')} className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input name="address.city" value={formData.address.city} onChange={handleChange} placeholder={t('City')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input name="address.state" value={formData.address.state} onChange={handleChange} placeholder={t('State')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input name="address.zipCode" value={formData.address.zipCode} onChange={handleChange} placeholder={t('Zip code')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input name="address.country" value={formData.address.country} onChange={handleChange} placeholder={t('Country')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
+                  <textarea name="storeDescription" value={formData.storeDescription} onChange={handleChange} rows={3} placeholder={t('Store description')} className="md:col-span-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                  <input name="address.street" value={formData.address.street} onChange={handleChange} placeholder={t('Street')} className="md:col-span-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                  <input name="address.city" value={formData.address.city} onChange={handleChange} placeholder={t('City')} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                  <input name="address.state" value={formData.address.state} onChange={handleChange} placeholder={t('State')} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                  <input name="address.zipCode" value={formData.address.zipCode} onChange={handleChange} placeholder={t('Zip code')} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                  <input name="address.country" value={formData.address.country} onChange={handleChange} placeholder={t('Country')} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
                   
                   {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
-                    <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="mb-3 text-sm font-semibold text-slate-700">{t('Selling Channels')}</p>
+                    <div className="md:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="mb-3 text-sm font-semibold text-white/90">{t('Selling Channels')}</p>
                       <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
-                        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-white/80">
                           <input
                             type="checkbox"
                             checked={formData.sellingChannels.retail}
                             onChange={(event) => handleRetailToggle(event.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            className="h-4 w-4 rounded border-white/20 text-[#ffc101] focus:ring-[#ffc101]"
                           />
                           {t('Retail Marketplace')}
                         </label>
                         {wholesaleMarketplaceEnabled && (
-                          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-white/80">
                             <input
                               type="checkbox"
                               checked={formData.sellingChannels.wholesale}
                               onChange={(event) => handleWholesaleToggle(event.target.checked)}
-                              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                              className="h-4 w-4 rounded border-white/20 text-[#ffc101] focus:ring-[#ffc101]"
                             />
                             {t('Wholesale Marketplace')}
                           </label>
                         )}
                         {quickCommerceEnabled && (
-                          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-white/80">
                             <input
                               type="checkbox"
                               checked={formData.sellingChannels.quickCommerce}
                               onChange={(event) => handleQuickCommerceToggle(event.target.checked)}
-                              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                              className="h-4 w-4 rounded border-white/20 text-[#ffc101] focus:ring-[#ffc101]"
                             />
                             {t('Quick Commerce')}
                           </label>
                         )}
                       </div>
-                      <p className="mt-2 text-xs text-slate-500">{t('At least one selling channel must stay enabled.')}</p>
+                      <p className="mt-2 text-xs text-white/50">{t('At least one selling channel must stay enabled.')}</p>
 
                       {formData.sellingChannels.wholesale && (
                         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                           <div>
-                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                              {t('GST Number')} <span className="text-red-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-white/70">
+                              {t('GST Number')} <span className="text-red-400">*</span>
                             </label>
                             <input
                               name="wholesaleProfile.gstNumber"
@@ -779,12 +819,12 @@ const SubscriptionOnboardingWizard = ({
                               onChange={handleChange}
                               required={formData.sellingChannels.wholesale}
                               placeholder="22AAAAA0000A1Z5"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#ffc101] outline-none"
                             />
                           </div>
                           <div>
-                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                              {t('Business Name')} <span className="text-red-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-white/70">
+                              {t('Business Name')} <span className="text-red-400">*</span>
                             </label>
                             <input
                               name="wholesaleProfile.businessName"
@@ -792,12 +832,12 @@ const SubscriptionOnboardingWizard = ({
                               onChange={handleChange}
                               required={formData.sellingChannels.wholesale}
                               placeholder={t('Registered business name')}
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#ffc101] outline-none"
                             />
                           </div>
                           <div>
-                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                              {t('Wholesale Contact Name')} <span className="text-red-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-white/70">
+                              {t('Wholesale Contact Name')} <span className="text-red-400">*</span>
                             </label>
                             <input
                               name="wholesaleProfile.wholesaleContactName"
@@ -805,12 +845,12 @@ const SubscriptionOnboardingWizard = ({
                               onChange={handleChange}
                               required={formData.sellingChannels.wholesale}
                               placeholder={t('Contact person for bulk orders')}
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#ffc101] outline-none"
                             />
                           </div>
                           <div>
-                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                              {t('Wholesale Contact Phone')} <span className="text-red-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-white/70">
+                              {t('Wholesale Contact Phone')} <span className="text-red-400">*</span>
                             </label>
                             <input
                               name="wholesaleProfile.wholesaleContactPhone"
@@ -818,12 +858,12 @@ const SubscriptionOnboardingWizard = ({
                               onChange={handleChange}
                               required={formData.sellingChannels.wholesale}
                               placeholder="+1234567890"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#ffc101] outline-none"
                             />
                           </div>
                           <div className="md:col-span-2">
-                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
-                              {t('Bulk Order Support Email')} <span className="text-red-500">*</span>
+                            <label className="mb-1.5 block text-xs font-medium text-white/70">
+                              {t('Bulk Order Support Email')} <span className="text-red-400">*</span>
                             </label>
                             <input
                               type="email"
@@ -832,7 +872,7 @@ const SubscriptionOnboardingWizard = ({
                               onChange={handleChange}
                               required={formData.sellingChannels.wholesale}
                               placeholder="bulkorders@yourstore.com"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-[#ffc101] outline-none"
                             />
                           </div>
                         </div>
@@ -840,31 +880,31 @@ const SubscriptionOnboardingWizard = ({
                     </div>
                   )}
                   <label className="relative">
-                    <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder={t('Password')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-12 text-sm outline-none focus:border-teal-500" />
-                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">{showPassword ? t('Hide') : t('Show')}</button>
+                    <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder={t('Password')} className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-10 pr-12 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-white/60 hover:text-white">{showPassword ? t('Hide') : t('Show')}</button>
                   </label>
                   <label className="relative">
-                    <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required placeholder={t('Confirm password')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-12 text-sm outline-none focus:border-teal-500" />
-                    <button type="button" onClick={() => setShowConfirmPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">{showConfirmPassword ? t('Hide') : t('Show')}</button>
+                    <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required placeholder={t('Confirm password')} className="w-full rounded-2xl border border-white/10 bg-white/10 py-3 pl-10 pr-12 text-sm text-white placeholder:text-white/40 outline-none focus:border-[#ffc101]" />
+                    <button type="button" onClick={() => setShowConfirmPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-white/60 hover:text-white">{showConfirmPassword ? t('Hide') : t('Show')}</button>
                   </label>
-                  <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500">
-                    <option value="tradeLicense">{t('Trade Licence')}</option>
-                    <option value="gst">{t('GST')}</option>
+                  <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="rounded-2xl border border-white/10 bg-[#251a0c] text-white px-4 py-3 text-sm outline-none focus:border-[#ffc101]">
+                    <option value="tradeLicense" className="bg-[#251a0c] text-white">{t('Trade Licence')}</option>
+                    <option value="gst" className="bg-[#251a0c] text-white">{t('GST')}</option>
                   </select>
-                  <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={(event) => setDocumentFile(event.target.files?.[0] || null)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 file:mr-4 file:rounded-full file:border-0 file:bg-teal-100 file:px-4 file:py-2 file:font-semibold file:text-teal-700" />
+                  <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={(event) => setDocumentFile(event.target.files?.[0] || null)} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white/80 file:mr-4 file:rounded-full file:border-0 file:bg-[#ffc101] file:px-4 file:py-2 file:font-bold file:text-black" />
                 </div>
-                <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                  <label className="flex items-start gap-3 text-sm text-slate-600">
-                    <input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600" />
-                    <span>{t('I agree to the')} <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-teal-700 underline">{t('Terms & Conditions')}</button></span>
+                <div className="mt-5 rounded-3xl border border-white/10 bg-white/5 p-4">
+                  <label className="flex items-start gap-3 text-sm text-white/80">
+                    <input type="checkbox" checked={agreedToTerms} onChange={(event) => setAgreedToTerms(event.target.checked)} className="mt-1 h-4 w-4 rounded border-white/20 text-[#ffc101]" />
+                    <span>{t('I agree to the')} <button type="button" onClick={() => setShowTerms(true)} className="font-bold text-[#ffd042] underline">{t('Terms & Conditions')}</button></span>
                   </label>
                 </div>
                  <button
                    type="submit"
                    disabled={isLoading || !isEmailVerified}
-                   className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 py-3 font-semibold text-white transition hover:bg-teal-700 disabled:opacity-60"
+                   className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 font-bold text-black transition hover:bg-[#ffd042] disabled:opacity-50"
                  >
                    {isLoading ? <FiLoader className="animate-spin" /> : null}
                    {!isEmailVerified ? t('Verify email first') : t('Register')}
@@ -875,28 +915,26 @@ const SubscriptionOnboardingWizard = ({
 
           {step === 2 ? (
             <motion.div key="payment" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mx-auto max-w-2xl">
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-xl">
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-700">
-                    {selectedPlan?.isFree ? <FiStar size={28} /> : <FiCreditCard size={28} />}
-                  </div>
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    {selectedPlan?.isFree ? t('Activate your free trial') : t('Complete your subscription')}
-                  </h2>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {selectedPlan?.isFree ? t('Start your free trial without any payment required.') : t('Billing becomes active only after webhook confirmation updates MongoDB.')}
-                  </p>
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur text-white text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ffc101]/20 text-[#ffd042]">
+                  {selectedPlan?.isFree ? <FiStar size={28} /> : <FiCreditCard size={28} />}
                 </div>
-                {selectedPlan ? <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center text-slate-700">{selectedPlan.name} | {formatPrice(selectedPlan, t)} | {t('per')} {getIntervalLabel(selectedPlan, t)}</div> : null}
-                {paymentState === 'processing' ? <div className="mt-6 rounded-3xl border border-teal-200 bg-teal-50 px-4 py-4 text-sm text-teal-800">{t('Waiting for billing confirmation. This page will keep checking automatically.')}</div> : null}
-                {paymentState === 'pending' ? <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">{t('Payment is still pending confirmation. Please give the gateway a moment and retry if needed.')}</div> : null}
-                {paymentState === 'failed' ? <div className="mt-6 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800">{t('Billing could not be confirmed. Please retry the payment step.')}</div> : null}
+                <h2 className="text-2xl font-bold text-white">
+                  {selectedPlan?.isFree ? t('Activate your free trial') : t('Complete your subscription')}
+                </h2>
+                <p className="mt-2 text-sm text-white/70">
+                  {selectedPlan?.isFree ? t('Start your free trial without any payment required.') : t('Billing becomes active only after webhook confirmation updates MongoDB.')}
+                </p>
+                {selectedPlan ? <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5 text-center text-white/90 font-semibold">{selectedPlan.name} | {formatPrice(selectedPlan, t)} | {t('per')} {getIntervalLabel(selectedPlan, t)}</div> : null}
+                {paymentState === 'processing' ? <div className="mt-6 rounded-3xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-sm text-amber-300">{t('Waiting for billing confirmation. This page will keep checking automatically.')}</div> : null}
+                {paymentState === 'pending' ? <div className="mt-6 rounded-3xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-sm text-amber-300">{t('Payment is still pending confirmation. Please give the gateway a moment and retry if needed.')}</div> : null}
+                {paymentState === 'failed' ? <div className="mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-sm text-rose-300">{t('Billing could not be confirmed. Please retry the payment step.')}</div> : null}
                 <div className="mt-6 flex flex-col gap-3">
-                  <button type="button" onClick={handlePayment} disabled={isLoading || paymentState === 'processing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60">
+                  <button type="button" onClick={handlePayment} disabled={isLoading || paymentState === 'processing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 font-bold text-black transition hover:bg-[#ffd042] disabled:opacity-60">
                     {isLoading ? <FiLoader className="animate-spin" /> : (selectedPlan?.isFree ? <FiCheck /> : <FiCreditCard />)}
                     {isLoading ? (selectedPlan?.isFree ? t('Activating...') : t('Preparing checkout...')) : paymentState === 'processing' ? t('Checking payment status...') : paymentState === 'checkout_open' ? t('Payment window open') : (selectedPlan?.isFree ? t('Activate free plan') : t('Start secure payment'))}
                   </button>
-                  <button type="button" onClick={() => setStep(1)} className="rounded-2xl border border-slate-200 px-4 py-3 font-semibold text-slate-600 transition hover:bg-slate-100">{t('Back to registration')}</button>
+                  <button type="button" onClick={() => setStep(1)} className="rounded-2xl border border-white/20 bg-white/5 px-4 py-3 font-semibold text-white/80 hover:bg-white/10 hover:text-white transition">{t('Back to registration')}</button>
                 </div>
               </div>
             </motion.div>
@@ -904,11 +942,11 @@ const SubscriptionOnboardingWizard = ({
 
           {step === 3 ? (
             <motion.div key="done" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="mx-auto max-w-lg">
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-xl">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><FiCheck size={28} /></div>
-                <h2 className="text-2xl font-bold text-slate-900">{t('Subscription submitted successfully')}</h2>
-                <p className="mt-3 text-sm text-slate-500">{t('Your billing is synced from the gateway and your vendor account is now awaiting admin approval.')}</p>
-                <button type="button" onClick={() => navigate('/vendor/login')} className="mt-6 w-full rounded-2xl bg-teal-600 px-4 py-3 font-semibold text-white transition hover:bg-teal-700">{t('Go to vendor login')}</button>
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur text-white">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ffc101]/20 text-[#ffd042]"><FiCheck size={28} /></div>
+                <h2 className="text-2xl font-bold text-white">{t('Subscription submitted successfully')}</h2>
+                <p className="mt-3 text-sm text-white/70">{t('Your billing is synced from the gateway and your vendor account is now awaiting admin approval.')}</p>
+                <button type="button" onClick={() => navigate('/vendor/login')} className="mt-6 w-full rounded-2xl bg-[#ffc101] px-4 py-3.5 font-bold text-black transition hover:bg-[#ffd042]">{t('Go to vendor login')}</button>
               </div>
             </motion.div>
           ) : null}

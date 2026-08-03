@@ -12,22 +12,22 @@ const SellOnDwellmart = () => {
   ]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#221300] via-[#3a2403] to-[#1a1204]">
       <DesktopHeader />
       <MobileHeader />
 
-      <section className="bg-[linear-gradient(135deg,_#0f172a,_#134e4a_55%,_#ccfbf1)] px-4 py-16 text-white">
+      <section className="px-4 pt-12 pb-6 text-white text-center">
         <div className="mx-auto max-w-5xl">
-          <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-5xl">
+          <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl text-white">
             {t('Sell on DwellMart with recurring billing built in')}
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-white/80">
+          <p className="mt-3 mx-auto max-w-2xl text-sm md:text-base text-white/70">
             {t('Start your vendor onboarding here and the platform will route billing through Razorpay for India or Stripe everywhere else.')}
           </p>
         </div>
       </section>
 
-      <section className="px-4 py-10">
+      <section className="px-4 py-8">
         <SubscriptionOnboardingWizard
           emailStorageKey="vendor-onboarding-email:/sell-on-dwellmart"
           returnTo="/sell-on-dwellmart"
