@@ -19,6 +19,7 @@ const CategorySelector = ({
   } = useCategoryStore();
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredCategoryId, setHoveredCategoryId] = useState(null);
+  const [hoveredSubcategoryId, setHoveredSubcategoryId] = useState(null);
   const containerRef = useRef(null);
   const parentDropdownRef = useRef(null);
   const subcategoryDropdownRef = useRef(null);
@@ -326,47 +327,63 @@ const CategorySelector = ({
                 transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                 className="absolute bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] z-[60]"
                 onMouseEnter={() => {
-                  // Clear any pending close timeout when entering subcategory dropdown
                   if (closeTimeoutRef.current) {
                     clearTimeout(closeTimeoutRef.current);
                     closeTimeoutRef.current = null;
                   }
-                  setHoveredCategoryId(hoveredCategoryId);
                 }}
                 onMouseLeave={() => {
-                  // 0.20 second delay before closing
-                  if (closeTimeoutRef.current) {
-                    clearTimeout(closeTimeoutRef.current);
-                  }
+                  if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
                   closeTimeoutRef.current = setTimeout(() => {
                     setHoveredCategoryId(null);
                     closeTimeoutRef.current = null;
-                  }, 200); // 0.20 seconds = 200ms
+                  }, 200);
                 }}>
                 <div className="py-1 max-h-60 overflow-y-auto">
                   {hoveredSubcategories.map((subcategory) => {
                     const isSubSelected = subcategoryId === subcategory.id;
+                    const childSubs = getCategoriesByParent(subcategory.id).filter((c) => c.isActive !== false);
+                    const hasChildSubs = childSubs.length > 0;
+
                     return (
-                      <motion.div
-                        key={subcategory.id}
-                        onClick={() =>
-                          handleSubcategorySelect(
-                            subcategory.id,
-                            hoveredCategoryId
-                          )
-                        }
-                        whileHover={{
-                          backgroundColor: isSubSelected
-                            ? "rgba(40, 116, 240, 0.1)"
-                            : "rgba(249, 250, 251, 1)",
-                        }}
-                        className={`px-4 py-2 cursor-pointer transition-colors duration-150 ${
-                          isSubSelected
-                            ? "bg-primary-50 text-primary-600"
-                            : "text-gray-900"
-                        }`}>
-                        {subcategory.name}
-                      </motion.div>
+                      <div key={subcategory.id} className="relative group">
+                        <motion.div
+                          onClick={() => {
+                            if (!hasChildSubs) {
+                              handleSubcategorySelect(subcategory.id, hoveredCategoryId);
+                            }
+                          }}
+                          onMouseEnter={() => setHoveredSubcategoryId(subcategory.id)}
+                          whileHover={{
+                            backgroundColor: isSubSelected
+                              ? "rgba(40, 116, 240, 0.1)"
+                              : "rgba(249, 250, 251, 1)",
+                          }}
+                          className={`px-4 py-2 cursor-pointer transition-colors duration-150 flex items-center justify-between ${
+                            isSubSelected
+                              ? "bg-primary-50 text-primary-600 font-bold"
+                              : "text-gray-900"
+                          }`}>
+                          <span>{subcategory.name}</span>
+                          {hasChildSubs && <FiChevronRight className="ml-2 text-gray-400 text-xs" />}
+                        </motion.div>
+
+                        {/* Tier 3 Flyout for Sub-subcategories */}
+                        {hasChildSubs && hoveredSubcategoryId === subcategory.id && (
+                          <div className="absolute left-full top-0 ml-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] z-[70] py-1 max-h-60 overflow-y-auto">
+                            {childSubs.map((leaf) => (
+                              <div
+                                key={leaf.id}
+                                onClick={() => handleSubcategorySelect(leaf.id, hoveredCategoryId)}
+                                className={`px-4 py-2 text-xs cursor-pointer hover:bg-gray-50 transition-colors ${
+                                  subcategoryId === leaf.id ? "bg-primary-50 text-primary-600 font-bold" : "text-gray-800"
+                                }`}>
+                                {leaf.name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

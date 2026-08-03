@@ -93,8 +93,14 @@ const MobileCategories = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
-  const { categories, initialize, getCategoriesByParent, getRootCategories } =
-    useCategoryStore();
+  const {
+    categories,
+    initialize,
+    getCategoriesByParent,
+    getRootCategories,
+    hasSubDepartments,
+    getAllDescendantCategoryIds,
+  } = useCategoryStore();
 
   // Initialize store on mount
   useEffect(() => {
@@ -144,36 +150,62 @@ const MobileCategories = () => {
   }, [categories, getRootCategories, translateArray]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
 
+  // Check if active Level 1 root category has 3 levels (sub-departments exist)
+  const is3TierCategory = useMemo(() => {
+    if (!selectedCategoryId) return false;
+    return hasSubDepartments(selectedCategoryId);
+  }, [selectedCategoryId, categories, hasSubDepartments]);
+
+  // Level 2 Department list (when 3-tier category)
+  const departments = useMemo(() => {
+    if (!selectedCategoryId || !is3TierCategory) return [];
+    return getCategoriesByParent(selectedCategoryId).filter((cat) => cat.isActive !== false);
+  }, [selectedCategoryId, is3TierCategory, categories, getCategoriesByParent]);
+
+  // Automatically select first department when root category changes
   useEffect(() => {
-    if (translatedRootCategories.length > 0 && !selectedCategoryId) {
-      setSelectedCategoryId(translatedRootCategories[0].id);
+    if (is3TierCategory && departments.length > 0) {
+      setSelectedDepartmentId(departments[0].id || departments[0]._id);
+    } else {
+      setSelectedDepartmentId(null);
     }
-  }, [translatedRootCategories, selectedCategoryId]);
+  }, [selectedCategoryId, is3TierCategory, departments]);
+
+  // Leaf subcategories (Level 3 if 3-tier, Level 2 if 2-tier)
+  const rawSubcategories = useMemo(() => {
+    if (!selectedCategoryId) return [];
+    if (is3TierCategory) {
+      if (!selectedDepartmentId) return [];
+      return getCategoriesByParent(selectedDepartmentId).filter((cat) => cat.isActive !== false);
+    }
+    return getCategoriesByParent(selectedCategoryId).filter((cat) => cat.isActive !== false);
+  }, [selectedCategoryId, selectedDepartmentId, is3TierCategory, categories, getCategoriesByParent]);
 
   // Translate Subcategories
   useEffect(() => {
     const translateSubs = async () => {
-      if (!selectedCategoryId) {
+      if (!rawSubcategories.length) {
         setTranslatedSubcategories([]);
         return;
       }
       setIsTranslatingSubs(true);
       try {
-        const subcats = getCategoriesByParent(selectedCategoryId).filter((cat) => cat.isActive !== false);
-        const translated = await translateArray(subcats, ['name', 'description']);
+        const translated = await translateArray(rawSubcategories, ['name', 'description']);
         setTranslatedSubcategories(translated);
       } finally {
         setIsTranslatingSubs(false);
       }
     };
     translateSubs();
-  }, [selectedCategoryId, categories, getCategoriesByParent, translateArray]);
+  }, [rawSubcategories, translateArray]);
+
   const categoryListRef = useRef(null);
   const activeCategoryRef = useRef(null);
   const filterButtonRef = useRef(null);
   const [isInitialMount, setIsInitialMount] = useState(true);
-  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -184,14 +216,7 @@ const MobileCategories = () => {
   const [categoryProductsFeed, setCategoryProductsFeed] = useState([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
-  // Get subcategories for selected category
-  const subcategories = useMemo(() => {
-    if (!selectedCategoryId) return [];
-    const subcats = getCategoriesByParent(selectedCategoryId);
-    return subcats.filter((cat) => cat.isActive !== false);
-  }, [selectedCategoryId, categories, getCategoriesByParent]);
-
-   useEffect(() => {
+  useEffect(() => {
     if (!translatedRootCategories.length) return;
     if (!selectedCategoryId) {
       setSelectedCategoryId(translatedRootCategories[0].id);
@@ -205,20 +230,20 @@ const MobileCategories = () => {
     }
   }, [translatedRootCategories, selectedCategoryId]);
 
-   // Reset selected subcategory when category changes
+  // Reset selected subcategory when department or category changes
   useEffect(() => {
     if (translatedSubcategories.length > 0) {
       setSelectedSubcategory(translatedSubcategories[0].id);
     } else {
       setSelectedSubcategory(null);
     }
-  }, [selectedCategoryId, translatedSubcategories]);
+  }, [selectedCategoryId, selectedDepartmentId, translatedSubcategories]);
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchCategoryProducts = async () => {
-      const targetCategoryId = normalizeId(selectedSubcategory || selectedCategoryId);
+      const targetCategoryId = normalizeId(selectedSubcategory || selectedDepartmentId || selectedCategoryId);
       if (!targetCategoryId) {
         if (!cancelled) {
           setCategoryProductsFeed([]);
@@ -706,8 +731,46 @@ const MobileCategories = () => {
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
               <div className="p-2 md:p-4">
-                {/* Subcategory Selector - Above product cards */}
-                {subcategories.length > 0 && (
+                {/* Level 2 Department Tabs (Only when 3-tier category like Fashion & Lifestyle) */}
+                {is3TierCategory && departments.length > 0 && (
+                  <div className="mb-3 pb-2 border-b border-border">
+                    <div className="overflow-x-auto scrollbar-hide px-1">
+                      <div className="flex items-center gap-2 py-1">
+                        {departments.map((dept) => {
+                          const deptId = dept.id || dept._id;
+                          const isDeptActive = normalizeId(deptId) === normalizeId(selectedDepartmentId);
+                          return (
+                            <motion.button
+                              key={deptId}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => setSelectedDepartmentId(deptId)}
+                              className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs ${
+                                isDeptActive
+                                  ? 'bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold'
+                                  : 'bg-surface-muted text-content-secondary border-border hover:bg-border'
+                              }`}
+                            >
+                              {dept.image && (
+                                <img
+                                  src={dept.image}
+                                  alt={dept.name}
+                                  className="w-6 h-6 rounded-md object-cover shrink-0 border border-white/40 shadow-xs"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <span>{dept.name}</span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Level 3 or Level 2 Subcategory Pills Selector */}
+                {translatedSubcategories.length > 0 && (
                   <div className="mb-4 pb-3 border-b border-border">
                     <div
                       className="overflow-x-auto scrollbar-hide px-1 pt-1 md:pt-0"
@@ -715,7 +778,7 @@ const MobileCategories = () => {
                         scrollBehavior: "smooth",
                         WebkitOverflowScrolling: "touch",
                       }}>
-                    <div className="flex gap-2 py-1">
+                      <div className="flex gap-2 py-1">
                         {translatedSubcategories.map((subcategory) => {
                           const isActive =
                             normalizeId(selectedSubcategory) ===
@@ -728,7 +791,7 @@ const MobileCategories = () => {
                               }
                               whileTap={{ scale: 0.97 }}
                               className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs ${isActive
-                                ? 'bg-brand-primary text-black border-brand-primary shadow-md scale-102'
+                                ? 'bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold'
                                 : 'bg-surface-muted text-content-secondary border-border hover:bg-border hover:border-border-strong active:bg-border'
                                 }`}
                               style={{ willChange: "transform" }}>

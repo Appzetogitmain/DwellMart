@@ -169,6 +169,32 @@ export const useCategoryStore = create(
         });
       },
 
+      // Check if a category has child departments that themselves have subcategories (3-tier check)
+      hasSubDepartments: (categoryId) => {
+        if (!categoryId) return false;
+        const children = get().getCategoriesByParent(categoryId);
+        return children.some((child) => get().getCategoriesByParent(child.id).length > 0);
+      },
+
+      // Recursively get all descendant category IDs (both Level 2 and Level 3)
+      getAllDescendantCategoryIds: (categoryId) => {
+        if (!categoryId) return [];
+        const result = [String(categoryId)];
+        const queue = [String(categoryId)];
+        while (queue.length > 0) {
+          const currentId = queue.shift();
+          const children = get().getCategoriesByParent(currentId);
+          for (const child of children) {
+            const childId = String(child.id || child._id);
+            if (childId && !result.includes(childId)) {
+              result.push(childId);
+              queue.push(childId);
+            }
+          }
+        }
+        return result;
+      },
+
       // Get root categories
       getRootCategories: () => {
         return get().categories.filter((cat) => !cat.parentId);
