@@ -104,8 +104,8 @@ const MobileMenu = ({ isOpen, onClose }) => {
             <div className="px-6 py-6 flex-shrink-0">
               {isAuthenticated ? (
                 <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="w-12 h-12 rounded-full bg-primary-600/20 flex items-center justify-center flex-shrink-0 border border-primary-500/20">
-                    <FiUser className="text-xl text-primary-400" />
+                  <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 border border-amber-500/30">
+                    <FiUser className="text-xl text-amber-400" />
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <p className="text-white text-base font-bold truncate tracking-tight">{user?.name}</p>
@@ -116,7 +116,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
                 <Link
                   to="/login"
                   onClick={onClose}
-                  className="block w-full py-4 px-6 bg-primary-600 hover:bg-primary-500 text-white text-center rounded-xl text-sm font-black uppercase tracking-wider transition-all shadow-xl shadow-primary-600/20"
+                  className="block w-full py-4 px-6 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-center rounded-xl text-sm font-black uppercase tracking-wider transition-all shadow-xl shadow-amber-500/20 border border-amber-400/30"
                 >
                   {t("Sign In / Register")}
                 </Link>
@@ -145,7 +145,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
                     onClick={onClose}
                     className="flex items-center gap-4 px-4 py-3 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-all text-sm font-bold lowercase tracking-tight"
                   >
-                    <link.icon className="text-xl text-primary-500/80" />
+                    <link.icon className="text-xl text-amber-400" />
                     <span className="first-letter:uppercase">{link.label}</span>
                   </Link>
                 ))}
@@ -162,11 +162,11 @@ const MobileMenu = ({ isOpen, onClose }) => {
                     className="flex items-center justify-between px-4 py-3 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-all text-sm font-bold lowercase tracking-tight"
                   >
                     <div className="flex items-center gap-4">
-                      <link.icon className="text-xl text-primary-500/80" />
+                      <link.icon className="text-xl text-amber-400" />
                       <span className="first-letter:uppercase">{link.label}</span>
                     </div>
                     {link.badge > 0 && (
-                      <span className="h-6 min-w-[24px] px-2 flex items-center justify-center rounded-full bg-primary-600 text-[10px] font-black text-white shadow-lg shadow-primary-600/30">
+                      <span className="h-6 min-w-[24px] px-2 flex items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-slate-950 shadow-lg shadow-amber-500/30">
                         {link.badge > 9 ? "9+" : link.badge}
                       </span>
                     )}
@@ -184,7 +184,7 @@ const MobileMenu = ({ isOpen, onClose }) => {
                     to={link.path}
                     onClick={onClose}
                     className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-bold lowercase tracking-tight transition-all ${
-                      link.highlight ? "bg-[#ffc101]/12 text-[#ffc101]" : "text-white/70 hover:text-white hover:bg-white/5"
+                      link.highlight ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" : "text-white/70 hover:text-white hover:bg-white/5"
                     }`}
                   >
                     <link.icon className="text-xl" />

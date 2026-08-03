@@ -34,7 +34,7 @@ const LanguageSelector = ({ variant = 'desktop' }) => {
                         onClick={() => handleSelect(lang.code)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
                             language === lang.code 
-                            ? 'bg-primary-600 text-black font-bold shadow-md' 
+                            ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20' 
                             : 'bg-white/5 text-white/70 hover:bg-white/10'
                         } ${isChangingLanguage ? 'opacity-50 cursor-not-allowed' : ''}`}
                         disabled={isChangingLanguage}
@@ -76,7 +76,7 @@ const LanguageSelector = ({ variant = 'desktop' }) => {
                                     key={lang.code}
                                     onClick={() => handleSelect(lang.code)}
                                     className={`w-full text-left flex items-center gap-3 px-4 py-2 text-sm ${
-                                        language === lang.code ? 'bg-primary-600/20 text-primary-400 font-bold' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                        language === lang.code ? 'bg-amber-500/20 text-amber-400 font-bold' : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                     }`}
                                 >
                                     <span>{lang.flag}</span>

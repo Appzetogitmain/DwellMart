@@ -33,7 +33,7 @@ const CurrencySelector = ({ variant = 'desktop' }) => {
                         onClick={() => handleSelect(curr.code)}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
                             selectedCurrency === curr.code 
-                            ? 'bg-primary-600 text-white font-bold shadow-md' 
+                            ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20' 
                             : 'bg-white/5 text-white/70 hover:bg-white/10'
                         }`}
                     >
@@ -52,7 +52,7 @@ const CurrencySelector = ({ variant = 'desktop' }) => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="inline-flex justify-center items-center gap-2 w-full rounded-md border border-gray-700 shadow-sm px-3 py-1.5 bg-black text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors focus:outline-none"
             >
-                <span className="text-primary-500 font-bold">{currentCurrency?.symbol}</span>
+                <span className="text-amber-400 font-bold">{currentCurrency?.symbol}</span>
                 <span className="hidden sm:inline-block">{currentCurrency?.code}</span>
                 <Globe size={14} className="opacity-50" />
             </button>
@@ -73,7 +73,7 @@ const CurrencySelector = ({ variant = 'desktop' }) => {
                                     onClick={() => handleSelect(curr.code)}
                                     className={`w-full text-left flex items-center justify-between gap-3 px-4 py-2 text-sm ${
                                         selectedCurrency === curr.code 
-                                        ? 'bg-primary-600/20 text-primary-400 font-bold' 
+                                        ? 'bg-amber-500/20 text-amber-400 font-bold' 
                                         : 'text-gray-300 hover:bg-white/5 hover:text-white'
                                     }`}
                                 >
