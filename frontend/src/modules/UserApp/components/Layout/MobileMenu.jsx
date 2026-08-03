@@ -83,10 +83,10 @@ const MobileMenu = ({ isOpen, onClose }) => {
             style={{ overscrollBehavior: 'contain' }}
           >
             {/* Header / Brand */}
-            <div className="flex items-center justify-between px-6 pt-10 pb-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-8 pb-5 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
               <Link to="/home" onClick={onClose} className="flex-shrink-0 flex items-center">
                 {appLogo.src ? (
-                  <img src={appLogo.src} alt="Logo" className="h-24 max-h-24 w-auto max-w-[190px] object-contain scale-110 origin-left drop-shadow-md" />
+                  <img src={appLogo.src} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain scale-[1.65] origin-left drop-shadow-xl my-1 ml-1" />
                 ) : (
                   <span className="text-2xl font-bold text-white uppercase tracking-tighter">Dwell Mart</span>
                 )}
