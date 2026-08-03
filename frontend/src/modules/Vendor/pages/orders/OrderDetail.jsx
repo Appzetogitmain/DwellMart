@@ -10,7 +10,7 @@ import {
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
 import { getVendorOrderById, updateVendorOrderStatus } from '../../services/vendorService';
-import { formatPrice } from '../../../../shared/utils/helpers';
+import { formatPrice, getPlaceholderImage } from '../../../../shared/utils/helpers';
 import Badge from '../../../../shared/components/Badge';
 import WholesaleBadge from '../../../../shared/components/WholesaleBadge';
 import AnimatedSelect from '../../../Admin/components/AnimatedSelect';
@@ -225,8 +225,7 @@ const OrderDetail = () => {
                                                 alt={item.name}
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
-                                                    e.target.src =
-                                                        'https://via.placeholder.com/64?text=P';
+                                                    e.target.src = getPlaceholderImage(64, 64, 'P');
                                                 }}
                                             />
                                         </div>

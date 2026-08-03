@@ -12,7 +12,7 @@ import { MdCurrencyRupee } from "react-icons/md";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans } from "../services/vendorService";
-import { formatPrice } from "../../../shared/utils/helpers";
+import { formatPrice, getPlaceholderImage } from "../../../shared/utils/helpers";
 import toast from "react-hot-toast";
 import { DashboardPage, StatCard, StatusBadge } from "../../../shared/components/Dashboard";
 import { Button, Card, Badge } from "../../../shared/components/ui";
@@ -285,8 +285,7 @@ const VendorDashboard = () => {
                     alt={product.name}
                     className="w-12 h-12 object-cover rounded-lg"
                     onError={(e) => {
-                      e.target.src =
-                        "https://via.placeholder.com/48x48?text=P";
+                      e.target.src = getPlaceholderImage(48, 48, "P");
                     }}
                   />
                   <div className="flex-1 min-w-0">

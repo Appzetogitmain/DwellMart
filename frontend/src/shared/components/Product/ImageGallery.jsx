@@ -3,6 +3,7 @@ import { FiX, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import LazyImage from "../LazyImage";
+import { getPlaceholderImage } from "../../utils/helpers";
 import useSwipeGesture from "../../../modules/UserApp/hooks/useSwipeGesture";
 
 const ImageGallery = ({ images, productName = "Product", children }) => {
@@ -69,7 +70,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
               src={imageArray[selectedIndex]}
               alt={`${productName} - Image ${selectedIndex + 1}`}
               className="w-full h-full object-contain mix-blend-multiply"
-              fallbackImage="https://via.placeholder.com/500x500?text=Product+Image"
+              fallbackImage={getPlaceholderImage(500, 500, "Product Image")}
             />
           </motion.div>
 
@@ -113,7 +114,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                   src={image}
                   alt={`${productName} thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
-                  fallbackImage="https://via.placeholder.com/100x100?text=Thumbnail"
+                  fallbackImage={getPlaceholderImage(100, 100, "Thumbnail")}
                 />
               </button>
             ))}
@@ -148,8 +149,7 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                   alt={`${productName} - Full view`}
                   className="w-full h-full object-contain max-h-[90vh] rounded-lg"
                   onError={(e) => {
-                    e.target.src =
-                      "https://via.placeholder.com/800x800?text=Product+Image";
+                    e.target.src = getPlaceholderImage(800, 800, "Product Image");
                   }}
                 />
 

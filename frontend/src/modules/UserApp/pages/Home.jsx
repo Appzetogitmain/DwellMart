@@ -35,7 +35,7 @@ import heroSlide2 from "../../../../data/hero/slide2.png";
 import heroSlide3 from "../../../../data/hero/slide3.png";
 import heroSlide4 from "../../../../data/hero/slide4.png";
 import stylishWatchImg from "../../../../data/products/stylish watch.png";
-import { getImageUrl, calculateDiscount } from "../../../shared/utils/helpers";
+import { getImageUrl, calculateDiscount, getPlaceholderImage } from "../../../shared/utils/helpers";
 import ExperienceSwitcher from "../components/QuickCommerce/ExperienceSwitcher";
 
 const normalizeId = (value) => String(value ?? "").trim();
@@ -649,8 +649,7 @@ const MobileHome = () => {
                         className="w-full h-full object-cover pointer-events-none select-none"
                         draggable={false}
                         onError={(e) => {
-                          e.target.src = `https://via.placeholder.com/400x200?text=Slide+${index + 1
-                            }`;
+                          e.target.src = getPlaceholderImage(400, 200, `Slide ${index + 1}`);
                         }}
                       />
                     </div>
@@ -682,7 +681,7 @@ const MobileHome = () => {
                   alt={sideBanner?.title || "Premium Watch"}
                   className="w-full h-full object-contain p-8 group-hover:scale-110 transition-transform duration-700"
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/400x400?text=Premium+Watch";
+                    e.target.src = getPlaceholderImage(400, 400, "Premium Watch");
                   }}
                 />
                 <div className="absolute inset-x-0 bottom-0 p-8 z-20 flex flex-col items-center text-center">
