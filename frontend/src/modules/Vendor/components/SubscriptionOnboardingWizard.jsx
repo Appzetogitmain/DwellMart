@@ -26,6 +26,7 @@ import StripeSubscriptionForm from './StripeSubscriptionForm';
 import api from '../../../shared/utils/api';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { useDynamicTranslation } from '../../../hooks/useDynamicTranslation';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS_KEYS = ['Plans', 'Registration', 'Payment', 'Done'];
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -98,8 +99,18 @@ const SubscriptionOnboardingWizard = ({
     'Authorization received. Waiting for billing confirmation.',
     'Payment window was closed.', 'Unable to start payment.',
     'Please verify your email first.', 'Please select a subscription plan first.',
-    'Verify', 'Sending...', 'Resend', 'Confirm', 'Verified', 'Verify email first', 'Verification code sent to your email.', 'Email verified successfully.', 'Please enter a valid email address.', 'Please enter a valid 6-digit code.'
+    'Verify', 'Sending...', 'Resend', 'Confirm', 'Verified', 'Verify email first', 'Verification code sent to your email.', 'Email verified successfully.', 'Please enter a valid email address.', 'Please enter a valid 6-digit code.',
+    'Selling Channels', 'Retail Marketplace', 'Wholesale Marketplace', 'Quick Commerce',
+    'At least one selling channel must stay enabled.', 'GST Number', 'Business Name',
+    'Wholesale Contact Name', 'Wholesale Contact Phone', 'Bulk Order Support Email',
+    'Registered business name', 'Contact person for bulk orders',
+    'Please provide your GST number, business name, wholesale contact, and support email.',
+    'At least one selling channel (Retail, Wholesale, or Quick Commerce) must stay enabled.'
   ]);
+
+  const { settings } = useSettingsStore();
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
 
   const { translateArray, translateText, translateBatch, translateObject } = useDynamicTranslation();
   const STEPS = STEPS_KEYS.map(key => t(key));
@@ -143,6 +154,18 @@ const SubscriptionOnboardingWizard = ({
       state: '',
       zipCode: '',
       country: '',
+    },
+    sellingChannels: {
+      retail: true,
+      wholesale: false,
+      quickCommerce: false,
+    },
+    wholesaleProfile: {
+      gstNumber: '',
+      businessName: '',
+      wholesaleContactName: '',
+      wholesaleContactPhone: '',
+      bulkOrderSupportEmail: '',
     },
   });
 
@@ -290,6 +313,27 @@ const SubscriptionOnboardingWizard = ({
     translateAll();
   }, [plans, translateArray, translateBatch, translateObject]);
 
+  const handleRetailToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, retail: checked },
+    }));
+  };
+
+  const handleWholesaleToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, wholesale: checked },
+    }));
+  };
+
+  const handleQuickCommerceToggle = (checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      sellingChannels: { ...prev.sellingChannels, quickCommerce: checked },
+    }));
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     if (name === 'email' && isEmailVerified) return;
@@ -298,6 +342,14 @@ const SubscriptionOnboardingWizard = ({
       setFormData((prev) => ({
         ...prev,
         address: { ...prev.address, [field]: value },
+      }));
+      return;
+    }
+    if (name.startsWith('wholesaleProfile.')) {
+      const field = name.split('.')[1];
+      setFormData((prev) => ({
+        ...prev,
+        wholesaleProfile: { ...prev.wholesaleProfile, [field]: value },
       }));
       return;
     }
@@ -363,6 +415,23 @@ const SubscriptionOnboardingWizard = ({
       setStep(0);
       return;
     }
+
+    const wholesaleRequested = wholesaleMarketplaceEnabled && formData.sellingChannels.wholesale;
+    const quickCommerceRequested = quickCommerceEnabled && formData.sellingChannels.quickCommerce;
+
+    if (!formData.sellingChannels.retail && !wholesaleRequested && !quickCommerceRequested) {
+      toast.error(t('At least one selling channel (Retail, Wholesale, or Quick Commerce) must stay enabled.'));
+      return;
+    }
+
+    if (wholesaleRequested) {
+      const { gstNumber, businessName, wholesaleContactName, wholesaleContactPhone, bulkOrderSupportEmail } = formData.wholesaleProfile;
+      if (!gstNumber?.trim() || !businessName?.trim() || !wholesaleContactName?.trim() || !wholesaleContactPhone?.trim() || !bulkOrderSupportEmail?.trim()) {
+        toast.error(t('Please provide your GST number, business name, wholesale contact, and support email.'));
+        return;
+      }
+    }
+
     if (!documentFile) {
       toast.error(`${t('Please upload your')} ${documentType === 'gst' ? t('GST') : t('Trade Licence')} ${t('document.')}`);
       return;
@@ -391,6 +460,16 @@ const SubscriptionOnboardingWizard = ({
       payload.append('address', JSON.stringify(formData.address));
       payload.append('agreedToTerms', true);
       payload.append('document', documentFile);
+
+      payload.append('sellingChannels', JSON.stringify({
+        retail: { enabled: formData.sellingChannels.retail },
+        wholesale: { enabled: wholesaleRequested },
+        quickCommerce: { enabled: quickCommerceRequested },
+      }));
+
+      if (wholesaleRequested) {
+        payload.append('wholesaleProfile', JSON.stringify(formData.wholesaleProfile));
+      }
 
       const response = await api.post('/vendor/auth/register', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -649,6 +728,117 @@ const SubscriptionOnboardingWizard = ({
                   <input name="address.state" value={formData.address.state} onChange={handleChange} placeholder={t('State')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
                   <input name="address.zipCode" value={formData.address.zipCode} onChange={handleChange} placeholder={t('Zip code')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
                   <input name="address.country" value={formData.address.country} onChange={handleChange} placeholder={t('Country')} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
+                  
+                  {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
+                    <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="mb-3 text-sm font-semibold text-slate-700">{t('Selling Channels')}</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={formData.sellingChannels.retail}
+                            onChange={(event) => handleRetailToggle(event.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          {t('Retail Marketplace')}
+                        </label>
+                        {wholesaleMarketplaceEnabled && (
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={formData.sellingChannels.wholesale}
+                              onChange={(event) => handleWholesaleToggle(event.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            {t('Wholesale Marketplace')}
+                          </label>
+                        )}
+                        {quickCommerceEnabled && (
+                          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={formData.sellingChannels.quickCommerce}
+                              onChange={(event) => handleQuickCommerceToggle(event.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                            />
+                            {t('Quick Commerce')}
+                          </label>
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">{t('At least one selling channel must stay enabled.')}</p>
+
+                      {formData.sellingChannels.wholesale && (
+                        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              {t('GST Number')} <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              name="wholesaleProfile.gstNumber"
+                              value={formData.wholesaleProfile.gstNumber}
+                              onChange={handleChange}
+                              required={formData.sellingChannels.wholesale}
+                              placeholder="22AAAAA0000A1Z5"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              {t('Business Name')} <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              name="wholesaleProfile.businessName"
+                              value={formData.wholesaleProfile.businessName}
+                              onChange={handleChange}
+                              required={formData.sellingChannels.wholesale}
+                              placeholder={t('Registered business name')}
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              {t('Wholesale Contact Name')} <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              name="wholesaleProfile.wholesaleContactName"
+                              value={formData.wholesaleProfile.wholesaleContactName}
+                              onChange={handleChange}
+                              required={formData.sellingChannels.wholesale}
+                              placeholder={t('Contact person for bulk orders')}
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              {t('Wholesale Contact Phone')} <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              name="wholesaleProfile.wholesaleContactPhone"
+                              value={formData.wholesaleProfile.wholesaleContactPhone}
+                              onChange={handleChange}
+                              required={formData.sellingChannels.wholesale}
+                              placeholder="+1234567890"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="mb-1.5 block text-xs font-medium text-slate-600">
+                              {t('Bulk Order Support Email')} <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="email"
+                              name="wholesaleProfile.bulkOrderSupportEmail"
+                              value={formData.wholesaleProfile.bulkOrderSupportEmail}
+                              onChange={handleChange}
+                              required={formData.sellingChannels.wholesale}
+                              placeholder="bulkorders@yourstore.com"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <label className="relative">
                     <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder={t('Password')} className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-12 text-sm outline-none focus:border-teal-500" />
