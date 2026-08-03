@@ -68,7 +68,7 @@ const MobileCategoryGrid = () => {
           </h2>
           <Link
             to="/categories"
-            className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+            className="text-sm font-semibold text-brand-primary hover:underline transition-colors"
           >
             See All &rarr;
           </Link>
@@ -98,7 +98,7 @@ const MobileCategoryGrid = () => {
                     }}
                   />
                 </div>
-                <span className="text-xs font-semibold text-gray-700 text-center line-clamp-2 group-hover:text-primary-600">
+                <span className="text-xs font-semibold text-gray-700 text-center line-clamp-2 group-hover:text-brand-primary">
                   {category.name}
                 </span>
               </Link>

@@ -153,7 +153,7 @@ const Footer = () => {
                     rel={sItem.link !== "#" ? "noopener noreferrer" : undefined}
                     whileHover={{ scale: 1.1, y: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    className="w-9 h-9 rounded-full bg-gray-800/80 hover:bg-emerald-500 hover:text-white border border-gray-700 flex items-center justify-center transition-all duration-300 text-gray-300"
+                    className="w-9 h-9 rounded-full bg-gray-800/80 hover:bg-amber-400 hover:text-gray-900 hover:border-amber-400 border border-gray-700 flex items-center justify-center transition-all duration-300 text-gray-300"
                   >
                     <sItem.icon className="text-base" />
                   </motion.a>
@@ -174,7 +174,7 @@ const Footer = () => {
               </h4>
               <FiChevronDown
                 className={`text-gray-400 text-lg transition-transform duration-300 sm:hidden ${
-                  openSection === "categories" ? "rotate-180 text-emerald-400" : ""
+                  openSection === "categories" ? "rotate-180 text-amber-400" : ""
                 }`}
               />
             </button>
@@ -186,9 +186,9 @@ const Footer = () => {
                   <li key={cat._id || i}>
                     <Link
                       to={cat._id && cat._id !== cat.name.toLowerCase() ? `/category/${cat._id}` : "/search"}
-                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-emerald-400 transition-colors py-0.5"
+                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-amber-400 transition-colors py-0.5"
                     >
-                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-emerald-400" />
+                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-amber-400" />
                       <span>{t(cat.name)}</span>
                     </Link>
                   </li>
@@ -209,7 +209,7 @@ const Footer = () => {
               </h4>
               <FiChevronDown
                 className={`text-gray-400 text-lg transition-transform duration-300 sm:hidden ${
-                  openSection === "service" ? "rotate-180 text-emerald-400" : ""
+                  openSection === "service" ? "rotate-180 text-amber-400" : ""
                 }`}
               />
             </button>
@@ -221,9 +221,9 @@ const Footer = () => {
                   <li key={i}>
                     <Link
                       to={link.path}
-                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-emerald-400 transition-colors py-0.5"
+                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-amber-400 transition-colors py-0.5"
                     >
-                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-emerald-400" />
+                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-amber-400" />
                       <span>{t(link.label)}</span>
                     </Link>
                   </li>
@@ -244,7 +244,7 @@ const Footer = () => {
               </h4>
               <FiChevronDown
                 className={`text-gray-400 text-lg transition-transform duration-300 sm:hidden ${
-                  openSection === "links" ? "rotate-180 text-emerald-400" : ""
+                  openSection === "links" ? "rotate-180 text-amber-400" : ""
                 }`}
               />
             </button>
@@ -256,9 +256,9 @@ const Footer = () => {
                   <li key={i}>
                     <Link
                       to={link.path}
-                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-emerald-400 transition-colors py-0.5"
+                      className="group flex items-center gap-2 text-xs sm:text-sm text-gray-400 hover:text-amber-400 transition-colors py-0.5"
                     >
-                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-emerald-400" />
+                      <FiChevronRight className="text-xs opacity-0 -ml-3 group-hover:opacity-100 group-hover:ml-0 transition-all text-amber-400" />
                       <span>{t(link.label)}</span>
                     </Link>
                   </li>

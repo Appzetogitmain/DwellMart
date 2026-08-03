@@ -20,10 +20,10 @@ const RecommendedSection = ({ products = null }) => {
   }
 
   return (
-    <div className="px-4 py-5 bg-gradient-to-br from-blue-50/50 via-white to-purple-50/40 rounded-2xl mx-2">
+    <div className="px-4 py-5 bg-gradient-to-br from-amber-50/50 via-white to-yellow-50/30 rounded-2xl mx-2">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl shadow-md">
+          <div className="p-2.5 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl shadow-md">
             <FiThumbsUp className="text-white text-lg" />
           </div>
           <div>
@@ -35,7 +35,7 @@ const RecommendedSection = ({ products = null }) => {
         </div>
         <Link
           to="/search"
-          className="flex items-center gap-1 text-sm text-primary-600 font-semibold hover:text-primary-700 transition-colors active:scale-95">
+          className="flex items-center gap-1 text-sm text-brand-primary font-semibold hover:underline transition-colors active:scale-95">
           <span>{t("See All")}</span>
           <FiArrowRight className="text-sm" />
         </Link>

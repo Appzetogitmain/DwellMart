@@ -19,7 +19,7 @@ const BrandLogosScroll = ({ brands = null }) => {
                     <h2 className="text-xl font-bold text-gray-800 tracking-tight">Top Brands</h2>
                     <button
                         onClick={() => navigate('/categories')}
-                        className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                        className="text-sm font-semibold text-brand-primary hover:underline transition-colors"
                     >
                         See All &rarr;
                     </button>
@@ -48,7 +48,7 @@ const BrandLogosScroll = ({ brands = null }) => {
                                     loading="lazy"
                                 />
                             </div>
-                            <p className="text-xs font-semibold text-gray-700 text-center truncate w-full mt-2 group-hover:text-primary-600">
+                            <p className="text-xs font-semibold text-gray-700 text-center truncate w-full mt-2 group-hover:text-brand-primary">
                                 {brand.name}
                             </p>
                         </motion.div>
