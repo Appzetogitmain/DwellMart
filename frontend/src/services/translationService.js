@@ -1,8 +1,17 @@
 import { translationCache } from '../utils/translationCache';
 import { getCacheKeyParams, normalizeLanguageCode } from '../utils/languageUtils';
 
-// A constant for our API endpoint (assuming the standard env setup or relative path)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+// API endpoint configuration (uses environment variables, API_BASE_URL, or relative path)
+const getApiUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    if (import.meta.env.VITE_API_BASE_URL) {
+        const base = import.meta.env.VITE_API_BASE_URL.replace(/\/$/, '');
+        return base.endsWith('/api') ? `${base}/v1` : `${base}/api/v1`;
+    }
+    return '/api/v1';
+};
+
+const API_URL = getApiUrl();
 
 class TranslationQueue {
     constructor() {
