@@ -573,50 +573,39 @@ const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
         if (pc._id) countMap.set(String(pc._id), pc.count);
     });
 
-    const rootMap = new Map();
-    const rootCategories = [];
+    // Build categories response preserving flat array with parentId while embedding children/subcategories
+    const normalizedCategories = categories.map((cat) => {
+        const catId = String(cat._id);
+        const parentId = cat.parentId ? String(typeof cat.parentId === 'object' ? cat.parentId._id : cat.parentId) : null;
+        
+        let children = [];
+        if (!parentId) {
+            children = categories
+                .filter((child) => {
+                    const childParentId = child.parentId ? String(typeof child.parentId === 'object' ? child.parentId._id : child.parentId) : null;
+                    return childParentId === catId;
+                })
+                .map((child) => ({
+                    ...child,
+                    id: child._id,
+                    parentId: catId,
+                    experience: Array.isArray(child.supportedExperiences) && child.supportedExperiences.length > 0 ? child.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
+                    productCount: countMap.get(String(child._id)) || 0,
+                }));
+        }
 
-    // First pass: identify root categories vs subcategories
-    categories.forEach((cat) => {
-        const catObj = {
+        return {
             ...cat,
             id: cat._id,
+            parentId,
             experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
-            productCount: countMap.get(String(cat._id)) || 0,
-            children: [],
-            subcategories: [],
+            productCount: countMap.get(catId) || 0,
+            children,
+            subcategories: children,
         };
-        if (!cat.parentId) {
-            rootMap.set(String(cat._id), catObj);
-            rootCategories.push(catObj);
-        }
     });
 
-    // Second pass: attach subcategories to their parent root category
-    categories.forEach((cat) => {
-        if (cat.parentId) {
-            const parent = rootMap.get(String(cat.parentId));
-            if (parent) {
-                const childObj = {
-                    ...cat,
-                    id: cat._id,
-                    experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
-                    productCount: countMap.get(String(cat._id)) || 0,
-                };
-                parent.children.push(childObj);
-                parent.subcategories.push(childObj);
-            }
-        }
-    });
-
-    const result = rootCategories.length > 0 ? rootCategories : categories.map((cat) => ({
-        ...cat,
-        id: cat._id,
-        experience: Array.isArray(cat.supportedExperiences) && cat.supportedExperiences.length > 0 ? cat.supportedExperiences[0] : EXPERIENCES.MARKETPLACE,
-        productCount: countMap.get(String(cat._id)) || 0,
-    }));
-
-    res.status(200).json(new ApiResponse(200, result, 'Categories fetched.'));
+    res.status(200).json(new ApiResponse(200, normalizedCategories, 'Categories fetched.'));
 });
 
 // GET /api/categories & GET /api/categories/all (public)

@@ -244,17 +244,17 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
           {/* Subcategory Chips Selector (if available) */}
           {subcategories.length > 0 && (
             <div className="mb-4 pb-3 border-b border-border/60 overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-1">
                 <button
                   type="button"
                   onClick={() => setSelectedSubcategoryId(null)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold border transition-all flex items-center gap-2 shrink-0 ${
                     !selectedSubcategoryId
                       ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 shadow-xs"
                       : "bg-surface-muted text-content-secondary border-border hover:bg-border"
                   }`}
                 >
-                  All {activeCategory?.name}
+                  <span>All {activeCategory?.name}</span>
                 </button>
                 {subcategories.map((sub) => {
                   const subId = sub._id || sub.id;
@@ -264,13 +264,19 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                       key={subId}
                       type="button"
                       onClick={() => setSelectedSubcategoryId(subId)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap ${
+                      className={`px-3 py-1.5 rounded-2xl text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-2 shrink-0 ${
                         isSubActive
                           ? "bg-emerald-600 text-white border-emerald-500 shadow-xs"
                           : "bg-surface-muted text-content-secondary border-border hover:bg-border"
                       }`}
                     >
-                      {sub.name}
+                      <CategoryImage
+                        src={sub.image || sub.icon || activeCategory?.image}
+                        alt={sub.name}
+                        name={sub.name}
+                        containerClassName="w-6 h-6 rounded-lg overflow-hidden shrink-0 border border-white/40 shadow-xs"
+                      />
+                      <span>{sub.name}</span>
                     </button>
                   );
                 })}
