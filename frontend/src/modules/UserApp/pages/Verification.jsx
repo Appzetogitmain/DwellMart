@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiShield } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from '../../../shared/components/PageTransition';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import { loginLogo } from '../../../shared/utils/imagePaths';
 
 const MobileVerification = () => {
   const { getTranslatedText: t } = usePageTranslation([
+    'Email Verification',
     'Verification',
     'Verification code',
     "Enter the verification code we've sent to your",
@@ -110,50 +112,65 @@ const MobileVerification = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-muted">
+        <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden select-none">
+          {/* Background Ambient Glows & Mesh Grid */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 w-[450px] h-[450px] bg-slate-800/30 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px] opacity-25 pointer-events-none" />
+
+          {/* Main Card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 25 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-full max-w-md"
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="w-full max-w-md relative z-10"
           >
-            <div className="bg-surface rounded-2xl p-6 shadow-xl border border-border">
+            <div className="relative rounded-3xl bg-slate-900/90 backdrop-blur-2xl border border-amber-500/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] overflow-hidden p-8 sm:p-10">
+              {/* Top Gold Accent Line */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-500" />
+
               {/* Back Button */}
               <button
+                type="button"
                 onClick={() => navigate(-1)}
-                className="mb-6 flex items-center text-content-secondary hover:text-content transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors mb-4"
               >
-                <FiArrowLeft className="mr-2" size={20} />
-                <span className="text-sm font-medium">{t('Back')}</span>
+                <FiArrowLeft className="text-sm" />
+                <span>{t('Back')}</span>
               </button>
 
-              {/* Header */}
+              {/* Header & Logo */}
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-content mb-6">{t('Verification')}</h1>
-
-                {/* Verification Icon */}
-                <div className="flex justify-center mb-6">
-                  <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-brand-primary/10 border border-brand-primary/30 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-brand-primary/20 flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-brand-primary text-black flex items-center justify-center">
-                          <FiCheck size={24} />
-                        </div>
-                      </div>
-                    </div>
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.4 }}
+                  className="flex justify-center mb-5"
+                >
+                  <div className="bg-slate-950 px-7 py-3.5 rounded-2xl border border-amber-500/30 shadow-[0_0_30px_rgba(212,175,55,0.15)] inline-flex items-center justify-center">
+                    <img
+                      src={loginLogo}
+                      alt="DwellMart Logo"
+                      className="h-12 sm:h-14 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                    />
                   </div>
+                </motion.div>
+
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
+                  <FiShield className="text-xs" />
+                  <span>{t('Email Verification')}</span>
                 </div>
 
-                <h2 className="text-xl font-semibold text-content mb-2">{t('Verification code')}</h2>
-                <p className="text-sm text-content-secondary">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1.5">{t('Verification code')}</h1>
+                <p className="text-slate-400 text-xs sm:text-sm">
                   {t("Enter the verification code we've sent to your")}{' '}
-                  <span className="font-medium text-content">{email || t('email')}</span>
+                  <span className="font-medium text-amber-400">{email || t('email')}</span>
                 </p>
               </div>
 
               {/* Code Input Form */}
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center gap-2.5 sm:gap-3">
                   {codes.map((code, index) => (
                     <input
                       key={index}
@@ -165,31 +182,35 @@ const MobileVerification = () => {
                       onChange={(e) => handleChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
                       onPaste={index === 0 ? handlePaste : undefined}
-                      className={`w-14 h-14 rounded-full border-2 text-center text-xl font-semibold focus:outline-none transition-all ${code
-                          ? 'border-brand-primary bg-brand-primary/10 text-brand-primary'
-                          : 'border-border bg-surface focus:border-brand-primary text-content'
-                        }`}
+                      className={`w-11 sm:w-12 h-12 rounded-xl border text-center text-lg font-bold transition-all ${
+                        code
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_15px_rgba(212,175,55,0.2)]'
+                          : 'border-slate-700/80 bg-slate-950/80 focus:border-amber-500 text-white'
+                      } focus:outline-none focus:ring-2 focus:ring-amber-500/20`}
                     />
                   ))}
                 </div>
 
                 {/* Submit Button */}
-                <button
+                <motion.button
                   type="submit"
                   disabled={isLoading || codes.some(code => !code)}
-                  className="w-full bg-brand-primary hover:bg-brand-primaryHover text-black py-3.5 rounded-xl font-semibold text-base transition-all duration-300 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-sm sm:text-base shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_6px_25px_rgba(212,175,55,0.45)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
                 >
-                  {isLoading ? t('Verifying...') : t('Confirm')}
-                </button>
+                  {isLoading ? t('Verifying...') : <><FiCheck className="text-lg" /> <span>{t('Confirm')}</span></>}
+                </motion.button>
               </form>
 
               {/* Resend Link */}
-              <div className="mt-6 text-center">
-                <p className="text-sm text-content-secondary">
+              <div className="mt-6 text-center pt-4 border-t border-slate-800/80">
+                <p className="text-xs sm:text-sm text-slate-400">
                   {t("Didn't receive the code?")}{' '}
                   <button
+                    type="button"
                     onClick={handleResend}
-                    className="text-brand-primary hover:underline font-semibold"
+                    className="text-amber-400 hover:text-amber-300 font-bold transition-colors underline underline-offset-4 decoration-amber-500/40 hover:decoration-amber-400"
                   >
                     {t('Resend')}
                   </button>
@@ -204,4 +225,5 @@ const MobileVerification = () => {
 };
 
 export default MobileVerification;
+
 

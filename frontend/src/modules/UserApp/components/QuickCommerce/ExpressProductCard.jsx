@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiZap, FiPlus, FiMinus, FiClock } from "react-icons/fi";
+import { FiZap, FiPlus, FiMinus } from "react-icons/fi";
 import LazyImage from "../../../../shared/components/LazyImage";
 import { useCartStore } from "../../../../shared/store/useStore";
 import { calculateDiscount } from "../../../../shared/utils/helpers";
+import { Badge, Button } from "../../../../shared/components/ui";
 
 /**
- * ExpressProductCard — Modern Blinkit-Inspired Express Product Card
- * Designed for high conversion, compact density, and immediate 1-click cart interaction.
+ * ExpressProductCard — Refactored to fully adopt DwellMart Design System
+ * Uses shared Badge, Button, design tokens, and Inter typography.
  */
 const ExpressProductCard = ({ product }) => {
   const navigate = useNavigate();
@@ -67,26 +68,26 @@ const ExpressProductCard = ({ product }) => {
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
       onClick={handleCardClick}
-      className="group relative bg-surface rounded-2xl border border-border/80 p-2.5 sm:p-3 flex flex-col justify-between hover:border-brand-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
+      className="group relative bg-surface-card rounded-card border border-borderToken-default p-2.5 sm:p-3 flex flex-col justify-between hover:border-brand-primary/60 hover:shadow-card transition-all duration-200 cursor-pointer overflow-hidden"
     >
-      {/* Top badges bar */}
+      {/* Top badges bar using Shared Badge Primitives */}
       <div className="flex items-center justify-between gap-1 mb-2 z-10">
         {/* Speed tag */}
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold text-[10px] uppercase tracking-wider border border-amber-500/20">
-          <FiZap className="text-[11px] fill-amber-500" />
-          10-15m
-        </span>
+        <Badge variant="gold" size="sm" className="!normal-case tracking-tight gap-1">
+          <FiZap className="text-[11px] fill-amber-500 text-amber-500" />
+          <span>10-15m</span>
+        </Badge>
 
         {/* Discount tag */}
         {discountPercent > 0 && (
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-status-successBg text-status-success font-extrabold text-[10px]">
+          <Badge variant="success" size="sm" className="!normal-case font-black">
             {discountPercent}% OFF
-          </span>
+          </Badge>
         )}
       </div>
 
       {/* Product Image */}
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-muted mb-2 flex items-center justify-center p-2 group-hover:scale-105 transition-transform duration-300">
+      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-background mb-2 flex items-center justify-center p-2 group-hover:scale-105 transition-transform duration-300">
         <LazyImage
           src={product?.image || product?.images?.[0]}
           alt={product?.name}
@@ -101,26 +102,26 @@ const ExpressProductCard = ({ product }) => {
       <div className="flex-1 flex flex-col justify-between">
         <div>
           {/* Unit / Pack weight */}
-          <p className="text-[11px] font-semibold text-content-muted mb-0.5 line-clamp-1">
+          <p className="text-[11px] font-semibold text-textColor-muted mb-0.5 line-clamp-1">
             {unitText}
           </p>
 
           {/* Product Title */}
-          <h4 className="text-xs sm:text-sm font-bold text-content leading-tight line-clamp-2 mb-2 group-hover:text-brand-primary transition-colors">
+          <h4 className="text-xs sm:text-sm font-bold text-textColor-primary leading-tight line-clamp-2 mb-2 group-hover:text-textColor-brand transition-colors">
             {product?.name}
           </h4>
         </div>
 
         {/* Bottom Bar: Price + Add Button */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40 mt-1">
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-borderToken-light mt-1">
           {/* Price Container */}
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-xs sm:text-sm font-extrabold text-content tracking-tight">
+              <span className="text-xs sm:text-sm font-extrabold text-textColor-primary tracking-tight">
                 ₹{price.toLocaleString('en-IN')}
               </span>
               {hasDiscount && (
-                <span className="text-[10px] font-medium text-content-muted line-through">
+                <span className="text-[10px] font-medium text-textColor-muted line-through">
                   ₹{originalPrice.toLocaleString('en-IN')}
                 </span>
               )}
@@ -130,33 +131,33 @@ const ExpressProductCard = ({ product }) => {
           {/* Add / Stepper Button */}
           <div onClick={(e) => e.stopPropagation()}>
             {quantity === 0 ? (
-              <motion.button
-                whileTap={{ scale: 0.92 }}
-                type="button"
+              <Button
+                size="sm"
+                variant="primary"
                 onClick={handleAdd}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-xs shadow-xs border border-emerald-500/40 flex items-center gap-1 transition-all"
+                rightIcon={<FiPlus className="text-xs" />}
+                className="!py-1.5 !px-3 !min-h-[32px] text-xs font-black"
               >
-                <span>ADD</span>
-                <FiPlus className="text-xs" />
-              </motion.button>
+                ADD
+              </Button>
             ) : (
-              <div className="flex items-center bg-emerald-600 text-white rounded-xl shadow-xs overflow-hidden border border-emerald-500">
+              <div className="flex items-center bg-brand-primary text-slate-950 rounded-button shadow-sm overflow-hidden font-extrabold text-xs border border-brand-primaryHover">
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   type="button"
                   onClick={handleDecrement}
-                  className="px-2 py-1.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                  className="px-2 py-1.5 hover:bg-brand-primaryHover transition-colors"
                 >
                   <FiMinus className="text-xs font-bold" />
                 </motion.button>
-                <span className="px-2 py-1.5 text-xs font-extrabold text-center min-w-[20px]">
+                <span className="px-2 py-1.5 text-xs font-black text-center min-w-[20px]">
                   {quantity}
                 </span>
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   type="button"
                   onClick={handleIncrement}
-                  className="px-2 py-1.5 hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                  className="px-2 py-1.5 hover:bg-brand-primaryHover transition-colors"
                 >
                   <FiPlus className="text-xs font-bold" />
                 </motion.button>

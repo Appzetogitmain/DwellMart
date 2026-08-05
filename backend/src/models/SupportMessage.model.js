@@ -25,7 +25,7 @@ const supportMessageSchema = new mongoose.Schema(
         senderRole: {
             type: String,
             required: true,
-            enum: ['customer', 'vendor', 'delivery', 'admin', 'system'],
+            enum: ['customer', 'vendor', 'delivery', 'admin', 'superadmin', 'system'],
             index: true,
         },
         message: {

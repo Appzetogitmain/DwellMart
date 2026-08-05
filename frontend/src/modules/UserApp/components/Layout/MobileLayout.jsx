@@ -33,20 +33,28 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
     location.pathname !== '/orders' &&
     !isCheckoutPage;
 
-  // Ensure body scroll is restored when component mounts
+  // Ensure body scroll is restored and dark background is set on auth pages
   useEffect(() => {
     document.body.style.overflowY = '';
+    if (isAuthPage) {
+      document.body.style.backgroundColor = '#0B0F17';
+    } else {
+      document.body.style.backgroundColor = '';
+    }
     return () => {
       document.body.style.overflowY = '';
+      document.body.style.backgroundColor = '';
     };
-  }, []);
+  }, [isAuthPage]);
 
   return (
     <>
       {!isAuthPage && !isCheckoutPage && <DesktopHeader />}
       {shouldShowHeader && <MobileHeader />}
       <main
-        className={`min-h-screen w-full max-w-[1920px] mx-auto overflow-x-hidden px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 ${shouldShowBottomNav ? 'pb-20' : ''} ${showCartBar ? 'pb-24' : ''}`}
+        className={`min-h-screen w-full ${
+          isAuthPage ? 'max-w-full px-0 bg-[#0B0F17]' : 'max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'
+        } overflow-x-hidden ${shouldShowBottomNav ? 'pb-20' : ''} ${showCartBar ? 'pb-24' : ''}`}
         style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : '0px' }}
       >
         {children}
@@ -60,4 +68,5 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
 };
 
 export default MobileLayout;
+
 

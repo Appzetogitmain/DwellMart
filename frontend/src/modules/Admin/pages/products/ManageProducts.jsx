@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { FiSearch, FiEdit, FiTrash2, FiPlus } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
@@ -8,6 +8,9 @@ import ConfirmModal from "../../components/ConfirmModal";
 import ProductFormModal from "../../components/ProductFormModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import PermissionGuard from "../../../../shared/components/PermissionGuard";
+import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
+import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
+import { ProductWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpers";
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";

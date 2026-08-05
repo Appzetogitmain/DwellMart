@@ -63,8 +63,8 @@ const Button = forwardRef(({
       icon:  'bg-transparent hover:bg-textColor-muted/10 text-textColor-secondary border border-transparent',
     },
     primary: {
-      ghost: 'bg-transparent hover:bg-blue-50 text-blue-600 border border-transparent focus-visible:ring-blue-500',
-      icon:  'bg-transparent hover:bg-blue-50 text-blue-600 border border-transparent focus-visible:ring-blue-500',
+      ghost: 'bg-transparent hover:bg-amber-50 text-amber-600 border border-transparent focus-visible:ring-amber-500',
+      icon:  'bg-transparent hover:bg-amber-50 text-amber-600 border border-transparent focus-visible:ring-amber-500',
     },
     danger: {
       ghost: 'bg-transparent hover:bg-red-50 text-red-600 border border-transparent focus-visible:ring-red-500',

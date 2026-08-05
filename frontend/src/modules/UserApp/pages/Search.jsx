@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from '../../../shared/components/ProductCard';
@@ -17,7 +17,8 @@ import { EXPERIENCES, getLocationQueryParams } from '../../../shared/utils/exper
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import ProductGrid from '../../../shared/components/ProductGrid';
-import { Input, Drawer, Chip, Button, Select } from '../../../shared/components/ui';
+import { Input, Drawer, Chip, Button, Select, SkeletonLoader } from '../../../shared/components/ui';
+import useInfiniteProducts from '../../../hooks/useInfiniteProducts';
 
 const normalizeId = (value) => String(value ?? '').trim();
 
@@ -125,9 +126,6 @@ const MobileSearch = ({ isShopPage = false }) => {
   const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
   const wholesaleMarketplaceEnabled =
     settings?.features?.wholesaleMarketplaceEnabled === true;
-  const [products, setProducts] = useState([]);
-  const [isLoadingResults, setIsLoadingResults] = useState(false);
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
     vendor: searchParams.get('vendor') || '',
@@ -141,11 +139,9 @@ const MobileSearch = ({ isShopPage = false }) => {
 
   // Sync searchQuery with URL params
   useEffect(() => {
-    const q = searchParams.get('q');
-    setSearchQuery(q || '');
-    setSortBy(searchParams.get('sort') || 'newest');
-
-    setFilters({
+    const q = searchParams.get('q') || '';
+    const s = searchParams.get('sort') || 'newest';
+    const newFilters = {
       category: searchParams.get('category') || '',
       vendor: searchParams.get('vendor') || '',
       minPrice: searchParams.get('minPrice') || '',
@@ -154,6 +150,21 @@ const MobileSearch = ({ isShopPage = false }) => {
       sellingChannel: searchParams.get('sellingChannel') || '',
       bulkDiscount: searchParams.get('bulkDiscount') === 'true',
       hasMoq: searchParams.get('hasMoq') === 'true',
+    };
+
+    setSearchQuery((prev) => (prev !== q ? q : prev));
+    setSortBy((prev) => (prev !== s ? s : prev));
+    setFilters((prev) => {
+      const isSame =
+        prev.category === newFilters.category &&
+        prev.vendor === newFilters.vendor &&
+        prev.minPrice === newFilters.minPrice &&
+        prev.maxPrice === newFilters.maxPrice &&
+        prev.minRating === newFilters.minRating &&
+        prev.sellingChannel === newFilters.sellingChannel &&
+        prev.bulkDiscount === newFilters.bulkDiscount &&
+        prev.hasMoq === newFilters.hasMoq;
+      return isSame ? prev : newFilters;
     });
   }, [searchParams]);
 
@@ -256,96 +267,81 @@ const MobileSearch = ({ isShopPage = false }) => {
     return fallbackCategories;
   }, [storeCategories]);
 
-  const buildQueryParams = useCallback(
-    (pageNumber) => {
-      const query = {
-        page: pageNumber,
-        limit: PAGE_SIZE,
-        sort: sortBy || 'newest',
-      };
+  // Construct query parameters for the generic infinite products hook
+  const queryParams = useMemo(() => {
+    const query = {
+      sort: sortBy || 'newest',
+    };
 
-      const q = String(searchParams.get('q') || '').trim();
-      if (q) query.q = q;
+    const q = String(searchParams.get('q') || '').trim();
+    if (q) query.q = q;
 
-      if (filters.category) query.category = normalizeId(filters.category);
-      if (filters.vendor) query.vendor = normalizeId(filters.vendor);
-      if (filters.minPrice) query.minPrice = filters.minPrice;
-      if (filters.maxPrice) query.maxPrice = filters.maxPrice;
-      if (filters.minRating) query.minRating = filters.minRating;
-      if (filters.sellingChannel) query.sellingChannel = filters.sellingChannel;
-      if (filters.bulkDiscount) query.bulkDiscount = 'true';
-      if (filters.hasMoq) query.hasMoq = 'true';
+    if (filters.category) query.category = normalizeId(filters.category);
+    if (filters.vendor) query.vendor = normalizeId(filters.vendor);
+    if (filters.minPrice) query.minPrice = filters.minPrice;
+    if (filters.maxPrice) query.maxPrice = filters.maxPrice;
+    if (filters.minRating) query.minRating = filters.minRating;
+    if (filters.sellingChannel) query.sellingChannel = filters.sellingChannel;
+    if (filters.bulkDiscount) query.bulkDiscount = 'true';
+    if (filters.hasMoq) query.hasMoq = 'true';
 
-      // Quick Commerce results must be limited to stores that can deliver here.
-      // The server enforces this; sending the hint is what makes it possible.
-      if (isQuickCommerce) {
-        Object.assign(query, getLocationQueryParams(customerLocation));
-      }
+    if (isQuickCommerce) {
+      Object.assign(query, getLocationQueryParams(customerLocation));
+    }
 
-      return query;
-    },
-    [
-      filters.category,
-      filters.vendor,
-      filters.minPrice,
-      filters.maxPrice,
-      filters.minRating,
-      filters.sellingChannel,
-      filters.bulkDiscount,
-      filters.hasMoq,
-      isQuickCommerce,
-      customerLocation,
-      sortBy,
-      searchParams,
-    ]
-  );
+    return query;
+  }, [
+    sortBy,
+    searchParams,
+    filters.category,
+    filters.vendor,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.minRating,
+    filters.sellingChannel,
+    filters.bulkDiscount,
+    filters.hasMoq,
+    isQuickCommerce,
+    customerLocation,
+  ]);
 
-  const fetchResults = useCallback(
-    async ({ pageNumber = 1 } = {}) => {
-      setIsLoadingResults(true);
+  const {
+    products,
+    total,
+    hasMore,
+    isLoadingInitial,
+    isLoadingMore,
+    isError,
+    fetchNextPage,
+    retry,
+  } = useInfiniteProducts(queryParams, 20);
 
-      try {
-        const query = buildQueryParams(pageNumber);
-        const response = await api.get('/products', { params: query });
-        const payload = response?.data ?? response;
-        const list = Array.isArray(payload?.products)
-          ? payload.products.map(normalizeProduct).filter((item) => item.id)
-          : [];
-        const page = Number(payload?.page || pageNumber || 1);
-        const pages = Number(payload?.pages || 1);
-        const total = Number(payload?.total || list.length || 0);
+  const sentinelRef = useRef(null);
 
-        const translatedProducts = await translateArray(list, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
-        setProducts(translatedProducts);
-        setPagination({ page, pages, total });
-      } catch {
-        setProducts([]);
-        setPagination({ page: 1, pages: 1, total: 0 });
-      } finally {
-        setIsLoadingResults(false);
-      }
-    },
-    [buildQueryParams, translateArray]
-  );
-
+  // Preloading IntersectionObserver (400px threshold before page bottom)
   useEffect(() => {
-    const pageFromUrl = Math.max(1, Number(searchParams.get('page')) || 1);
-    fetchResults({ pageNumber: pageFromUrl });
-  }, [fetchResults, searchParams, sortBy]);
+    if (!hasMore || isLoadingInitial || isLoadingMore) return;
+    const target = sentinelRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '400px 0px' }
+    );
+
+    observer.observe(target);
+
+    return () => {
+      observer.unobserve(target);
+      observer.disconnect();
+    };
+  }, [hasMore, isLoadingInitial, isLoadingMore, fetchNextPage]);
 
   const filteredProducts = useMemo(() => products, [products]);
-
-  const handlePageChange = (newPage) => {
-    const validPage = Math.max(1, Math.min(newPage, pagination.pages || 1));
-    const newParams = new URLSearchParams(searchParams);
-    if (validPage > 1) {
-      newParams.set('page', String(validPage));
-    } else {
-      newParams.delete('page');
-    }
-    setSearchParams(newParams);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   const filterButtonRef = useRef(null);
 
@@ -539,7 +535,7 @@ const MobileSearch = ({ isShopPage = false }) => {
             {/* Filter Toggle and View Mode */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-content-secondary">
-                {t('Found')} {pagination.total} {t('product(s)')}
+                {t('Found')} {total} {t('product(s)')}
               </p>
               <div className="flex items-center gap-2">
                 <select
@@ -907,127 +903,63 @@ const MobileSearch = ({ isShopPage = false }) => {
           <div className="px-3 py-4 md:px-4 lg:p-6">
             <ProductGrid
               products={filteredProducts}
-              loading={isLoadingResults}
+              loading={isLoadingInitial}
+              skeletonCount={8}
               emptyTitle={t('No products found')}
               emptyDescription={t('Try adjusting your search or filters')}
             />
 
-            {/* Pagination Controls */}
-            {!isLoadingResults && filteredProducts.length > 0 && pagination.pages > 1 && (
-              <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
-                <div className="text-xs sm:text-sm font-medium text-content-secondary text-center sm:text-left">
-                  {t('Showing')}{' '}
-                  <span className="font-bold text-content">
-                    {Math.min((pagination.page - 1) * PAGE_SIZE + 1, pagination.total)}
-                  </span>{' '}
-                  {t('to')}{' '}
-                  <span className="font-bold text-content">
-                    {Math.min(pagination.page * PAGE_SIZE, pagination.total)}
-                  </span>{' '}
-                  {t('of')}{' '}
-                  <span className="font-bold text-content">{pagination.total}</span>{' '}
-                  {t('products')}
+            {/* Sentinel Element for IntersectionObserver Preloading */}
+            {hasMore && !isLoadingInitial && (
+              <div
+                ref={sentinelRef}
+                className="h-10 w-full flex items-center justify-center my-2 pointer-events-none opacity-0"
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Page 2+ Loading Skeletons */}
+            {isLoadingMore && (
+              <div className="mt-8 space-y-4" aria-live="polite" aria-label="Loading more products">
+                <div className="flex items-center justify-center gap-2 text-xs font-semibold text-content-muted">
+                  <FiRefreshCw className="animate-spin text-brand-primary text-sm" />
+                  <span>{t('Loading more products...')}</span>
                 </div>
-
-                <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                  <button
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1 || isLoadingResults}
-                    className="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-border bg-surface text-content-secondary hover:bg-surface-muted hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-                  >
-                    <FiChevronLeft className="text-base" />
-                    <span>{t('Previous')}</span>
-                  </button>
-
-                  {(() => {
-                    const pages = [];
-                    const totalPages = pagination.pages;
-                    const current = pagination.page;
-
-                    let startPage = Math.max(1, current - 1);
-                    let endPage = Math.min(totalPages, current + 1);
-
-                    if (current <= 2) {
-                      endPage = Math.min(totalPages, 4);
-                    }
-                    if (current >= totalPages - 1) {
-                      startPage = Math.max(1, totalPages - 3);
-                    }
-
-                    if (startPage > 1) {
-                      pages.push(
-                        <button
-                          key={1}
-                          onClick={() => handlePageChange(1)}
-                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
-                            current === 1
-                              ? 'gradient-green text-white shadow-md scale-105'
-                              : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          1
-                        </button>
-                      );
-                      if (startPage > 2) {
-                        pages.push(
-                          <span key="dots-start" className="px-1 text-content-muted font-bold">
-                            ...
-                          </span>
-                        );
-                      }
-                    }
-
-                    for (let p = startPage; p <= endPage; p++) {
-                      pages.push(
-                        <button
-                          key={p}
-                          onClick={() => handlePageChange(p)}
-                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
-                            current === p
-                              ? 'bg-brand-primary text-black shadow-md scale-105'
-                              : 'bg-surface border border-border text-content-secondary hover:bg-surface-muted'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      );
-                    }
-
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) {
-                        pages.push(
-                          <span key="dots-end" className="px-1 text-content-muted font-bold">
-                            ...
-                          </span>
-                        );
-                      }
-                      pages.push(
-                        <button
-                          key={totalPages}
-                          onClick={() => handlePageChange(totalPages)}
-                          className={`w-9 h-9 text-xs sm:text-sm font-bold rounded-xl transition-all ${
-                            current === totalPages
-                              ? 'bg-brand-primary text-black shadow-md scale-105'
-                              : 'bg-surface border border-border text-content-secondary hover:bg-surface-muted'
-                          }`}
-                        >
-                          {totalPages}
-                        </button>
-                      );
-                    }
-
-                    return pages;
-                  })()}
-
-                  <button
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.pages || isLoadingResults}
-                    className="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-border bg-surface text-content-secondary hover:bg-surface-muted hover:border-border-strong disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-                  >
-                    <span>{t('Next')}</span>
-                    <FiChevronRight className="text-base" />
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
+                  {Array.from({ length: 8 }).map((_, idx) => (
+                    <SkeletonLoader.Card key={`infinite-skeleton-${idx}`} />
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {/* Page 2+ Error Retry Banner */}
+            {isError && !isLoadingInitial && (
+              <div className="mt-8 p-4 bg-surface rounded-2xl border border-red-200 text-center space-y-2 max-w-md mx-auto shadow-sm">
+                <p className="text-xs sm:text-sm font-bold text-red-600">
+                  {t("Couldn't load more products.")}
+                </p>
+                <button
+                  type="button"
+                  onClick={retry}
+                  className="px-4 py-2 bg-brand-primary text-black text-xs font-bold rounded-xl shadow-sm hover:bg-brand-primaryHover transition-all inline-flex items-center gap-1.5"
+                >
+                  <FiRefreshCw />
+                  <span>{t('Retry')}</span>
+                </button>
+              </div>
+            )}
+
+            {/* End of Catalogue Indicator */}
+            {!hasMore && !isLoadingInitial && products.length > 0 && (
+              <div className="mt-12 py-8 border-t border-border text-center space-y-2" aria-live="polite">
+                <div className="w-12 h-1 bg-brand-primary/40 mx-auto rounded-full mb-3" />
+                <p className="text-sm font-extrabold text-content">
+                  {t("You've reached the end")}
+                </p>
+                <p className="text-xs text-content-muted">
+                  {t("No more products available")}
+                </p>
               </div>
             )}
           </div>

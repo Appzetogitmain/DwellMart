@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiClock, FiZap, FiSearch, FiShoppingCart, FiHeart, FiX, FiChevronRight } from "react-icons/fi";
+import { FiZap, FiSearch, FiShoppingCart, FiHeart, FiX, FiChevronRight, FiClock } from "react-icons/fi";
 import { motion } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from "../../../shared/components/PageTransition";
@@ -17,6 +17,7 @@ import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import CategoryImage from "../../../shared/components/CategoryImage";
 import QuickCommerceHeroBanner from "../components/QuickCommerce/QuickCommerceHeroBanner";
 import ExpressProductCard from "../components/QuickCommerce/ExpressProductCard";
+import { Button, Badge, Card, Input } from "../../../shared/components/ui";
 import api from "../../../shared/utils/api";
 
 const SEARCH_PLACEHOLDERS = [
@@ -48,20 +49,20 @@ const fetchExpressProducts = async (sort, extra = {}) => {
   }
 };
 
-/** Horizontal product shelf with title and See All link */
-const ProductShelf = ({ title, products, isLoading, onSeeAll, accentColor = "emerald" }) => {
+/** Horizontal product shelf with title and See All link using Design Tokens */
+const ProductShelf = ({ title, products, isLoading, onSeeAll }) => {
   if (!isLoading && products.length === 0) return null;
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 mb-2">
       {/* Shelf Header */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm sm:text-base font-black text-content tracking-tight">{title}</h2>
+        <h2 className="text-sm sm:text-base font-black text-textColor-primary tracking-tight">{title}</h2>
         {onSeeAll && (
           <button
             type="button"
             onClick={onSeeAll}
-            className={`text-xs font-extrabold text-${accentColor}-600 dark:text-${accentColor}-400 hover:underline flex items-center gap-1`}
+            className="text-xs font-bold text-textColor-brand hover:underline flex items-center gap-1 cursor-pointer"
           >
             See All <FiChevronRight className="text-xs" />
           </button>
@@ -71,8 +72,8 @@ const ProductShelf = ({ title, products, isLoading, onSeeAll, accentColor = "eme
       {/* Shelf Product Row */}
       {isLoading ? (
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="w-40 h-60 rounded-2xl bg-surface animate-pulse border border-border/40 shrink-0" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="w-44 h-60 rounded-card bg-surface-card animate-pulse border border-borderToken-default shrink-0" />
           ))}
         </div>
       ) : (
@@ -92,8 +93,7 @@ const ProductShelf = ({ title, products, isLoading, onSeeAll, accentColor = "eme
 };
 
 /**
- * QuickCommerceHome — Simplified Discovery Layout
- * Header → Hero → Service Cards → Browse Categories Strip → Curated Product Shelves
+ * QuickCommerceHome — Refactored to Design System Specifications
  */
 const QuickCommerceHome = () => {
   const navigate = useNavigate();
@@ -190,26 +190,26 @@ const QuickCommerceHome = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav showCartBar>
-        <div className="w-full pb-24 lg:pb-12 min-h-screen bg-surface-muted">
+        <div className="w-full pb-24 lg:pb-12 min-h-screen bg-surface-background text-textColor-primary">
 
           {/* ── Sticky Header ── */}
-          <header className="p-3 sm:p-4 bg-surface border-b border-border sticky top-0 z-30 shadow-xs">
+          <header className="p-3 sm:p-4 bg-surface-card border-b border-borderToken-default sticky top-0 z-30 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-2.5 max-w-7xl mx-auto">
               {/* Location / Delivery Badge */}
               <button
                 type="button"
                 onClick={() => setShowLocationPrompt(true)}
-                className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity min-w-0 flex-1"
+                className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity min-w-0 flex-1 cursor-pointer"
               >
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-brand-primary/15 border border-brand-primary/40 flex items-center justify-center shrink-0">
                   <FiZap className="text-amber-500 text-lg fill-amber-500" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black tracking-tight text-content">Delivery in 10–15 mins</span>
-                    <FiChevronRight className="text-content-muted text-xs shrink-0" />
+                    <span className="text-xs font-black tracking-tight text-textColor-primary">Delivery in 10–15 mins</span>
+                    <FiChevronRight className="text-textColor-muted text-xs shrink-0" />
                   </div>
-                  <p className="text-[11px] font-semibold text-content-secondary truncate max-w-[200px] sm:max-w-md">
+                  <p className="text-[11px] font-semibold text-textColor-secondary truncate max-w-[200px] sm:max-w-md">
                     {location?.label || "Set your delivery location..."}
                   </p>
                 </div>
@@ -220,46 +220,47 @@ const QuickCommerceHome = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/wishlist")}
-                  className="p-2.5 rounded-xl bg-surface-muted hover:bg-border transition-colors border border-border/60 text-content-secondary"
+                  className="p-2.5 rounded-xl bg-surface-background hover:bg-borderToken-light transition-colors border border-borderToken-default text-textColor-secondary cursor-pointer"
                   aria-label="Wishlist"
                 >
                   <FiHeart className="text-base" />
                 </button>
-                <button
-                  type="button"
+                <Button
+                  size="sm"
+                  variant="primary"
                   onClick={() => navigate("/cart")}
-                  className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-extrabold text-xs shadow-xs flex items-center gap-2 transition-all"
+                  leftIcon={<FiShoppingCart className="text-sm" />}
+                  className="!py-2 !px-3 font-extrabold text-xs"
                 >
-                  <FiShoppingCart className="text-sm" />
                   <span className="hidden sm:inline">My Cart</span>
                   {itemCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-[10px] font-black">
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-black text-brand-primary text-[10px] font-black">
                       {itemCount}
                     </span>
                   )}
-                </button>
+                </Button>
               </div>
             </div>
 
-            {/* Rotating Search Bar */}
+            {/* Rotating Search Bar using Shared Input */}
             <form onSubmit={handleGlobalSearchSubmit} className="relative max-w-7xl mx-auto">
-              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted text-sm" />
-              <input
-                type="text"
+              <Input
+                leftIcon={<FiSearch className="text-textColor-muted text-sm" />}
                 value={globalSearchText}
                 onChange={(e) => setGlobalSearchText(e.target.value)}
                 placeholder={SEARCH_PLACEHOLDERS[searchIndex]}
-                className="w-full pl-10 pr-10 py-2.5 bg-surface-input border border-border/80 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-inner text-content placeholder:text-content-muted transition-all"
+                rightIcon={
+                  globalSearchText ? (
+                    <button
+                      type="button"
+                      onClick={() => setGlobalSearchText("")}
+                      className="text-textColor-muted hover:text-textColor-primary p-1 cursor-pointer"
+                    >
+                      <FiX className="text-xs" />
+                    </button>
+                  ) : null
+                }
               />
-              {globalSearchText && (
-                <button
-                  type="button"
-                  onClick={() => setGlobalSearchText("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-content-muted hover:text-content p-1"
-                >
-                  <FiX className="text-xs" />
-                </button>
-              )}
             </form>
           </header>
 
@@ -276,43 +277,45 @@ const QuickCommerceHome = () => {
           {/* ── Non-Serviceable Alert ── */}
           {hasLocation && serviceability && !isServiceable && (
             <div className="p-4 pb-0 max-w-7xl mx-auto">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <Card variant="default" className="!bg-amber-500/10 !border-amber-500/30 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <FiZap className="text-2xl text-amber-500 shrink-0 fill-amber-500" />
                   <div>
-                    <h3 className="text-sm font-extrabold text-content">⚡ DwellMart Express isn&apos;t here yet</h3>
-                    <p className="text-xs text-content-secondary">
+                    <h3 className="text-sm font-extrabold text-textColor-primary">⚡ Dwell Mart Express isn&apos;t here yet</h3>
+                    <p className="text-xs text-textColor-secondary">
                       No stores currently deliver to {location?.label || "this location"}.
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  size="sm"
+                  variant="primary"
                   onClick={() => navigate("/home")}
-                  className="px-4 py-2 rounded-xl bg-brand-primary text-content-inverse font-extrabold text-xs shrink-0 self-end sm:self-center shadow-xs"
+                  className="shrink-0 self-end sm:self-center"
                 >
                   Go to Marketplace
-                </button>
-              </div>
+                </Button>
+              </Card>
             </div>
           )}
 
           {/* ── Hero Banner ── */}
           <QuickCommerceHeroBanner
+            categories={categories}
             onSelectCategory={(slug) => navigate(`/quick/categories?category=${slug}`)}
           />
 
           {/* ── Browse Categories Strip ── */}
           <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-black text-content tracking-tight flex items-center gap-1.5">
+              <h2 className="text-sm font-black text-textColor-primary tracking-tight flex items-center gap-1.5">
                 <FiZap className="text-amber-500 fill-amber-500 text-sm" />
                 Browse Categories
               </h2>
               <button
                 type="button"
                 onClick={() => navigate("/quick/categories")}
-                className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                className="text-xs font-bold text-textColor-brand hover:underline flex items-center gap-1 cursor-pointer"
               >
                 See All <FiChevronRight className="text-xs" />
               </button>
@@ -322,7 +325,7 @@ const QuickCommerceHome = () => {
             {isLoadingCats ? (
               <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
                 {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="w-20 h-24 rounded-2xl bg-surface animate-pulse border border-border/40 shrink-0" />
+                  <div key={i} className="w-20 h-24 rounded-card bg-surface-card animate-pulse border border-borderToken-default shrink-0" />
                 ))}
               </div>
             ) : (
@@ -336,15 +339,15 @@ const QuickCommerceHome = () => {
                       whileTap={{ scale: 0.96 }}
                       type="button"
                       onClick={() => handleCategoryClick(category)}
-                      className="flex flex-col items-center gap-2 p-2.5 rounded-2xl bg-surface border border-border/80 hover:border-emerald-500/50 hover:shadow-sm transition-all cursor-pointer shrink-0 w-20 sm:w-auto group"
+                      className="flex flex-col items-center gap-2 p-2.5 rounded-card bg-surface-card border border-borderToken-default hover:border-brand-primary/50 hover:shadow-card transition-all cursor-pointer shrink-0 w-20 sm:w-auto group"
                     >
                       <CategoryImage
                         src={category.image || category.icon}
                         alt={category.name}
                         name={category.name}
-                        containerClassName="w-12 h-12 rounded-xl overflow-hidden bg-surface-muted border border-border/60 group-hover:scale-105 transition-transform"
+                        containerClassName="w-12 h-12 rounded-xl overflow-hidden bg-surface-background border border-borderToken-default group-hover:scale-105 transition-transform"
                       />
-                      <span className="text-[10px] font-bold text-content text-center leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                      <span className="text-[10px] font-bold text-textColor-primary text-center leading-tight line-clamp-2 group-hover:text-textColor-brand transition-colors">
                         {category.name}
                       </span>
                     </motion.button>
@@ -356,7 +359,7 @@ const QuickCommerceHome = () => {
 
           {/* ── Divider ── */}
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 mb-2">
-            <div className="h-px bg-border/60" />
+            <div className="h-px bg-borderToken-default" />
           </div>
 
           {/* ── Curated Product Shelves ── */}
@@ -372,41 +375,38 @@ const QuickCommerceHome = () => {
               products={bestSellers}
               isLoading={isLoadingBest}
               onSeeAll={() => navigate("/quick/categories")}
-              accentColor="orange"
             />
             <ProductShelf
               title="📈 Trending Now"
               products={trending}
               isLoading={isLoadingTrending}
               onSeeAll={() => navigate("/quick/categories")}
-              accentColor="violet"
             />
             <ProductShelf
               title="🆕 Recently Added"
               products={recentlyAdded}
               isLoading={isLoadingRecent}
               onSeeAll={() => navigate("/quick/categories")}
-              accentColor="sky"
             />
           </div>
 
           {/* ── View All Categories CTA ── */}
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 mt-6 mb-4 text-center">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="button"
+            <Button
+              size="lg"
+              variant="primary"
               onClick={() => navigate("/quick/categories")}
-              className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-sm shadow-md flex items-center justify-center gap-2 mx-auto transition-all"
+              rightIcon={<FiChevronRight />}
+              className="w-full sm:w-auto mx-auto font-black text-sm"
             >
-              View All Express Categories →
-            </motion.button>
+              View All Express Categories
+            </Button>
           </div>
 
           {/* ── Nearby Stores ── */}
           {vendors.length > 0 && (
             <div className="p-4 sm:p-6 pt-2 max-w-7xl mx-auto">
-              <h3 className="text-sm font-extrabold text-content mb-3 uppercase tracking-wider text-content-muted">
+              <h3 className="text-xs font-black text-textColor-muted mb-3 uppercase tracking-wider">
                 Stores near you
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -415,9 +415,9 @@ const QuickCommerceHome = () => {
                     key={vendor.id || vendor._id}
                     type="button"
                     onClick={() => navigate(`/seller/${vendor.id || vendor._id}`)}
-                    className="w-full bg-surface rounded-2xl border border-border p-3 flex items-center gap-3 text-left hover:border-emerald-500/40 hover:shadow-xs transition-all cursor-pointer"
+                    className="w-full bg-surface-card rounded-card border border-borderToken-default p-3 flex items-center gap-3 text-left hover:border-brand-primary/50 hover:shadow-card transition-all cursor-pointer"
                   >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-muted flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-background flex-shrink-0">
                       <LazyImage
                         src={vendor.storeLogo || getPlaceholderImage(48, 48, vendor.storeName?.charAt(0) || "S")}
                         alt={vendor.storeName}
@@ -425,8 +425,8 @@ const QuickCommerceHome = () => {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-content truncate">{vendor.storeName}</p>
-                      <div className="flex items-center gap-2 text-[11px] text-content-secondary">
+                      <p className="text-sm font-bold text-textColor-primary truncate">{vendor.storeName}</p>
+                      <div className="flex items-center gap-2 text-[11px] text-textColor-secondary">
                         {Number.isFinite(vendor.distanceKm) && <span>{vendor.distanceKm} km away</span>}
                         {Number.isFinite(vendor.preparationTimeMins) && (
                           <span className="flex items-center gap-1">
@@ -437,9 +437,9 @@ const QuickCommerceHome = () => {
                       </div>
                     </div>
                     {!vendor.availability?.isOrderable && (
-                      <span className="text-[10px] font-bold text-status-error bg-status-errorBg px-2 py-1 rounded-full flex-shrink-0">
+                      <Badge variant="error" size="sm">
                         Closed
-                      </span>
+                      </Badge>
                     )}
                   </button>
                 ))}

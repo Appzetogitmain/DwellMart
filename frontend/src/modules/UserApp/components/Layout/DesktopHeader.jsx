@@ -27,7 +27,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
   const itemCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const unreadCount = useUserNotificationStore((state) => state.unreadCount);
-  const { getTranslatedText: t } = usePageTranslation(["Home", "Shop", "Categories", "Offers", "Track Order", "Sell On DwellMart", "Profile", "Orders", "Logout", "Login"]);
+  const { getTranslatedText: t } = usePageTranslation(["Home", "Shop", "Categories", "Offers", "Track Order", "Sell On Dwell Mart", "Profile", "Orders", "Logout", "Login"]);
   const ensureHydrated = useUserNotificationStore(
     (state) => state.ensureHydrated,
   );
@@ -72,7 +72,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
             >
               <img
                 src={loginLogo}
-                alt="DwellMart Logo"
+                alt="Dwell Mart Logo"
                 className="h-8 sm:h-9 lg:h-10 xl:h-11 w-auto max-w-[120px] lg:max-w-[155px] xl:max-w-[185px] object-contain drop-shadow-md"
               />
             </motion.div>
@@ -109,7 +109,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
               <Link
                 to="/sell-on-dwellmart"
                 className="shrink-0 rounded-lg border border-[#ffc101]/60 bg-[#ffc101]/10 px-2 lg:px-2.5 py-1 lg:py-1.5 text-[11px] lg:text-xs xl:text-xs font-bold text-[#ffc101] transition-all hover:bg-[#ffc101] hover:text-black shadow-sm">
-                {t("Sell On DwellMart")}
+                {t("Sell On Dwell Mart")}
               </Link>
             )}
           </nav>

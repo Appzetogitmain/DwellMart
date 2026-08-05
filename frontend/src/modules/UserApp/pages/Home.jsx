@@ -234,7 +234,7 @@ const MobileHome = () => {
     "Limited time offers",
     "Trending Now",
     "MARKETPLACE TRUST & ASSURANCE",
-    "Why Shop With DwellMart?",
+    "Why Shop With Dwell Mart?",
     "We partner with top-rated sellers to guarantee authentic products, transparent pricing, and instant support.",
     "Free Express Shipping",
     "On all orders over ₹499 nationwide",
@@ -826,7 +826,7 @@ const MobileHome = () => {
 
               {/* Title */}
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-content tracking-tight mb-3">
-                {t("Why Shop With DwellMart?")}
+                {t("Why Shop With Dwell Mart?")}
               </h2>
 
               {/* Subtitle */}

@@ -172,7 +172,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
   };
 
   const inputClass =
-    "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500";
+    "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -187,7 +187,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
               onClick={() => setField("availabilityStatus", state.value)}
               className={`text-left p-3 rounded-lg border transition-colors ${
                 form.availabilityStatus === state.value
-                  ? "border-purple-600 bg-purple-50"
+                  ? "border-amber-500 bg-amber-50"
                   : "border-gray-200 hover:bg-gray-50"
               }`}
             >
@@ -252,7 +252,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
               type="button"
               onClick={handleUseCurrentLocation}
               disabled={isLocating}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 disabled:opacity-50"
             >
               <FiCrosshair />
               {isLocating ? "Locating..." : "Use my current location"}
@@ -360,7 +360,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
                   type="checkbox"
                   checked={entry.isClosed}
                   onChange={(e) => setDayField(entry.day, "isClosed", e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                 />
                 Closed
               </label>
@@ -391,7 +391,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
         <button
           type="submit"
           disabled={isSaving}
-          className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FiSave />
           {isSaving ? "Saving..." : "Save Quick Commerce Settings"}

@@ -16,7 +16,7 @@ const Badge = ({
 
   const variantStyles = {
     verified: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400',
-    new: 'bg-blue-500/10 text-blue-600 border border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-400',
+    new: 'bg-amber-500/10 text-amber-600 border border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400',
     hot: 'bg-red-500/10 text-red-600 border border-red-500/30 dark:bg-red-500/20 dark:text-red-400',
     trending: 'bg-amber-500/10 text-amber-600 border border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400',
     gold: 'bg-brand-primary/15 text-textColor-brand border border-brand-primary/40 font-black',

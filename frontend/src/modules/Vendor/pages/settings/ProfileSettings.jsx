@@ -134,7 +134,7 @@ const ProfileSettings = () => {
                   key={section.id}
                   onClick={() => handleTabChange(section.id)}
                   className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm ${activeSection === section.id
-                    ? 'border-purple-600 text-purple-600 font-semibold'
+                    ? 'border-amber-500 text-amber-600 font-semibold'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                     }`}
                 >
@@ -161,7 +161,7 @@ const ProfileSettings = () => {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -175,7 +175,7 @@ const ProfileSettings = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -189,7 +189,7 @@ const ProfileSettings = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -211,7 +211,7 @@ const ProfileSettings = () => {
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base"
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm sm:text-base"
                 >
                   <FiSave />
                   Save Profile
@@ -234,7 +234,7 @@ const ProfileSettings = () => {
                     value={formData.currentPassword}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -249,7 +249,7 @@ const ProfileSettings = () => {
                     onChange={handleChange}
                     required
                     minLength={6}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
                 </div>
@@ -265,7 +265,7 @@ const ProfileSettings = () => {
                     onChange={handleChange}
                     required
                     minLength={6}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -273,7 +273,7 @@ const ProfileSettings = () => {
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base"
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm sm:text-base"
                 >
                   <FiSave />
                   Change Password

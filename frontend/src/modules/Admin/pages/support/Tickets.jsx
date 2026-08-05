@@ -23,29 +23,29 @@ const Tickets = () => {
     }, [activeConversation]);
 
     return (
-        <div className="space-y-6">
-            {/* Header Banner */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 bg-primary-50 text-primary-600 rounded-2xl">
-                        <FiHelpCircle className="w-6 h-6" />
+        <div className="space-y-4 h-[calc(100vh-120px)] flex flex-col overflow-hidden">
+            {/* Compact Header Banner */}
+            <div className="bg-white rounded-2xl px-5 py-3.5 shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-primary-50 text-primary-600 rounded-xl">
+                        <FiHelpCircle className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                            Support Desk Management
+                        <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 leading-tight">
+                            Live Support Desk
                         </h1>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                            Manage support conversations from Customers, Vendors, and Delivery Partners in real-time
+                        <p className="text-xs text-gray-500">
+                            Real-time customer, vendor, and delivery partner support conversations
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[680px]">
+            {/* Main Fixed Height Content Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 overflow-hidden">
                 {/* Sidebar / Conversation List */}
                 <div
-                    className={`lg:col-span-4 h-full ${
+                    className={`lg:col-span-4 h-full overflow-hidden ${
                         activeTab === 'chat' ? 'hidden lg:block' : 'block'
                     }`}
                 >
@@ -54,11 +54,15 @@ const Tickets = () => {
 
                 {/* Chat Window */}
                 <div
-                    className={`lg:col-span-8 h-full ${
+                    className={`lg:col-span-8 h-full overflow-hidden ${
                         activeTab === 'list' ? 'hidden lg:block' : 'block'
                     }`}
                 >
-                    <SupportChatWindow isAdmin={true} currentUserId={admin?.id || admin?._id} />
+                    <SupportChatWindow
+                        isAdmin={true}
+                        currentUserId={admin?.id || admin?._id}
+                        onBack={() => setActiveTab('list')}
+                    />
                 </div>
             </div>
         </div>

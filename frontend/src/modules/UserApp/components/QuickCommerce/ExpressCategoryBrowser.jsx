@@ -1,15 +1,16 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { FiSearch, FiFilter, FiX, FiZap, FiGrid, FiArrowUpRight } from "react-icons/fi";
+import { useState, useMemo, useEffect } from "react";
+import { motion } from "framer-motion";
+import { FiSearch, FiX, FiZap } from "react-icons/fi";
 import CategoryImage from "../../../../shared/components/CategoryImage";
 import ExpressProductCard from "./ExpressProductCard";
+import { Badge, Input, EmptyState } from "../../../../shared/components/ui";
 import api from "../../../../shared/utils/api";
 
 const normalizeId = (val) => String(val ?? "").trim();
 
 /**
- * ExpressCategoryBrowser — Blinkit-Inspired Split Category & Product Experience
- * Left Sidebar (Sticky) + Right Product Grid + Mobile Horizontal Chips Transformation
+ * ExpressCategoryBrowser — Split Category & Product Experience
+ * Refactored to fully adopt DwellMart Design System.
  */
 const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, initialCategoryId = null }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
@@ -85,7 +86,7 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
           ? payload
           : [];
         setProducts(rawProducts);
-      } catch (err) {
+      } catch {
         if (isCancelled) return;
         setProducts([]);
       } finally {
@@ -122,8 +123,8 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                 onClick={() => setSelectedCategoryId(catId)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-2 ${
                   isActive
-                    ? "bg-emerald-600 text-white border-emerald-500 shadow-sm scale-102"
-                    : "bg-surface text-content-secondary border-border hover:bg-surface-muted"
+                    ? "bg-brand-primary text-slate-950 border-brand-primaryHover shadow-sm scale-102 font-black"
+                    : "bg-surface-card text-textColor-secondary border-borderToken-default hover:bg-surface-background"
                 }`}
               >
                 <CategoryImage
@@ -141,8 +142,8 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
 
       {/* Main Split Layout — Sticky Sidebar (Desktop/Tablet) + Products Grid */}
       <div className="flex gap-2 sm:gap-4 items-start min-h-[600px]">
-        {/* Left Vertical Sticky Sidebar (Matching Marketplace B2C/B2B UI) */}
-        <aside className="w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 bg-surface-muted border-r border-border rounded-2xl p-1 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide shadow-xs">
+        {/* Left Vertical Sticky Sidebar */}
+        <aside className="w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 bg-surface-background border-r border-borderToken-default rounded-card p-1 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide shadow-xs">
           <div className="space-y-1 py-1">
             {rootCategories.map((category) => {
               const catId = category._id || category.id;
@@ -155,12 +156,12 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                   type="button"
                   onClick={() => setSelectedCategoryId(catId)}
                   className={`w-full py-2.5 px-1.5 text-left transition-all duration-200 relative flex flex-col items-center gap-1.5 rounded-xl ${
-                    isActive ? "bg-surface shadow-sm" : "hover:bg-surface-muted/80"
+                    isActive ? "bg-surface-card shadow-sm" : "hover:bg-surface-card/60"
                   }`}
                 >
                   {/* Left Active Accent Bar */}
                   {isActive && (
-                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-amber-400 rounded-r-full shadow-sm" />
+                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-primary rounded-r-full shadow-sm" />
                   )}
 
                   {/* Category Image Avatar */}
@@ -168,17 +169,17 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                     src={category.image || category.icon}
                     alt={category.name}
                     name={category.name}
-                    containerClassName={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-surface-muted shrink-0 transition-all duration-200 shadow-xs border ${
+                    containerClassName={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-surface-background shrink-0 transition-all duration-200 shadow-xs border ${
                       isActive
-                        ? "ring-2 ring-amber-400 ring-offset-2 scale-105 border-amber-400 shadow-md"
-                        : "border-border hover:border-amber-400/50"
+                        ? "ring-2 ring-brand-primary ring-offset-2 scale-105 border-brand-primary shadow-md"
+                        : "border-borderToken-default hover:border-brand-primary/50"
                     }`}
                   />
 
                   {/* Title & Count */}
                   <span
                     className={`text-[11px] sm:text-xs font-semibold text-center leading-snug transition-colors line-clamp-2 px-0.5 ${
-                      isActive ? "text-amber-500 font-bold" : "text-content-secondary"
+                      isActive ? "text-textColor-brand font-black" : "text-textColor-secondary"
                     }`}
                   >
                     {category.name}
@@ -190,66 +191,66 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
         </aside>
 
         {/* Right Content Area — Subcategories + Search + Products Grid */}
-        <main className="flex-1 min-w-0 bg-surface rounded-2xl border border-border p-2 sm:p-4 shadow-xs min-h-[500px]">
+        <main className="flex-1 min-w-0 bg-surface-card rounded-card border border-borderToken-default p-2 sm:p-4 shadow-xs min-h-[500px]">
           {/* Header Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-border mb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-borderToken-default mb-3">
             <div className="flex items-center gap-2.5">
               <CategoryImage
                 src={activeCategory?.image || activeCategory?.icon}
                 alt={activeCategory?.name}
                 name={activeCategory?.name}
-                containerClassName="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-surface-muted shrink-0 border border-border shadow-xs"
+                containerClassName="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-surface-background shrink-0 border border-borderToken-default shadow-xs"
               />
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-bold text-content tracking-tight">
+                  <h2 className="text-base sm:text-lg font-black text-textColor-primary tracking-tight">
                     {activeCategory?.name || "Categories"}
                   </h2>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <FiZap className="text-[11px] fill-amber-500" />
-                    10-15 min delivery
-                  </span>
+                  <Badge variant="gold" size="sm" className="!normal-case gap-1">
+                    <FiZap className="text-[11px] fill-amber-500 text-amber-500" />
+                    <span>10-15 min delivery</span>
+                  </Badge>
                 </div>
-                <p className="text-xs text-content-muted font-medium mt-0.5">
+                <p className="text-xs text-textColor-muted font-semibold mt-0.5">
                   {filteredProducts.length} items available in this category
                 </p>
               </div>
             </div>
 
-            {/* In-Category Search Box */}
-            <div className="relative w-full sm:w-64">
-              <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-content-muted text-xs" />
-              <input
-                type="text"
+            {/* In-Category Search Box using Shared Input */}
+            <div className="w-full sm:w-64">
+              <Input
+                leftIcon={<FiSearch className="text-textColor-muted text-xs" />}
                 placeholder={`Search in ${activeCategory?.name || 'category'}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-xs bg-surface-muted border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-400 text-content placeholder:text-content-muted"
+                rightIcon={
+                  searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="text-textColor-muted hover:text-textColor-primary p-1 cursor-pointer"
+                    >
+                      <FiX className="text-xs" />
+                    </button>
+                  ) : null
+                }
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content p-1"
-                >
-                  <FiX className="text-xs" />
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Subcategory Chips Selector (Matching B2C/B2B Marketplace UI 1-to-1) */}
+          {/* Subcategory Chips Selector */}
           {subcategories.length > 0 && (
-            <div className="mb-4 pb-3 border-b border-border overflow-x-auto scrollbar-hide">
+            <div className="mb-4 pb-3 border-b border-borderToken-default overflow-x-auto scrollbar-hide">
               <div className="flex items-center gap-2 py-1">
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   type="button"
                   onClick={() => setSelectedSubcategoryId(null)}
-                  className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs ${
+                  className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs cursor-pointer ${
                     !selectedSubcategoryId
-                      ? "bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold"
-                      : "bg-surface-muted text-content-secondary border-border hover:bg-border"
+                      ? "bg-brand-primary text-slate-950 border-brand-primary shadow-md scale-102 font-black"
+                      : "bg-surface-background text-textColor-secondary border-borderToken-default hover:bg-borderToken-light font-semibold"
                   }`}
                 >
                   <span>All {activeCategory?.name}</span>
@@ -263,10 +264,10 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                       whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={() => setSelectedSubcategoryId(subId)}
-                      className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs ${
+                      className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs cursor-pointer ${
                         isSubActive
-                          ? "bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold"
-                          : "bg-surface-muted text-content-secondary border-border hover:bg-border"
+                          ? "bg-brand-primary text-slate-950 border-brand-primary shadow-md scale-102 font-black"
+                          : "bg-surface-background text-textColor-secondary border-borderToken-default hover:bg-borderToken-light font-semibold"
                       }`}
                     >
                       <CategoryImage
@@ -289,23 +290,21 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
               {Array.from({ length: 10 }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="h-64 rounded-2xl bg-surface-muted animate-pulse border border-border/40"
+                  className="h-64 rounded-card bg-surface-background animate-pulse border border-borderToken-default"
                 />
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <div className="w-16 h-16 rounded-3xl bg-surface-muted border border-border flex items-center justify-center text-3xl mx-auto mb-3">
-                📦
-              </div>
-              <h3 className="text-base font-extrabold text-content mb-1">
-                No express items found
-              </h3>
-              <p className="text-xs text-content-muted max-w-sm mx-auto">
-                {searchQuery
-                  ? `No items match "${searchQuery}". Try a different term or clear your search.`
-                  : "Items for this category are being updated. Check back shortly or browse other categories."}
-              </p>
+            <div className="py-12">
+              <EmptyState
+                variant="no-results"
+                title="No Express Items Found"
+                description={
+                  searchQuery
+                    ? `No items match "${searchQuery}". Try a different search query.`
+                    : "Items for this category are currently being updated. Please check back shortly."
+                }
+              />
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

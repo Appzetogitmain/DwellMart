@@ -151,7 +151,7 @@
   },
   {
     "title": "Quick Commerce",
-    "route": "/admin/quick-commerce/operations",
+    "route": "/admin/quick-commerce",
     "children": [
       "Operations Console",
       "Quick Commerce Analytics"

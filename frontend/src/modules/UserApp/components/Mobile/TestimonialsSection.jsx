@@ -33,7 +33,7 @@ const DEFAULT_TESTIMONIALS = [
     designation: "Verified Buyer",
     company: "Delhi NCR",
     rating: 5,
-    message: "DwellMart makes supporting verified independent vendors seamless. Fantastic prices, genuine products, and instant tracking updates.",
+    message: "Dwell Mart makes supporting verified independent vendors seamless. Fantastic prices, genuine products, and instant tracking updates.",
     image: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=120&q=80"
   }
 ];
@@ -41,7 +41,7 @@ const DEFAULT_TESTIMONIALS = [
 const TestimonialsSection = ({ testimonials = [] }) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Customer Voices",
-    "Why shoppers stay with DwellMart",
+    "Why shoppers stay with Dwell Mart",
     "Real feedback from customers who shop with trusted vendors across the marketplace.",
     "Happy Customer"
   ]);
@@ -57,7 +57,7 @@ const TestimonialsSection = ({ testimonials = [] }) => {
             {t("Customer Voices")}
           </p>
           <h2 className="mt-4 text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
-            {t("Why shoppers stay with DwellMart")}
+            {t("Why shoppers stay with Dwell Mart")}
           </h2>
           <p className="mt-3 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-7">
             {t("Real feedback from customers who shop with trusted vendors across the marketplace.")}

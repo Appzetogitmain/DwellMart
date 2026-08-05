@@ -12,7 +12,9 @@ import {
 
 const normalizeRole = (role) => {
     const raw = String(role || '').toLowerCase();
-    return raw === 'user' ? 'customer' : raw;
+    if (raw === 'superadmin') return 'admin';
+    if (raw === 'user') return 'customer';
+    return raw;
 };
 
 // POST /api/support/conversations

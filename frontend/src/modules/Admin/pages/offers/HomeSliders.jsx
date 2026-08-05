@@ -197,6 +197,7 @@ const HomeSliders = () => {
             onChange={(e) => setSelectedBannerType(e.target.value)}
             options={[
               { value: "home_slider", label: "Home Sliders" },
+              { value: "quick_commerce", label: "Quick Commerce Sliders" },
               { value: "side_banner", label: "Side Banners" },
             ]}
             className="min-w-[170px]"
@@ -317,6 +318,7 @@ const HomeSliders = () => {
                     }
                     options={[
                       { value: "home_slider", label: "Home Slider" },
+                      { value: "quick_commerce", label: "Quick Commerce Banner" },
                       { value: "side_banner", label: "Side Banner (Home Right)" },
                     ]}
                     required

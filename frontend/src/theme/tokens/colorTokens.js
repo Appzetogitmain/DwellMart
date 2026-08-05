@@ -6,7 +6,7 @@
 export const colorTokens = {
   brand: {
     primary: '#D4AF37',          // Warm Metallic Gold
-    primaryHover: '#C49F27',     // Darker Gold for hover
+    primaryHover: '#B8922E',     // Darker Gold for hover
     primaryActive: '#A4821A',    // Pressed Gold state
     secondary: '#0B0F17',        // Obsidian Dark Accent
     secondaryHover: '#161D2B',   // Dark Accent hover
@@ -37,11 +37,11 @@ export const colorTokens = {
     goldAccent: 'rgba(212, 175, 55, 0.3)',
   },
   status: {
-    success: '#10B981',         // Verified / In Stock
-    successBg: '#ECFDF5',
+    success: '#16A34A',         // Verified / In Stock
+    successBg: '#F0FDF4',
     warning: '#F59E0B',         // Limited Stock / Warning
     warningBg: '#FFFBEB',
-    error: '#EF4444',           // Out of Stock / Discount
+    error: '#DC2626',           // Out of Stock / Discount
     errorBg: '#FEF2F2',
     info: '#3B82F6',            // Information / Shipping
     infoBg: '#EFF6FF',

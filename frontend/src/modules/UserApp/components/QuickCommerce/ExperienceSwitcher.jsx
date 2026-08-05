@@ -23,7 +23,7 @@ const ExperienceSwitcher = ({ className = "" }) => {
   const options = [
     {
       value: EXPERIENCES.QUICK_COMMERCE,
-      title: "DwellMart Express",
+      title: "Dwell Mart Express",
       subtitle: "Groceries, Food, Pharmacy & Daily Essentials",
       icon: FiZap,
       tag: "10-30 Mins",

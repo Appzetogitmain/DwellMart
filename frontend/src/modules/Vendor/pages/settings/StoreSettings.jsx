@@ -222,7 +222,7 @@ const StoreSettings = () => {
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
                   className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm ${activeSection === section.id
-                      ? "border-purple-600 text-purple-600 font-semibold"
+                      ? "border-amber-500 text-amber-600 font-semibold"
                       : "border-transparent text-gray-600 hover:text-gray-800"
                     }`}>
                   <Icon className="text-base sm:text-lg" />
@@ -251,7 +251,7 @@ const StoreSettings = () => {
                   onChange={(e) => setRetailEnabled(e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
               </label>
             </div>
 
@@ -268,7 +268,7 @@ const StoreSettings = () => {
                     onChange={(e) => setWholesaleEnabled(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                 </label>
               </div>
             )}
@@ -286,7 +286,7 @@ const StoreSettings = () => {
                     onChange={(e) => setQuickCommerceChannelEnabled(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                 </label>
               </div>
             )}
@@ -403,7 +403,7 @@ const StoreSettings = () => {
                 type="button"
                 onClick={handleSaveSellingChannels}
                 disabled={isSavingChannels}
-                className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
+                className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm sm:text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
                 <FiSave />
                 {isSavingChannels ? "Saving..." : "Save Selling Channels"}
               </button>
@@ -425,7 +425,7 @@ const StoreSettings = () => {
                     value={formData.storeName || ""}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -435,7 +435,7 @@ const StoreSettings = () => {
                   </label>
                   <div className="flex items-center gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                     {/* Logo Preview */}
-                    <div className="w-16 h-16 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center overflow-hidden border-2 border-purple-200 shadow-sm flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-primary-600 text-white font-bold flex items-center justify-center overflow-hidden border-2 border-amber-200 shadow-sm flex-shrink-0">
                       {formData.storeLogo ? (
                         <img
                           src={formData.storeLogo}
@@ -456,7 +456,7 @@ const StoreSettings = () => {
                     <div className="flex-1 flex flex-wrap items-center gap-2">
                       <label
                         htmlFor="store-logo-upload"
-                        className={`inline-flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer text-xs font-semibold transition-all ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer text-xs font-semibold transition-all ${
                           isUploadingLogo ? "opacity-50 pointer-events-none" : ""
                         }`}
                       >
@@ -506,7 +506,7 @@ const StoreSettings = () => {
                     value={formData.storeDescription || ""}
                     onChange={handleChange}
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Brief description of your store"
                   />
                 </div>
@@ -545,7 +545,7 @@ const StoreSettings = () => {
                     value={formData.phone || ""}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
 
@@ -558,7 +558,7 @@ const StoreSettings = () => {
                     value={formData.address || ""}
                     onChange={handleChange}
                     rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Street, City, State ZIP"
                   />
                 </div>
@@ -569,7 +569,7 @@ const StoreSettings = () => {
           <div className="flex justify-end pt-4 sm:pt-6 border-t border-gray-200 mt-4 sm:mt-6">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base w-full sm:w-auto">
+              className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all font-semibold text-sm sm:text-base w-full sm:w-auto">
               <FiSave />
               Save Settings
             </button>

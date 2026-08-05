@@ -171,6 +171,7 @@ const Banners = () => {
             options={[
               { value: 'all', label: 'All Types' },
               { value: 'home_slider', label: 'Home Sliders' },
+              { value: 'quick_commerce', label: 'Quick Commerce Banners' },
               { value: 'festival_offer', label: 'Festival Offer Banners' },
               { value: 'banner', label: 'Generic Banners' },
               { value: 'hero', label: 'Hero Banners' },
@@ -243,17 +244,19 @@ const Banners = () => {
                       </div>
                       <div className="absolute top-2 left-2">
                         <Badge variant="info">
-                          {banner.type === 'hero'
-                            ? 'Hero'
-                            : banner.type === 'promotional'
-                              ? 'Promo'
-                              : banner.type === 'side_banner'
-                                ? 'Side'
-                                : banner.type === 'home_slider'
-                                  ? 'Slider'
-                                  : banner.type === 'festival_offer'
-                                    ? 'Festival'
-                                    : 'Banner'}
+                          {banner.type === 'quick_commerce'
+                            ? 'Quick Commerce'
+                            : banner.type === 'hero'
+                              ? 'Hero'
+                              : banner.type === 'promotional'
+                                ? 'Promo'
+                                : banner.type === 'side_banner'
+                                  ? 'Side'
+                                  : banner.type === 'home_slider'
+                                    ? 'Slider'
+                                    : banner.type === 'festival_offer'
+                                      ? 'Festival'
+                                      : 'Banner'}
                         </Badge>
                       </div>
                     </div>

@@ -205,6 +205,7 @@ const BannerForm = ({ banner, onClose, onSave }) => {
                       required
                       options={[
                         { value: "home_slider", label: "Home Slider" },
+                        { value: "quick_commerce", label: "Quick Commerce Banner" },
                         { value: "festival_offer", label: "Festival Offer Banner" },
                         { value: "banner", label: "Generic Banner" },
                         { value: "hero", label: "Hero Banner" },

@@ -894,10 +894,10 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           />
                           <div>
                             <span className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-                              ⚡ DwellMart Express (Quick Commerce 10-15 Min Delivery)
+                              ⚡ Dwell Mart Express (Quick Commerce 10-15 Min Delivery)
                             </span>
                             <p className="text-xs text-gray-600">
-                              Enable this product to appear in DwellMart Express categories and customer feeds.
+                              Enable this product to appear in Dwell Mart Express categories and customer feeds.
                             </p>
                           </div>
                         </label>

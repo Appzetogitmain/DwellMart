@@ -113,8 +113,36 @@ export const useSupportChatStore = create((set, get) => ({
 
         set({ isSending: true });
         try {
-            await supportApi.sendMessage(active._id, { message, attachments });
-            set({ isSending: false });
+            const res = await supportApi.sendMessage(active._id, { message, attachments });
+            const newMessage = res?.data?.data || res?.data;
+
+            if (newMessage && newMessage._id) {
+                set((state) => {
+                    const exists = state.messages.some((m) => m._id === newMessage._id);
+                    const updatedMessages = exists ? state.messages : [...state.messages, newMessage];
+
+                    const updatedTime = newMessage.createdAt ? new Date(newMessage.createdAt) : new Date();
+                    const updatedText = newMessage.message || 'Attachment';
+
+                    const nextList = state.conversations.map((c) =>
+                        c._id === active._id
+                            ? {
+                                  ...c,
+                                  lastMessage: updatedText,
+                                  lastMessageAt: updatedTime,
+                              }
+                            : c
+                    );
+
+                    return {
+                        messages: updatedMessages,
+                        conversations: sortByLastMessageAt(nextList),
+                        isSending: false,
+                    };
+                });
+            } else {
+                set({ isSending: false });
+            }
             return true;
         } catch (err) {
             set({ isSending: false });

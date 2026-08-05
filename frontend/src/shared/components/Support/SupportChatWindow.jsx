@@ -9,12 +9,13 @@ import {
     FiUser,
     FiMessageSquare,
     FiX,
+    FiArrowLeft,
 } from 'react-icons/fi';
 import { useSupportChatStore } from '../../store/supportChatStore';
 import { emitTypingStart, emitTypingStop } from '../../services/socketService';
 import { getReasonLabel } from './NewConversationModal';
 
-const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light' }) => {
+const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', onBack }) => {
     const {
         activeConversation,
         messages,
@@ -145,6 +146,20 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light' }) 
                 isDark ? 'bg-slate-950/80 border-slate-700/80' : 'bg-surface-muted border-border'
             }`}>
                 <div className="flex items-center gap-3">
+                    {onBack && (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className={`lg:hidden p-2 rounded-xl border transition-colors ${
+                                isDark
+                                    ? 'bg-slate-900 border-slate-700 text-slate-300 hover:text-white'
+                                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                            title="Back to Tickets"
+                        >
+                            <FiArrowLeft className="w-4 h-4" />
+                        </button>
+                    )}
                     <div className={`w-10 h-10 rounded-xl font-bold flex items-center justify-center text-sm shadow-sm ${
                         isDark ? 'bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950' : 'bg-primary-600 text-white'
                     }`}>

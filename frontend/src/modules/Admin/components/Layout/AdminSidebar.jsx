@@ -232,6 +232,10 @@ const getChildRoute = (parentRoute, childName) => {
       "Operations Console": "/admin/quick-commerce/operations",
       "Quick Commerce Analytics": "/admin/analytics/quick-commerce",
     },
+    "/admin/quick-commerce/operations": {
+      "Operations Console": "/admin/quick-commerce/operations",
+      "Quick Commerce Analytics": "/admin/analytics/quick-commerce",
+    },
     "/admin/settings": {
       General: "/admin/settings/general",
       "Payment & Shipping": "/admin/settings/payment-shipping",

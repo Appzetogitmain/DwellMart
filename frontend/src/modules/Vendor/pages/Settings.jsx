@@ -68,7 +68,7 @@ const VendorSettings = () => {
                   onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm ${
                     activeTab === tab.id
-                      ? 'border-purple-600 text-purple-600 font-semibold'
+                      ? 'border-amber-500 text-amber-600 font-semibold'
                       : 'border-transparent text-gray-600 hover:text-gray-800'
                   }`}
                 >

@@ -130,7 +130,8 @@ export const sendMessageService = async ({
         throw new ApiError(404, 'Support conversation not found.');
     }
 
-    const normalizedSenderRole = String(senderRole || '').toLowerCase();
+    const rawRole = String(senderRole || '').toLowerCase();
+    const normalizedSenderRole = rawRole === 'superadmin' ? 'admin' : rawRole;
 
     // Closed conversation read-only check
     if ((conversation.status === 'closed' || conversation.isClosed) && normalizedSenderRole !== 'admin') {

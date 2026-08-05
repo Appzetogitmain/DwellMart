@@ -29,7 +29,7 @@ export const getExperienceLabel = (experience) => {
     const exp = normalizeExperience(experience);
     switch (exp) {
         case EXPERIENCES.QUICK_COMMERCE:
-            return '10–30 Min DwellMart Express';
+            return '10–30 Min Dwell Mart Express';
         case EXPERIENCES.WHOLESALE:
             return 'B2B Wholesale';
         case EXPERIENCES.MARKETPLACE:
@@ -42,7 +42,7 @@ export const getExperienceShortLabel = (experience) => {
     const exp = normalizeExperience(experience);
     switch (exp) {
         case EXPERIENCES.QUICK_COMMERCE:
-            return 'DwellMart Express';
+            return 'Dwell Mart Express';
         case EXPERIENCES.WHOLESALE:
             return 'Wholesale (B2B)';
         case EXPERIENCES.MARKETPLACE:

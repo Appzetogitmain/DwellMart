@@ -54,7 +54,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
     (state) => state.cartAnimationTrigger
   );
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { getTranslatedText: t } = usePageTranslation(["Sell On DwellMart", "Home", "Shop", "Categories", "Offers", "Track Order", "Search"]);
+  const { getTranslatedText: t } = usePageTranslation(["Sell On Dwell Mart", "Home", "Shop", "Categories", "Offers", "Track Order", "Search"]);
 
   // Get current category from URL (supports both /category/:id and legacy /app/category/:id)
   const getCurrentCategoryId = () => {
@@ -309,7 +309,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
               >
                 <img
                   src={loginLogo}
-                  alt="DwellMart"
+                  alt="Dwell Mart"
                   className="h-9 sm:h-11 w-auto max-w-[140px] sm:max-w-[180px] object-contain drop-shadow-md relative z-[10004]"
                 />
               </motion.div>
@@ -324,7 +324,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
                 to="/sell-on-dwellmart"
                 className="mr-1 rounded-lg bg-[#ffc101] px-3 py-1.5 text-xs font-semibold text-black shadow-sm transition-colors hover:bg-[#ffd042]"
               >
-                {t("Sell On DwellMart")}
+                {t("Sell On Dwell Mart")}
               </Link>
             )}
 

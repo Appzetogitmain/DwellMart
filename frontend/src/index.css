@@ -5,7 +5,7 @@
 :root {
   /* Default Theme CSS Variables Fallback */
   --color-brand-primary: #D4AF37;
-  --color-brand-primary-hover: #C49F27;
+  --color-brand-primary-hover: #B8922E;
   --color-brand-primary-active: #A4821A;
   --color-brand-secondary: #0B0F17;
   --color-brand-secondary-hover: #161D2B;
@@ -32,9 +32,9 @@
   --color-border-focus: #D4AF37;
   --color-border-gold-accent: rgba(212, 175, 55, 0.3);
 
-  --color-status-success: #10B981;
+  --color-status-success: #16A34A;
   --color-status-warning: #F59E0B;
-  --color-status-error: #EF4444;
+  --color-status-error: #DC2626;
   --color-status-info: #3B82F6;
 
   --radius-card: 16px;
@@ -58,13 +58,16 @@
 }
 
 html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -78,6 +81,12 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+button, input, select, textarea, table, th, td, optgroup, option {
+  font-family: inherit;
+}
+
+
 
 body::-webkit-scrollbar {
   display: none;
