@@ -29,7 +29,7 @@ const AllNotifications = () => {
     } else if (orderId) {
       navigate('/admin/orders');
     } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
-      navigate('/admin/vendors');
+      navigate(vendorId ? `/admin/vendors/${vendorId}` : '/admin/vendors');
     }
   };
 

@@ -74,12 +74,12 @@ export const buildWholesalePayload = (state) => {
  * Client-side pre-submit validation mirroring the backend rules.
  * Returns an error message string, or null when the state is valid.
  */
-export const validateWholesaleState = (state, retailPrice, stockQuantity) => {
+export const validateWholesaleState = (state, retailPrice, stockQuantity, quickCommerceEnabled = false) => {
     const retailEnabled = state?.retailEnabled !== false;
     const wholesaleEnabled = state?.wholesaleEnabled === true;
 
-    if (!retailEnabled && !wholesaleEnabled) {
-        return "At least one selling channel (Retail or Wholesale) must be enabled.";
+    if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
+        return "At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.";
     }
     if (!wholesaleEnabled) return null;
 

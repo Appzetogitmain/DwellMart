@@ -190,15 +190,16 @@ const OrderDetail = () => {
                     order={order}
                     vendorId={vendorId}
                     onStatusUpdated={(updated) => {
-                        const newStatus = typeof updated === 'string' ? updated : (updated.status || 'accepted');
+                        const updatedOrder = typeof updated === 'object' ? updated : null;
+                        const nextQcStatus = updatedOrder?.quickCommerce?.status || (typeof updated === 'string' ? updated : 'accepted');
                         setOrder((prev) => ({
                             ...prev,
-                            status: newStatus,
-                            vendorItems: prev.vendorItems?.map((vi) =>
-                                vi.vendorId?.toString() === vendorId?.toString()
-                                    ? { ...vi, status: newStatus }
-                                    : vi
-                            ),
+                            status: updatedOrder?.status || prev.status,
+                            quickCommerce: {
+                                ...(prev?.quickCommerce || {}),
+                                ...(updatedOrder?.quickCommerce || {}),
+                                status: nextQcStatus,
+                            },
                         }));
                     }}
                 />

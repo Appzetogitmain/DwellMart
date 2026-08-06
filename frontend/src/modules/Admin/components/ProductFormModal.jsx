@@ -653,7 +653,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     const wholesaleError = validateWholesaleState(
       wholesaleState,
       numericPrice,
-      numericStockQuantity
+      numericStockQuantity,
+      formData.quickCommerceEnabled === true
     );
     if (wholesaleError) {
       toast.error(wholesaleError);
@@ -1279,6 +1280,11 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                     retailPrice={formData.price}
                     stockQuantity={formData.stockQuantity}
                     vendorWholesaleEnabled={selectedVendorWholesaleEnabled}
+                    quickCommerceProductEnabled={formData.quickCommerceEnabled === true}
+                    vendorQuickCommerceEnabled={true}
+                    onQuickCommerceToggle={(enabled) =>
+                      setFormData((prev) => ({ ...prev, quickCommerceEnabled: enabled }))
+                    }
                   />
 
                   {/* Product Variants */}

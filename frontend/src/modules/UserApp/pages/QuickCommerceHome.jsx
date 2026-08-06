@@ -9,7 +9,7 @@ import LazyImage from "../../../shared/components/LazyImage";
 import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useAuthStore } from "../../../shared/store/authStore";
-import { useCartStore } from "../../../shared/store/useStore";
+import { useCartStore, useUIStore } from "../../../shared/store/useStore";
 import { getLocationQueryParams } from "../../../shared/utils/experience";
 import { getNearbyQuickCommerceVendors } from "../../../shared/services/quickCommerceService";
 import { getPublicCategories } from "../../Admin/services/adminService";
@@ -101,6 +101,7 @@ const QuickCommerceHome = () => {
   const { isAuthenticated } = useAuthStore();
   const { fetchAddresses } = useAddressStore();
   const itemCount = useCartStore((state) => state.getItemCount());
+  const toggleCart = useUIStore((state) => state.toggleCart);
 
   const [categories, setCategories] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -228,7 +229,7 @@ const QuickCommerceHome = () => {
                 <Button
                   size="sm"
                   variant="primary"
-                  onClick={() => navigate("/cart")}
+                  onClick={toggleCart}
                   leftIcon={<FiShoppingCart className="text-sm" />}
                   className="!py-2 !px-3 font-extrabold text-xs"
                 >

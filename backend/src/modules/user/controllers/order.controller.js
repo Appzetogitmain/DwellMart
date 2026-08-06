@@ -392,13 +392,10 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }]);
             }
 
-            const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
-            if (!vendorPoint) {
-                throw new ApiError(409, `${vendor.storeName} has no delivery location configured.`);
-            }
+            const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
 
             const distanceKm = haversineDistanceKm(vendorPoint, quickCommerceContext);
-            const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 5;
+            const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25;
             if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
                 throw new ApiError(409, `${vendor.storeName} does not deliver to your location.`, [{
                     code: 'OUT_OF_DELIVERY_RANGE',

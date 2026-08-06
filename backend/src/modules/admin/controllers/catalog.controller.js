@@ -29,8 +29,14 @@ const isVendorQuickCommerceEnabled = async (vendorId) => {
 /** Which experience a category belongs to, for cross-tree validation. */
 const getCategoryExperience = async (categoryId) => {
     if (!categoryId) return null;
-    const category = await Category.findById(categoryId).select('experience').lean();
+    const category = await Category.findById(categoryId).select('supportedExperiences experience').lean();
     if (!category) throw new ApiError(400, 'Selected category does not exist.');
+    if (Array.isArray(category.supportedExperiences) && category.supportedExperiences.length > 0) {
+        if (category.supportedExperiences.includes('quick_commerce')) {
+            return 'quick_commerce';
+        }
+        return category.supportedExperiences[0];
+    }
     return normalizeExperience(category.experience);
 };
 
@@ -301,6 +307,7 @@ export const createProduct = asyncHandler(async (req, res) => {
         vendorWholesaleEnabled: rest.wholesaleEnabled === true
             ? await isVendorWholesaleEnabled(rest.vendorId)
             : false,
+        quickCommerceEnabled: rest.quickCommerceEnabled === true,
     });
 
     const resolvedQuickCommerce = resolveQuickCommercePayload({
@@ -421,6 +428,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
             vendorWholesaleEnabled: effectiveWholesale === true
                 ? await isVendorWholesaleEnabled(effectiveVendorId)
                 : false,
+            quickCommerceEnabled: (Object.prototype.hasOwnProperty.call(payload, 'quickCommerceEnabled')
+                ? payload.quickCommerceEnabled
+                : existing.quickCommerceEnabled) === true,
         });
 
         payload.retailEnabled = resolvedWholesale.retailEnabled;

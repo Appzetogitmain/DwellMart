@@ -61,7 +61,7 @@ const NotificationWindow = ({ isOpen, onClose, position = 'right' }) => {
       navigate('/admin/orders');
       onClose();
     } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
-      navigate('/admin/vendors');
+      navigate(vendorId ? `/admin/vendors/${vendorId}` : '/admin/vendors');
       onClose();
     }
   };

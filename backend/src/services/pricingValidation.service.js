@@ -229,12 +229,14 @@ export const resolveWholesalePayload = ({
     price,
     stockQuantity,
     vendorWholesaleEnabled,
+    quickCommerceEnabled = false,
 }) => {
     const isRetailEnabled = retailEnabled !== false;
     const isWholesaleEnabled = wholesaleEnabled === true;
+    const isQuickCommerceEnabled = quickCommerceEnabled === true;
 
-    if (!isRetailEnabled && !isWholesaleEnabled) {
-        throw new ApiError(400, 'At least one selling channel (Retail or Wholesale) must be enabled for this product.');
+    if (!isRetailEnabled && !isWholesaleEnabled && !isQuickCommerceEnabled) {
+        throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
     }
 
     if (!isWholesaleEnabled) {

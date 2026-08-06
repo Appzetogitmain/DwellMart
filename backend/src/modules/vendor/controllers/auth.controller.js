@@ -4,12 +4,14 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
+import Admin from '../../../models/Admin.model.js';
 import Settings from '../../../models/Settings.model.js';
 import EmailVerification from '../../../models/EmailVerification.model.js';
 import crypto from 'crypto';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { isMockOTP, isOTPMatch, sendOTP } from '../../../services/otp.service.js';
 import { sendEmail } from '../../../services/email.service.js';
+import { createNotification } from '../../../services/notification.service.js';
 import {
     clearRefreshSession,
     decodeRefreshTokenOrThrow,
@@ -244,6 +246,29 @@ export const register = asyncHandler(async (req, res) => {
 
     // Clean up verification record
     await EmailVerification.deleteOne({ email: normalizedEmail });
+
+    // Notify all active admins of new vendor registration
+    try {
+        const admins = await Admin.find({ isActive: true }).select('_id').lean();
+        await Promise.all(
+            admins.map((admin) =>
+                createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'admin',
+                    title: 'New Vendor Registration',
+                    message: `${vendor.storeName} (${vendor.name}) has registered as a vendor and is awaiting approval.`,
+                    type: 'system',
+                    data: {
+                        vendorId: String(vendor._id),
+                        vendorEmail: vendor.email,
+                        storeName: vendor.storeName,
+                    },
+                })
+            )
+        );
+    } catch (notificationErr) {
+        console.warn(`[Vendor Registration Notification] Failed: ${notificationErr.message}`);
+    }
 
     res.status(201).json(
         new ApiResponse(

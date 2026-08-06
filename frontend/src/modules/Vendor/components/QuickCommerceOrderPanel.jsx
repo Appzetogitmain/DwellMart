@@ -16,8 +16,8 @@ export default function QuickCommerceOrderPanel({ order, vendorId, onStatusUpdat
   );
   
   const currentStatus = (
-    vendorItem?.status ||
     order?.quickCommerce?.status ||
+    vendorItem?.status ||
     order?.status ||
     'pending'
   ).toLowerCase();
@@ -47,8 +47,9 @@ export default function QuickCommerceOrderPanel({ order, vendorId, onStatusUpdat
   ];
 
   const getStepState = (stepKey) => {
-    const statusOrder = ['pending', 'placed', 'accepted', 'preparing', 'ready', 'picked_up', 'arriving', 'delivered'];
-    const currentIndex = statusOrder.indexOf(currentStatus);
+    const statusOrder = ['pending', 'placed', 'new', 'accepted', 'processing', 'preparing', 'ready', 'picked_up', 'arriving', 'delivered'];
+    const effectiveStatus = currentStatus === 'processing' ? 'accepted' : currentStatus;
+    const currentIndex = statusOrder.indexOf(effectiveStatus);
     const stepIndex = statusOrder.indexOf(stepKey);
 
     if (currentStatus === 'cancelled') return 'cancelled';
@@ -108,7 +109,7 @@ export default function QuickCommerceOrderPanel({ order, vendorId, onStatusUpdat
           </Button>
         )}
 
-        {currentStatus === 'accepted' && (
+        {(currentStatus === 'accepted' || currentStatus === 'processing') && (
           <Button
             variant="primary"
             size="md"

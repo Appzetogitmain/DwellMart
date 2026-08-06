@@ -12,6 +12,7 @@ import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import { useAuthStore } from '../../../shared/store/authStore';
 import QuickCommerceTrackingPanel from '../components/QuickCommerceTrackingPanel';
+import { useOrderTracking } from '../../../shared/hooks/useOrderTracking';
 
 const MobileTrackOrder = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -59,7 +60,10 @@ const MobileTrackOrder = () => {
 
   const shippingAddress = order?.shippingAddress || {};
   const orderItems = translatedOrderItems.length > 0 ? translatedOrderItems : (Array.isArray(order?.items) ? order.items : []);
-  const normalizedStatus = String(order?.status || 'pending').toLowerCase();
+  const { tracking } = useOrderTracking(orderId);
+  const effectiveStatus = String(
+    tracking?.quickCommerceStatus || tracking?.status || order?.status || 'pending'
+  ).toLowerCase();
   const displayOrderId = order?.id || order?.orderId || orderId;
   const hasShippingAddress = Boolean(
     shippingAddress?.name ||
@@ -138,11 +142,11 @@ const MobileTrackOrder = () => {
   };
 
   const getTrackingSteps = () => {
-    const isCancelled = normalizedStatus === 'cancelled';
-    const isReturned = normalizedStatus === 'returned';
-    const isProcessingOrLater = ['processing', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
-    const isShippedOrLater = ['shipped', 'delivered', 'returned'].includes(normalizedStatus);
-    const isDelivered = normalizedStatus === 'delivered';
+    const isCancelled = ['cancelled', 'delivery_failed'].includes(effectiveStatus);
+    const isReturned = ['returned', 'returned_to_store'].includes(effectiveStatus);
+    const isProcessingOrLater = ['processing', 'accepted', 'preparing', 'ready', 'picked_up', 'arriving', 'shipped', 'delivered', 'returned'].includes(effectiveStatus);
+    const isShippedOrLater = ['shipped', 'picked_up', 'arriving', 'delivered', 'returned'].includes(effectiveStatus);
+    const isDelivered = effectiveStatus === 'delivered';
 
      const steps = [
       {
@@ -201,7 +205,7 @@ const MobileTrackOrder = () => {
                    <h1 className="text-xl font-bold text-content">{t('Track Order')}</h1>
                   <p className="text-sm text-content-secondary">{t('Order')} #{displayOrderId}</p>
                 </div>
-                 <Badge variant={normalizedStatus}>{t(normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1).toLowerCase())}</Badge>
+                 <Badge variant={effectiveStatus}>{t(effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1).toLowerCase())}</Badge>
               </div>
             </div>
 

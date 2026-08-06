@@ -445,7 +445,8 @@ const AddProduct = () => {
     const wholesaleError = validateWholesaleState(
       wholesaleState,
       parsedPrice,
-      parsedStockQuantity
+      parsedStockQuantity,
+      quickCommerceState?.quickCommerceEnabled === true
     );
     if (wholesaleError) {
       toast.error(wholesaleError);
@@ -817,6 +818,11 @@ const AddProduct = () => {
           retailPrice={formData.price}
           stockQuantity={formData.stockQuantity}
           vendorWholesaleEnabled={vendor?.sellingChannels?.wholesale?.enabled === true}
+          quickCommerceProductEnabled={quickCommerceState?.quickCommerceEnabled === true}
+          vendorQuickCommerceEnabled={vendor?.sellingChannels?.quickCommerce?.enabled === true}
+          onQuickCommerceToggle={(enabled) =>
+            setQuickCommerceState((prev) => ({ ...prev, quickCommerceEnabled: enabled }))
+          }
           disabled={isSaving}
         />
 

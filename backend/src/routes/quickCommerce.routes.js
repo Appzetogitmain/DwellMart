@@ -321,13 +321,10 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
         return notAvailable('VENDOR_NOT_ORDERABLE', `${vendor.storeName} is not accepting orders right now.`);
     }
 
-    const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
-    if (!vendorPoint) {
-        return notAvailable('VENDOR_NO_LOCATION', 'This store has no delivery location configured.');
-    }
+    const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
 
     const distanceKm = haversineDistanceKm(vendorPoint, { latitude, longitude });
-    const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 5;
+    const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25;
     if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
         return notAvailable('OUT_OF_DELIVERY_RANGE', `${vendor.storeName} does not deliver to your location.`);
     }

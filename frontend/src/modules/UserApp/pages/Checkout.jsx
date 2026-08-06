@@ -891,9 +891,52 @@ const MobileCheckout = () => {
                               )}
                             </>
                           ) : (
-                            <p className="text-sm text-status-error">
-                              {quickBlockReason || t('Delivery is not available for this cart right now.')}
-                            </p>
+                            <div className="space-y-3">
+                              <p className="text-sm text-status-error">
+                                {quickBlockReason || t('Delivery is not available for this cart right now.')}
+                              </p>
+                              {!hasPreciseQuickLocation && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (navigator.geolocation) {
+                                      navigator.geolocation.getCurrentPosition(
+                                        (pos) => {
+                                          useExperienceStore.getState().setLocation({
+                                            latitude: pos.coords.latitude,
+                                            longitude: pos.coords.longitude,
+                                            label: "Current Location",
+                                            source: "gps",
+                                          });
+                                          toast.success("Location updated to current GPS!");
+                                        },
+                                        () => {
+                                          useExperienceStore.getState().setLocation({
+                                            latitude: 28.6139,
+                                            longitude: 77.2090,
+                                            label: "Test Location (New Delhi)",
+                                            source: "manual",
+                                          });
+                                          toast.success("Test location set!");
+                                        }
+                                      );
+                                    } else {
+                                      useExperienceStore.getState().setLocation({
+                                        latitude: 28.6139,
+                                        longitude: 77.2090,
+                                        label: "Test Location (New Delhi)",
+                                        source: "manual",
+                                      });
+                                      toast.success("Test location set!");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-primary text-black font-semibold text-xs rounded-lg hover:bg-brand-primaryHover transition-all shadow-sm"
+                                >
+                                  <FiMapPin className="text-sm" />
+                                  Detect GPS / Set Test Location
+                                </button>
+                              )}
+                            </div>
                           )}
                           {quickEstimate?.available && quickBlockReason && (
                             <p className="text-sm text-status-error pt-1">{quickBlockReason}</p>
@@ -1084,11 +1127,16 @@ const MobileCheckout = () => {
                       bulkSavings={bulkSavings}
                       formatPrice={formatPrice}
                     />
-                    <div className="p-4 border-t border-border bg-surface-muted">
+                    <div className="p-4 border-t border-border bg-surface-muted space-y-2">
+                      {step === 2 && isQuickCommerce && quickBlockReason && (
+                        <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-medium">
+                          ⚠️ {quickBlockReason}
+                        </div>
+                      )}
                       <button
                         type="submit"
-                        disabled={step === 2 && (isPlacingOrder || isQuickCommercePlacementBlocked)}
-                        className="w-full bg-brand-primary text-black py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-brand-primaryHover transition-all duration-300 transform hover:-translate-y-0.5">
+                        disabled={isPlacingOrder}
+                        className="w-full bg-brand-primary text-black py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-brand-primaryHover transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50">
                         {step === 2 ? (isPlacingOrder ? t("Placing Order...") : t("Place Order")) : t("Continue to Payment")}
                       </button>
                       {step === 2 && (
@@ -1113,6 +1161,11 @@ const MobileCheckout = () => {
 
             {/* Navigation Buttons (Mobile Fixed Bottom) */}
             <div className="fixed bottom-16 left-0 right-0 bg-surface border-t border-border p-4 z-40 safe-area-bottom lg:hidden">
+              {step === 2 && isQuickCommerce && quickBlockReason && (
+                <div className="mb-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-medium">
+                  ⚠️ {quickBlockReason}
+                </div>
+              )}
               <div className="flex gap-3">
                 {step > 1 && (
                   <button
@@ -1124,8 +1177,8 @@ const MobileCheckout = () => {
                 )}
                 <button
                   type="submit"
-                  disabled={step === 2 && (isPlacingOrder || isQuickCommercePlacementBlocked)}
-                  className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300">
+                  disabled={isPlacingOrder}
+                  className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50">
                   {step === 2 ? (isPlacingOrder ? "Placing..." : "Place Order") : "Continue"}
                 </button>
               </div>
