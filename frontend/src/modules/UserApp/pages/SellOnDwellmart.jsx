@@ -105,7 +105,7 @@ const SellOnDwellmart = () => {
     { step: '01', title: 'Choose Plan', desc: 'Select Trial, Monthly, Quarterly, or Pro membership.', icon: FiBox },
     { step: '02', title: 'Register', desc: 'Fill in store profile, owner details, and credentials.', icon: FiUsers },
     { step: '03', title: 'Verification', desc: 'Upload GST or Trade License for instant 24h approval.', icon: FiCheckCircle },
-    { step: '04', title: 'Payment', desc: 'Checkout securely via Razorpay (India) or Stripe (Global).', icon: FiDollarSign },
+    { step: '04', title: 'Payment & Activation', desc: 'Secure checkout via Cashfree PG (UPI, Cards, NetBanking).', icon: FiDollarSign },
     { step: '05', title: 'Go Live', desc: 'Upload catalog, manage stock, and receive payouts.', icon: FiTrendingUp },
   ];
 
@@ -182,7 +182,7 @@ const SellOnDwellmart = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <FiCheckCircle className="text-[#ffc101]" />
-                  <span>Razorpay & Stripe Payouts</span>
+                  <span>Fast Bank Payouts</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FiCheckCircle className="text-[#ffc101]" />
@@ -251,7 +251,7 @@ const SellOnDwellmart = () => {
                       <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       <div>
                         <p className="font-semibold text-emerald-300">Automated Daily Settlement</p>
-                        <p className="text-[10px] text-emerald-400/70">₹1,48,250 transferred via Razorpay</p>
+                        <p className="text-[10px] text-emerald-400/70">₹1,48,250 transferred to bank account</p>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Active</span>

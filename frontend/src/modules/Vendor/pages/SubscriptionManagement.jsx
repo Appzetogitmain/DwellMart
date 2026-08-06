@@ -11,30 +11,13 @@ import {
   FiShield,
   FiStar,
 } from 'react-icons/fi';
-import StripeSubscriptionForm from '../components/StripeSubscriptionForm';
 import {
   changeVendorSubscriptionPlan,
   getVendorSubscription,
   getVendorSubscriptionPlans,
 } from '../services/vendorService';
-
-const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
-let razorpayScriptPromise = null;
-
-const loadRazorpayScript = () => {
-  if (typeof window !== 'undefined' && window.Razorpay) return Promise.resolve(window.Razorpay);
-  if (!razorpayScriptPromise) {
-    razorpayScriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = RAZORPAY_SCRIPT;
-      script.async = true;
-      script.onload = () => resolve(window.Razorpay);
-      script.onerror = () => reject(new Error('Failed to load Razorpay checkout.'));
-      document.body.appendChild(script);
-    });
-  }
-  return razorpayScriptPromise;
-};
+import api from '../../../shared/utils/api';
+import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
 
 const intervalDays = {
   day: 1,
@@ -52,23 +35,19 @@ const formatDate = (value) => {
   }).format(new Date(value));
 };
 
-const formatPrice = (plan, gateway = 'stripe') => {
+const formatPrice = (plan) => {
   const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0);
   const usd = Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0);
   if (inr === 0 && usd === 0) return 'Free';
-
-  if (gateway === 'razorpay') {
+  if (plan?.displayCurrency === 'INR' || (inr > 0 && usd === 0)) {
     return `Rs. ${inr.toFixed(0)}`;
   }
-
   return `$${usd.toFixed(2)}`;
 };
 
-const getPlanAmount = (plan, gateway = 'stripe') => {
+const getPlanAmount = (plan) => {
   if (typeof plan?.displayPrice === 'number') return Number(plan.displayPrice || 0);
-  return gateway === 'razorpay'
-    ? Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0)
-    : Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0);
+  return Number(plan?.pricing?.usd ?? plan?.price_usd ?? plan?.pricing?.inr ?? plan?.price_inr ?? 0);
 };
 
 const getPlanIntervalDays = (plan) => {
@@ -77,9 +56,9 @@ const getPlanIntervalDays = (plan) => {
   return count * (intervalDays[interval] || 30);
 };
 
-const getDailyRate = (plan, gateway = 'stripe') => {
+const getDailyRate = (plan) => {
   const days = Math.max(getPlanIntervalDays(plan), 1);
-  return getPlanAmount(plan, gateway) / days;
+  return getPlanAmount(plan) / days;
 };
 
 const getDaysRemaining = (endDate) => {
@@ -113,26 +92,23 @@ const SubscriptionManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showStripe, setShowStripe] = useState(false);
-  const [stripeConfig, setStripeConfig] = useState({ clientSecret: '', publishableKey: '' });
-
   const currentPlan = subscription?.plan || null;
-  const gateway = subscription?.gateway || currentPlan?.gateway || 'stripe';
+  const gateway = 'internal';
   const currentPlanId = String(currentPlan?._id || currentPlan?.id || subscription?.planId || '');
   const daysRemaining = getDaysRemaining(subscription?.current_period_end);
   const progress = getProgress(subscription?.current_period_start, subscription?.current_period_end);
-  const currentDailyRate = currentPlan ? getDailyRate(currentPlan, gateway) : 0;
+  const currentDailyRate = currentPlan ? getDailyRate(currentPlan) : 0;
 
   const sortedPlans = useMemo(() => (
-    [...plans].sort((left, right) => getDailyRate(left, gateway) - getDailyRate(right, gateway))
-  ), [plans, gateway]);
+    [...plans].sort((left, right) => getDailyRate(left) - getDailyRate(right))
+  ), [plans]);
 
   const upgradeOptions = useMemo(() => (
     sortedPlans.filter((plan) => (
       String(plan._id || plan.id) !== currentPlanId
-      && getDailyRate(plan, gateway) > currentDailyRate
+      && getDailyRate(plan) > currentDailyRate
     ))
-  ), [currentDailyRate, currentPlanId, gateway, sortedPlans]);
+  ), [currentDailyRate, currentPlanId, sortedPlans]);
 
   const loadSubscriptionData = async ({ quiet = false } = {}) => {
     if (quiet) {
@@ -179,21 +155,7 @@ const SubscriptionManagement = () => {
     loadSubscriptionData();
   }, []);
 
-  const openRazorpay = async (checkout, plan) => {
-    const Razorpay = await loadRazorpayScript();
-    const instance = new Razorpay({
-      key: checkout.keyId,
-      subscription_id: checkout.subscriptionId,
-      name: 'DwellMart Vendor Billing',
-      description: `${plan.name} subscription`,
-      theme: { color: '#0f766e' },
-      handler: async () => {
-        toast.success('Authorization received. Waiting for subscription confirmation.');
-        await pollSubscription();
-      },
-    });
-    instance.open();
-  };
+
 
   const handlePlanChange = async (plan) => {
     const planId = String(plan?._id || plan?.id || '');
@@ -207,6 +169,30 @@ const SubscriptionManagement = () => {
     setSelectedPlanId(planId);
     setIsSubmitting(true);
     try {
+      const isFree = plan?.isFree || (Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0) === 0 && Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0) === 0);
+      const email = subscription?.vendor?.email || localStorage.getItem('vendor-email');
+
+      if (!isFree && email) {
+        try {
+          const sessionRes = await api.post('/payments/cashfree/session', {
+            subscriptionPlanId: planId,
+            email,
+          });
+          const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || {};
+
+          if (paymentSessionId) {
+            const cashfree = await getCashfreeInstance(environment || 'sandbox');
+            await cashfree.checkout({
+              paymentSessionId,
+              redirectTarget: "_modal",
+            });
+            await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+          }
+        } catch (cfErr) {
+          console.warn("Cashfree plan change notice:", cfErr);
+        }
+      }
+
       const response = await changeVendorSubscriptionPlan(planId);
       const data = response?.data || {};
 
@@ -214,28 +200,10 @@ const SubscriptionManagement = () => {
         setSubscription(data.subscription);
       }
 
-      if (data.subscription?.isActive && !data.checkout) {
-        toast.success(data.message || 'Subscription updated successfully.');
-        await loadSubscriptionData({ quiet: true });
-        return;
-      }
-
-      if (data.gateway === 'stripe') {
-        if (data.checkout?.clientSecret) {
-          setStripeConfig({
-            clientSecret: data.checkout.clientSecret,
-            publishableKey: data.checkout.publishableKey,
-          });
-          setShowStripe(true);
-        } else {
-          await pollSubscription();
-        }
-        return;
-      }
-
-      if (data.gateway === 'razorpay') {
-        await openRazorpay(data.checkout, plan);
-      }
+      toast.success(data.message || 'Subscription updated successfully.');
+      await loadSubscriptionData({ quiet: true });
+    } catch (error) {
+      toast.error(error.message || 'Could not update subscription.');
     } finally {
       setIsSubmitting(false);
     }
@@ -245,7 +213,7 @@ const SubscriptionManagement = () => {
     const planId = String(plan?._id || plan?.id || '');
     if (planId === currentPlanId && subscription?.isActive) return 'Current Plan';
     if (!currentPlan) return 'Choose Plan';
-    return getDailyRate(plan, gateway) > currentDailyRate ? 'Upgrade Plan' : 'Switch Plan';
+    return getDailyRate(plan) > currentDailyRate ? 'Upgrade Plan' : 'Switch Plan';
   };
 
   if (isLoading) {
@@ -448,17 +416,6 @@ const SubscriptionManagement = () => {
           </div>
         )}
       </section>
-
-      <StripeSubscriptionForm
-        open={showStripe}
-        clientSecret={stripeConfig.clientSecret}
-        publishableKey={stripeConfig.publishableKey}
-        onClose={() => setShowStripe(false)}
-        onSubmitted={async () => {
-          setShowStripe(false);
-          await pollSubscription();
-        }}
-      />
     </motion.div>
   );
 };

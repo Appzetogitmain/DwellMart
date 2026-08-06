@@ -10,11 +10,7 @@ import { fileURLToPath } from 'url';
 // Route imports
 import publicRoutes from './routes/public.routes.js';
 import quickCommerceRoutes from './routes/quickCommerce.routes.js';
-import {
-    subscriptionRouter,
-    stripeWebhookRouter,
-    razorpayWebhookRouter,
-} from './routes/subscription.routes.js';
+import { subscriptionRouter } from './routes/subscription.routes.js';
 import userRoutes from './modules/user/routes/user.routes.js';
 import adminRoutes from './modules/admin/routes/admin.routes.js';
 import vendorRoutes from './modules/vendor/routes/vendor.routes.js';
@@ -23,6 +19,7 @@ import integrationRoutes from './modules/integrations/routes/integration.routes.
 import translationRoutes from './routes/translationRoutes.js';
 import supportRoutes from './routes/support.routes.js';
 import bulkUploadRoutes from './routes/bulkUpload.routes.js';
+import paymentRouter from './routes/payment.routes.js';
 
 // Middleware imports
 import requestIdMiddleware from './middlewares/requestId.js';
@@ -38,14 +35,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsRoot = path.resolve(__dirname, '../uploads');
 const deliveryDocsRoot = path.resolve(uploadsRoot, 'delivery-docs');
-const stripeWebhookPaths = [
-    '/api/webhooks/stripe',
-    '/api/subscription/webhooks/stripe',
-];
-const razorpayWebhookPaths = [
-    '/api/webhooks/razorpay',
-    '/api/subscription/webhooks/razorpay',
-];
 
 const isValidDeliveryDocToken = (relativePath, rawToken) => {
     if (!rawToken) return false;
@@ -91,17 +80,18 @@ app.use(cors({
 app.use(compression());
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
-app.use(stripeWebhookPaths, express.raw({ type: 'application/json' }), stripeWebhookRouter);
-app.use(razorpayWebhookPaths, express.raw({ type: 'application/json' }), razorpayWebhookRouter);
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString();
+    },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
 app.use('/api', apiLimiter);
 
 // ─── Shopping Experience Resolution ──────────────────────────────────────────
-// Must run before any route (and therefore before the response cache) so
-// `req.experience` is available to controllers and to cache key building.
 app.use('/api', resolveExperience);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
@@ -141,17 +131,18 @@ app.use(
     },
     express.static(uploadsRoot)
 );
-app.use('/api/products', bulkUploadRoutes);         // Bulk Upload, Templates & Catalog Export
-app.use('/api/quick', quickCommerceRoutes); // Quick Commerce: serviceability, nearby stores, category feed
-app.use('/api', publicRoutes);            // Public: products, categories, brands, coupons, banners
+app.use('/api/payments', paymentRouter);
+app.use('/api/products', bulkUploadRoutes);
+app.use('/api/quick', quickCommerceRoutes);
+app.use('/api', publicRoutes);
 app.use('/api/subscription', subscriptionRouter);
-app.use('/api/user', userRoutes);         // Customer: auth, addresses, wishlist, reviews, orders
-app.use('/api/admin', adminRoutes);       // Admin: auth, vendors, orders, catalog, analytics
-app.use('/api/vendor', vendorRoutes);     // Vendor: auth, products, orders, earnings
-app.use('/api/delivery', deliveryRoutes); // Delivery: auth, orders
-app.use('/api/integrations', integrationRoutes); // Partner Integrations: delivery provider APIs
-app.use('/api/v1/translate', translationRoutes); // Public Translation
-app.use('/api/support', supportRoutes);           // Support Desk & Chat APIs
+app.use('/api/user', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/vendor', vendorRoutes);
+app.use('/api/delivery', deliveryRoutes);
+app.use('/api/integrations', integrationRoutes);
+app.use('/api/v1/translate', translationRoutes);
+app.use('/api/support', supportRoutes);
 
 // ─── Error Handling ──────────────────────────────────────────────────────────
 app.use(notFound);

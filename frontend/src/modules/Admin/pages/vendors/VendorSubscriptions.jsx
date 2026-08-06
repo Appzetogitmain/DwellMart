@@ -64,7 +64,7 @@ const VendorSubscriptions = () => {
     {
       key: 'gateway',
       label: 'Gateway',
-      render: (_, row) => String(row.gateway || '').toUpperCase(),
+      render: (_, row) => String(row.gateway || 'internal').toUpperCase(),
     },
     {
       key: 'status',
@@ -108,7 +108,7 @@ const VendorSubscriptions = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Vendor Subscriptions</h1>
-          <p className="mt-1 text-sm text-slate-500">Monitor live subscription status synced from Stripe and Razorpay.</p>
+          <p className="mt-1 text-sm text-slate-500">Monitor live vendor subscription status and active plans.</p>
         </div>
         <button type="button" onClick={fetchSubscriptions} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-600 transition hover:bg-slate-100">
           <FiRefreshCw className={isLoading ? 'animate-spin' : ''} />

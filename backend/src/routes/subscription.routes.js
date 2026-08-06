@@ -10,19 +10,12 @@ import {
 } from '../modules/vendor/validators/subscription.validator.js';
 
 const subscriptionRouter = Router();
-const stripeWebhookRouter = Router();
-const razorpayWebhookRouter = Router();
 
 subscriptionRouter.get('/plans', billingController.getSubscriptionPlans);
 subscriptionRouter.post('/select-plan', validate(selectPlanSchema), billingController.selectPlan);
 subscriptionRouter.post('/initiate', validate(initiateOnboardingSubscriptionSchema), billingController.initiateOnboardingSubscription);
 subscriptionRouter.post('/confirm', validate(confirmOnboardingPaymentSchema), billingController.confirmOnboardingPayment);
 
-stripeWebhookRouter.post('/', billingController.handleStripeWebhook);
-razorpayWebhookRouter.post('/', billingController.handleRazorpayWebhook);
-
 export {
     subscriptionRouter,
-    stripeWebhookRouter,
-    razorpayWebhookRouter,
 };

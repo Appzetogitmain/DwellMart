@@ -197,6 +197,18 @@ export const getUserFriendlyError = (error, defaultFallback = 'Something went wr
       debug,
     };
   }
+  if (status === 409) {
+    return {
+      type: ERROR_TYPES.BUSINESS_ERROR,
+      severity: ERROR_SEVERITY.WARNING,
+      title: 'Notice',
+      message: backendMessage || 'There is a conflict with this request. Please refresh and try again.',
+      requestId,
+      timestamp,
+      retry: { retryable: false, action: null },
+      debug,
+    };
+  }
   if (status >= 500) {
     return {
       type: ERROR_TYPES.SERVER_ERROR,

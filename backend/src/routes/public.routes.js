@@ -1132,11 +1132,6 @@ router.get('/vendor-terms', catalogCache, asyncHandler(async (req, res) => {
         lastUpdated: setting?.updatedAt || null,
     }, 'Vendor terms fetched.'));
 }));
-
-// Create Razorpay Order for Subscription (Public)
-
-// Create Stripe Session for Subscription (Public)
-
 // ─── Public Static Pages ──────────────────────────────────────────────────────
 // GET /api/pages/:slug (public — no auth required so user-facing pages can fetch content)
 router.get('/pages/:slug', asyncHandler(async (req, res) => {

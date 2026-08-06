@@ -1,5 +1,5 @@
 import toast from 'react-hot-toast';
-import { getUserFriendlyError, ERROR_SEVERITY } from './errorHandler';
+import { getUserFriendlyError, ERROR_SEVERITY, ERROR_TYPES } from './errorHandler';
 
 const recentToasts = new Set();
 const DEDUPE_MS = 2500;

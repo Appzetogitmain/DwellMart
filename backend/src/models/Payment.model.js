@@ -16,8 +16,8 @@ const paymentSchema = new mongoose.Schema(
         },
         gateway: {
             type: String,
-            enum: ['stripe', 'razorpay'],
-            required: true,
+            enum: ['internal', 'cashfree', 'stripe', 'razorpay'],
+            default: 'internal',
             index: true,
         },
         amount: { type: Number, required: true, min: 0 },

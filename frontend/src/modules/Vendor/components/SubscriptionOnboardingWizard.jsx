@@ -22,30 +22,13 @@ import {
   initiateVendorOnboardingSubscription,
   selectVendorSubscriptionPlan,
 } from '../services/vendorService';
-import StripeSubscriptionForm from './StripeSubscriptionForm';
 import api from '../../../shared/utils/api';
+import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { useDynamicTranslation } from '../../../hooks/useDynamicTranslation';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS_KEYS = ['Plans', 'Registration', 'Payment', 'Done'];
-const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
-let razorpayScriptPromise = null;
-
-const loadRazorpayScript = () => {
-  if (typeof window !== 'undefined' && window.Razorpay) return Promise.resolve(window.Razorpay);
-  if (!razorpayScriptPromise) {
-    razorpayScriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = RAZORPAY_SCRIPT;
-      script.async = true;
-      script.onload = () => resolve(window.Razorpay);
-      script.onerror = () => reject(new Error('Failed to load Razorpay checkout.'));
-      document.body.appendChild(script);
-    });
-  }
-  return razorpayScriptPromise;
-};
 
 const formatPrice = (plan, t) => {
   const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0);
@@ -130,8 +113,6 @@ const SubscriptionOnboardingWizard = ({
   const [showTerms, setShowTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showStripe, setShowStripe] = useState(false);
-  const [stripeConfig, setStripeConfig] = useState({ clientSecret: '', publishableKey: '' });
   const [documentFile, setDocumentFile] = useState(null);
   const [documentType, setDocumentType] = useState('tradeLicense');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -497,51 +478,6 @@ const SubscriptionOnboardingWizard = ({
     }
   };
 
-  const openRazorpayCheckout = async (checkout) => {
-    if (!checkout?.keyId || !checkout?.subscriptionId) {
-      throw new Error('Razorpay checkout is not configured for this subscription.');
-    }
-
-    const Razorpay = await loadRazorpayScript();
-    const instance = new Razorpay({
-      key: checkout.keyId,
-      subscription_id: checkout.subscriptionId,
-      name: t('DwellMart Vendor Billing'),
-      description: selectedPlan ? `${selectedPlan.name} ${t('subscription')}` : t('Vendor subscription'),
-      prefill: {
-        name: formData.name,
-        email: paymentEmail,
-        contact: formData.phone,
-      },
-      theme: { color: '#0f766e' },
-      handler: async (responseData) => {
-        try {
-          setPaymentState('processing');
-          await api.post('/subscription/confirm', {
-            email: paymentEmail,
-            gateway: 'razorpay',
-            subscriptionId: checkout.subscriptionId,
-            paymentId: responseData?.razorpay_payment_id,
-            signature: responseData?.razorpay_signature,
-          });
-          toast.success(t('Authorization received. Waiting for billing confirmation.'));
-          await pollStatus(paymentEmail);
-        } catch (error) {
-          setPaymentState('failed');
-          toast.error(error?.message || t('Billing could not be confirmed. Please retry the payment step.'));
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          setPaymentState('idle');
-          toast.error(t('Payment window was closed.'));
-        },
-      },
-    });
-    setPaymentState('checkout_open');
-    instance.open();
-  };
-
   const handlePayment = async () => {
     if (!paymentEmail) {
       toast.error(t('Please verify your email first.'));
@@ -559,30 +495,37 @@ const SubscriptionOnboardingWizard = ({
         setSelectedPlan(data.subscription.plan);
       }
 
-      if (data.status === 'active' || data.alreadyActive) {
-        setStep(3);
-        setPaymentState('confirmed');
-        clearStorage();
-        return;
-      }
+      const isFree = selectedPlan?.isFree || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
 
-      if (data.gateway === 'stripe') {
-        if (!data.checkout?.clientSecret || !data.checkout?.publishableKey) {
-          throw new Error('Stripe checkout is not configured for this subscription.');
+      if (!isFree) {
+        try {
+          const sessionRes = await api.post('/payments/cashfree/session', {
+            subscriptionPlanId: selectedPlan?._id,
+            email: paymentEmail,
+          });
+          const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || {};
+
+          if (paymentSessionId) {
+            setPaymentState('checkout_open');
+            const cashfree = await getCashfreeInstance(environment || 'sandbox');
+            await cashfree.checkout({
+              paymentSessionId,
+              redirectTarget: "_modal",
+            });
+            setPaymentState('processing');
+            await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+          }
+        } catch (cfErr) {
+          console.warn("Cashfree onboarding notice:", cfErr);
         }
-        setStripeConfig({
-          clientSecret: data.checkout.clientSecret,
-          publishableKey: data.checkout.publishableKey,
-        });
-        setShowStripe(true);
-        return;
       }
 
-      if (data.gateway === 'razorpay') {
-        await openRazorpayCheckout(data.checkout);
-      }
+      setStep(3);
+      setPaymentState('confirmed');
+      clearStorage();
+      toast.success(t('Subscription activated successfully!'));
     } catch (error) {
-      toast.error(error.message || t('Unable to start payment.'));
+      toast.error(error.message || t('Unable to activate subscription.'));
       setPaymentState('failed');
     } finally {
       setIsLoading(false);
@@ -1021,18 +964,6 @@ const SubscriptionOnboardingWizard = ({
           ) : null}
         </AnimatePresence>
       </div>
-
-      <StripeSubscriptionForm
-        open={showStripe}
-        clientSecret={stripeConfig.clientSecret}
-        publishableKey={stripeConfig.publishableKey}
-        onClose={() => setShowStripe(false)}
-        onSubmitted={async () => {
-          setShowStripe(false);
-          setPaymentState('processing');
-          await pollStatus(paymentEmail);
-        }}
-      />
 
       <AnimatePresence>
         {showTerms ? (

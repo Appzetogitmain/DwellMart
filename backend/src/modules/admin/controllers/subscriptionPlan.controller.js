@@ -9,58 +9,6 @@ import {
     normalizePlanFeatures,
     serializePlan,
 } from '../../../services/billing/plan.service.js';
-import { syncStripePriceForPlan } from '../../../services/billing/stripeBilling.service.js';
-import { syncRazorpayPlanForPlan } from '../../../services/billing/razorpayBilling.service.js';
-
-const getGatewayErrorMessage = (error, fallbackMessage) => (
-    error?.error?.description
-    || error?.description
-    || error?.raw?.message
-    || error?.raw?.error?.message
-    || error?.message
-    || fallbackMessage
-);
-
-const resolveAdminPlanInterval = ({ interval, intervalCount, priceInr }) =>
-    normalizePlanInterval({
-        interval,
-        intervalCount,
-        gateway: Number(priceInr || 0) > 0 ? 'razorpay' : 'stripe',
-    });
-
-const syncGatewayReferences = async (plan, { forceResync = false } = {}) => {
-    if ((forceResync || !plan.stripe_price_id) && Number(plan.price_usd || 0) > 0) {
-        try {
-            const priceId = await syncStripePriceForPlan(plan);
-            if (priceId) {
-                plan.stripe_price_id = priceId;
-            }
-        } catch (error) {
-            throw new ApiError(
-                502,
-                `Stripe plan sync failed: ${getGatewayErrorMessage(error, 'Unknown Stripe error.')}`
-            );
-        }
-    } else if (Number(plan.price_usd || 0) === 0) {
-        plan.stripe_price_id = null;
-    }
-
-    if ((forceResync || !plan.razorpay_plan_id) && Number(plan.price_inr || 0) > 0) {
-        try {
-            const planId = await syncRazorpayPlanForPlan(plan);
-            if (planId) {
-                plan.razorpay_plan_id = planId;
-            }
-        } catch (error) {
-            throw new ApiError(
-                502,
-                `Razorpay plan sync failed: ${getGatewayErrorMessage(error, 'Unknown Razorpay error.')}`
-            );
-        }
-    } else if (Number(plan.price_inr || 0) === 0) {
-        plan.razorpay_plan_id = null;
-    }
-};
 
 export const getAllPlans = asyncHandler(async (req, res) => {
     const plans = await SubscriptionPlan.find().sort({ sortOrder: 1, createdAt: -1 });
@@ -95,10 +43,9 @@ export const createPlan = asyncHandler(async (req, res) => {
 
     const trimmedName = String(name || '').trim();
     if (!trimmedName) throw new ApiError(400, 'Plan name is required.');
-    const planInterval = resolveAdminPlanInterval({
+    const planInterval = normalizePlanInterval({
         interval,
         intervalCount: interval_count,
-        priceInr: price_inr,
     });
 
     const slug = buildPlanSlug(trimmedName);
@@ -119,24 +66,12 @@ export const createPlan = asyncHandler(async (req, res) => {
         sortOrder: Number(sortOrder) || 0,
     });
 
-    await syncGatewayReferences(plan, { forceResync: true });
-    await plan.save();
-
     res.status(201).json(new ApiResponse(201, serializePlan(plan), 'Subscription plan created.'));
 });
 
 export const updatePlan = asyncHandler(async (req, res) => {
     const plan = await SubscriptionPlan.findById(req.params.id);
     if (!plan) throw new ApiError(404, 'Plan not found.');
-
-    const previousSignature = JSON.stringify({
-        name: plan.name,
-        price_inr: plan.price_inr,
-        price_usd: plan.price_usd,
-        interval: plan.interval,
-        interval_count: plan.interval_count,
-        description: plan.description,
-    });
 
     const {
         name,
@@ -162,11 +97,10 @@ export const updatePlan = asyncHandler(async (req, res) => {
     }
     if (price_inr !== undefined) plan.price_inr = Number(price_inr);
     if (price_usd !== undefined) plan.price_usd = Number(price_usd);
-    if (interval !== undefined || interval_count !== undefined || price_inr !== undefined) {
-        const planInterval = resolveAdminPlanInterval({
+    if (interval !== undefined || interval_count !== undefined) {
+        const planInterval = normalizePlanInterval({
             interval: interval ?? plan.interval,
             intervalCount: interval_count ?? plan.interval_count,
-            priceInr: price_inr ?? plan.price_inr,
         });
         plan.interval = planInterval.interval;
         plan.interval_count = planInterval.interval_count;
@@ -177,16 +111,6 @@ export const updatePlan = asyncHandler(async (req, res) => {
     if (isActive !== undefined) plan.isActive = Boolean(isActive);
     if (sortOrder !== undefined) plan.sortOrder = Number(sortOrder);
 
-    const nextSignature = JSON.stringify({
-        name: plan.name,
-        price_inr: plan.price_inr,
-        price_usd: plan.price_usd,
-        interval: plan.interval,
-        interval_count: plan.interval_count,
-        description: plan.description,
-    });
-
-    await syncGatewayReferences(plan, { forceResync: previousSignature !== nextSignature });
     await plan.save();
 
     res.status(200).json(new ApiResponse(200, serializePlan(plan), 'Subscription plan updated.'));

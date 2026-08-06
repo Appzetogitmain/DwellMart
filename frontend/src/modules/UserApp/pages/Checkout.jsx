@@ -20,6 +20,7 @@ import { useOrderStore } from "../../../shared/store/orderStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cartTotals";
+import { getCashfreeInstance } from "../../../shared/utils/cashfreeLoader";
 import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { getQuickCommerceCheckoutEstimate } from "../../../shared/services/quickCommerceService";
 import { EXPERIENCES, getLocationQueryParams } from "../../../shared/utils/experience";
@@ -571,9 +572,33 @@ const MobileCheckout = () => {
           shippingOption,
         });
 
+        const targetOrderId = order.orderId || order.id || order._id;
+        const isOnlinePayment = ['card', 'upi', 'wallet', 'netbanking'].includes(String(formData.paymentMethod).toLowerCase());
+
+        if (isOnlinePayment) {
+          try {
+            const sessionRes = await api.post('/payments/cashfree/session', {
+              orderId: targetOrderId,
+              email: formData.email || user?.email,
+            });
+            const { paymentSessionId, environment } = sessionRes.data?.data || sessionRes.data || {};
+
+            if (paymentSessionId) {
+              const cashfree = await getCashfreeInstance(environment || 'sandbox');
+              await cashfree.checkout({
+                paymentSessionId,
+                redirectTarget: "_modal",
+              });
+              await api.post('/payments/cashfree/verify', { orderId: targetOrderId });
+            }
+          } catch (cfErr) {
+            console.warn("Cashfree checkout notice:", cfErr);
+          }
+        }
+
         clearCart();
         toast.success(t("Order placed successfully!"));
-        navigate(`/order-confirmation/${order.id}`);
+        navigate(`/order-confirmation/${targetOrderId}`);
       } catch (error) {
         toast.error(t(error?.message || "Failed to place order"));
       } finally {

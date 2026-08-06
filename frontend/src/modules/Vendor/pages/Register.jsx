@@ -20,7 +20,6 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
-import StripeSubscriptionForm from '../components/StripeSubscriptionForm';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS = ['Plans', 'Registration', 'Payment', 'Thank You'];
@@ -50,13 +49,6 @@ const VendorRegister = () => {
   const [documentType, setDocumentType] = useState('tradeLicense');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [razorpayData, setRazorpayData] = useState(null);
-  const [stripeData, setStripeData] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [tempSelectedPlan, setTempSelectedPlan] = useState(null);
-  const [showStripeModal, setShowStripeModal] = useState(false);
-  const [stripeConfig, setStripeConfig] = useState({ clientSecret: '', publishableKey: '' });
   const [paymentState, setPaymentState] = useState('idle');
 
   const [formData, setFormData] = useState({
@@ -316,91 +308,7 @@ const VendorRegister = () => {
     setCurrentStep(1);
   };
 
-  const handleRazorpay = async () => {
-    const plan = tempSelectedPlan;
-    setShowPaymentModal(false);
-    try {
-      const response = await api.post('/subscription/initiate', {
-        email: onboardingEmail || formData.email,
-        selectedPlanId: plan._id,
-      });
-      const { checkout } = response.data;
-      const { subscriptionId, keyId } = checkout;
 
-      const options = {
-        key: keyId,
-        amount: plan.isFree ? 0 : Math.round(Number(plan.pricing?.inr || 0) * 100),
-        currency: 'INR',
-        name: 'DwellMart',
-        description: `Subscription: ${plan.name}`,
-        subscription_id: subscriptionId,
-        handler: async (responseData) => {
-          try {
-            setPaymentMethod('razorpay');
-            setRazorpayData(responseData);
-            setPaymentState('processing');
-            await api.post('/subscription/confirm', {
-              email: paymentEmail,
-              gateway: 'razorpay',
-              subscriptionId,
-              paymentId: responseData.razorpay_payment_id,
-              signature: responseData.razorpay_signature,
-            });
-            toast.success('Payment confirmed. Finalizing your onboarding.');
-            await pollStatus(paymentEmail, plans);
-          } catch (error) {
-            console.error('Razorpay confirmation error:', error);
-            setPaymentState('failed');
-            toast.error(error?.message || 'Payment confirmation failed.');
-          }
-        },
-        prefill: {
-          name: formData.name,
-          email: formData.email,
-          contact: formData.phone,
-        },
-        theme: { color: '#ffc101' },
-        modal: {
-          ondismiss: () => {
-            setPaymentState('idle');
-            toast.error('Payment cancelled.');
-          },
-        },
-      };
-      setPaymentState('checkout_open');
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (error) {
-      console.error('Razorpay Error:', error);
-      setPaymentState('failed');
-      toast.error('Could not initiate payment.');
-    }
-  };
-
-  const handleStripe = async () => {
-    const plan = tempSelectedPlan;
-    setShowPaymentModal(false);
-    setIsLoading(true);
-    try {
-      const response = await api.post('/subscription/initiate', {
-        email: onboardingEmail || formData.email,
-        selectedPlanId: plan._id,
-      });
-      const { checkout } = response.data;
-      setStripeConfig({
-        clientSecret: checkout.clientSecret,
-        publishableKey: checkout.publishableKey,
-      });
-      setPaymentMethod('stripe');
-      setShowStripeModal(true);
-    } catch (error) {
-      console.error('Stripe Error:', error);
-      setPaymentState('failed');
-      toast.error('Could not initiate payment.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleFreePlanActivation = async () => {
     if (!selectedPlan?._id) {
@@ -1272,69 +1180,6 @@ const VendorRegister = () => {
       </div>
 
       <AnimatePresence>
-        {showPaymentModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            onClick={() => setShowPaymentModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              className="w-full max-w-sm rounded-3xl bg-white text-gray-900 shadow-2xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="border-b border-gray-100 p-6 text-center">
-                <h3 className="text-xl font-bold">Select Payment Method</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Payment for {tempSelectedPlan?.name} ({tempSelectedPlan?.price} {tempSelectedPlan?.currency || 'AED'})
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 p-6">
-                <button
-                  type="button"
-                  onClick={handleRazorpay}
-                  className="group flex w-full items-center justify-between rounded-2xl bg-[#3392fd] px-6 py-4 font-bold text-white hover:bg-[#2081eb]"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded bg-white/20">
-                      <FiStar />
-                    </span>
-                    Razorpay
-                  </span>
-                  <FiArrowRight className="translate-x-[-10px] opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStripe}
-                  className="group flex w-full items-center justify-between rounded-2xl bg-[#635bff] px-6 py-4 font-bold text-white hover:bg-[#5851e0]"
-                >
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded bg-white/20">
-                      <FiCreditCard />
-                    </span>
-                    Stripe (Cards)
-                  </span>
-                  <FiArrowRight className="translate-x-[-10px] opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="mt-2 flex w-full items-center justify-center gap-2 py-3 font-medium text-gray-400 hover:text-gray-600"
-                >
-                  <FiX size={14} />
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {showTermsModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1389,24 +1234,6 @@ const VendorRegister = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <StripeSubscriptionForm
-        open={showStripeModal}
-        clientSecret={stripeConfig.clientSecret}
-        publishableKey={stripeConfig.publishableKey}
-        onClose={() => {
-          setShowStripeModal(false);
-          if (paymentState !== 'processing') {
-            setPaymentState('idle');
-          }
-        }}
-        onSubmitted={async () => {
-          setShowStripeModal(false);
-          setStripeData({ confirmed: true });
-          setPaymentState('processing');
-          await pollStatus(paymentEmail, plans);
-        }}
-      />
     </div>
   );
 };

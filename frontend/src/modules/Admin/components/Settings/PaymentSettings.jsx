@@ -69,61 +69,80 @@ const PaymentSettings = () => {
             onChange={handleChange}
             className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
           />
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="upiEnabled"
+            checked={formData.upiEnabled !== false}
+            onChange={handleChange}
+            className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+          />
           <span className="text-sm font-semibold text-gray-700">
-            Digital Wallet
+            UPI / GPay / PhonePe / Paytm
           </span>
         </label>
       </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-gray-800">Payment Gateway</h3>
+      <div className="space-y-4 border-t pt-6">
+        <h3 className="text-lg font-bold text-gray-800">Cashfree Payment Gateway</h3>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="cashfreeEnabled"
+            checked={formData.cashfreeEnabled !== false}
+            onChange={handleChange}
+            className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+          />
+          <span className="text-sm font-semibold text-gray-700">
+            Enable Cashfree Payments PG
+          </span>
+        </label>
+
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Gateway Provider
+            Environment
           </label>
           <AnimatedSelect
-            name="paymentGateway"
-            value={formData.paymentGateway || "stripe"}
+            name="cashfreeEnv"
+            value={formData.cashfreeEnv || "sandbox"}
             onChange={handleChange}
             options={[
-              { value: 'stripe', label: 'Stripe' },
-              { value: 'paypal', label: 'PayPal' },
-              { value: 'razorpay', label: 'Razorpay' },
+              { value: 'sandbox', label: 'Sandbox (Testing)' },
+              { value: 'production', label: 'Production (Live)' },
             ]}
           />
         </div>
 
-        {formData.paymentGateway === "stripe" && (
-          <>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Stripe Public Key
-              </label>
-              <input
-                type="text"
-                name="stripePublicKey"
-                value={formData.stripePublicKey || ""}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="pk_test_..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Stripe Secret Key
-              </label>
-              <input
-                type="password"
-                name="stripeSecretKey"
-                value={formData.stripeSecretKey || ""}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="sk_test_..."
-              />
-            </div>
-          </>
-        )}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Cashfree App ID (Client ID)
+          </label>
+          <input
+            type="text"
+            name="cashfreeAppId"
+            value={formData.cashfreeAppId || ""}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Enter Cashfree App ID"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Cashfree Secret Key
+          </label>
+          <input
+            type="password"
+            name="cashfreeSecretKey"
+            value={formData.cashfreeSecretKey || ""}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Enter Cashfree Secret Key"
+          />
+        </div>
       </div>
+
+
 
       <div className="flex justify-end">
         <button

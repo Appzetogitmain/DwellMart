@@ -128,17 +128,9 @@ export const initiateOnboardingSubscriptionSchema = Joi.object({
 
 export const confirmOnboardingPaymentSchema = Joi.object({
     email: Joi.string().email().lowercase().required(),
-    gateway: Joi.string().valid('razorpay', 'stripe').required(),
     subscriptionId: Joi.string().trim().allow('').optional(),
     paymentId: Joi.string().trim().allow('').optional(),
     signature: Joi.string().trim().allow('').optional(),
-}).custom((value, helpers) => {
-    if (value.gateway === 'razorpay' && (!value.subscriptionId || !value.paymentId || !value.signature)) {
-        return helpers.error('any.invalid');
-    }
-    return value;
-}).messages({
-    'any.invalid': 'Payment confirmation requires subscriptionId, paymentId, and signature.',
 });
 
 export const onboardingStatusSchema = Joi.object({

@@ -6,6 +6,14 @@ export class ApiError extends Error {
         this.statusCode = statusCode;
         this.success = false;
 
+        // Allow passing errors as 3rd arg if code was omitted for backward compatibility
+        if (Array.isArray(code)) {
+            this.errors = code;
+            code = null;
+        } else {
+            this.errors = errors;
+        }
+
         // If code wasn't passed directly, derive code from status code
         if (!code) {
             if (statusCode === 401) this.code = ERROR_CODES.AUTH_REQUIRED;
@@ -17,14 +25,6 @@ export class ApiError extends Error {
             else this.code = ERROR_CODES.SERVER_ERROR;
         } else {
             this.code = code;
-        }
-
-        // Allow passing errors as 3rd arg if code was omitted for backward compatibility
-        if (Array.isArray(code)) {
-            this.errors = code;
-            this.code = ERROR_CODES.SERVER_ERROR;
-        } else {
-            this.errors = errors;
         }
 
         if (stack) {

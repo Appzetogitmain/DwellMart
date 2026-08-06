@@ -1,6 +1,5 @@
 import ApiError from '../../utils/ApiError.js';
 import SubscriptionPlan from '../../models/SubscriptionPlan.model.js';
-import { getGatewayForCountry } from './gatewaySelector.service.js';
 
 export const PLAN_INTERVALS = ['day', 'week', 'month', 'year'];
 
@@ -48,31 +47,23 @@ export const normalizePlanFeatures = (features) => {
     return {};
 };
 
-export const resolvePlanAmount = (plan, gateway) =>
-    gateway === 'razorpay' ? Number(plan?.price_inr || 0) : Number(plan?.price_usd || 0);
+export const resolvePlanAmount = (plan, country = '') =>
+    String(country).toLowerCase().includes('india') || String(country).toLowerCase() === 'in'
+        ? Number(plan?.price_inr || 0)
+        : Number(plan?.price_usd || 0);
 
-export const resolvePlanCurrency = (gateway) =>
-    gateway === 'razorpay' ? 'INR' : 'USD';
+export const resolvePlanCurrency = (country = '') =>
+    String(country).toLowerCase().includes('india') || String(country).toLowerCase() === 'in'
+        ? 'INR'
+        : 'USD';
 
-export const normalizePlanInterval = ({ interval = 'month', intervalCount = 1, gateway = null } = {}) => {
+export const normalizePlanInterval = ({ interval = 'month', intervalCount = 1 } = {}) => {
     const normalizedInterval = String(interval || 'month').trim().toLowerCase();
     if (!PLAN_INTERVALS.includes(normalizedInterval)) {
         throw new ApiError(400, 'Billing interval must be day, week, month, or year.');
     }
 
     const normalizedCount = Math.max(Number.parseInt(intervalCount, 10) || 1, 1);
-    const stripeMaxIntervalCounts = {
-        day: 1095,
-        week: 156,
-        month: 36,
-        year: 3,
-    };
-    if (gateway === 'stripe' && normalizedCount > stripeMaxIntervalCounts[normalizedInterval]) {
-        throw new ApiError(400, 'Stripe recurring intervals can be at most 3 years.');
-    }
-    if (gateway === 'razorpay' && normalizedInterval === 'day' && normalizedCount < 7) {
-        throw new ApiError(400, 'Razorpay daily plans must be at least 7 days.');
-    }
 
     return {
         interval: normalizedInterval,
@@ -110,16 +101,15 @@ export const serializePlan = (planDoc, country = '') => {
     const plan = typeof planDoc.toObject === 'function'
         ? planDoc.toObject({ virtuals: true })
         : { ...planDoc };
-    const gateway = getGatewayForCountry(country);
-    const displayCurrency = resolvePlanCurrency(gateway);
-    const displayPrice = resolvePlanAmount(plan, gateway);
+    const displayCurrency = resolvePlanCurrency(country);
+    const displayPrice = resolvePlanAmount(plan, country);
     const features = normalizePlanFeatures(plan.features);
 
     return {
         ...plan,
         features,
         featureHighlights: Array.isArray(features.highlights) ? features.highlights : [],
-        gateway,
+        gateway: 'internal',
         pricing: {
             inr: Number(plan.price_inr || 0),
             usd: Number(plan.price_usd || 0),

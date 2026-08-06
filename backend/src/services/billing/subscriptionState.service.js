@@ -13,145 +13,80 @@ const STATUS_PRIORITY = {
     canceled: 0,
 };
 
-export const mapStripeSubscriptionStatus = (status = '') => {
-    switch (status) {
-        case 'active':
-            return 'active';
-        case 'trialing':
-            return 'trialing';
-        case 'past_due':
-        case 'unpaid':
-            return 'past_due';
-        case 'canceled':
-        case 'incomplete_expired':
-            return 'canceled';
-        case 'incomplete':
-        case 'paused':
-        default:
-            return 'incomplete';
-    }
-};
-
-export const mapRazorpaySubscriptionStatus = (status = '') => {
-    switch (status) {
-        case 'active':
-            return 'active';
-        case 'authenticated':
-        case 'created':
-            return 'trialing';
-        case 'halted':
-        case 'pending':
-            return 'past_due';
-        case 'completed':
-        case 'cancelled':
-        case 'cancelled_by_customer':
-            return 'canceled';
-        default:
-            return 'incomplete';
-    }
-};
-
-export const getCurrentVendorSubscription = async (vendorId) => {
-    const subscriptions = await VendorSubscription.find({ vendor: vendorId })
-        .populate('plan')
-        .sort({ current_period_end: -1, createdAt: -1 });
-
-    if (!subscriptions.length) return null;
-
-    return subscriptions.sort((left, right) => {
-        const statusDelta = (STATUS_PRIORITY[right.status] || 0) - (STATUS_PRIORITY[left.status] || 0);
-        if (statusDelta !== 0) return statusDelta;
-        return new Date(right.current_period_end || 0) - new Date(left.current_period_end || 0);
-    })[0];
-};
-
-export const upsertSubscriptionRecord = async ({
+const upsertSubscriptionRecord = async ({
     vendorId,
     planId,
-    gateway,
-    gatewayCustomerId = null,
+    gateway = 'internal',
+    gatewayCustomerId,
     gatewaySubscriptionId,
     status,
-    externalStatus = '',
-    currentPeriodStart = null,
-    currentPeriodEnd = null,
-    cancelAtPeriodEnd = false,
-    latestPaymentStatus = 'pending',
-    metadata = {},
-}) => VendorSubscription.findOneAndUpdate(
-    {
-        gateway,
-        gateway_subscription_id: gatewaySubscriptionId,
-    },
-    {
-        $set: {
-            vendor: vendorId,
-            plan: planId,
-            gateway,
-            gateway_customer_id: gatewayCustomerId,
-            gateway_subscription_id: gatewaySubscriptionId,
-            status,
-            external_status: externalStatus,
-            current_period_start: currentPeriodStart,
-            current_period_end: currentPeriodEnd,
-            cancel_at_period_end: Boolean(cancelAtPeriodEnd),
-            latest_payment_status: latestPaymentStatus,
-            metadata,
-        },
-    },
-    {
-        new: true,
-        upsert: true,
-        setDefaultsOnInsert: true,
+    externalStatus,
+    currentPeriodStart,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    latestPaymentStatus,
+    metadata,
+}) => {
+    let subscription = await VendorSubscription.findOne({ vendor: vendorId });
+    if (!subscription) {
+        subscription = new VendorSubscription({ vendor: vendorId });
     }
-);
+    subscription.plan = planId;
+    subscription.gateway = gateway;
+    subscription.gateway_customer_id = gatewayCustomerId;
+    subscription.gateway_subscription_id = gatewaySubscriptionId;
+    subscription.status = status;
+    subscription.external_status = externalStatus;
+    subscription.current_period_start = currentPeriodStart;
+    subscription.current_period_end = currentPeriodEnd;
+    subscription.cancel_at_period_end = cancelAtPeriodEnd;
+    subscription.latest_payment_status = latestPaymentStatus;
+    subscription.metadata = metadata;
+    await subscription.save();
+    return subscription;
+};
 
-export const upsertPaymentRecord = async ({
+const upsertPaymentRecord = async ({
     vendorId,
     subscriptionId,
-    gateway,
+    gateway = 'internal',
     amount,
     currency,
     status,
-    transactionId = null,
-    invoiceId = null,
-    raw = {},
+    invoiceId,
+    raw,
 }) => {
-    const lookup = transactionId
-        ? { gateway, transaction_id: transactionId }
-        : { gateway, invoice_id: invoiceId };
-
-    return Payment.findOneAndUpdate(
-        lookup,
-        {
-            $set: {
-                vendor: vendorId,
-                subscription: subscriptionId,
-                gateway,
-                amount,
-                currency,
-                status,
-                transaction_id: transactionId,
-                invoice_id: invoiceId,
-                raw,
-            },
-        },
-        {
-            new: true,
-            upsert: true,
-            setDefaultsOnInsert: true,
-        }
-    );
+    const payment = new Payment({
+        vendor: vendorId,
+        subscription: subscriptionId,
+        gateway,
+        amount,
+        currency,
+        status,
+        invoice_id: invoiceId,
+        raw,
+    });
+    await payment.save();
+    return payment;
 };
 
-export const activateInternalSubscription = async ({ vendor, plan, gateway }) => {
+export const getCurrentVendorSubscription = async (vendorId) => {
+    const subscription = await VendorSubscription.findOne({ vendor: vendorId }).populate('plan');
+    if (!subscription) return null;
+    return serializeSubscription(subscription);
+};
+
+export const activateInternalSubscription = async ({ vendor, plan, gateway = 'internal' }) => {
     const now = new Date();
     const currentPeriodEnd = addPlanIntervalToDate(now, plan);
+    const isIndia = String(vendor?.country || '').toLowerCase().includes('india') || String(vendor?.country || '').toLowerCase() === 'in';
+    const currency = isIndia ? 'INR' : 'USD';
+    const amount = isIndia ? Number(plan?.price_inr || 0) : Number(plan?.price_usd || 0);
 
     const subscription = await upsertSubscriptionRecord({
         vendorId: vendor._id,
         planId: plan._id,
-        gateway,
+        gateway: 'internal',
         gatewayCustomerId: null,
         gatewaySubscriptionId: `internal_${vendor._id}_${plan._id}_${Date.now()}`,
         status: 'active',
@@ -160,15 +95,15 @@ export const activateInternalSubscription = async ({ vendor, plan, gateway }) =>
         currentPeriodEnd,
         cancelAtPeriodEnd: false,
         latestPaymentStatus: 'paid',
-        metadata: { internal: true, freePlan: true },
+        metadata: { internal: true },
     });
 
     await upsertPaymentRecord({
         vendorId: vendor._id,
         subscriptionId: subscription._id,
-        gateway,
-        amount: 0,
-        currency: gateway === 'razorpay' ? 'INR' : 'USD',
+        gateway: 'internal',
+        amount,
+        currency,
         status: 'paid',
         invoiceId: `${subscription.gateway_subscription_id}_invoice`,
         raw: { internal: true },
@@ -180,28 +115,6 @@ export const activateInternalSubscription = async ({ vendor, plan, gateway }) =>
     await vendor.save({ validateBeforeSave: false });
 
     return subscription;
-};
-
-export const findPlanByGatewayReference = async ({ gateway, referenceId }) => {
-    if (!referenceId) return null;
-    if (gateway === 'stripe') {
-        return SubscriptionPlan.findOne({ stripe_price_id: referenceId });
-    }
-    if (gateway === 'razorpay') {
-        return SubscriptionPlan.findOne({ razorpay_plan_id: referenceId });
-    }
-    return null;
-};
-
-export const findVendorByGatewayCustomerId = async ({ gateway, customerId, vendorId = null }) => {
-    if (vendorId) {
-        return Vendor.findById(vendorId);
-    }
-
-    if (!customerId) return null;
-
-    const path = gateway === 'stripe' ? 'billing.stripeCustomerId' : 'billing.razorpayCustomerId';
-    return Vendor.findOne({ [path]: customerId });
 };
 
 export const serializeSubscription = async (subscriptionDoc) => {

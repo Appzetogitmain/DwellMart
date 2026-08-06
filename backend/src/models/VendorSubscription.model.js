@@ -15,8 +15,8 @@ const vendorSubscriptionSchema = new mongoose.Schema(
         },
         gateway: {
             type: String,
-            enum: ['stripe', 'razorpay'],
-            required: true,
+            enum: ['internal', 'cashfree', 'stripe', 'razorpay'],
+            default: 'internal',
             index: true,
         },
         gateway_customer_id: {

@@ -98,15 +98,7 @@ const SubscriptionPlans = () => {
       toast.error('Plan name is required.');
       return;
     }
-    if (payload.interval === 'day' && payload.price_inr > 0 && payload.interval_count < 7) {
-      toast.error('Razorpay daily plans must be at least 7 days.');
-      return;
-    }
-    const stripeMaxIntervalCounts = { day: 1095, week: 156, month: 36, year: 3 };
-    if (payload.price_usd > 0 && payload.interval_count > stripeMaxIntervalCounts[payload.interval]) {
-      toast.error('Stripe recurring plans can be at most 3 years.');
-      return;
-    }
+
 
     try {
       if (editingPlan) {

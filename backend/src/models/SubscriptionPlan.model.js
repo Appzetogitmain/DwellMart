@@ -23,8 +23,6 @@ const subscriptionPlanSchema = new mongoose.Schema(
             min: 1,
             default: 1,
         },
-        stripe_price_id: { type: String, trim: true, default: null },
-        razorpay_plan_id: { type: String, trim: true, default: null },
         isMostPopular: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true },
         sortOrder: { type: Number, default: 0 },

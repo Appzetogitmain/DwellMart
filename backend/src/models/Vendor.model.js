@@ -152,15 +152,7 @@ const vendorSchema = new mongoose.Schema(
         onboardingEmailSentAt: { type: Date, default: null },
         onboardingEmailInvoiceId: { type: String, trim: true, default: null },
         selectedPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan' },
-        billing: {
-            stripeCustomerId: { type: String, trim: true, default: null },
-            razorpayCustomerId: { type: String, trim: true, default: null },
-            preferredGateway: {
-                type: String,
-                enum: ['stripe', 'razorpay', null],
-                default: null,
-            },
-        },
+        billing: {},
         joinDate: { type: Date, default: Date.now },
     },
     {
