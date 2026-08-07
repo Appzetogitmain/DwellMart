@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiSend } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import { useAuthStore } from '../../../shared/store/authStore';
-import { useNotificationStore } from '../../../shared/store/useNotificationStore';
 import { isValidEmail, isValidPhone } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
@@ -68,19 +67,6 @@ const MobileProfile = () => {
   const navigate = useNavigate();
   const { user, updateProfile, uploadProfileAvatar, changePassword, logout, isLoading } = useAuthStore();
   const avatarInputRef = useRef(null);
-  const [isTestingPush, setIsTestingPush] = useState(false);
-
-  const handleTestPushNotification = async () => {
-    setIsTestingPush(true);
-    try {
-      await useNotificationStore.getState().sendTestNotification();
-      toast.success(t('🎉 Test push notification sent! Check your notification drawer & browser banner.'));
-    } catch (error) {
-      toast.error(error?.response?.data?.message || error?.message || t('Failed to send test push notification.'));
-    } finally {
-      setIsTestingPush(false);
-    }
-  };
 
   const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'personal', 'password'
   const [isDesktop, setIsDesktop] = useState(
@@ -212,14 +198,6 @@ const MobileProfile = () => {
       link: '/notifications',
       badge: unreadNotificationCount > 0 ? unreadNotificationCount : null,
     },
-    {
-      id: 'test-push',
-      label: '🔔 Test Push Notification',
-      icon: FiSend,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-      action: handleTestPushNotification,
-    },
     { id: 'password', label: t('Change Password'), icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
@@ -310,20 +288,12 @@ const MobileProfile = () => {
                       </div>
                       <h2 className="text-xl font-extrabold text-content mb-1">{user?.name}</h2>
                       <p className="text-content-muted text-sm mb-4 font-medium">{user?.email}</p>
-                      <div className="flex flex-col gap-2.5 w-full">
+                      <div className="w-full">
                         <button
                           onClick={() => setActiveTab('personal')}
                           className="w-full py-3 rounded-xl bg-surface-muted text-brand-primary font-bold text-sm border border-border"
                         >
                           {t('View Profile')}
-                        </button>
-                        <button
-                          onClick={handleTestPushNotification}
-                          disabled={isTestingPush}
-                          className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                        >
-                          <FiSend className="text-base" />
-                          <span>{isTestingPush ? 'Sending Test Push...' : '🔔 Test Push Notification'}</span>
                         </button>
                       </div>
                     </div>

@@ -82,7 +82,7 @@ export const NotificationDrawer = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setDrawerOpen(false)}
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9998]"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-[999998]"
                     />
 
                     {/* Drawer */}
@@ -91,7 +91,7 @@ export const NotificationDrawer = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-                        className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl z-[9999] flex flex-col border-l border-gray-200 dark:border-gray-800"
+                        className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl z-[999999] flex flex-col border-l border-gray-200 dark:border-gray-800"
                     >
                         {/* Header */}
                         <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">

@@ -91,7 +91,7 @@ const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
         <div className="flex items-center gap-2.5 sm:gap-3.5">
           {/* Notifications */}
           <div className="relative">
-            <NotificationBell className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0" iconClassName="text-lg text-white" />
+            <NotificationBell className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0 cursor-pointer" iconClassName="text-lg text-white" />
           </div>
 
           {/* Logout Button */}

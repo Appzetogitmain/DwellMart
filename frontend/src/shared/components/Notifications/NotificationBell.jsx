@@ -14,10 +14,22 @@ export const NotificationBell = ({ className = '', iconClassName = 'w-5 h-5 text
         return () => clearInterval(interval);
     }, [fetchUnreadCount]);
 
+    const handleToggle = (e) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        const currentState = useNotificationStore.getState().isDrawerOpen;
+        const nextState = !currentState;
+        setDrawerOpen(nextState);
+        if (nextState) {
+            useNotificationStore.getState().fetchNotifications({ page: 1 });
+        }
+    };
+
     return (
         <button
-            onClick={() => setDrawerOpen(!isDrawerOpen)}
-            className={`relative p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none ${className}`}
+            type="button"
+            onClick={handleToggle}
+            className={`relative p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none cursor-pointer ${className}`}
             title="Notifications"
             aria-label="Notifications"
         >

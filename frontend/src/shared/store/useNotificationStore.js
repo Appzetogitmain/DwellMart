@@ -7,22 +7,44 @@ const getApiBase = () => {
 };
 
 const getAuthToken = () => {
-    let token =
-        localStorage.getItem('token') ||
-        localStorage.getItem('vendor-token') ||
-        localStorage.getItem('adminToken') ||
-        localStorage.getItem('admin-token') ||
-        localStorage.getItem('delivery-token');
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    if (path.startsWith('/admin')) {
+        let token = localStorage.getItem('adminToken') || localStorage.getItem('admin-token');
+        if (!token) {
+            try { token = JSON.parse(localStorage.getItem('admin-auth-storage') || '{}')?.state?.token; } catch {}
+        }
+        if (token) return token;
+    }
+
+    if (path.startsWith('/vendor')) {
+        let token = localStorage.getItem('vendor-token') || localStorage.getItem('vendorToken');
+        if (!token) {
+            try { token = JSON.parse(localStorage.getItem('vendor-auth-storage') || '{}')?.state?.token; } catch {}
+        }
+        if (token) return token;
+    }
+
+    if (path.startsWith('/delivery')) {
+        let token = localStorage.getItem('delivery-token') || localStorage.getItem('deliveryToken');
+        if (!token) {
+            try { token = JSON.parse(localStorage.getItem('delivery-auth-storage') || '{}')?.state?.token; } catch {}
+        }
+        if (token) return token;
+    }
+
+    let token = localStorage.getItem('token') || localStorage.getItem('user-token');
+    if (!token) {
+        try { token = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token; } catch {}
+    }
 
     if (!token) {
-        try {
-            token =
-                JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token ||
-                JSON.parse(localStorage.getItem('vendor-auth-storage') || '{}')?.state?.token ||
-                JSON.parse(localStorage.getItem('admin-auth-storage') || '{}')?.state?.token ||
-                JSON.parse(localStorage.getItem('delivery-auth-storage') || '{}')?.state?.token ||
-                '';
-        } catch {}
+        token =
+            localStorage.getItem('vendor-token') ||
+            localStorage.getItem('adminToken') ||
+            localStorage.getItem('admin-token') ||
+            localStorage.getItem('delivery-token') ||
+            '';
     }
     return token || '';
 };
@@ -154,20 +176,6 @@ export const useNotificationStore = create((set, get) => ({
             });
         } catch (error) {
             console.warn('[NotificationStore] Clear all error:', error.message);
-        }
-    },
-
-    sendTestNotification: async () => {
-        try {
-            const res = await axios.post(
-                `${getApiBase()}/notifications/test-push`,
-                {},
-                { headers: authHeader() }
-            );
-            return res.data?.data;
-        } catch (error) {
-            console.error('[NotificationStore] Test push error:', error.message);
-            throw error;
         }
     },
 

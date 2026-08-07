@@ -82,23 +82,3 @@ export const clearAllNotifications = asyncHandler(async (req, res) => {
     await notificationService.clearAllNotifications(recipientId, recipientType);
     res.status(200).json(new ApiResponse(200, null, 'All notifications cleared.'));
 });
-
-// POST /api/notifications/test-push
-export const sendTestPushNotification = asyncHandler(async (req, res) => {
-    const { recipientId, recipientType } = resolveRecipientContext(req);
-    const userName = req.user?.name || 'Valued User';
-
-    const notif = await notificationService.createNotification({
-        recipientId,
-        recipientType,
-        category: 'SUCCESS',
-        type: 'system',
-        priority: 'HIGH',
-        title: '🎉 Welcome to DwellMart!',
-        message: `Hello ${userName}! Your Push Notification & Realtime Notification System is working perfectly.`,
-        actionUrl: '/notifications',
-        data: { test: 'true' },
-    });
-
-    res.status(200).json(new ApiResponse(200, notif, 'Test push notification sent successfully.'));
-});
