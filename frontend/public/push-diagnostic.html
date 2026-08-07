@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DwellMart FCM Push Diagnostic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: #0a0a0f;
+    color: #e2e8f0;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 { color: #f59e0b; font-size: 22px; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media(max-width:700px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+  .status-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    background: #1e293b20;
+    border: 1px solid #1e293b40;
+    transition: all 0.3s;
+  }
+  .status-row .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .status-row .label { color: #94a3b8; flex: 1; }
+  .status-row .value { color: #e2e8f0; font-weight: 600; word-break: break-all; max-width: 200px; }
+
+  .status-row.pass  { background: #052e1620; border-color: #22c55e40; }
+  .status-row.fail  { background: #2d0a0a20; border-color: #ef444440; }
+  .status-row.warn  { background: #2d1a0020; border-color: #f59e0b40; }
+  .status-row.info  { background: #0c1a2e20; border-color: #3b82f640; }
+  .status-row.running { background: #1a1a2e20; border-color: #6366f140; animation: pulse 1.5s infinite; }
+
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+
+  #log-panel {
+    background: #050812;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 16px;
+    height: 380px;
+    overflow-y: auto;
+    font-size: 11.5px;
+    line-height: 1.8;
+  }
+  .log-line { display: flex; gap: 8px; }
+  .log-ts   { color: #334155; flex-shrink: 0; width: 80px; }
+  .log-msg  { flex: 1; }
+  .log-msg.ok   { color: #22c55e; }
+  .log-msg.err  { color: #f87171; }
+  .log-msg.warn { color: #fbbf24; }
+  .log-msg.info { color: #60a5fa; }
+  .log-msg.dim  { color: #475569; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  button {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    transition: all 0.2s;
+  }
+  button:hover { transform: translateY(-1px); }
+  .btn-primary { background: #f59e0b; color: #000; }
+  .btn-blue    { background: #3b82f6; color: #fff; }
+  .btn-green   { background: #22c55e; color: #000; }
+  .btn-red     { background: #ef4444; color: #fff; }
+  .btn-ghost   { background: #1e293b; color: #94a3b8; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge.pass { background: #052e16; color: #22c55e; border: 1px solid #22c55e40; }
+  .badge.fail { background: #2d0a0a; color: #f87171; border: 1px solid #f8717140; }
+  .badge.pending { background: #1e293b; color: #94a3b8; border: 1px solid #94a3b840; }
+  .badge.warn { background: #2d1a00; color: #fbbf24; border: 1px solid #fbbf2440; }
+
+  .divider { border: none; border-top: 1px solid #1e293b; margin: 16px 0; }
+  .monospace { font-family: monospace; font-size: 11px; color: #64748b; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<h1>🔔 DwellMart FCM Push Notification Diagnostic</h1>
+<p class="subtitle">Browser-side audit of the ENTIRE push pipeline — verifies every step from SW registration to OS popup</p>
+
+<div class="btn-row">
+  <button class="btn-primary" onclick="runFullAudit()">🚀 Run Full Audit</button>
+  <button class="btn-blue"    onclick="testForeground()">🔔 Test Foreground Push</button>
+  <button class="btn-green"   onclick="testShowNotification()">🪟 Test reg.showNotification()</button>
+  <button class="btn-red"     onclick="unregisterSW()">🗑 Unregister Service Worker</button>
+  <button class="btn-ghost"   onclick="clearLog()">🧹 Clear Log</button>
+</div>
+
+<div class="grid">
+
+  <!-- Layer 1: Permissions -->
+  <div class="card">
+    <h2>Layer 1 — Browser Permissions</h2>
+    <div class="status-row pending" id="r-notif-api">
+      <span class="icon">❓</span>
+      <span class="label">Notification API supported</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-notif-perm">
+      <span class="icon">❓</span>
+      <span class="label">Notification.permission</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-sw-support">
+      <span class="icon">❓</span>
+      <span class="label">ServiceWorker supported</span>
+      <span class="value">...</span>
+    </div>
+  </div>
+
+  <!-- Layer 2: Service Worker -->
+  <div class="card">
+    <h2>Layer 2 — Service Worker Status</h2>
+    <div class="status-row pending" id="r-sw-registered">
+      <span class="icon">❓</span>
+      <span class="label">SW Registered</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-sw-active">
+      <span class="icon">❓</span>
+      <span class="label">SW Active</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-sw-controller">
+      <span class="icon">❓</span>
+      <span class="label">SW Controlling Page (controller)</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-sw-scope">
+      <span class="icon">❓</span>
+      <span class="label">SW Scope</span>
+      <span class="value">...</span>
+    </div>
+  </div>
+
+  <!-- Layer 3: FCM Token -->
+  <div class="card">
+    <h2>Layer 3 — FCM Token</h2>
+    <div class="status-row pending" id="r-fcm-support">
+      <span class="icon">❓</span>
+      <span class="label">FCM isSupported()</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-fcm-token">
+      <span class="icon">❓</span>
+      <span class="label">Token generated</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-fcm-vapid">
+      <span class="icon">❓</span>
+      <span class="label">VAPID Key</span>
+      <span class="value">...</span>
+    </div>
+  </div>
+
+  <!-- Layer 4: Foreground Handler -->
+  <div class="card">
+    <h2>Layer 4 — Foreground onMessage()</h2>
+    <div class="status-row pending" id="r-onmsg-attached">
+      <span class="icon">❓</span>
+      <span class="label">onMessage() listener attached</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-onmsg-fired">
+      <span class="icon">❓</span>
+      <span class="label">onMessage() fired</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-show-notif-called">
+      <span class="icon">❓</span>
+      <span class="label">reg.showNotification() called</span>
+      <span class="value">...</span>
+    </div>
+    <div class="status-row pending" id="r-show-notif-result">
+      <span class="icon">❓</span>
+      <span class="label">showNotification() succeeded</span>
+      <span class="value">...</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Log Panel -->
+<div id="log-panel">
+  <div class="log-line"><span class="log-ts">ready</span><span class="log-msg dim">Diagnostic ready. Click "Run Full Audit" to begin.</span></div>
+</div>
+
+<script type="module">
+// ────────────────────────────────────────────────────────────────────────────
+// CONFIG (mirrors firebase.config.js)
+// ────────────────────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAzzIAexVKNupqOgOPsIqD-LGAz0gsOINY",
+  authDomain: "dwell-mart-6cd8d.firebaseapp.com",
+  projectId: "dwell-mart-6cd8d",
+  storageBucket: "dwell-mart-6cd8d.firebasestorage.app",
+  messagingSenderId: "468790122746",
+  appId: "1:468790122746:web:726824c781a358f7219143",
+};
+const VAPID_KEY = "BGeOEj7jX0frPLDpNIoITNbdoUP8p5dnPAmsDusLr9xPXaEtqkG35nyrfiIqkVhrTTbouVP-qhSGXU6iFCDEe3Q";
+const API_BASE  = "http://localhost:5000/api";
+
+// ─── Logging ────────────────────────────────────────────────────────────────
+function log(type, msg) {
+  const panel = document.getElementById('log-panel');
+  const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-ts">${ts}</span><span class="log-msg ${type}">${msg}</span>`;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+const L = { ok: m => log('ok', '✅ ' + m), err: m => log('err', '❌ ' + m), warn: m => log('warn', '⚠️  ' + m), info: m => log('info', '🔍 ' + m), dim: m => log('dim', m) };
+
+// ─── Status Rows ─────────────────────────────────────────────────────────────
+function setRow(id, state, label, value = '') {
+  const row = document.getElementById(id);
+  if (!row) return;
+  row.className = 'status-row ' + state;
+  const icons = { pass:'✅', fail:'❌', warn:'⚠️', info:'🔵', running:'⏳', pending:'❓' };
+  row.children[0].textContent = icons[state] || '❓';
+  if (label) row.children[1].textContent = label;
+  if (value !== '') row.children[2].textContent = String(value).slice(0,60);
+}
+
+// ─── Layer 1: Permissions ────────────────────────────────────────────────────
+async function auditPermissions() {
+  L.info('Layer 1: Checking Browser Permissions');
+
+  const notifSupported = ('Notification' in window);
+  setRow('r-notif-api', notifSupported ? 'pass' : 'fail', 'Notification API supported', notifSupported ? 'YES' : 'NO — unsupported browser');
+  if (!notifSupported) { L.err('Notification API not supported in this browser'); return false; }
+  L.ok('Notification API: supported');
+
+  const perm = Notification.permission;
+  const permState = perm === 'granted' ? 'pass' : perm === 'denied' ? 'fail' : 'warn';
+  setRow('r-notif-perm', permState, 'Notification.permission', perm);
+  if (perm === 'denied') { L.err('Notification permission DENIED — user must reset in Chrome settings'); return false; }
+  if (perm === 'default') {
+    L.warn('Permission not yet granted — requesting now...');
+    const result = await Notification.requestPermission();
+    if (result !== 'granted') { L.err('User denied notification permission'); return false; }
+    setRow('r-notif-perm', 'pass', 'Notification.permission', result);
+  }
+  L.ok(`Notification permission: ${Notification.permission}`);
+
+  // Check via permissions API for more info
+  try {
+    const p = await navigator.permissions.query({ name: 'notifications' });
+    L.info(`navigator.permissions.query({ notifications }) → state="${p.state}"`);
+  } catch(e) { L.dim(`permissions.query not supported: ${e.message}`); }
+
+  const swSupported = ('serviceWorker' in navigator);
+  setRow('r-sw-support', swSupported ? 'pass' : 'fail', 'ServiceWorker supported', swSupported ? 'YES' : 'NO');
+  if (!swSupported) { L.err('ServiceWorker not supported — cannot receive FCM push'); return false; }
+  L.ok('ServiceWorker API: supported');
+  return true;
+}
+
+// ─── Layer 2: Service Worker ──────────────────────────────────────────────────
+async function auditServiceWorker() {
+  L.info('Layer 2: Auditing Service Worker');
+  setRow('r-sw-registered', 'running', 'SW Registered', 'checking...');
+
+  // Check all existing registrations
+  const regs = await navigator.serviceWorker.getRegistrations();
+  L.info(`Total SW registrations found: ${regs.length}`);
+  regs.forEach((r, i) => {
+    const state = r.active?.state || r.waiting?.state || r.installing?.state || 'unknown';
+    L.dim(`  [${i}] scope=${r.scope} | active=${!!r.active} | waiting=${!!r.waiting} | installing=${!!r.installing} | state=${state}`);
+  });
+
+  // Register our SW
+  let swReg;
+  try {
+    swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+    L.ok(`SW registered successfully — scope: ${swReg.scope}`);
+    setRow('r-sw-registered', 'pass', 'SW Registered', swReg.scope);
+  } catch(e) {
+    L.err(`SW registration FAILED: ${e.message}`);
+    setRow('r-sw-registered', 'fail', 'SW Registered', e.message);
+    return { swReg: null, ready: null };
+  }
+
+  // Check active state
+  if (swReg.active) {
+    L.ok(`SW is ACTIVE — state: ${swReg.active.state}`);
+    setRow('r-sw-active', 'pass', 'SW Active', swReg.active.state);
+  } else if (swReg.installing || swReg.waiting) {
+    L.warn(`SW is installing/waiting — not active yet. Waiting for activation...`);
+    setRow('r-sw-active', 'running', 'SW Active', 'activating...');
+    await new Promise(resolve => {
+      const sw = swReg.installing || swReg.waiting;
+      sw.addEventListener('statechange', function handler() {
+        L.info(`SW state changed → ${this.state}`);
+        if (this.state === 'activated') {
+          sw.removeEventListener('statechange', handler);
+          resolve();
+        }
+      });
+    });
+    setRow('r-sw-active', 'pass', 'SW Active', 'activated');
+    L.ok('SW activated after waiting');
+  } else {
+    setRow('r-sw-active', 'warn', 'SW Active', 'no active/installing/waiting — stale?');
+    L.warn('SW registration exists but has no active/installing/waiting worker. Try unregistering and refreshing.');
+  }
+
+  // Wait for ready
+  const ready = await navigator.serviceWorker.ready;
+  L.ok(`navigator.serviceWorker.ready resolved — scope: ${ready.scope}`);
+
+  // CRITICAL CHECK: Is SW controlling the page?
+  const controller = navigator.serviceWorker.controller;
+  if (controller) {
+    L.ok(`SW CONTROLS the page — state: ${controller.state}, scriptURL: ${controller.scriptURL}`);
+    setRow('r-sw-controller', 'pass', 'SW Controlling Page', controller.state);
+  } else {
+    L.err('navigator.serviceWorker.controller is NULL — SW is NOT controlling this page!');
+    L.warn('Root cause: Page loaded before SW could claim. Hard-refresh (Ctrl+Shift+R) required.');
+    setRow('r-sw-controller', 'fail', 'SW Controlling Page', 'NULL — needs hard refresh!');
+  }
+
+  setRow('r-sw-scope', 'info', 'SW Scope', ready.scope);
+  return { swReg, ready };
+}
+
+// ─── Layer 3: FCM Token ───────────────────────────────────────────────────────
+async function auditFcmToken(swReg) {
+  L.info('Layer 3: Auditing FCM Token Generation');
+  setRow('r-fcm-support', 'running', 'FCM isSupported()', 'checking...');
+
+  try {
+    const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const { getMessaging, isSupported, getToken, onMessage } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js');
+
+    const supported = await isSupported();
+    setRow('r-fcm-support', supported ? 'pass' : 'fail', 'FCM isSupported()', supported ? 'YES' : 'NO');
+    if (!supported) { L.err('FCM is NOT supported in this browser'); return null; }
+    L.ok('FCM isSupported() = true');
+
+    const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApps()[0];
+    const messaging = getMessaging(app);
+
+    setRow('r-fcm-vapid', 'info', 'VAPID Key', VAPID_KEY.slice(0, 20) + '...');
+    L.info(`Using VAPID key: ${VAPID_KEY.slice(0,20)}...`);
+
+    setRow('r-fcm-token', 'running', 'Token generated', 'calling getToken()...');
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
+
+    if (token) {
+      L.ok(`FCM Token generated: ${token.slice(0,30)}...`);
+      setRow('r-fcm-token', 'pass', 'Token generated', token.slice(0,30) + '...');
+
+      // Store token preview globally for other tests
+      window.__fcmToken = token;
+      window.__fcmMessaging = messaging;
+      window.__fcmOnMessage = onMessage;
+    } else {
+      L.err('getToken() returned null/empty — check VAPID key and SW registration');
+      setRow('r-fcm-token', 'fail', 'Token generated', 'null — check VAPID key');
+    }
+
+    return { messaging, token, onMessage };
+  } catch(e) {
+    L.err(`FCM token error: ${e.message} (code: ${e.code || 'none'})`);
+    setRow('r-fcm-token', 'fail', 'Token generated', e.message.slice(0,60));
+    return null;
+  }
+}
+
+// ─── Layer 4: Foreground Handler ──────────────────────────────────────────────
+async function auditForegroundHandler(messaging, onMessage, ready) {
+  L.info('Layer 4: Attaching & Verifying onMessage() Foreground Listener');
+
+  try {
+    onMessage(messaging, async (payload) => {
+      L.ok(`onMessage() FIRED! messageId: ${payload.messageId}`);
+      L.info(`Payload notification: ${JSON.stringify(payload.notification)}`);
+      L.info(`Payload data: ${JSON.stringify(payload.data)}`);
+      setRow('r-onmsg-fired', 'pass', 'onMessage() fired', payload.messageId || 'received');
+
+      // ── CRITICAL: Verify SW is active before calling showNotification
+      setRow('r-show-notif-called', 'running', 'reg.showNotification() called', 'attempting...');
+      if (!ready || !ready.active) {
+        L.err('Cannot call showNotification() — SW not active! reg.active is null');
+        setRow('r-show-notif-called', 'fail', 'reg.showNotification() called', 'FAILED — SW not active');
+        setRow('r-show-notif-result', 'fail', 'showNotification() succeeded', 'Skipped — no active SW');
+        return;
+      }
+
+      L.info(`SW state before showNotification: active=${ready.active?.state}, controller=${navigator.serviceWorker.controller?.state || 'null'}`);
+
+      try {
+        await ready.showNotification(payload?.notification?.title || '🔔 DwellMart', {
+          body: payload?.notification?.body || payload?.data?.body || '',
+          icon: 'https://dwell-mart-6cd8d.web.app/favicon.png',
+          badge: 'https://dwell-mart-6cd8d.web.app/favicon.png',
+          tag: 'dwell-mart-audit-' + Date.now(),
+          requireInteraction: false,
+          silent: false,
+          vibrate: [200, 100, 200],
+          data: { url: 'http://localhost:3000/notifications', ...(payload?.data || {}) },
+        });
+        L.ok('reg.showNotification() SUCCEEDED — OS popup should appear now!');
+        setRow('r-show-notif-called', 'pass', 'reg.showNotification() called', 'called');
+        setRow('r-show-notif-result', 'pass', 'showNotification() succeeded', '✅ PASSED — check OS tray');
+      } catch(e) {
+        L.err(`reg.showNotification() THREW: ${e.name}: ${e.message}`);
+        setRow('r-show-notif-called', 'fail', 'reg.showNotification() called', 'threw error');
+        setRow('r-show-notif-result', 'fail', 'showNotification() succeeded', e.message.slice(0,50));
+      }
+    });
+
+    L.ok('onMessage() listener attached to Firebase messaging instance');
+    setRow('r-onmsg-attached', 'pass', 'onMessage() listener attached', 'YES');
+    setRow('r-onmsg-fired', 'info', 'onMessage() fired', 'waiting for push...');
+    setRow('r-show-notif-called', 'info', 'reg.showNotification() called', 'waiting...');
+    setRow('r-show-notif-result', 'info', 'showNotification() succeeded', 'waiting...');
+  } catch(e) {
+    L.err(`Failed to attach onMessage(): ${e.message}`);
+    setRow('r-onmsg-attached', 'fail', 'onMessage() listener attached', e.message);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// FULL AUDIT RUNNER
+// ────────────────────────────────────────────────────────────────────────────
+window.runFullAudit = async function() {
+  L.dim('═══════════════════════════════════════════════');
+  L.dim('  🚀 STARTING FULL BROWSER FCM PUSH AUDIT');
+  L.dim('═══════════════════════════════════════════════');
+
+  const permOk = await auditPermissions();
+  if (!permOk) { L.err('AUDIT STOPPED: Permission layer failed'); return; }
+
+  const { swReg, ready } = await auditServiceWorker();
+  if (!swReg) { L.err('AUDIT STOPPED: Service Worker layer failed'); return; }
+
+  const fcm = await auditFcmToken(swReg);
+  if (!fcm) { L.err('AUDIT STOPPED: FCM Token layer failed'); return; }
+
+  await auditForegroundHandler(fcm.messaging, fcm.onMessage, ready);
+
+  L.dim('═══════════════════════════════════════════════');
+  L.ok('Full audit complete. Now click "Test Foreground Push" button and watch logs!');
+  L.dim('═══════════════════════════════════════════════');
+};
+
+// ─── Direct showNotification() Test (no Firebase needed) ────────────────────
+window.testShowNotification = async function() {
+  L.info('Direct Test: calling reg.showNotification() without Firebase');
+  try {
+    if (Notification.permission !== 'granted') {
+      L.warn('Permission not granted — requesting...');
+      const r = await Notification.requestPermission();
+      if (r !== 'granted') { L.err('Permission denied'); return; }
+    }
+    const ready = await navigator.serviceWorker.ready;
+    if (!ready.active) {
+      L.err('SW not active — controller: ' + (navigator.serviceWorker.controller?.state || 'null'));
+      L.warn('Hard refresh the page (Ctrl+Shift+R) to make SW control the page');
+      return;
+    }
+    L.info(`SW active state: ${ready.active.state} | controller: ${navigator.serviceWorker.controller?.state || 'null'}`);
+    await ready.showNotification('🔔 DwellMart Test', {
+      body: 'Direct reg.showNotification() fired — this is Layer 4 isolated test',
+      icon: 'https://dwell-mart-6cd8d.web.app/favicon.png',
+      badge: 'https://dwell-mart-6cd8d.web.app/favicon.png',
+      tag: 'direct-test-' + Date.now(),
+      requireInteraction: false,
+      silent: false,
+      vibrate: [200, 100, 200],
+      data: { url: 'http://localhost:3000/notifications' },
+    });
+    L.ok('✅ Direct reg.showNotification() SUCCEEDED — OS popup should appear!');
+    L.info('If no popup appeared, Windows or Chrome is blocking it. Check:');
+    L.info('  1. Windows Do Not Disturb = OFF (bell icon in taskbar)');
+    L.info('  2. Chrome Settings → Site Settings → Notifications → localhost:3000 = Allowed');
+  } catch(e) {
+    L.err(`Direct showNotification() FAILED: ${e.name}: ${e.message}`);
+  }
+};
+
+// ─── Trigger backend test-push ───────────────────────────────────────────────
+window.testForeground = async function() {
+  L.info('Sending test-push request to backend → http://localhost:5000/api/notifications/test-push');
+
+  // Find auth token
+  let token = null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+    token = parsed?.state?.token || parsed?.state?.accessToken || null;
+  } catch {}
+  if (!token) {
+    for (const key of Object.keys(localStorage)) {
+      try {
+        const val = JSON.parse(localStorage.getItem(key) || '{}');
+        if (val?.state?.token) { token = val.state.token; break; }
+        if (val?.token) { token = val.token; break; }
+      } catch {}
+    }
+  }
+
+  if (!token) { L.err('No auth token found in localStorage — are you logged in?'); return; }
+  L.ok('Auth token found in localStorage');
+
+  try {
+    const res = await fetch(`${API_BASE}/notifications/test-push`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    });
+    const body = await res.json();
+    if (res.ok) {
+      L.ok(`Backend returned ${res.status} — notification sent. Waiting for onMessage() to fire...`);
+      L.info(`Response: ${JSON.stringify(body?.message || body?.data?.title || 'ok')}`);
+      setRow('r-onmsg-fired', 'running', 'onMessage() fired', 'push sent — waiting...');
+    } else {
+      L.err(`Backend returned ${res.status}: ${JSON.stringify(body)}`);
+    }
+  } catch(e) {
+    L.err(`Fetch failed: ${e.message}`);
+  }
+};
+
+// ─── Unregister SW ────────────────────────────────────────────────────────────
+window.unregisterSW = async function() {
+  const regs = await navigator.serviceWorker.getRegistrations();
+  for (const r of regs) {
+    await r.unregister();
+    L.warn(`Unregistered SW: ${r.scope}`);
+  }
+  L.ok('All service workers unregistered. Hard refresh (Ctrl+Shift+R) the page now.');
+};
+
+window.clearLog = function() {
+  const p = document.getElementById('log-panel');
+  p.innerHTML = '<div class="log-line"><span class="log-ts">cleared</span><span class="log-msg dim">Log cleared.</span></div>';
+};
+
+// ─── Listen for messages from Service Worker ─────────────────────────────────
+navigator.serviceWorker.addEventListener('message', (event) => {
+  L.info(`[SW → Page postMessage]: ${JSON.stringify(event.data)}`);
+});
+
+// Auto-run minimal state check on load
+(async () => {
+  L.dim('Page loaded — checking initial state...');
+  L.info(`Notification.permission = ${Notification.permission}`);
+  L.info(`navigator.serviceWorker.controller = ${navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : 'null'}`);
+  const regs = await navigator.serviceWorker.getRegistrations();
+  L.info(`Existing SW registrations: ${regs.length}`);
+  regs.forEach(r => L.dim(`  → ${r.scope} | active:${!!r.active} | waiting:${!!r.waiting} | installing:${!!r.installing}`));
+})();
+</script>
+</body>
+</html>

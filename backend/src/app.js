@@ -20,6 +20,8 @@ import translationRoutes from './routes/translationRoutes.js';
 import supportRoutes from './routes/support.routes.js';
 import bulkUploadRoutes from './routes/bulkUpload.routes.js';
 import paymentRouter from './routes/payment.routes.js';
+import notificationRoutes from './modules/notifications/routes/notification.routes.js';
+import deviceTokenRoutes from './modules/notifications/routes/deviceToken.routes.js';
 
 // Middleware imports
 import requestIdMiddleware from './middlewares/requestId.js';
@@ -142,6 +144,8 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/integrations', integrationRoutes);
 app.use('/api/v1/translate', translationRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/device-tokens', deviceTokenRoutes);
 app.use('/api/support', supportRoutes);
 
 // ─── Error Handling ──────────────────────────────────────────────────────────

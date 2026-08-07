@@ -20,6 +20,7 @@ import { HiOutlineUserCircle } from "react-icons/hi";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserNotificationStore } from "../../store/userNotificationStore";
+import NotificationBell from "../../../../shared/components/Notifications/NotificationBell";
 
 const DesktopHeader = ({ hideSellButton = false }) => {
   const navigate = useNavigate();
@@ -158,17 +159,16 @@ const DesktopHeader = ({ hideSellButton = false }) => {
             </button>
 
             {/* Notifications */}
-            <Link
-              to={isAuthenticated ? "/notifications" : "/login"}
-              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
-              title="Notifications">
-              <FiBell className="text-base lg:text-lg xl:text-xl" />
-              {isAuthenticated && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
+            {isAuthenticated ? (
+              <NotificationBell iconClassName="text-base lg:text-lg xl:text-xl text-gray-300 hover:text-[#ffc101]" />
+            ) : (
+              <Link
+                to="/login"
+                className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
+                title="Notifications">
+                <FiBell className="text-base lg:text-lg xl:text-xl" />
+              </Link>
+            )}
           </div>
 
           {/* User Menu / Login Button */}

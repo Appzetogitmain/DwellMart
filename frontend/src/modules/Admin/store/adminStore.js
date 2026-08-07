@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { adminLogin as apiLogin } from '../services/adminService';
 import api from '../../../shared/utils/api';
+import { useNotificationStore } from '../../../shared/store/useNotificationStore';
 
 const persistedAuthState = (state) => ({
   admin: state.admin,
@@ -54,6 +55,10 @@ export const useAdminAuthStore = create(
             isAuthenticated: true,
           });
 
+          try {
+            useNotificationStore.getState().registerDeviceToken();
+          } catch {}
+
           return { success: true, admin };
         } finally {
           set({ isLoading: false });
@@ -68,7 +73,10 @@ export const useAdminAuthStore = create(
       },
 
       // Admin logout
-      logout: () => {
+      logout: async () => {
+        try {
+          await useNotificationStore.getState().unregisterDeviceToken();
+        } catch {}
         const refreshToken = localStorage.getItem('adminRefreshToken');
         if (refreshToken) {
           api.post('/admin/auth/logout', { refreshToken }).catch(() => {});

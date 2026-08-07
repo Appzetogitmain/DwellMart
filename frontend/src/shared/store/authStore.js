@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../utils/api';
+import { useNotificationStore } from './useNotificationStore';
 
 export const useAuthStore = create(
   persist(
@@ -38,6 +39,10 @@ export const useAuthStore = create(
 
           localStorage.setItem('token', accessToken);
           localStorage.setItem('refresh-token', refreshToken);
+
+          try {
+            useNotificationStore.getState().registerDeviceToken();
+          } catch {}
 
           return { success: true, user };
         } catch (error) {
@@ -118,6 +123,11 @@ export const useAuthStore = create(
 
           localStorage.setItem('token', accessToken);
           localStorage.setItem('refresh-token', refreshToken);
+
+          try {
+            useNotificationStore.getState().registerDeviceToken();
+          } catch {}
+
           return { success: true, user };
         } catch (error) {
           set({ isLoading: false });
@@ -179,7 +189,10 @@ export const useAuthStore = create(
       },
 
       // Logout action
-      logout: () => {
+      logout: async () => {
+        try {
+          await useNotificationStore.getState().unregisterDeviceToken();
+        } catch {}
         const refreshToken = localStorage.getItem('refresh-token');
         if (refreshToken) {
           api.post('/user/auth/logout', { refreshToken }).catch(() => {});

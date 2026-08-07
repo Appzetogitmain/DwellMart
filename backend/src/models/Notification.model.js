@@ -3,40 +3,52 @@ import mongoose from 'mongoose';
 const notificationSchema = new mongoose.Schema(
     {
         recipientId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-        recipientType: { type: String, enum: ['user', 'vendor', 'delivery', 'admin'], required: true },
+        recipientType: { type: String, enum: ['user', 'vendor', 'delivery', 'admin'], required: true, index: true },
         title: { type: String, required: true },
         message: { type: String, required: true },
-        type: {
+        body: { type: String },
+        image: { type: String },
+        category: {
             type: String,
-            enum: ['order', 'payment', 'system', 'promotion', 'bulk_order'],
-            default: 'system',
-        },
-        isRead: { type: Boolean, default: false, index: true },
-        /**
-         * Operational urgency.
-         *
-         * Marketplace notifications are informational; a Quick Commerce
-         * new-order alert is operational — minutes matter. `urgent` is what the
-         * vendor UI keys off to make an alert persistent and audible, and what
-         * the escalation sweep looks for.
-         *
-         * Defaults to `normal`, so every existing notification is unchanged.
-         */
-        priority: {
-            type: String,
-            enum: ['normal', 'urgent'],
-            default: 'normal',
+            enum: [
+                'SUCCESS',
+                'INFO',
+                'WARNING',
+                'ERROR',
+                'PROMOTION',
+                'SYSTEM',
+                'ORDER',
+                'PAYMENT',
+                'RETURN',
+                'REFUND',
+                'SETTLEMENT',
+                'DELIVERY',
+                'SUPPORT',
+                'MARKETING',
+            ],
+            default: 'SYSTEM',
             index: true,
         },
-        /**
-         * Explicit acknowledgement, distinct from `isRead`.
-         *
-         * `isRead` means "the list was opened"; acknowledgement means "a human
-         * accepted responsibility for this". Only the latter can safely stop an
-         * escalation.
-         */
+        type: {
+            type: String,
+            enum: ['order', 'payment', 'system', 'promotion', 'bulk_order', 'return', 'refund', 'settlement', 'delivery', 'support', 'vendor_approval', 'test_push', 'welcome_test'],
+            default: 'system',
+        },
+        priority: {
+            type: String,
+            enum: ['LOW', 'NORMAL', 'HIGH', 'CRITICAL', 'normal', 'urgent'],
+            default: 'NORMAL',
+            index: true,
+        },
+        actionUrl: { type: String },
+        actionType: { type: String },
+        isRead: { type: Boolean, default: false, index: true },
+        readAt: { type: Date },
+        deliveredAt: { type: Date },
+        clickedAt: { type: Date },
         acknowledgedAt: { type: Date },
         escalatedAt: { type: Date },
+        metadata: { type: mongoose.Schema.Types.Mixed },
         data: { type: Map, of: String }, // extra metadata
     },
     { timestamps: true }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../../../shared/utils/api';
+import { useNotificationStore } from '../../../shared/store/useNotificationStore';
 
 const normalizeDeliveryBoy = (raw) => {
   if (!raw) return null;
@@ -192,6 +193,10 @@ export const useDeliveryAuthStore = create(
             isLoading: false,
           });
 
+          try {
+            useNotificationStore.getState().registerDeviceToken();
+          } catch {}
+
           return { success: true, deliveryBoy: enriched };
         } catch (error) {
           set({ isLoading: false });
@@ -200,7 +205,10 @@ export const useDeliveryAuthStore = create(
       },
 
       // Delivery boy logout action
-      logout: () => {
+      logout: async () => {
+        try {
+          await useNotificationStore.getState().unregisterDeviceToken();
+        } catch {}
         const refreshToken = localStorage.getItem('delivery-refresh-token');
         if (refreshToken) {
           api.post('/delivery/auth/logout', { refreshToken }).catch(() => {});

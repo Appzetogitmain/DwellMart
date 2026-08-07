@@ -102,16 +102,18 @@ export const MARKETPLACE_EVENTS = {
     RETURN_REJECTED:            'return.rejected',
     RETURN_REFUNDED:            'return.refunded',
 
-    // Settlement
-    SETTLEMENT_TRIGGERED:       'settlement.triggered',
-    SETTLEMENT_COMPLETED:       'settlement.completed',
+    // Vendor
+    VENDOR_REGISTERED:          'vendor.registered',
+    VENDOR_APPROVED:            'vendor.approved',
+    VENDOR_REJECTED:            'vendor.rejected',
+    VENDOR_SUSPENDED:           'vendor.suspended',
+
+    // Delivery
+    DELIVERY_ASSIGNED:          'delivery.assigned',
+    DELIVERY_COMPLETED:         'delivery.completed',
 };
 
 // ── Bootstrap handler registration ────────────────────────────────────────────
-//
-// Import this function once in server.js after DB connection:
-//   import { registerMarketplaceEventHandlers } from './services/events/marketplaceEventBus.js';
-//   registerMarketplaceEventHandlers();
 
 export const registerMarketplaceEventHandlers = () => {
     // Lazy-import handlers to avoid circular dependencies at module level
@@ -128,26 +130,148 @@ export const registerMarketplaceEventHandlers = () => {
 
         // 1. Notify Customer (User)
         const recipientUserId = order.userId ? String(order.userId) : (order.guestInfo?.phone || 'guest');
-        await createNotification({
-            recipientId:   recipientUserId,
-            recipientType: 'user',
-            type:          'order_placed',
-            title:         `Order Confirmed — ${label}`,
-            message:       `Your order #${order.orderId} of ₹${order.total} has been placed successfully!`,
-            data:          { orderId: order.orderId, fulfillmentType: order.fulfillmentType },
-        }).catch((err) => console.warn('Failed to send customer order notification:', err));
+        if (order.userId) {
+            await createNotification({
+                recipientId:   String(order.userId),
+                recipientType: 'user',
+                category:      'ORDER',
+                type:          'order',
+                priority:      'HIGH',
+                title:         `Order Confirmed — ${label}`,
+                message:       `Your order #${order.orderId || order._id} of ₹${order.total} has been placed successfully!`,
+                actionUrl:     `/orders/${order.orderId || order._id}`,
+                actionType:    'order_detail',
+                data:          { orderId: String(order.orderId || order._id), fulfillmentType: order.fulfillmentType },
+            }).catch((err) => console.warn('Failed to send customer order notification:', err));
+        }
 
         // 2. Notify Vendor
-        if (order.vendorId) {
+        const vendorId = order.vendorId || order.vendorItems?.[0]?.vendorId;
+        if (vendorId) {
             await createNotification({
-                recipientId:   String(order.vendorId),
+                recipientId:   String(vendorId),
                 recipientType: 'vendor',
-                type:          'order_placed',
+                category:      'ORDER',
+                type:          'order',
+                priority:      'HIGH',
                 title:         `New ${label} Order Received!`,
-                message:       `New order #${order.orderId} (₹${order.total}) requires processing.`,
-                data:          { orderId: order.orderId, fulfillmentType: order.fulfillmentType },
+                message:       `New order #${order.orderId || order._id} (₹${order.total}) requires processing.`,
+                actionUrl:     `/vendor/orders/${order.orderId || order._id}`,
+                actionType:    'vendor_order_detail',
+                data:          { orderId: String(order.orderId || order._id), fulfillmentType: order.fulfillmentType },
             }).catch((err) => console.warn('Failed to send vendor order notification:', err));
         }
+
+        // 3. Notify Admin for High-Value Orders
+        if (order.total >= 5000) {
+            await createNotification({
+                recipientId:   'admin',
+                recipientType: 'admin',
+                category:      'ORDER',
+                type:          'order',
+                priority:      'HIGH',
+                title:         `High-Value Order Alert (₹${order.total})`,
+                message:       `High value order #${order.orderId || order._id} placed by ${order.shippingAddress?.name || 'Customer'}.`,
+                actionUrl:     `/admin/orders/${order.orderId || order._id}`,
+                data:          { orderId: String(order.orderId || order._id), total: String(order.total) },
+            }).catch(() => null);
+        }
+    });
+
+    // ── VENDOR APPROVAL EVENT ──────────────────────────────────────────────────
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.VENDOR_APPROVED, async ({ vendor, vendorType }) => {
+        const { createNotification } = await import('../notification.service.js');
+        if (!vendor) return;
+
+        const resolvedType = String(vendorType || vendor.vendorType || 'Retail').replace('_', ' ');
+        const displayType = resolvedType.charAt(0).toUpperCase() + resolvedType.slice(1);
+
+        await createNotification({
+            recipientId:   String(vendor._id || vendor.id),
+            recipientType: 'vendor',
+            category:      'SUCCESS',
+            type:          'vendor_approval',
+            priority:      'CRITICAL',
+            title:         '🎉 Vendor Account Approved',
+            message:       `Congratulations! Your DwellMart Vendor Account has been approved as a ${displayType} Vendor. You can now log in and start selling.`,
+            actionUrl:     '/vendor/dashboard',
+            actionType:    'vendor_dashboard',
+            data:          { vendorId: String(vendor._id || vendor.id), vendorType: String(vendorType || vendor.vendorType) },
+        }).catch((err) => console.warn('Failed to send vendor approval notification:', err));
+    });
+
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.VENDOR_REJECTED, async ({ vendor, reason }) => {
+        const { createNotification } = await import('../notification.service.js');
+        if (!vendor) return;
+
+        await createNotification({
+            recipientId:   String(vendor._id || vendor.id),
+            recipientType: 'vendor',
+            category:      'ERROR',
+            type:          'vendor_approval',
+            priority:      'HIGH',
+            title:         'Vendor Application Status Update',
+            message:       `Your vendor application was rejected.${reason ? ` Reason: ${reason}` : ' Please contact support for details.'}`,
+            actionUrl:     '/vendor/login',
+            actionType:    'vendor_login',
+            data:          { vendorId: String(vendor._id || vendor.id), reason: String(reason || '') },
+        }).catch(() => null);
+    });
+
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.VENDOR_REGISTERED, async ({ vendor }) => {
+        const { createNotification } = await import('../notification.service.js');
+        if (!vendor) return;
+
+        await createNotification({
+            recipientId:   'admin',
+            recipientType: 'admin',
+            category:      'SYSTEM',
+            type:          'system',
+            priority:      'NORMAL',
+            title:         'New Vendor Registration',
+            message:       `${vendor.storeName || vendor.name} submitted a new vendor application.`,
+            actionUrl:     '/admin/vendors/pending',
+            data:          { vendorId: String(vendor._id || vendor.id) },
+        }).catch(() => null);
+    });
+
+    // ── ORDER STATUS CHANGED EVENT ──────────────────────────────────────────────
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.ORDER_STATUS_CHANGED, async ({ order, previousStatus, newStatus }) => {
+        const { createNotification } = await import('../notification.service.js');
+        if (!order) return;
+
+        const statusLabel = String(newStatus || '').toUpperCase();
+        if (order.userId) {
+            await createNotification({
+                recipientId:   String(order.userId),
+                recipientType: 'user',
+                category:      'ORDER',
+                type:          'order',
+                priority:      'NORMAL',
+                title:         `Order Update: ${statusLabel}`,
+                message:       `Your order #${order.orderId || order._id} is now ${newStatus}.`,
+                actionUrl:     `/orders/${order.orderId || order._id}`,
+                data:          { orderId: String(order.orderId || order._id), status: String(newStatus) },
+            }).catch(() => null);
+        }
+    });
+
+    // ── DELIVERY EVENTS ────────────────────────────────────────────────────────
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.DELIVERY_ASSIGNED, async ({ order, deliveryBoy }) => {
+        const { createNotification } = await import('../notification.service.js');
+        if (!order || !deliveryBoy) return;
+
+        await createNotification({
+            recipientId:   String(deliveryBoy._id || deliveryBoy.id),
+            recipientType: 'delivery',
+            category:      'DELIVERY',
+            type:          'delivery',
+            priority:      'HIGH',
+            title:         'New Delivery Assignment',
+            message:       `Order #${order.orderId || order._id} has been assigned to you.`,
+            actionUrl:     `/delivery/orders/${order.orderId || order._id}`,
+            data:          { orderId: String(order.orderId || order._id) },
+        }).catch(() => null);
     });
 
     marketplaceEventBus.on(MARKETPLACE_EVENTS.QC_ORDER_PLACED, async ({ order }) => {
@@ -160,10 +284,9 @@ export const registerMarketplaceEventHandlers = () => {
         const { assignRiderForQuickCommerceOrder } = await import('../riderAssignment.service.js');
         if (!order) return;
         await assignRiderForQuickCommerceOrder(order);
-    }, { retryable: true }); // on failure → enqueued to FailedJob with backoff
+    }, { retryable: true });
 
     marketplaceEventBus.on(MARKETPLACE_EVENTS.INVENTORY_DEDUCTED, async ({ productId, quantity }) => {
-        // Check and emit low-stock alert
         const { default: Product } = await import('../../models/Product.model.js');
         const product = await Product.findById(productId).select('stockQuantity lowStockThreshold name').lean();
         if (!product) return;
@@ -180,15 +303,18 @@ export const registerMarketplaceEventHandlers = () => {
 
     marketplaceEventBus.on(MARKETPLACE_EVENTS.LOW_STOCK_ALERT, async ({ productId, productName, stockQuantity, threshold }) => {
         const { createNotification } = await import('../notification.service.js');
-        // Notify admin
         await createNotification({
-            role:    'admin',
-            type:    'low_stock',
-            title:   `Low Stock: ${productName}`,
-            message: `Only ${stockQuantity} units remaining (threshold: ${threshold}).`,
-            data:    { productId },
-        });
+            recipientId:   'admin',
+            recipientType: 'admin',
+            category:      'WARNING',
+            type:          'system',
+            priority:      'HIGH',
+            title:         `Low Stock Alert: ${productName}`,
+            message:       `Only ${stockQuantity} units remaining for ${productName} (threshold: ${threshold}).`,
+            actionUrl:     '/admin/products',
+            data:          { productId: String(productId) },
+        }).catch(() => null);
     });
 
-    console.log('[MarketplaceEventBus] Event handlers registered.');
+    console.log('[MarketplaceEventBus] Enterprise event handlers registered.');
 };

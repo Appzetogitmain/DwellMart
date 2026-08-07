@@ -16,6 +16,7 @@ import { useDeliveryAuthStore } from "../../store/deliveryStore";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
 import toast from "react-hot-toast";
 import { loginLogo } from "../../../../shared/utils/imagePaths";
+import NotificationBell from "../../../../shared/components/Notifications/NotificationBell";
 
 const DeliveryHeader = ({ onMenuClick }) => {
   const navigate = useNavigate();
@@ -165,18 +166,7 @@ const DeliveryHeader = ({ onMenuClick }) => {
           </div>
 
           {/* Notification Icon */}
-          <Link
-            to="/delivery/notifications"
-            className="relative p-2 text-slate-300 hover:text-amber-400 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-colors"
-            title="Notifications"
-          >
-            <FiBell className="text-lg" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-4 px-1 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center shadow-md">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </Link>
+          <NotificationBell className="p-2 text-slate-300 hover:text-amber-400 hover:bg-slate-800 rounded-xl border border-slate-700/60" iconClassName="text-lg text-slate-200" />
 
           {/* Profile Dropdown */}
           <div className="relative" ref={profileRef}>

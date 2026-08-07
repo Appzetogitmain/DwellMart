@@ -7,6 +7,7 @@ import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
 import { VENDOR_TYPE_VALUES, VendorCapabilities } from '../../../constants/vendorCapabilities.js';
 import { clampServiceRadius, resolveVendorAvailability } from '../../../services/quickCommerce.service.js';
 
@@ -130,21 +131,11 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    const statusMessageMap = {
-        approved: `Your vendor account for ${vendor.storeName || vendor.name} has been approved as a ${vendorType?.replace('_', ' ')} vendor.`,
-        rejected: `Your vendor account for ${vendor.storeName || vendor.name} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
-        suspended: `Your vendor account for ${vendor.storeName || vendor.name} has been suspended.${reason ? ` Reason: ${reason}` : ''}`,
-    };
-    const vendorMessage = statusMessageMap[status] || `Your vendor account status was updated to ${status}.`;
-
-    await createNotification({
-        recipientId: vendor._id,
-        recipientType: 'vendor',
-        title: 'Vendor Account Status Updated',
-        message: vendorMessage,
-        type: 'system',
-        data: { status, reason: reason || '', vendorType: vendor.vendorType },
-    });
+    if (status === 'approved') {
+        marketplaceEventBus.emit(MARKETPLACE_EVENTS.VENDOR_APPROVED, { vendor, vendorType: vendor.vendorType });
+    } else if (status === 'rejected') {
+        marketplaceEventBus.emit(MARKETPLACE_EVENTS.VENDOR_REJECTED, { vendor, reason });
+    }
 
     try {
         await sendEmail({

@@ -9,6 +9,7 @@ import {
   resetVendorPassword,
 } from "../services/vendorService";
 import { getVendorCapabilities, VendorTypes } from "../../../shared/config/vendorCapabilities";
+import { useNotificationStore } from "../../../shared/store/useNotificationStore";
 
 /**
  * Derive capabilities object from a vendor object.
@@ -77,6 +78,10 @@ export const useVendorAuthStore = create(
           // Store token for vendor API requests
           localStorage.setItem("vendor-token", accessToken);
           localStorage.setItem("vendor-refresh-token", refreshToken);
+
+          try {
+            useNotificationStore.getState().registerDeviceToken();
+          } catch {}
 
           return { success: true, vendor };
         } catch (error) {
@@ -148,7 +153,10 @@ export const useVendorAuthStore = create(
       },
 
       // Vendor logout action
-      logout: () => {
+      logout: async () => {
+        try {
+          await useNotificationStore.getState().unregisterDeviceToken();
+        } catch {}
         const refreshToken = localStorage.getItem("vendor-refresh-token");
         if (refreshToken) {
           api.post("/vendor/auth/logout", { refreshToken }).catch(() => {});

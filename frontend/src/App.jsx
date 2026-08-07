@@ -133,7 +133,7 @@ import MobileVerification from "./modules/UserApp/pages/Verification";
 import MobileForgotPassword from "./modules/UserApp/pages/ForgotPassword";
 import MobileResetPassword from "./modules/UserApp/pages/ResetPassword";
 import MobileProfile from "./modules/UserApp/pages/Profile";
-import UserNotifications from "./modules/UserApp/pages/Notifications";
+import NotificationsPage from "./modules/UserApp/pages/NotificationsPage";
 import MobileOrders from "./modules/UserApp/pages/Orders";
 import MobileOrderDetail from "./modules/UserApp/pages/OrderDetail";
 import MobileAddresses from "./modules/UserApp/pages/Addresses";
@@ -501,7 +501,7 @@ const AppRoutes = () => {
         element={
           <RouteWrapper>
             <ProtectedRoute>
-              <UserNotifications />
+              <NotificationsPage />
             </ProtectedRoute>
           </RouteWrapper>
         }

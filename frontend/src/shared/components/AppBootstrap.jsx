@@ -39,6 +39,9 @@ const normalizeBrand = (raw) => ({
   id: raw?._id || raw?.id,
 });
 
+import { useNotificationStore } from "../store/useNotificationStore";
+import NotificationDrawer from "./Notifications/NotificationDrawer";
+
 const AppBootstrap = () => {
   const { fetchCurrencies } = useCurrencyStore();
 
@@ -48,6 +51,13 @@ const AppBootstrap = () => {
       useVendorAuthStore.getState().initialize();
     } catch (e) {
       console.warn('Vendor auth initialization warning:', e);
+    }
+
+    try {
+      useNotificationStore.getState().fetchUnreadCount();
+      useNotificationStore.getState().registerDeviceToken();
+    } catch (e) {
+      console.warn('Notification bootstrap warning:', e);
     }
   }, [fetchCurrencies]);
 
@@ -109,7 +119,7 @@ const AppBootstrap = () => {
     };
   }, []);
 
-  return null;
+  return <NotificationDrawer />;
 };
 
 export default AppBootstrap;

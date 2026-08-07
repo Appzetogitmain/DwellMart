@@ -7,6 +7,7 @@ import { usePermission } from '../../hooks/usePermission';
 import toast from 'react-hot-toast';
 import Button from '../Button';
 import NotificationWindow from './NotificationWindow';
+import NotificationBell from '../../../../shared/components/Notifications/NotificationBell';
 
 const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
   const location = useLocation();
@@ -90,25 +91,7 @@ const AdminHeader = ({ onMenuClick, isDesktopSidebarOpen = true }) => {
         <div className="flex items-center gap-2.5 sm:gap-3.5">
           {/* Notifications */}
           <div className="relative">
-            <button
-              data-notification-button
-              onClick={toggleNotifications}
-              className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white flex items-center justify-center border border-slate-700 transition-colors relative shadow-xs"
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <FiBell className="text-lg" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-slate-900 animate-pulse" />
-              )}
-            </button>
-
-            {/* Notification Window - positioned relative to this container */}
-            <NotificationWindow
-              isOpen={showNotifications}
-              onClose={() => setShowNotifications(false)}
-              position="right"
-            />
+            <NotificationBell className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0" iconClassName="text-lg text-white" />
           </div>
 
           {/* Logout Button */}
