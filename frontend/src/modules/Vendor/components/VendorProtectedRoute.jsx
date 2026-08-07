@@ -20,6 +20,14 @@ const VendorProtectedRoute = ({ children }) => {
   const { isAuthenticated, token } = useVendorAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('vendor-token');
+
+  // Auto re-hydrate vendor auth state from localStorage on page refresh
+  useEffect(() => {
+    if (!isAuthenticated && accessToken) {
+      useVendorAuthStore.getState().initialize();
+    }
+  }, [isAuthenticated, accessToken]);
+
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();
   const tokenExpiryMs =
@@ -29,7 +37,7 @@ const VendorProtectedRoute = ({ children }) => {
   const [subscriptionStatus, setSubscriptionStatus] = useState('loading');
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!accessToken || isExpired) return;
 
     const checkSubscription = async () => {
       try {
@@ -52,9 +60,9 @@ const VendorProtectedRoute = ({ children }) => {
     };
 
     checkSubscription();
-  }, [isAuthenticated, accessToken]);
+  }, [accessToken, isExpired]);
 
-  if (!isAuthenticated || !accessToken) {
+  if (!accessToken) {
     return <Navigate to="/vendor/login" state={{ from: location }} replace />;
   }
 

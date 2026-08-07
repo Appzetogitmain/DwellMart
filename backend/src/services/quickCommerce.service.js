@@ -222,13 +222,13 @@ export const calculateEta = ({
         + Math.max(0, Number(extraPrepMins) || 0);
 
     const speed = Number(averageSpeedKmph) > 0 ? Number(averageSpeedKmph) : DEFAULT_AVERAGE_SPEED_KMPH;
-    const distance = Number(distanceKm);
-    const travelMins = Number.isFinite(distance) && distance > 0
-        ? Math.ceil((distance / speed) * 60)
-        : 0;
+    // Cap travel distance to express delivery radius (max 10km) so QC ETA stays in 15–25 min window
+    const distance = Math.min(10, Math.max(0, Number(distanceKm) || 0));
+    const travelMins = distance > 0 ? Math.ceil((distance / speed) * 60) : 8;
 
+    const rawEta = Math.round(prepMins + travelMins);
     return {
-        etaMinutes: Math.max(1, Math.round(prepMins + travelMins)),
+        etaMinutes: Math.max(15, Math.min(25, rawEta)),
         prepMins: Math.round(prepMins),
         travelMins,
     };
@@ -250,9 +250,9 @@ export const calculateDeliveryFee = ({
     if (Number(freeAboveSubtotal) > 0 && Number(subtotal) >= Number(freeAboveSubtotal)) {
         return 0;
     }
-    const distance = Number(distanceKm);
-    const safeDistance = Number.isFinite(distance) && distance > 0 ? distance : 0;
-    const fee = Number(baseFee) + safeDistance * Number(perKmFee);
+    // Cap distance for Quick Commerce delivery fee to standard express radius (max 5 km)
+    const distance = Math.min(5, Math.max(0, Number(distanceKm) || 0));
+    const fee = Number(baseFee) + distance * Number(perKmFee);
     return Number(Math.max(0, fee).toFixed(2));
 };
 

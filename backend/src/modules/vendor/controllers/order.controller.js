@@ -16,6 +16,7 @@ import { EXPERIENCES } from '../../../constants/experiences.js';
 import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
 import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
 import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
+import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
 import {
     baseQuickCommerceMatch,
     resolveDateRange,
@@ -29,6 +30,8 @@ import {
     getVendorResponsiveness,
     getDailySeries,
 } from '../../../services/quickCommerceAnalytics.service.js';
+import { applyRetailTransition }    from '../../../services/orders/RetailOrderService.js';
+import { applyWholesaleTransition } from '../../../services/orders/WholesaleOrderService.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -48,58 +51,102 @@ const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
 
 // GET /api/vendor/orders
 export const getVendorOrders = asyncHandler(async (req, res) => {
-    const { status, orderType, type, page = 1, limit = 20 } = req.query;
+    const { status, orderType, type, fulfillmentType, page = 1, limit = 20 } = req.query;
     const targetOrderType = orderType || type;
     const numericPage = Math.max(1, Number(page) || 1);
     const numericLimit = Math.max(1, Number(limit) || 20);
     const skip = (numericPage - 1) * numericLimit;
 
-    const elemMatch = { vendorId: req.user.id };
-    if (status) elemMatch.status = status;
-    if (targetOrderType) elemMatch.orderType = targetOrderType;
+    const vendorId = req.user.id;
 
-    const filter = { vendorItems: { $elemMatch: elemMatch } };
+    // Database query level isolation — uses indexed top-level vendorId with fallback to vendorItems.vendorId for legacy
+    const filter = {
+        $or: [
+            { vendorId: new mongoose.Types.ObjectId(vendorId) },
+            { 'vendorItems.vendorId': new mongoose.Types.ObjectId(vendorId) },
+        ],
+    };
 
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit);
+    if (status) filter.status = status;
+    if (targetOrderType) filter.orderType = targetOrderType;
+    if (fulfillmentType) filter.fulfillmentType = fulfillmentType;
+
+    const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit).lean();
     const total = await Order.countDocuments(filter);
-    res.status(200).json(new ApiResponse(200, { orders, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Orders fetched.'));
+
+    // Sanitize: ensure vendor only sees their own vendorItems slice and items
+    const sanitizedOrders = rawOrders.map((order) => {
+        const myVendorItems = (order.vendorItems || []).filter(
+            (vi) => String(vi.vendorId) === String(vendorId)
+        );
+        const myItems = (order.items || []).filter(
+            (item) => String(item.vendorId) === String(vendorId)
+        );
+        return {
+            ...order,
+            vendorItems: myVendorItems,
+            items: myItems.length > 0 ? myItems : (myVendorItems[0]?.items || order.items),
+        };
+    });
+
+    res.status(200).json(new ApiResponse(200, { orders: sanitizedOrders, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Orders fetched.'));
 });
 
 // GET /api/vendor/orders/:id
 export const getVendorOrderById = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const vendorId = req.user.id;
     const idFilter = [{ orderId: id }];
     if (mongoose.Types.ObjectId.isValid(id)) {
         idFilter.push({ _id: id });
     }
 
-    const order = await Order.findOne({
+    const rawOrder = await Order.findOne({
         $or: idFilter,
-        'vendorItems.vendorId': req.user.id,
-    });
-    if (!order) throw new ApiError(404, 'Order not found.');
+        $and: [{
+            $or: [
+                { vendorId: new mongoose.Types.ObjectId(vendorId) },
+                { 'vendorItems.vendorId': new mongoose.Types.ObjectId(vendorId) },
+            ],
+        }],
+    }).lean();
 
-    res.status(200).json(new ApiResponse(200, order, 'Order fetched.'));
+    if (!rawOrder) throw new ApiError(404, 'Order not found.');
+
+    // Sanitize: vendor only sees their own vendorItems slice and items
+    const myVendorItems = (rawOrder.vendorItems || []).filter(
+        (vi) => String(vi.vendorId) === String(vendorId)
+    );
+    const myItems = (rawOrder.items || []).filter(
+        (item) => String(item.vendorId) === String(vendorId)
+    );
+
+    const sanitizedOrder = {
+        ...rawOrder,
+        vendorItems: myVendorItems,
+        items: myItems.length > 0 ? myItems : (myVendorItems[0]?.items || rawOrder.items),
+    };
+
+    res.status(200).json(new ApiResponse(200, sanitizedOrder, 'Order fetched.'));
 });
 
-// PATCH /api/vendor/orders/:id/status
+/**
+ * PATCH /api/vendor/orders/:id/status
+ *
+ * Strategy-based order status dispatcher.
+ * The service to invoke is determined by order.orderType (or order.experience),
+ * NOT by vendor.vendorType — keeping orders decoupled from vendor identity.
+ *
+ * QC orders use a dedicated endpoint (/quick-status) for their finer lifecycle.
+ * This endpoint handles Retail and Wholesale orders.
+ */
 export const updateOrderStatus = asyncHandler(async (req, res) => {
     const { status } = req.body;
-    const allowed = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
-    if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
-    const transitionMap = {
-        pending: ['pending', 'processing', 'cancelled'],
-        processing: ['processing', 'shipped', 'cancelled'],
-        shipped: ['shipped', 'delivered'],
-        delivered: ['delivered'],
-        cancelled: ['cancelled'],
-    };
+    if (!status) throw new ApiError(400, 'Status is required.');
 
     const { id } = req.params;
     const idFilter = [{ orderId: id }];
-    if (mongoose.Types.ObjectId.isValid(id)) {
-        idFilter.push({ _id: id });
-    }
+    if (mongoose.Types.ObjectId.isValid(id)) idFilter.push({ _id: id });
 
     const order = await Order.findOne({
         $or: idFilter,
@@ -107,29 +154,24 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     });
     if (!order) throw new ApiError(404, 'Order not found.');
 
-    // Quick Commerce orders use accepted → preparing → ready, not the coarse
-    // Marketplace statuses. Routing them through here would desync
-    // `quickCommerce.status` from `status`.
-    if (order.experience === EXPERIENCES.QUICK_COMMERCE) {
-        throw new ApiError(400, 'Use the Quick Commerce status endpoint for this order.');
+    // Determine order type from order document — not from vendor type
+    const orderType = String(order.orderType || order.experience || 'retail').toLowerCase();
+
+    if (orderType === EXPERIENCES.QUICK_COMMERCE || orderType === 'quick_commerce') {
+        throw new ApiError(400, 'Quick Commerce orders must use the /quick-status endpoint.');
     }
 
-    const vendorItem = order.vendorItems.find((vi) => String(vi.vendorId) === String(req.user.id));
-    if (!vendorItem) throw new ApiError(404, 'Vendor order item not found.');
-
-    const currentStatus = String(vendorItem.status || 'pending');
-    const allowedNextStatuses = transitionMap[currentStatus] || [];
-    if (!allowedNextStatuses.includes(status)) {
-        throw new ApiError(409, `Cannot move order from ${currentStatus} to ${status}.`);
+    // Delegate to the appropriate order service strategy
+    if (orderType === 'wholesale') {
+        applyWholesaleTransition(order, status, req.user.id);
+    } else {
+        // Default to Retail strategy for 'retail' or legacy 'marketplace' orders
+        applyRetailTransition(order, status, req.user.id);
     }
 
-    // Update only this vendor's items status
-    order.vendorItems = order.vendorItems.map((vi) =>
-        vi.vendorId.toString() === req.user.id ? { ...vi.toObject(), status } : vi
-    );
-    order.status = deriveTopLevelOrderStatus(order.vendorItems, order.status);
     await order.save();
 
+    // Notifications
     const notificationTasks = [];
     if (order.userId) {
         notificationTasks.push(
@@ -139,15 +181,10 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
                 title: 'Order item status updated',
                 message: `An item in your order ${order.orderId || order._id} is now ${status}.`,
                 type: 'order',
-                data: {
-                    orderId: String(order.orderId || order._id),
-                    status: String(status),
-                    scope: 'vendor_item',
-                },
+                data: { orderId: String(order.orderId || order._id), status: String(status), scope: 'vendor_item' },
             })
         );
     }
-
     notificationTasks.push(
         createNotification({
             recipientId: req.user.id,
@@ -155,17 +192,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             title: 'Order status updated',
             message: `Order ${order.orderId || order._id} moved to ${status}.`,
             type: 'order',
-            data: {
-                orderId: String(order.orderId || order._id),
-                status: String(status),
-            },
+            data: { orderId: String(order.orderId || order._id), status: String(status) },
         })
     );
-
     await Promise.allSettled(notificationTasks);
 
     res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
 });
+
 
 /**
  * PATCH /api/vendor/orders/:id/quick-status
@@ -300,8 +334,11 @@ export const getQuickCommerceVendorDashboard = asyncHandler(async (req, res) => 
         vendorId
     );
 
-    const vendor = await Vendor.findById(vendorId).select('sellingChannels quickCommerceProfile.availabilityStatus').lean();
-    if (vendor?.sellingChannels?.quickCommerce?.enabled !== true) {
+    const vendor = await Vendor.findById(vendorId).select('vendorType sellingChannels quickCommerceProfile.availabilityStatus').lean();
+    const vendorCaps = getVendorCapabilities(vendor?.vendorType);
+    const isQCVendor = vendorCaps.orderFlow === 'quick_commerce'
+        || vendor?.sellingChannels?.quickCommerce?.enabled === true;
+    if (!isQCVendor) {
         throw new ApiError(403, 'Quick Commerce channel is not enabled for this store.');
     }
 
@@ -319,7 +356,7 @@ export const getQuickCommerceVendorDashboard = asyncHandler(async (req, res) => 
 
     res.status(200).json(new ApiResponse(200, {
         range: { start, end },
-        channelEnabled: vendor?.sellingChannels?.quickCommerce?.enabled === true,
+        channelEnabled: isQCVendor,
         availabilityStatus: vendor?.quickCommerceProfile?.availabilityStatus || null,
         // What needs attention now.
         live: {

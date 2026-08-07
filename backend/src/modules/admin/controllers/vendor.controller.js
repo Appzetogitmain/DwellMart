@@ -7,7 +7,7 @@ import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
-import { isQuickCommerceEnabled } from '../../../services/featureFlags.service.js';
+import { VENDOR_TYPE_VALUES, VendorCapabilities } from '../../../constants/vendorCapabilities.js';
 import { clampServiceRadius, resolveVendorAvailability } from '../../../services/quickCommerce.service.js';
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -108,15 +108,30 @@ export const getVendorDetail = asyncHandler(async (req, res) => {
 
 // PATCH /api/admin/vendors/:id/status
 export const updateVendorStatus = asyncHandler(async (req, res) => {
-    const { status, reason } = req.body;
+    const { status, reason, vendorType } = req.body;
     const allowed = ['approved', 'suspended', 'rejected'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
 
-    const vendor = await Vendor.findByIdAndUpdate(req.params.id, { status, suspensionReason: reason || '' }, { new: true });
+    // vendorType is mandatory when approving a vendor
+    if (status === 'approved') {
+        if (!vendorType) {
+            throw new ApiError(400, 'vendorType is required when approving a vendor. Must be one of: quick_commerce, retail, wholesale.');
+        }
+        if (!VENDOR_TYPE_VALUES.includes(vendorType)) {
+            throw new ApiError(400, `Invalid vendorType. Must be one of: ${VENDOR_TYPE_VALUES.join(', ')}`);
+        }
+    }
+
+    const updateData = { status, suspensionReason: reason || '' };
+    if (status === 'approved' && vendorType) {
+        updateData.vendorType = vendorType;
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
     const statusMessageMap = {
-        approved: `Your vendor account for ${vendor.storeName || vendor.name} has been approved.`,
+        approved: `Your vendor account for ${vendor.storeName || vendor.name} has been approved as a ${vendorType?.replace('_', ' ')} vendor.`,
         rejected: `Your vendor account for ${vendor.storeName || vendor.name} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
         suspended: `Your vendor account for ${vendor.storeName || vendor.name} has been suspended.${reason ? ` Reason: ${reason}` : ''}`,
     };
@@ -128,10 +143,7 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         title: 'Vendor Account Status Updated',
         message: vendorMessage,
         type: 'system',
-        data: {
-            status,
-            reason: reason || '',
-        },
+        data: { status, reason: reason || '', vendorType: vendor.vendorType },
     });
 
     try {
@@ -146,6 +158,40 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(new ApiResponse(200, toApiVendor(vendor), `Vendor ${status} successfully.`));
+});
+
+// PATCH /api/admin/vendors/:id/vendor-type
+// Only Super Admin can call this. Changes vendor type and auto-syncs sellingChannels.
+export const updateVendorType = asyncHandler(async (req, res) => {
+    const { vendorType } = req.body;
+    if (!vendorType) throw new ApiError(400, 'vendorType is required.');
+    if (!VENDOR_TYPE_VALUES.includes(vendorType)) {
+        throw new ApiError(400, `Invalid vendorType. Must be one of: ${VENDOR_TYPE_VALUES.join(', ')}`);
+    }
+
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const previousType = vendor.vendorType;
+    vendor.vendorType = vendorType;
+    // sellingChannels will auto-sync via the pre-save hook
+    await vendor.save();
+
+    await createNotification({
+        recipientId: vendor._id,
+        recipientType: 'vendor',
+        title: 'Vendor Type Updated',
+        message: `Your vendor account type has been updated to ${vendorType.replace('_', ' ')}.`,
+        type: 'system',
+        data: { previousType, vendorType },
+    }).catch(() => {});
+
+    res.status(200).json(
+        new ApiResponse(200,
+            { ...toApiVendor(vendor), vendorType: vendor.vendorType },
+            `Vendor type updated to ${vendorType}.`
+        )
+    );
 });
 
 // PATCH /api/admin/vendors/:id/commission

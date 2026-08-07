@@ -208,6 +208,7 @@ const VendorPickupLocations = lazy(() => import("./modules/Vendor/pages/PickupLo
 const VendorReports = lazy(() => import("./modules/Vendor/pages/Reports"));
 const VendorLanguageSettings = lazy(() => import("./modules/Vendor/pages/LanguageSettings"));
 const VendorSubscriptionManagement = lazy(() => import("./modules/Vendor/pages/SubscriptionManagement"));
+const RequireCapability = lazy(() => import("./modules/Vendor/components/RequireCapability"));
 const DesignSystemShowcase = lazy(() => import("./shared/components/ui/Showcase/DesignSystemShowcase"));
 
 import { useSettingsStore } from "./shared/store/settingsStore";
@@ -750,7 +751,7 @@ const AppRoutes = () => {
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />
         <Route path="orders/:id" element={<VendorOrderDetail />} />
-        <Route path="analytics" element={<VendorAnalytics />} />
+        <Route path="analytics" element={<RequireCapability feature="analytics"><VendorAnalytics /></RequireCapability>} />
         <Route path="quick-commerce" element={<VendorQuickCommerceDashboard />} />
         <Route path="reports" element={<VendorReports />} />
         <Route path="earnings" element={<VendorEarnings />} />
@@ -763,28 +764,28 @@ const AppRoutes = () => {
           path="earnings/settlement-history"
           element={<VendorEarnings />}
         />
-        <Route path="stock-management" element={<VendorStockManagement />} />
+        <Route path="stock-management" element={<RequireCapability feature="inventory"><VendorStockManagement /></RequireCapability>} />
         <Route path="wallet-history" element={<VendorWalletHistory />} />
         <Route path="subscription" element={<VendorSubscriptionManagement />} />
         <Route path="subscriptions" element={<VendorSubscriptionManagement />} />
         <Route path="chat" element={<VendorChat />} />
         <Route path="notifications" element={<VendorNotifications />} />
-        <Route path="return-requests" element={<VendorReturnRequests />} />
+        <Route path="return-requests" element={<RequireCapability feature="returns"><VendorReturnRequests /></RequireCapability>} />
         <Route
           path="return-requests/:id"
-          element={<VendorReturnRequestDetail />}
+          element={<RequireCapability feature="returns"><VendorReturnRequestDetail /></RequireCapability>}
         />
-        <Route path="product-reviews" element={<VendorProductReviews />} />
+        <Route path="product-reviews" element={<RequireCapability feature="reviews"><VendorProductReviews /></RequireCapability>} />
         <Route
           path="shipping-management"
           element={<VendorShippingManagement />}
         />
         <Route path="pickup-locations" element={<VendorPickupLocations />} />
-        <Route path="customers/:id" element={<VendorCustomerDetail />} />
-        <Route path="customers" element={<VendorCustomers />} />
+        <Route path="customers/:id" element={<RequireCapability feature="customers"><VendorCustomerDetail /></RequireCapability>} />
+        <Route path="customers" element={<RequireCapability feature="customers"><VendorCustomers /></RequireCapability>} />
         <Route path="support-tickets" element={<VendorSupportTickets />} />
         <Route path="chat" element={<Navigate to="/vendor/support-tickets" replace />} />
-        <Route path="inventory-reports" element={<VendorInventoryReports />} />
+        <Route path="inventory-reports" element={<RequireCapability feature="inventory"><VendorInventoryReports /></RequireCapability>} />
         <Route
           path="performance-metrics"
           element={<VendorPerformanceMetrics />}

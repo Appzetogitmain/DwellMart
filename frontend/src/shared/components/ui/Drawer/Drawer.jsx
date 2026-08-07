@@ -133,7 +133,7 @@ const Drawer = ({
   const drawerContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-drawer overflow-hidden">
+        <div className="fixed inset-0 z-[10000] overflow-hidden">
           
           {/* Backdrop Layer */}
           <motion.div
@@ -142,7 +142,7 @@ const Drawer = ({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={closeOnBackdrop && !isLoading ? onClose : undefined}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 cursor-pointer"
             aria-hidden="true"
           />
 
@@ -157,7 +157,7 @@ const Drawer = ({
             exit="hidden"
             variants={slideVariants[position] || slideVariants.right}
             transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-            className={`fixed bg-surface-header border-l border-border shadow-drawer text-white flex flex-col z-10 ${
+            className={`fixed bg-slate-900 border-l border-slate-800 shadow-2xl text-white flex flex-col z-20 ${
               positionClasses[position] || positionClasses.right
             } ${sizeMap[size] || sizeMap.md} ${className}`}
             data-component="Drawer"

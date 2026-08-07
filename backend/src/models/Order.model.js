@@ -54,7 +54,19 @@ const vendorItemGroupSchema = new mongoose.Schema({
     orderType: { type: String, enum: ['retail', 'wholesale', 'mixed'], default: 'retail' },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+        enum: [
+            'pending',
+            'approved',
+            'confirmed',
+            'processing',
+            'packed',
+            'shipped',
+            'dispatched',
+            'out_for_delivery',
+            'delivered',
+            'cancelled',
+            'returned',
+        ],
         default: 'pending',
     },
 });
@@ -119,12 +131,24 @@ const orderSchema = new mongoose.Schema(
         paymentMethod: { type: String, enum: ['card', 'cash', 'bank', 'wallet', 'upi', 'cod'] },
         paymentStatus: {
             type: String,
-            enum: ['pending', 'paid', 'failed', 'refunded'],
+            enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
             default: 'pending',
         },
         status: {
             type: String,
-            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+            enum: [
+                'pending',
+                'approved',
+                'confirmed',
+                'processing',
+                'packed',
+                'shipped',
+                'dispatched',
+                'out_for_delivery',
+                'delivered',
+                'cancelled',
+                'returned',
+            ],
             default: 'pending',
             index: true,
         },
@@ -133,6 +157,32 @@ const orderSchema = new mongoose.Schema(
         tax: { type: Number, default: 0 },
         discount: { type: Number, default: 0 },
         total: { type: Number, default: 0 },
+        // ── Enterprise Marketplace linkage ───────────────────────────────────
+        // Populated when created via the new CheckoutSession / OrderSplitter path.
+        // Absent on legacy orders (no migration required — queries use $exists filter).
+        vendorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Vendor',
+            index: true,
+            default: null,
+        },
+        checkoutSessionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'CheckoutSession',
+            default: null,
+        },
+        fulfillmentGroupId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FulfillmentGroup',
+            default: null,
+        },
+        // Canonical fulfillment type for this sub-order.
+        // Supersedes the (experience + orderType) pair for new orders.
+        fulfillmentType: {
+            type: String,
+            enum: ['quick_commerce', 'retail', 'wholesale'],
+            default: null,  // null = legacy order
+        },
         orderType: {
             type: String,
             enum: ['retail', 'wholesale', 'mixed'],
@@ -335,6 +385,11 @@ orderSchema.index({ experience: 1, 'quickCommerce.assignment.status': 1, created
 orderSchema.index({ experience: 1, 'quickCommerce.status': 1, createdAt: -1 });
 orderSchema.index({ experience: 1, status: 1, createdAt: -1 });
 orderSchema.index({ deliveryBoyId: 1, status: 1, createdAt: -1 });
+orderSchema.index({ vendorId: 1, createdAt: -1 });
+orderSchema.index({ vendorId: 1, fulfillmentType: 1, createdAt: -1 });
+orderSchema.index({ checkoutSessionId: 1 });
+orderSchema.index({ fulfillmentGroupId: 1 });
+orderSchema.index({ fulfillmentType: 1, status: 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export { Order };

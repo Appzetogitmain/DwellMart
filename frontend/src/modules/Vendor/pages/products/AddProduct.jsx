@@ -29,6 +29,7 @@ import {
   syncVariantPricesWithAxes,
   buildVariantPayload,
 } from "../../utils/variantHelpers";
+import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ const AddProduct = () => {
   const { brands, initialize: initBrands } = useBrandStore();
 
   const vendorId = vendor?.id;
+  const caps = getVendorCapabilities(vendor?.vendorType ?? 'retail');
+  const sections = caps.allowedFormSections;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -107,9 +110,10 @@ const AddProduct = () => {
     initBrands();
   }, [initCategories, initBrands]);
 
-// Quick Commerce categories live in a separate tree from Marketplace.
+  // Quick Commerce categories live in a separate tree from Marketplace.
+  // Only load them if this vendor type supports Quick Commerce.
   useEffect(() => {
-    if (vendor?.sellingChannels?.quickCommerce?.enabled !== true) return;
+    if (!caps.allowedFormSections.quickCommerce) return;
     let cancelled = false;
     const loadQuickCommerceCategories = async () => {
       try {
@@ -124,7 +128,7 @@ const AddProduct = () => {
     };
     loadQuickCommerceCategories();
     return () => { cancelled = true; };
-  }, [vendor?.sellingChannels?.quickCommerce?.enabled]);
+  }, [caps.allowedFormSections.quickCommerce]);
 
   useEffect(() => {
     const fetchTaxRules = async () => {
@@ -811,35 +815,33 @@ const AddProduct = () => {
           </div>
         </div>
 
-        {/* Selling Channels & Bulk Pricing */}
-        <WholesalePricingSection
-          value={wholesaleState}
-          onChange={setWholesaleState}
-          retailPrice={formData.price}
-          stockQuantity={formData.stockQuantity}
-          vendorWholesaleEnabled={vendor?.sellingChannels?.wholesale?.enabled === true}
-          quickCommerceProductEnabled={quickCommerceState?.quickCommerceEnabled === true}
-          vendorQuickCommerceEnabled={vendor?.sellingChannels?.quickCommerce?.enabled === true}
-          onQuickCommerceToggle={(enabled) =>
-            setQuickCommerceState((prev) => ({ ...prev, quickCommerceEnabled: enabled }))
-          }
-          disabled={isSaving}
-        />
+        {/* Wholesale & Bulk Pricing (Wholesale vendors only) */}
+        {sections.wholesalePricing && (
+          <WholesalePricingSection
+            value={wholesaleState}
+            onChange={setWholesaleState}
+            retailPrice={formData.price}
+            stockQuantity={formData.stockQuantity}
+            disabled={isSaving}
+          />
+        )}
 
-        {/* Quick Commerce */}
-        <QuickCommerceProductSection
-          value={quickCommerceState}
-          onChange={setQuickCommerceState}
-          categories={quickCommerceCategories}
-          vendorQuickCommerceEnabled={vendor?.sellingChannels?.quickCommerce?.enabled === true}
-          disabled={isSaving}
-        />
+        {/* Quick Commerce Details (Quick Commerce vendors only) */}
+        {sections.quickCommerce && (
+          <QuickCommerceProductSection
+            value={quickCommerceState}
+            onChange={setQuickCommerceState}
+            categories={quickCommerceCategories}
+            disabled={isSaving}
+          />
+        )}
 
-        {/* Product Variants */}
-        <div>
-          <h2 className="text-base font-bold text-gray-800 mb-2">
-            Product Variants
-          </h2>
+        {/* Product Variants (Retail & Wholesale vendors) */}
+        {sections.variants && (
+          <div>
+            <h2 className="text-base font-bold text-gray-800 mb-2">
+              Product Variants
+            </h2>
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -1104,6 +1106,7 @@ const AddProduct = () => {
             )}
           </div>
         </div>
+        )}
 
         {/* Tags */}
         <div>

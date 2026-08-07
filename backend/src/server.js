@@ -7,6 +7,10 @@ import { validateEnv } from "./config/env.js";
 import { initSocket } from "./socket.js";
 import { startQuickCommerceSweep } from "./services/quickCommerceAlerts.service.js";
 import { QUICK_COMMERCE_SWEEP_INTERVAL_MS } from "./constants/quickCommerce.js";
+import { registerMarketplaceEventHandlers } from "./services/events/marketplaceEventBus.js";
+import { RetryQueueService } from "./services/events/RetryQueueService.js";
+import { sweepExpiredReservations } from "./services/checkout/InventoryReservationService.js";
+import { startOrderRecoveryWorker } from "./services/checkout/OrderRecoveryWorker.js";
 
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
@@ -20,14 +24,37 @@ const startServer = async () => {
     const server = http.createServer(app);
     initSocket(server);
 
-    // Quick Commerce escalation + SLA sweep. Started after the socket so its
-    // admin emits have somewhere to go, and it no-ops entirely while the
-    // platform flag is off.
+    // ── Quick Commerce escalation + SLA sweep ─────────────────────────────────
     startQuickCommerceSweep(QUICK_COMMERCE_SWEEP_INTERVAL_MS);
+
+    // ── Marketplace event handlers ────────────────────────────────────────────
+    registerMarketplaceEventHandlers();
+
+    // ── Persistent retry queue worker (60s poll for failed jobs) ─────────────
+    RetryQueueService.startWorker(60_000);
+
+    // ── Inventory reservation sweep (5 min — releases expired holds) ─────────
+    const reservationSweepInterval = setInterval(async () => {
+      try {
+        const result = await sweepExpiredReservations();
+        if (result.released > 0) {
+          console.log(`[ReservationSweep] Released ${result.released} expired reservation(s).`);
+        }
+      } catch (err) {
+        console.error("[ReservationSweep] Error:", err?.message);
+      }
+    }, 5 * 60_000);
+    reservationSweepInterval.unref();
+
+    // ── Order recovery worker (5 min — resumes stuck paid sessions) ──────────
+    startOrderRecoveryWorker(5 * 60_000);
 
     server.listen(PORT, () => {
       console.log(`Server & WebSocket running on http://localhost:${PORT}`);
       console.log(`🚀 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`✅ InventoryReservation sweep: every 5 minutes`);
+      console.log(`✅ RetryQueue worker:          every 60 seconds`);
+      console.log(`✅ OrderRecovery worker:       every 5 minutes`);
     });
   } catch (error) {
     console.error("📦 Server startup failed:", error.message);

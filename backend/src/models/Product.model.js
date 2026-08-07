@@ -20,6 +20,9 @@ const productSchema = new mongoose.Schema(
             index: true,
         },
         stockQuantity: { type: Number, default: 0, min: 0 },
+        // Stock held in active checkout sessions (not yet committed or released).
+        // Available stock = stockQuantity - reservedQuantity
+        reservedQuantity: { type: Number, default: 0, min: 0 },
         totalAllowedQuantity: { type: Number, min: 0 },
         minimumOrderQuantity: { type: Number, min: 1, default: 1 },
         lowStockThreshold: { type: Number, default: 10 },
@@ -115,17 +118,12 @@ productSchema.index({ isActive: 1, quickCommerceEnabled: 1 });
 productSchema.index({ vendorId: 1, quickCommerceEnabled: 1 });
 productSchema.index({ quickCommerceCategoryId: 1, isActive: 1 });
 
-productSchema.pre('save', function enforceSellingChannel(next) {
-    const retailEnabled = this.retailEnabled !== false;
-    const wholesaleEnabled = this.wholesaleEnabled === true;
-    // A Quick Commerce-only product is valid, so it satisfies the
-    // "at least one channel" requirement on its own.
-    const quickCommerceEnabled = this.quickCommerceEnabled === true;
-    if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
-        return next(new Error('At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for a product.'));
-    }
-    next();
-});
+/**
+ * Product channel flags (quickCommerceEnabled, retailEnabled, wholesaleEnabled)
+ * are auto-synchronized at save time by the product controller based on
+ * vendor.vendorType via VendorCapabilities.
+ * Vendors never control these directly from the UI.
+ */
 
 const Product = mongoose.model('Product', productSchema);
 export { Product };

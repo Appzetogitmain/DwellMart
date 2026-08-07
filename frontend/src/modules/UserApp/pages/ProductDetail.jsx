@@ -470,6 +470,14 @@ const MobileProductDetail = () => {
       return;
     }
 
+    const resolvedFulfillmentType = (() => {
+      if (product.fulfillmentType) return product.fulfillmentType;
+      if (product.experience) return product.experience;
+      if (product.quickCommerceEnabled || product.vendor?.vendorType === 'quick_commerce' || vendor?.vendorType === 'quick_commerce') return 'quick_commerce';
+      if (product.wholesaleEnabled || product.vendor?.vendorType === 'wholesale' || vendor?.vendorType === 'wholesale') return 'wholesale';
+      return 'retail';
+    })();
+
     const addedToCart = addItem({
       id: product.id,
       name: product.name,
@@ -481,6 +489,9 @@ const MobileProductDetail = () => {
       stockQuantity: effectiveStock,
       vendorId: product.vendorId,
       vendorName: vendor?.storeName || vendor?.name || product.vendorName,
+      fulfillmentType: resolvedFulfillmentType,
+      experience: resolvedFulfillmentType,
+      quickCommerceEnabled: product.quickCommerceEnabled,
       // Wholesale snapshot so the cart can price tiers without a round-trip.
       retailEnabled: product.retailEnabled,
       wholesaleEnabled: product.wholesaleEnabled,

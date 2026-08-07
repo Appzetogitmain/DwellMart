@@ -55,11 +55,17 @@ export const ProductWholesaleBadge = ({ product, size = "sm", className = "" }) 
 
 /**
  * Convenience wrapper for vendors — derives the badge from a vendor document's
- * selling channels.
+ * vendorType (canonical identity), with sellingChannels as fallback for legacy records.
  */
 export const VendorWholesaleBadge = ({ vendor, size = "sm", className = "" }) => (
   <WholesaleBadge
-    orderType={vendor?.sellingChannels?.wholesale?.enabled === true ? "wholesale" : "retail"}
+    orderType={
+      vendor?.vendorType === "wholesale"
+        ? "wholesale"
+        : vendor?.sellingChannels?.wholesale?.enabled === true
+          ? "wholesale"
+          : "retail"
+    }
     context="vendor"
     size={size}
     className={className}

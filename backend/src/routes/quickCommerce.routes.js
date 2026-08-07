@@ -322,9 +322,9 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
     }
 
     const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
-
     const distanceKm = haversineDistanceKm(vendorPoint, { latitude, longitude });
-    const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25;
+    const isDevMode = process.env.NODE_ENV !== 'production' || process.env.DISABLE_GEO_FENCING === 'true';
+    const radiusKm = isDevMode ? 10000 : (Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25);
     if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
         return notAvailable('OUT_OF_DELIVERY_RANGE', `${vendor.storeName} does not deliver to your location.`);
     }

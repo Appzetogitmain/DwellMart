@@ -79,9 +79,9 @@ export const useVendorStore = create((set, get) => ({
     }
   },
 
-  updateVendorStatus: async (id, status, reason = "") => {
+  updateVendorStatus: async (id, status, reason = "", vendorType = null) => {
     try {
-      const response = await updateVendorStatusApi(id, status, reason);
+      const response = await updateVendorStatusApi(id, status, reason, vendorType);
       const vendor = normalizeVendor(response?.data ?? response);
       if (!vendor) return false;
       set((state) => ({
@@ -100,6 +100,7 @@ export const useVendorStore = create((set, get) => ({
       return false;
     }
   },
+
 
   updateCommissionRate: async (id, commissionRate) => {
     try {

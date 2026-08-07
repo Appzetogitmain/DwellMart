@@ -13,9 +13,11 @@ import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans } from "../services/vendorService";
 import { formatPrice, getPlaceholderImage } from "../../../shared/utils/helpers";
+import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../shared/config/vendorCapabilities";
 import toast from "react-hot-toast";
 import { DashboardPage, StatCard, StatusBadge } from "../../../shared/components/Dashboard";
 import { Button, Card, Badge } from "../../../shared/components/ui";
+import { WIDGET_REGISTRY } from "../components/DashboardWidgets";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -37,6 +39,8 @@ const VendorDashboard = () => {
   const [plansLoading, setPlansLoading] = useState(true);
 
   const vendorId = vendor?.id;
+  const vendorType = vendor?.vendorType ?? "retail";
+  const caps = useMemo(() => getVendorCapabilities(vendorType), [vendorType]);
   const topProducts = useMemo(() => (Array.isArray(products) ? products.slice(0, 5) : []), [products]);
 
   useEffect(() => {
@@ -143,13 +147,18 @@ const VendorDashboard = () => {
   return (
     <DashboardPage
       title="Dashboard"
-      subtitle={`Welcome back, ${vendor?.storeName || vendor?.name || 'Vendor'}! Here's your store overview.`}
+      subtitle={`Welcome back, ${vendor?.storeName || vendor?.name || 'Vendor'}! Here's your ${VENDOR_TYPE_LABELS[vendorType] ?? ''} store overview.`}
       actions={
-        vendor?.commissionRate !== undefined && (
-          <Badge variant="gold" size="md">
-            Commission Rate: {vendor.commissionRate.toFixed(1)}%
+        <div className="flex items-center gap-2">
+          {vendor?.commissionRate !== undefined && (
+            <Badge variant="gold" size="md">
+              Commission: {vendor.commissionRate.toFixed(1)}%
+            </Badge>
+          )}
+          <Badge variant="info" size="md">
+            {VENDOR_TYPE_LABELS[vendorType] ?? 'Vendor'}
           </Badge>
-        )
+        </div>
       }
     >
       {/* Stats Cards */}
@@ -210,104 +219,35 @@ const VendorDashboard = () => {
         </div>
       </Card>
 
-      {/* Recent Orders & Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
-        <Card variant="default" padding="lg">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-textColor-primary">Recent Orders</h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/vendor/orders")}>
-              View All
-            </Button>
-          </div>
-          {isLoading ? (
-            <p className="text-textColor-muted text-center py-8 font-medium">Loading orders...</p>
-          ) : recentOrders.length > 0 ? (
-            <div className="space-y-3">
-              {recentOrders.map((order) => {
-                const vendorItem = order.vendorItems?.find(
-                  (vi) => vi.vendorId?.toString() === vendorId?.toString()
-                );
-                const displayStatus = vendorItem?.status ?? order.status;
-                const displayAmount =
-                  vendorItem?.subtotal ?? order.totalAmount ?? order.total ?? 0;
-
-                return (
-                  <div
-                    key={order._id ?? order.orderId}
-                    onClick={() =>
-                      navigate(`/vendor/orders/${order.orderId ?? order._id}`)
-                    }
-                    className="flex items-center justify-between p-3 bg-surface-background border border-borderToken-default hover:bg-borderToken-light rounded-card cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <p className="font-bold text-textColor-primary text-sm">
-                        {order.orderId ?? order._id}
-                      </p>
-                      <p className="text-xs text-textColor-muted">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <p className="font-black text-textColor-primary text-sm">
-                        {formatPrice(displayAmount)}
-                      </p>
-                      <StatusBadge status={displayStatus} size="xs" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-textColor-muted text-center py-8 font-medium">No orders yet</p>
-          )}
-        </Card>
-
-        {/* Top Products */}
-        <Card variant="default" padding="lg">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-textColor-primary">Your Products</h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/vendor/products")}>
-              View All
-            </Button>
-          </div>
-          {topProducts.length > 0 ? (
-            <div className="space-y-3">
-              {topProducts.map((product) => (
-                <div
-                  key={product._id ?? product.id}
-                  onClick={() =>
-                    navigate(`/vendor/products/${product._id ?? product.id}`)
-                  }
-                  className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
-                  <img
-                    src={product.image || product.images?.[0]}
-                    alt={product.name}
-                    className="w-12 h-12 object-cover rounded-lg"
-                    onError={(e) => {
-                      e.target.src = getPlaceholderImage(48, 48, "P");
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate">
-                      {product.name}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {formatPrice(product.price || 0)}
-                    </p>
-                  </div>
-                  <StatusBadge
-                    status={product.stock === "in_stock" ? "active" : product.stock === "low_stock" ? "pending" : "out_of_stock"}
-                    size="xs"
-                  />
+      {/* ── Capability-driven widget grid ─────────────────────────────────────── */}
+      {(caps.dashboardLayout?.left?.length > 0 || caps.dashboardLayout?.right?.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left column */}
+          <div className="space-y-4">
+            {(caps.dashboardLayout?.left ?? []).map(widgetKey => {
+              const renderer = WIDGET_REGISTRY[widgetKey];
+              if (!renderer) return null;
+              return (
+                <div key={widgetKey}>
+                  {renderer({ orders: recentOrders, products: topProducts, stats, vendorId, isLoading })}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-textColor-muted text-center py-8 font-medium">No products yet</p>
-          )}
-        </Card>
-      </div>
+              );
+            })}
+          </div>
+          {/* Right column */}
+          <div className="space-y-4">
+            {(caps.dashboardLayout?.right ?? []).map(widgetKey => {
+              const renderer = WIDGET_REGISTRY[widgetKey];
+              if (!renderer) return null;
+              return (
+                <div key={widgetKey}>
+                  {renderer({ orders: recentOrders, products: topProducts, stats, vendorId, isLoading })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Subscription Plans Section */}
       <Card variant="default" padding="lg">

@@ -8,8 +8,10 @@ import SubscriptionExpiredOverlay from '../SubscriptionExpiredOverlay';
 import QuickCommerceOrderAlert from '../QuickCommerceOrderAlert';
 import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 import api from '../../../../shared/utils/api';
+import { useVendorAuthStore } from '../../store/vendorAuthStore';
 
 const VendorLayout = () => {
+  const { refreshProfile } = useVendorAuthStore();
   const [isDesktopOpen, setIsDesktopOpen] = useState(() => {
     const saved = localStorage.getItem('vendor_sidebar_open');
     return saved !== null ? JSON.parse(saved) : true;
@@ -22,6 +24,10 @@ const VendorLayout = () => {
 
   const navigate = useNavigate();
   const headerHeight = useAdminHeaderHeight();
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   const toggleSidebar = () => {
     if (window.innerWidth >= 1024) {
@@ -95,11 +101,7 @@ const VendorLayout = () => {
       />
 
       {/* Main Content */}
-      <div
-        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 bg-slate-900 ${
-          isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
-        }`}
-      >
+      <div className="flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 bg-slate-900">
         {/* Header with embedded Subscription Warning Banner */}
         <VendorHeader
           onMenuClick={toggleSidebar}

@@ -10,6 +10,8 @@ import {
   FiArrowLeft,
   FiShoppingBag,
   FiTag,
+  FiZap,
+  FiPackage,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiLock } from "react-icons/fi";
@@ -23,7 +25,7 @@ import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cart
 import { getCashfreeInstance } from "../../../shared/utils/cashfreeLoader";
 import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { getQuickCommerceCheckoutEstimate } from "../../../shared/services/quickCommerceService";
-import { EXPERIENCES, getLocationQueryParams } from "../../../shared/utils/experience";
+import { getLocationQueryParams } from "../../../shared/utils/experience";
 import { formatEtaRange } from "../../../shared/utils/quickCommerceEta";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
@@ -107,19 +109,24 @@ const MobileCheckout = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
-  const { items, getTotal, getTotalSavings, getLinePricing, clearCart, getItemsByVendor } = useCartStore();
+  const { items, getTotal, getTotalSavings, getLinePricing, clearCart, getItemsByFulfillment } = useCartStore();
   const getLineUnitPrice = (item) => getLinePricing(item).unitPrice;
   const { user, isAuthenticated } = useAuthStore();
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
-  const { createOrder } = useOrderStore();
-  const experience = useExperienceStore((state) => state.experience);
+  const { createCheckoutSession, confirmCheckout } = useOrderStore();
   const quickLocation = useExperienceStore((state) => state.location);
-  const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
+  // Detect if ANY items in cart are QC (for fee + ETA estimation)
+  const fulfillmentGroups = useMemo(() => getItemsByFulfillment(), [items, getItemsByFulfillment]);
+  const isQuickCommerce = fulfillmentGroups.some((fg) => fg.fulfillmentType === 'quick_commerce');
 
-  // Group items by vendor
+  // Group items by fulfillment type (for order summary display)
   const itemsByVendor = useMemo(
-    () => getItemsByVendor(),
-    [items, getItemsByVendor]
+    () => {
+      // Flatten all vendor groups from all fulfillment groups for legacy displays
+      return fulfillmentGroups.flatMap((fg) => fg.vendors);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, getItemsByFulfillment]
   );
 
   const [step, setStep] = useState(1);
@@ -262,15 +269,27 @@ const MobileCheckout = () => {
 
   const total = getTotal();
   const bulkSavings = getTotalSavings();
-  // Quick Commerce charges a distance-based delivery fee plus a per-store
-  // packaging fee. Both come from the server so the displayed total is the
-  // amount charged; the Marketplace keeps its own shipping estimate untouched.
-  const shipping = isQuickCommerce
-    ? Number(quickEstimate?.deliveryFee) || 0
-    : typeof estimatedShipping === "number"
-      ? estimatedShipping
-      : calculateShippingFallback();
-  const packagingFee = isQuickCommerce ? Number(quickEstimate?.packagingFee) || 0 : 0;
+  
+  // Isolated multi-fulfillment shipping sum across all groups
+  const shipping = useMemo(() => {
+    return fulfillmentGroups.reduce((acc, fg) => {
+      if (fg.fulfillmentType === 'quick_commerce') {
+        return acc + (quickEstimate?.available ? Number(quickEstimate.deliveryFee || 0) : Number(fg.deliveryFee || 25));
+      }
+      return acc + Number(fg.deliveryFee || 0);
+    }, 0);
+  }, [fulfillmentGroups, quickEstimate]);
+
+  // Isolated multi-fulfillment packaging fee sum across all groups
+  const packagingFee = useMemo(() => {
+    return fulfillmentGroups.reduce((acc, fg) => {
+      if (fg.fulfillmentType === 'quick_commerce') {
+        return acc + (quickEstimate?.available ? Number(quickEstimate.packagingFee || 0) : Number(fg.packagingFee || 5));
+      }
+      return acc + Number(fg.packagingFee || 0);
+    }, 0);
+  }, [fulfillmentGroups, quickEstimate]);
+
   const discount = appliedCoupon ? appliedDiscount : 0;
   // Mirror the backend's per-product tax arithmetic (inclusive vs exclusive)
   // so the displayed total matches the amount actually charged.
@@ -558,49 +577,64 @@ const MobileCheckout = () => {
     } else if (step === 2) {
       setIsPlacingOrder(true);
       try {
-        const order = await createOrder({
-          userId: isAuthenticated ? user?.id : null,
-          items: items,
+        // ── Enterprise Checkout: Session → Payment → Confirm ────────────────
+        const customerLocation = isQuickCommerce && quickLocation?.latitude
+          ? { latitude: quickLocation.latitude, longitude: quickLocation.longitude }
+          : null;
+
+        // 1. Create CheckoutSession (idempotent, validates cart server-side)
+        const sessionResult = await createCheckoutSession({
+          items: items.map((item) => ({
+            ...item,
+            productId: item.id,
+            fulfillmentType: item.fulfillmentType || (item.quickCommerceEnabled ? 'quick_commerce' : item.wholesaleEnabled ? 'wholesale' : 'retail'),
+          })),
           shippingAddress: normalizedShipping,
           paymentMethod: formData.paymentMethod,
-          subtotal: total,
-          shipping: shipping,
-          tax: tax,
-          discount: discount,
-          total: finalTotal,
-          couponCode: appliedCoupon ? (appliedCoupon.code || couponCode.trim().toUpperCase()) : null,
+          couponCode: appliedCoupon ? (appliedCoupon.code || couponCode.trim().toUpperCase()) : undefined,
+          customerLocation,
           shippingOption,
         });
 
-        const targetOrderId = order.orderId || order.id || order._id;
-        const isOnlinePayment = ['card', 'upi', 'wallet', 'netbanking'].includes(String(formData.paymentMethod).toLowerCase());
+        const { sessionId } = sessionResult;
 
+        // 2. Payment Gateway (for online payments)
+        const isOnlinePayment = ['card', 'upi', 'wallet', 'netbanking'].includes(String(formData.paymentMethod).toLowerCase());
         if (isOnlinePayment) {
           try {
             const sessionRes = await api.post('/payments/cashfree/session', {
-              orderId: targetOrderId,
+              checkoutSessionId: sessionId,
               email: formData.email || user?.email,
             });
             const { paymentSessionId, environment } = sessionRes.data?.data || sessionRes.data || {};
-
             if (paymentSessionId) {
               const cashfree = await getCashfreeInstance(environment || 'sandbox');
               await cashfree.checkout({
                 paymentSessionId,
                 redirectTarget: "_modal",
               });
-              await api.post('/payments/cashfree/verify', { orderId: targetOrderId });
             }
           } catch (cfErr) {
-            console.warn("Cashfree checkout notice:", cfErr);
+            console.warn('Cashfree checkout notice:', cfErr);
           }
         }
 
+        // 3. Confirm → OrderSplitterEngine creates independent sub-orders
+        const confirmResult = await confirmCheckout({ sessionId });
+        const { orders = [] } = confirmResult;
+
         clearCart();
-        toast.success(t("Order placed successfully!"));
-        navigate(`/order-confirmation/${targetOrderId}`);
+        toast.success(t('Order placed successfully!'));
+
+        // Navigate to first order or order-confirmation page
+        if (orders.length === 1) {
+          navigate(`/order-confirmation/${orders[0].orderId}`);
+        } else {
+          // Mixed cart: show the session summary page
+          navigate(`/order-confirmation?session=${sessionId}`);
+        }
       } catch (error) {
-        toast.error(t(error?.message || "Failed to place order"));
+        toast.error(t(error?.message || 'Failed to place order'));
       } finally {
         setIsPlacingOrder(false);
       }
@@ -856,94 +890,131 @@ const MobileCheckout = () => {
                       ))}
                     </div>
 
-                    {/* Quick Commerce delivery — fees and ETA come from the server */}
-                    {isQuickCommerce && (
-                      <div className="mb-6">
-                        <h3 className="text-base font-semibold text-content mb-3">
-                          {t('Delivery')}
-                        </h3>
-                        <div className="rounded-xl border-2 border-border p-4 space-y-2 bg-surface-muted">
-                          {isEstimatingQuick && !quickEstimate ? (
-                            <p className="text-sm text-content-secondary">
-                              {t('Calculating delivery fee and ETA...')}
-                            </p>
-                          ) : quickEstimate?.available ? (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-content">
-                                  {t('Arriving in')}
-                                </span>
-                                <span className="text-sm font-bold text-brand-primary">
-                                  {formatEtaRange(quickEstimate?.eta?.etaMinutes)}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between text-sm text-content-secondary">
-                                <span>{t('Delivery Fee')}</span>
-                                <span>
-                                  {shipping === 0 ? t('FREE') : formatPrice(shipping)}
-                                </span>
-                              </div>
-                              {packagingFee > 0 && (
-                                <div className="flex items-center justify-between text-sm text-content-secondary">
-                                  <span>{t('Packaging Fee')}</span>
-                                  <span>{formatPrice(packagingFee)}</span>
+                    {/* Per-Fulfillment Group Delivery Promises Breakdown */}
+                    <div className="mb-6 space-y-3">
+                      <h3 className="text-base font-bold text-content flex items-center gap-2">
+                        <FiTruck className="text-brand-primary" />
+                        <span>Delivery & Logistics Promises</span>
+                      </h3>
+                      <div className="space-y-3">
+                        {fulfillmentGroups.map((fg) => {
+                          if (fg.fulfillmentType === 'quick_commerce') {
+                            const qcFee = quickEstimate?.available ? Number(quickEstimate.deliveryFee || 0) : Number(fg.deliveryFee || 25);
+                            const qcPkg = quickEstimate?.available ? Number(quickEstimate.packagingFee || 0) : Number(fg.packagingFee || 5);
+                            const etaLabel = isEstimatingQuick && !quickEstimate ? 'Calculating...' : (quickEstimate?.available ? formatEtaRange(quickEstimate?.eta?.etaMinutes) : fg.etaWindow || '15–25 min');
+
+                            return (
+                              <div key="quick_commerce" className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/40 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                      <FiZap className="text-lg" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-extrabold text-emerald-900 dark:text-emerald-300 text-sm">⚡ Quick Commerce (Express Delivery)</h4>
+                                      <p className="text-xs text-content-secondary font-medium">Express Daily Store</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/30">
+                                    {etaLabel}
+                                  </span>
                                 </div>
-                              )}
-                            </>
-                          ) : (
-                            <div className="space-y-3">
-                              <p className="text-sm text-status-error">
-                                {quickBlockReason || t('Delivery is not available for this cart right now.')}
-                              </p>
-                              {!hasPreciseQuickLocation && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (navigator.geolocation) {
-                                      navigator.geolocation.getCurrentPosition(
-                                        (pos) => {
-                                          useExperienceStore.getState().setLocation({
-                                            latitude: pos.coords.latitude,
-                                            longitude: pos.coords.longitude,
-                                            label: "Current Location",
-                                            source: "gps",
-                                          });
-                                          toast.success("Location updated to current GPS!");
-                                        },
-                                        () => {
-                                          useExperienceStore.getState().setLocation({
-                                            latitude: 28.6139,
-                                            longitude: 77.2090,
-                                            label: "Test Location (New Delhi)",
-                                            source: "manual",
-                                          });
-                                          toast.success("Test location set!");
-                                        }
-                                      );
-                                    } else {
-                                      useExperienceStore.getState().setLocation({
-                                        latitude: 28.6139,
-                                        longitude: 77.2090,
-                                        label: "Test Location (New Delhi)",
-                                        source: "manual",
-                                      });
-                                      toast.success("Test location set!");
-                                    }
-                                  }}
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-primary text-black font-semibold text-xs rounded-lg hover:bg-brand-primaryHover transition-all shadow-sm"
-                                >
-                                  <FiMapPin className="text-sm" />
-                                  Detect GPS / Set Test Location
-                                </button>
-                              )}
+
+                                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-emerald-500/20">
+                                  <div className="flex justify-between text-content-secondary font-medium">
+                                    <span>Delivery Fee:</span>
+                                    <span className="font-bold text-content">
+                                      {qcFee === 0 ? 'FREE' : formatPrice(qcFee)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-content-secondary font-medium">
+                                    <span>Packaging:</span>
+                                    <span className="font-bold text-content">
+                                      {formatPrice(qcPkg)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {quickBlockReason && (
+                                  <p className="text-xs text-status-error pt-1">{quickBlockReason}</p>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (fg.fulfillmentType === 'wholesale') {
+                            const wholesaleFee = Number(fg.deliveryFee || 150);
+
+                            return (
+                              <div key="wholesale" className="p-4 rounded-2xl border border-purple-500/30 bg-purple-50/60 dark:bg-purple-950/40 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                                      <FiTruck className="text-lg" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-extrabold text-purple-900 dark:text-purple-300 text-sm">🏭 Wholesale (B2B Bulk Freight)</h4>
+                                      <p className="text-xs text-content-secondary font-medium">Mega Bulk Depot</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-500/30">
+                                    {fg.etaWindow || 'Lead Time: 5–7 Business Days'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-purple-500/20">
+                                  <div className="flex justify-between text-content-secondary font-medium">
+                                    <span>Freight Shipping:</span>
+                                    <span className="font-bold text-content">
+                                      {wholesaleFee === 0 ? 'FREE' : formatPrice(wholesaleFee)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-content-secondary font-medium">
+                                    <span>GST Tax Invoice:</span>
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Included ✓</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Default Retail
+                          const retailFee = Number(fg.deliveryFee ?? 70);
+
+                          return (
+                            <div key="retail" className="p-4 rounded-2xl border border-blue-500/30 bg-blue-50/60 dark:bg-blue-950/40 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                    <FiPackage className="text-lg" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-extrabold text-blue-900 dark:text-blue-300 text-sm">📦 Standard Retail (Shipment)</h4>
+                                    <p className="text-xs text-content-secondary font-medium">Marketplace Vendors</p>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-800 dark:text-blue-200 border border-blue-500/30">
+                                  {fg.etaWindow || 'Delivery: 4–6 Days'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-blue-500/20">
+                                <div className="flex justify-between text-content-secondary font-medium">
+                                  <span>Standard Shipping:</span>
+                                  <span className="font-bold text-content">
+                                    {retailFee === 0 ? 'FREE' : formatPrice(retailFee)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-content-secondary font-medium">
+                                  <span>Tracking:</span>
+                                  <span className="font-bold text-content">Live Tracking</span>
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          {quickEstimate?.available && quickBlockReason && (
-                            <p className="text-sm text-status-error pt-1">{quickBlockReason}</p>
-                          )}
-                        </div>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
 
                     {/* Shipping Options */}
                     {!isQuickCommerce && total < 100 && (
@@ -1095,15 +1166,16 @@ const MobileCheckout = () => {
                     {/* Order Summary (Mobile Only) */}
                     <div className="glass-card rounded-xl p-4 lg:hidden">
                       <OrderSummary
+                        fulfillmentGroups={fulfillmentGroups}
                         itemsByVendor={itemsByVendor}
                         total={total}
                         discount={discount}
                         shipping={shipping}
                         packagingFee={packagingFee}
-                        shippingLabel={isQuickCommerce ? "Delivery Fee" : null}
                         tax={tax}
                         finalTotal={finalTotal}
                         bulkSavings={bulkSavings}
+                        quickEstimate={quickEstimate}
                         formatPrice={formatPrice}
                       />
                     </div>
@@ -1116,18 +1188,46 @@ const MobileCheckout = () => {
                 <div className="sticky top-24 space-y-4">
                   <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
                     <OrderSummary
+                      fulfillmentGroups={fulfillmentGroups}
                       itemsByVendor={itemsByVendor}
                       total={total}
                       discount={discount}
                       shipping={shipping}
                       packagingFee={packagingFee}
-                      shippingLabel={isQuickCommerce ? "Delivery Fee" : null}
                       tax={tax}
                       finalTotal={finalTotal}
                       bulkSavings={bulkSavings}
+                      quickEstimate={quickEstimate}
                       formatPrice={formatPrice}
                     />
-                    <div className="p-4 border-t border-border bg-surface-muted space-y-2">
+                    <div className="p-4 border-t border-border bg-surface-muted space-y-3">
+                      {step === 2 && fulfillmentGroups.length > 1 && (
+                        <div className="p-3.5 rounded-xl bg-slate-900 border border-amber-500/40 text-xs space-y-2">
+                          <div className="flex items-center gap-2 font-extrabold text-amber-400">
+                            <FiPackage className="text-sm" />
+                            <span>Order Splitting Notice</span>
+                          </div>
+                          <p className="text-slate-300 text-[11px] leading-relaxed">
+                            Your purchase will automatically be split into <strong>{fulfillmentGroups.length} independent sub-orders</strong>:
+                          </p>
+                          <ul className="space-y-1 text-[11px] font-medium text-slate-200 pl-1">
+                            {fulfillmentGroups.map((fg) => (
+                              <li key={fg.fulfillmentType} className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                <span>
+                                  {fg.fulfillmentType === 'quick_commerce' ? '1 Quick Commerce Order (15–25 min)' :
+                                   fg.fulfillmentType === 'wholesale' ? '1 Wholesale Order (5–7 Business Days)' :
+                                   '1 Retail Order (4–6 Days)'}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-800">
+                            You will be able to track each order independently in your Order History.
+                          </p>
+                        </div>
+                      )}
+
                       {step === 2 && isQuickCommerce && quickBlockReason && (
                         <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-medium">
                           ⚠️ {quickBlockReason}
@@ -1161,6 +1261,11 @@ const MobileCheckout = () => {
 
             {/* Navigation Buttons (Mobile Fixed Bottom) */}
             <div className="fixed bottom-16 left-0 right-0 bg-surface border-t border-border p-4 z-40 safe-area-bottom lg:hidden">
+              {step === 2 && fulfillmentGroups.length > 1 && (
+                <div className="mb-2 p-2.5 rounded-xl bg-slate-900 border border-amber-500/40 text-[11px] text-slate-200">
+                  ℹ️ Order will be split into <strong>{fulfillmentGroups.length} independent shipments</strong> ({fulfillmentGroups.map(fg => fg.fulfillmentType === 'quick_commerce' ? 'QC 15–25m' : fg.fulfillmentType === 'wholesale' ? 'Wholesale 5–7d' : 'Retail 4–6d').join(', ')}).
+                </div>
+              )}
               {step === 2 && isQuickCommerce && quickBlockReason && (
                 <div className="mb-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 text-xs font-medium">
                   ⚠️ {quickBlockReason}

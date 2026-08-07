@@ -5,6 +5,7 @@ import {
     QUICK_COMMERCE_AVAILABILITY,
     QUICK_COMMERCE_AVAILABILITY_VALUES,
 } from '../constants/quickCommerce.js';
+import { VendorCapabilities, VENDOR_TYPE_VALUES } from '../constants/vendorCapabilities.js';
 
 const vendorSchema = new mongoose.Schema(
     {
@@ -16,6 +17,17 @@ const vendorSchema = new mongoose.Schema(
         storeName: { type: String, required: true },
         storeLogo: { type: String },
         storeDescription: { type: String },
+        /**
+         * vendorType — immutable business identity assigned by Super Admin.
+         * Drives sidebar, product forms, settings, order workflows, and permissions.
+         * Vendors cannot change this. Only Super Admin can.
+         */
+        vendorType: {
+            type: String,
+            enum: VENDOR_TYPE_VALUES,
+            default: 'retail',
+            index: true,
+        },
         status: {
             type: String,
             enum: ['pending', 'approved', 'suspended', 'rejected'],
@@ -194,14 +206,19 @@ vendorSchema.pre('save', function syncCountry(next) {
     next();
 });
 
-vendorSchema.pre('save', function enforceSellingChannel(next) {
-    const retailEnabled = this.sellingChannels?.retail?.enabled !== false;
-    const wholesaleEnabled = this.sellingChannels?.wholesale?.enabled === true;
-    // A Quick Commerce-only vendor (e.g. a dark store) is valid, so it counts
-    // toward the "at least one channel" requirement.
-    const quickCommerceEnabled = this.sellingChannels?.quickCommerce?.enabled === true;
-    if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
-        return next(new Error('At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.'));
+/**
+ * Auto-sync sellingChannels from VendorCapabilities based on vendorType.
+ * Vendors never control this — it is derived automatically.
+ * Kept internally for search indexing, catalog routing, and analytics.
+ */
+vendorSchema.pre('save', function syncChannelsFromVendorType(next) {
+    const caps = VendorCapabilities[this.vendorType];
+    if (caps?.internalChannels) {
+        this.sellingChannels = {
+            retail:        { enabled: caps.internalChannels.retail === true },
+            wholesale:     { enabled: caps.internalChannels.wholesale === true },
+            quickCommerce: { enabled: caps.internalChannels.quickCommerce === true },
+        };
     }
     next();
 });
@@ -227,12 +244,17 @@ vendorSchema.methods.toPublicVendor = function () {
 
     return {
         ...obj,
+        vendorType: this.vendorType || 'retail',
+        // Derived helpers for backward-compat with any existing consumer code
         supportsMarketplace: this.sellingChannels?.retail?.enabled !== false,
         supportsWholesale: this.sellingChannels?.wholesale?.enabled === true,
         supportsQuickCommerce: this.sellingChannels?.quickCommerce?.enabled === true,
     };
 };
 
+vendorSchema.index({ status: 1, vendorType: 1 });
+vendorSchema.index({ vendorType: 1 });
+// Keep channel indexes for catalog/search that still uses sellingChannels internally
 vendorSchema.index({ status: 1, 'sellingChannels.wholesale.enabled': 1 });
 vendorSchema.index({ 'sellingChannels.wholesale.enabled': 1 });
 

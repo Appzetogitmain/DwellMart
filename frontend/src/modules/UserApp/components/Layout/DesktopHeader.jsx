@@ -145,8 +145,9 @@ const DesktopHeader = ({ hideSellButton = false }) => {
 
             {/* Cart */}
             <button
+              data-cart-icon
               onClick={toggleCart}
-              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors"
+              className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors cursor-pointer"
               title="Shopping Cart">
               <FiShoppingBag className="text-base lg:text-lg xl:text-xl" />
               {itemCount > 0 && (

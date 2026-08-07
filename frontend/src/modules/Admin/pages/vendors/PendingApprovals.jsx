@@ -5,7 +5,9 @@ import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ConfirmModal from "../../components/ConfirmModal";
 import { useVendorStore } from "../../store/vendorStore";
+import { VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
 import toast from "react-hot-toast";
+
 
 const PendingApprovals = () => {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ const PendingApprovals = () => {
     initialize();
   }, [initialize]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVendorType, setSelectedVendorType] = useState('');
   const [actionModal, setActionModal] = useState({
     isOpen: false,
     type: null, // 'approve', 'reject'
@@ -168,17 +171,15 @@ const PendingApprovals = () => {
   ];
 
   const handleApprove = async () => {
-    const success = await updateVendorStatus(actionModal.vendorId, "approved");
+    if (!selectedVendorType) {
+      toast.error('Please select a vendor type before approving.');
+      return;
+    }
+    const success = await updateVendorStatus(actionModal.vendorId, "approved", '', selectedVendorType);
     if (success) {
       toast.success("Vendor approved successfully");
-      setActionModal({
-        isOpen: false,
-        type: null,
-        vendorId: null,
-        vendorName: null,
-        documentLabel: null,
-        documentUrl: null,
-      });
+      setActionModal({ isOpen: false, type: null, vendorId: null, vendorName: null, documentLabel: null, documentUrl: null });
+      setSelectedVendorType('');
     } else {
       toast.error("Failed to approve vendor");
     }
@@ -220,13 +221,42 @@ const PendingApprovals = () => {
     if (actionModal.type === "approve") {
       return {
         title: "Approve Vendor?",
-        message: `Are you sure you want to approve "${actionModal.vendorName}"? They will be able to start selling on the platform.`,
+        message: `Approving "${actionModal.vendorName}" will allow them to start selling. Select their business type first — this determines their dashboard, features, and order workflows.`,
         confirmText: "Approve",
         onConfirm: handleApprove,
         type: "success",
         customContent: (
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
             {renderDocumentLink()}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Vendor Type <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(VENDOR_TYPE_LABELS).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`flex flex-col items-center justify-center p-3 border-2 rounded-xl cursor-pointer transition-all text-center ${
+                      selectedVendorType === value
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}>
+                    <input
+                      type="radio"
+                      name="vendorType"
+                      value={value}
+                      checked={selectedVendorType === value}
+                      onChange={() => setSelectedVendorType(value)}
+                      className="sr-only"
+                    />
+                    <span className="font-semibold text-sm">{label}</span>
+                  </label>
+                ))}
+              </div>
+              {!selectedVendorType && (
+                <p className="text-xs text-red-500 mt-1">⚠ Vendor type is required to approve.</p>
+              )}
+            </div>
           </div>
         )
       };

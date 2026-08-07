@@ -55,6 +55,7 @@ import {
     productIdParamSchema,
 } from '../validators/product.validator.js';
 import { uploadSingle, uploadMultiple, uploadDocumentSingle } from '../../../middlewares/upload.js';
+import { productCapabilityGuard } from '../middleware/productCapabilityGuard.js';
 
 const router = Router();
 const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus, checkSubscription];
@@ -120,14 +121,14 @@ router.get('/products/tax-pricing-rules', ...vendorAuth, getTaxPricingRules);
 router.get('/products/template/excel', ...vendorAuth, downloadExcelTemplate);
 router.get('/products/template/csv', ...vendorAuth, downloadCsvTemplate);
 router.post('/products/bulk-upload/validate', ...vendorAuth, uploadMiddleware, validateUpload);
-router.post('/products/bulk-upload/process', ...vendorAuth, processUpload);
+router.post('/products/bulk-upload/process', ...vendorAuth, productCapabilityGuard, processUpload);
 router.get('/products/bulk-upload/job/:jobId', ...vendorAuth, checkJobStatus);
 router.post('/products/bulk-upload/job/:jobId/cancel', ...vendorAuth, cancelJobHandler);
 router.get('/products/bulk-upload/history', ...vendorAuth, getImportHistory);
 router.get('/products/export', ...vendorAuth, exportProducts);
 router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
-router.post('/products', ...vendorAuth, validate(createProductSchema), productController.createProduct);
-router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), productController.updateProduct);
+router.post('/products', ...vendorAuth, productCapabilityGuard, validate(createProductSchema), productController.createProduct);
+router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productCapabilityGuard, validate(updateProductSchema), productController.updateProduct);
 router.delete('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.deleteProduct);
 router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
 

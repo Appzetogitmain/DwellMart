@@ -11,8 +11,8 @@ import { formatPrice, getPlaceholderImage, getImageUrl } from "../../../../share
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
-import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import { exportVendorProductsCatalog } from "../../services/vendorService";
+import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
 import api from "../../../../shared/utils/api";
 
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
@@ -25,9 +25,11 @@ const ManageProducts = () => {
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
   const { categories, initialize: initCategories } = useCategoryStore();
-  const { settings, initialize: initSettings } = useSettingsStore();
-  const wholesaleMarketplaceEnabled =
-    settings?.features?.wholesaleMarketplaceEnabled === true;
+
+  // ── Capability-driven filter list ──────────────────────────────────────────
+  const vendorType = vendor?.vendorType ?? "retail";
+  const caps = getVendorCapabilities(vendorType);
+  const activeFilters = caps.productListFilters ?? [];
 
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -35,21 +37,20 @@ const ManageProducts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedChannel, setSelectedChannel] = useState("all");
-  const [deleteModal, setDeleteModal] = useState({
-    isOpen: false,
-    productId: null,
-  });
+  // Extra filter state driven by activeFilters
+  const [filterMoq, setFilterMoq] = useState("all");          // wholesale
+  const [filterPerishable, setFilterPerishable] = useState("all"); // qc
+
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, productId: null });
 
   const vendorId = vendor?.id;
 
   useEffect(() => {
     initCategories();
-    initSettings();
     if (vendorId) {
       fetchProducts({ fetchAll: true, limit: 200 });
     }
-  }, [vendorId, initCategories, initSettings, fetchProducts]);
+  }, [vendorId, initCategories, fetchProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -67,19 +68,30 @@ const ManageProducts = () => {
     if (selectedCategory !== "all") {
       filtered = filtered.filter(
         (product) =>
-          String(product.categoryId?._id ?? product.categoryId ?? "") ===
-          selectedCategory
+          String(product.categoryId?._id ?? product.categoryId ?? "") === selectedCategory
       );
     }
 
-    if (selectedChannel === "retail") {
-      filtered = filtered.filter((product) => product.retailEnabled !== false);
-    } else if (selectedChannel === "wholesale") {
-      filtered = filtered.filter((product) => product.wholesaleEnabled === true);
+    // QC-specific: perishable filter
+    if (activeFilters.includes("perishable") && filterPerishable !== "all") {
+      filtered = filtered.filter((product) =>
+        filterPerishable === "yes"
+          ? product.quickCommerce?.isPerishable === true
+          : product.quickCommerce?.isPerishable !== true
+      );
+    }
+
+    // Wholesale-specific: MOQ filter
+    if (activeFilters.includes("moq") && filterMoq !== "all") {
+      filtered = filtered.filter((product) =>
+        filterMoq === "enabled"
+          ? product.wholesale?.moqEnabled === true
+          : product.wholesale?.moqEnabled !== true
+      );
     }
 
     return filtered;
-  }, [products, searchQuery, selectedStatus, selectedCategory, selectedChannel]);
+  }, [products, searchQuery, selectedStatus, selectedCategory, filterPerishable, filterMoq, activeFilters]);
 
   const handleActionClick = (targetPath) => {
     api.get('/vendor/subscription')
@@ -151,25 +163,6 @@ const ManageProducts = () => {
         />
       ),
     },
-    ...(wholesaleMarketplaceEnabled
-      ? [
-          {
-            key: "wholesaleEnabled",
-            label: "Channels",
-            sortable: false,
-            render: (_, row) => {
-              const retail = row.retailEnabled !== false;
-              const wholesale = row.wholesaleEnabled === true;
-              return (
-                <div className="flex flex-wrap items-center gap-1">
-                  {retail && <Badge variant="info">Retail</Badge>}
-                  {wholesale && <Badge variant="success">Wholesale</Badge>}
-                </div>
-              );
-            },
-          },
-        ]
-      : []),
     {
       key: "actions",
       label: "Actions",
@@ -252,30 +245,90 @@ const ManageProducts = () => {
         </div>
       }
     >
-      {wholesaleMarketplaceEnabled && (
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
-          <label
-            htmlFor="channel-filter"
-            className="text-sm font-semibold text-gray-700"
-          >
-            Selling Channel
-          </label>
-          <div className="w-full sm:w-56">
-            <AnimatedSelect
-              name="channel-filter"
-              value={selectedChannel}
-              onChange={(e) => setSelectedChannel(e.target.value)}
-              options={[
-                { value: "all", label: "All Channels" },
-                { value: "retail", label: "Retail" },
-                { value: "wholesale", label: "Wholesale" },
-              ]}
-            />
+      {/* Capability-driven filter bar — only shows filters relevant to this vendor type */}
+      {activeFilters.length > 0 && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+          {/* Stock Status — all types */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Status</label>
+            <div className="w-40">
+              <AnimatedSelect
+                name="status-filter"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                options={[
+                  { value: "all",          label: "All Status" },
+                  { value: "in_stock",     label: "In Stock" },
+                  { value: "low_stock",    label: "Low Stock" },
+                  { value: "out_of_stock", label: "Out of Stock" },
+                ]}
+              />
+            </div>
           </div>
+
+          {/* Category — all types */}
+          {activeFilters.includes("category") && categories.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
+              <div className="w-48">
+                <AnimatedSelect
+                  name="category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  options={[
+                    { value: "all", label: "All Categories" },
+                    ...categories.map((cat) => ({
+                      value: String(cat._id ?? cat.id),
+                      label: cat.name,
+                    })),
+                  ]}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* QC: Perishable filter */}
+          {activeFilters.includes("perishable") && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Perishable</label>
+              <div className="w-40">
+                <AnimatedSelect
+                  name="perishable-filter"
+                  value={filterPerishable}
+                  onChange={(e) => setFilterPerishable(e.target.value)}
+                  options={[
+                    { value: "all", label: "All Products" },
+                    { value: "yes", label: "Perishable" },
+                    { value: "no",  label: "Non-Perishable" },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Wholesale: MOQ filter */}
+          {activeFilters.includes("moq") && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">MOQ</label>
+              <div className="w-44">
+                <AnimatedSelect
+                  name="moq-filter"
+                  value={filterMoq}
+                  onChange={(e) => setFilterMoq(e.target.value)}
+                  options={[
+                    { value: "all",      label: "All Products" },
+                    { value: "enabled",  label: "MOQ Enabled" },
+                    { value: "disabled", label: "No MOQ" },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       <DataTable
+
         columns={columns}
         data={filteredProducts}
         loading={isLoading}

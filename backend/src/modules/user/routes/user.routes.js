@@ -13,6 +13,7 @@ import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.
 import { authLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
+import * as checkoutController from '../controllers/checkout.controller.js';
 import {
     registerSchema,
     loginSchema,
@@ -76,6 +77,16 @@ router.patch('/orders/:id/cancel', ...customerAuth, orderController.cancelOrder)
 router.post('/orders/:id/returns', ...customerAuth, validate(createReturnRequestSchema), orderController.createReturnRequest);
 router.get('/returns', ...customerAuth, orderController.getUserReturnRequests);
 router.get('/returns/:id', ...customerAuth, orderController.getUserReturnRequestById);
+
+// ── Enterprise Checkout routes ────────────────────────────────────────────────
+// Validate cart items (lightweight, no order created)
+router.post('/checkout/validate', checkoutController.validateCartHandler);
+// Create a CheckoutSession (authorization step)
+router.post('/checkout/session', ...customerAuth, checkoutController.createCheckoutSession);
+// Confirm checkout → runs OrderSplitterEngine → creates Orders
+router.post('/checkout/confirm', ...customerAuth, checkoutController.confirmCheckout);
+// Retrieve a session by ID
+router.get('/checkout/session/:sessionId', ...customerAuth, checkoutController.getCheckoutSession);
 
 // Notification routes (protected)
 router.get('/notifications', ...customerAuth, notificationController.getUserNotifications);

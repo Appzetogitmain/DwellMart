@@ -18,6 +18,7 @@ import { formatPrice } from "../../../shared/utils/helpers";
 import { filterByDateRange, getDateRange } from "../../Admin/utils/adminHelpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { getVendorAnalyticsOverview } from "../services/vendorService";
+import { getVendorCapabilities } from "../../../shared/config/vendorCapabilities";
 
 const Analytics = () => {
   const { vendor } = useVendorAuthStore();
@@ -34,8 +35,9 @@ const Analytics = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
-  // Wholesale analytics are only meaningful for vendors selling on that channel.
-  const showWholesale = vendor?.sellingChannels?.wholesale?.enabled === true;
+  const caps = getVendorCapabilities(vendor?.vendorType ?? 'retail');
+  // Wholesale analytics section only visible for vendors with bulk pricing capability.
+  const showWholesale = caps.features.bulkPricing === true;
 
   useEffect(() => {
     if (!vendorId) {

@@ -116,71 +116,14 @@ const WholesalePricingSection = ({
     : null;
 
   return (
-    <div>
-      <h2 className="text-base font-bold text-gray-800 mb-2 flex items-center gap-2">
-        <FiPackage className="text-lg" />
-        Selling Channels &amp; Bulk Pricing
-      </h2>
+    <div className="bg-purple-50/40 border border-purple-200/80 rounded-xl p-3 sm:p-4 space-y-4">
+      <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+        <FiPackage className="text-purple-600 text-base" />
+        Wholesale &amp; Bulk Pricing
+      </h3>
 
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 p-3 border border-gray-200 rounded-lg">
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={retailEnabled}
-              disabled={disabled}
-              onChange={(e) => emit({ retailEnabled: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            Retail
-          </label>
-          {wholesaleMarketplaceEnabled && (
-            <label
-              className={`flex items-center gap-2 text-sm ${
-                vendorWholesaleEnabled ? "text-gray-700 cursor-pointer" : "text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={wholesaleEnabled}
-                disabled={disabled || !vendorWholesaleEnabled}
-                onChange={(e) => emit({ wholesaleEnabled: e.target.checked })}
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
-              />
-              Wholesale
-            </label>
-          )}
-          {quickCommerceMarketplaceEnabled && onQuickCommerceToggle && (
-            <label
-              className={`flex items-center gap-2 text-sm ${
-                vendorQuickCommerceEnabled ? "text-gray-700 cursor-pointer" : "text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={quickCommerceProductEnabled}
-                disabled={disabled || !vendorQuickCommerceEnabled}
-                onChange={(e) => onQuickCommerceToggle(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
-              />
-              Quick Commerce
-            </label>
-          )}
-        </div>
-
-        {wholesaleMarketplaceEnabled && !vendorWholesaleEnabled && (
-          <p className="text-xs text-gray-500">
-            Enable the Wholesale Marketplace channel in the vendor&apos;s selling channels to offer bulk pricing on products.
-          </p>
-        )}
-
-        {channelWarning && (
-          <p className="text-xs font-medium text-red-600">{channelWarning}</p>
-        )}
-
-        {wholesaleEnabled && (
-          <div className="space-y-4 border-t border-gray-200 pt-4">
-            {/* Minimum Order Quantity */}
+      <div className="space-y-4">
+        {/* Minimum Order Quantity */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1 cursor-pointer">
@@ -287,8 +230,6 @@ const WholesalePricingSection = ({
                 The highest matching tier is applied automatically. Every bulk price must be lower than the retail price.
               </p>
             </div>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
 import { formatPrice } from "../../../../shared/utils/helpers";
+import { VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
 // import { formatDateTime } from '../../../utils/adminHelpers';
 import toast from "react-hot-toast";
 
@@ -350,6 +351,9 @@ const VendorDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Badge variant="info">
+            {VENDOR_TYPE_LABELS[vendor.vendorType] ?? (vendor.vendorType?.toUpperCase() || "RETAIL")}
+          </Badge>
           <Badge
             variant={
               vendor.status === "approved"
@@ -500,7 +504,7 @@ const VendorDetail = () => {
                           }>
                           {vendor.sellingChannels?.wholesale?.enabled
                             ? "Wholesale Enabled"
-                            : "Retail Only"}
+                            : "Not Enabled"}
                         </Badge>
                       </div>
 

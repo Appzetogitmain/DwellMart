@@ -82,27 +82,57 @@ const OrderDetail = () => {
         }
     };
 
-    const statusOptions = [
-        { value: 'pending', label: 'Pending', color: 'yellow' },
-        { value: 'processing', label: 'Processing', color: 'blue' },
-        { value: 'shipped', label: 'Shipped', color: 'purple' },
-        { value: 'delivered', label: 'Delivered', color: 'green' },
-        { value: 'cancelled', label: 'Cancelled', color: 'red' },
-    ];
-
-    const transitionMap = {
-        pending: ['pending', 'processing', 'cancelled'],
-        processing: ['processing', 'shipped', 'cancelled'],
-        shipped: ['shipped', 'delivered'],
-        delivered: ['delivered'],
-        cancelled: ['cancelled'],
-    };
-
-    // Derive per-vendor status from vendorItems
+    // Derive per-vendor status & orderType from vendorItems
     const vendorItem = order?.vendorItems?.find(
         (vi) => vi.vendorId?.toString() === vendorId?.toString()
     );
+    const orderType = String(vendorItem?.orderType || order?.orderType || 'retail').toLowerCase();
     const currentStatus = String(vendorItem?.status ?? order?.status ?? 'pending').toLowerCase();
+
+    // Strategy-based status options & transition map
+    const isWholesale = orderType === 'wholesale';
+
+    const statusOptions = isWholesale
+      ? [
+          { value: 'pending', label: 'Pending', color: 'yellow' },
+          { value: 'approved', label: 'Approved', color: 'blue' },
+          { value: 'processing', label: 'Processing', color: 'indigo' },
+          { value: 'packed', label: 'Packed', color: 'purple' },
+          { value: 'dispatched', label: 'Dispatched', color: 'purple' },
+          { value: 'delivered', label: 'Delivered', color: 'green' },
+          { value: 'cancelled', label: 'Cancelled', color: 'red' },
+        ]
+      : [
+          { value: 'pending', label: 'Pending', color: 'yellow' },
+          { value: 'confirmed', label: 'Confirmed', color: 'blue' },
+          { value: 'packed', label: 'Packed', color: 'purple' },
+          { value: 'shipped', label: 'Shipped', color: 'purple' },
+          { value: 'out_for_delivery', label: 'Out for Delivery', color: 'amber' },
+          { value: 'delivered', label: 'Delivered', color: 'green' },
+          { value: 'cancelled', label: 'Cancelled', color: 'red' },
+        ];
+
+    const transitionMap = isWholesale
+      ? {
+          pending: ['pending', 'approved', 'cancelled'],
+          approved: ['approved', 'processing', 'cancelled'],
+          processing: ['processing', 'packed'],
+          packed: ['packed', 'dispatched'],
+          dispatched: ['dispatched', 'delivered'],
+          delivered: ['delivered'],
+          cancelled: ['cancelled'],
+        }
+      : {
+          pending: ['pending', 'confirmed', 'cancelled'],
+          confirmed: ['confirmed', 'packed', 'cancelled'],
+          packed: ['packed', 'shipped'],
+          shipped: ['shipped', 'out_for_delivery'],
+          out_for_delivery: ['out_for_delivery', 'delivered'],
+          delivered: ['delivered'],
+          cancelled: ['cancelled'],
+          processing: ['processing', 'shipped', 'cancelled'],
+        };
+
     const allowedStatuses = transitionMap[currentStatus] || [currentStatus];
     const visibleStatusOptions = statusOptions.filter((option) =>
         allowedStatuses.includes(option.value)

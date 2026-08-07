@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiTrash2, FiHeart, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-hot-toast";
-import { useCartStore } from "../../store/useStore";
+import { useCartStore, useUIStore } from "../../store/useStore";
 import { useWishlistStore } from "../../store/wishlistStore";
 import Price from "../Price";
 import { formatVariantLabel } from "../../utils/variant";
@@ -12,6 +13,7 @@ import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { Card, Button, QuantitySelector, Badge } from "../ui";
 
 const SwipeableCartItem = ({ item, index }) => {
+    const toggleCart = useUIStore((state) => state.toggleCart);
     const { getTranslatedText: t } = usePageTranslation([
         "Only",
         "items available in stock",
@@ -144,61 +146,91 @@ const SwipeableCartItem = ({ item, index }) => {
             onTouchStart={swipeHandlers.onTouchStart}
             onTouchMove={swipeHandlers.onTouchMove}
             onTouchEnd={swipeHandlers.onTouchEnd}>
-            <Card variant="default" padding="sm" className="relative flex gap-4 bg-surface border border-border shadow-sm">
+            <div className="relative flex gap-3.5 bg-slate-800/80 hover:bg-slate-800/95 border border-slate-700/60 rounded-2xl p-3.5 shadow-lg transition-all duration-200 backdrop-blur-md">
                 {/* Delete Background */}
                 {swipeOffset > 0 && (
-                    <div className="absolute inset-0 bg-status-error rounded-card flex items-center justify-end pr-4">
-                        <FiTrash2 className="text-white text-xl" />
+                    <div className="absolute inset-0 bg-red-600/90 rounded-2xl flex items-center justify-end pr-5 z-20">
+                        <FiTrash2 className="text-white text-xl animate-bounce" />
                     </div>
                 )}
 
                 {/* Product Image */}
-                <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded-card overflow-hidden bg-surface-muted border border-border relative z-10">
+                <Link
+                    to={`/product/${item.id}`}
+                    onClick={() => toggleCart()}
+                    className="w-20 h-20 sm:w-22 sm:h-22 flex-shrink-0 rounded-xl overflow-hidden bg-slate-950 border border-slate-700/60 relative z-10 shadow-sm block group cursor-pointer"
+                    title={`View ${item.name}`}
+                >
                     <img
                         src={item.image}
                         alt={item.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
                     />
-                </div>
+                </Link>
 
                 {/* Product Info */}
                 <div className="flex-1 min-w-0 relative z-10 flex flex-col justify-between">
                     <div>
-                        <h3 className="font-bold text-content text-sm mb-0.5 line-clamp-1">
-                            {item.name}
-                        </h3>
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                            <Link
+                                to={`/product/${item.id}`}
+                                onClick={() => toggleCart()}
+                                className="font-bold text-white hover:text-[#ffc101] text-xs sm:text-sm line-clamp-1 leading-snug transition-colors cursor-pointer"
+                                title={`View ${item.name}`}
+                            >
+                                {item.name}
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeItem(item.id, item.variant);
+                                }}
+                                className="text-slate-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-500/10 transition-colors shrink-0"
+                                title="Remove item"
+                            >
+                                <FiTrash2 className="text-sm sm:text-base" />
+                            </button>
+                        </div>
+
                         <div className="flex items-center gap-2 mb-1">
-                            <Price amount={linePricing.unitPrice} className="text-sm font-black text-brand-primary" />
+                            <span className="text-sm sm:text-base font-extrabold text-[#ffc101]">
+                                <Price amount={linePricing.unitPrice} />
+                            </span>
                             {isBulkApplied && (
                                 <>
                                     <Price
                                         amount={linePricing.unitRetailPrice}
-                                        className="text-xs text-textColor-muted line-through"
+                                        className="text-xs text-slate-400 line-through"
                                     />
-                                    <Badge variant="success" size="sm">Bulk</Badge>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        Bulk
+                                    </span>
                                 </>
                             )}
                         </div>
+
                         {isBulkApplied && (
-                            <p className="text-[11px] font-bold text-status-success mb-1">
+                            <p className="text-[11px] font-bold text-emerald-400 mb-1">
                                 {t('Bulk pricing applied')} — {t('you save')} <Price amount={linePricing.savings} />
                             </p>
                         )}
                         {linePricing?.nextTier && (
-                            <p className="text-[11px] text-textColor-muted mb-1 font-medium">
+                            <p className="text-[11px] text-slate-400 mb-1 font-medium">
                                 {t('Buy')} {Math.max(1, linePricing.nextTier.minQty - Number(item.quantity || 0))} {t('more to unlock')}{' '}
                                 <Price amount={linePricing.nextTier.price} /> {t('per unit')}
                             </p>
                         )}
                         {formatVariantLabel(item?.variant) && (
-                            <p className="text-xs text-content-secondary mb-1 font-medium">
+                            <p className="text-xs text-slate-400 mb-1 font-medium">
                                 {formatVariantLabel(item?.variant)}
                             </p>
                         )}
 
                         {/* Low Stock Warning */}
                         {isLowStock() && (
-                            <div className="flex items-center gap-1 text-[11px] text-status-warning mb-1.5 font-bold">
+                            <div className="flex items-center gap-1 text-[11px] text-amber-400 mb-1 font-bold">
                                 <FiAlertCircle className="text-xs" />
                                 <span>{t('Only')} {getProductStock()} {t('left!')}</span>
                             </div>
@@ -206,7 +238,7 @@ const SwipeableCartItem = ({ item, index }) => {
                     </div>
 
                     {/* Quantity & Actions Bar */}
-                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-700/50">
                         <QuantitySelector
                             value={item.quantity}
                             onChange={handleQuantityChange}
@@ -215,34 +247,21 @@ const SwipeableCartItem = ({ item, index }) => {
                             size="sm"
                         />
 
-                        <div className="flex items-center gap-1.5">
-                            <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleSaveForLater(item);
-                                }}
-                                leftIcon={<FiHeart />}
-                            >
-                                {t('Save for Later')}
-                            </Button>
-                            <Button
-                                variant="danger"
-                                size="xs"
-                                iconOnly
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    removeItem(item.id, item.variant);
-                                }}
-                                leftIcon={<FiTrash2 />}
-                            />
-                        </div>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleSaveForLater(item);
+                            }}
+                            className="flex items-center gap-1 text-slate-400 hover:text-[#ffc101] text-[11px] font-semibold px-2 py-1 rounded-lg hover:bg-slate-700/50 transition-colors"
+                        >
+                            <FiHeart className="text-xs" />
+                            <span>{t('Save for Later')}</span>
+                        </button>
                     </div>
                 </div>
-            </Card>
+            </div>
         </motion.div>
     );
 };

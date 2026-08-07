@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import api from "../utils/api";
 import useCurrencyStore from "../store/currencyStore";
+import { useVendorAuthStore } from "../../modules/Vendor/store/vendorAuthStore";
 
 const PRODUCTS_CACHE_KEY = "user-catalog-products-cache";
 const VENDORS_CACHE_KEY = "user-catalog-vendors-cache";
@@ -43,6 +44,11 @@ const AppBootstrap = () => {
 
   useEffect(() => {
     fetchCurrencies();
+    try {
+      useVendorAuthStore.getState().initialize();
+    } catch (e) {
+      console.warn('Vendor auth initialization warning:', e);
+    }
   }, [fetchCurrencies]);
 
   useEffect(() => {

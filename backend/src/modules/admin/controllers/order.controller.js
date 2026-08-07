@@ -224,28 +224,32 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
         order.vendorItems = (order.vendorItems || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'processing' };
+            const plain = vi?.toObject?.() ?? vi;
+            return { ...plain, status: 'processing' };
         });
     }
     if (nextStatus === 'shipped') {
         order.vendorItems = (order.vendorItems || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'shipped' };
+            const plain = vi?.toObject?.() ?? vi;
+            return { ...plain, status: 'shipped' };
         });
     }
     if (nextStatus === 'delivered') {
         order.vendorItems = (order.vendorItems || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled') return vi;
-            return { ...vi.toObject(), status: 'delivered' };
+            const plain = vi?.toObject?.() ?? vi;
+            return { ...plain, status: 'delivered' };
         });
     }
     if (nextStatus === 'cancelled') {
         order.vendorItems = (order.vendorItems || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'cancelled' };
+            const plain = vi?.toObject?.() ?? vi;
+            return { ...plain, status: 'cancelled' };
         });
     }
 
@@ -408,7 +412,8 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
         order.vendorItems = (order.vendorItems || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'processing' };
+            const plain = vi?.toObject?.() ?? vi;
+            return { ...plain, status: 'processing' };
         });
     }
     await order.save();

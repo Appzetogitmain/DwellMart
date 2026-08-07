@@ -194,8 +194,15 @@ export const getAllVendors = (params = {}) =>
 export const getVendorById = (id) =>
     api.get(`/admin/vendors/${id}`);
 
-export const updateVendorStatus = (id, status, reason = '') =>
-    api.patch(`/admin/vendors/${id}/status`, { status, reason });
+export const updateVendorStatus = (id, status, reason = '', vendorType = null) => {
+    const payload = { status, reason };
+    if (vendorType) payload.vendorType = vendorType;
+    return api.patch(`/admin/vendors/${id}/status`, payload);
+};
+
+/** Super Admin only — change a vendor's business type (auto-syncs sellingChannels) */
+export const updateVendorType = (id, vendorType) =>
+    api.patch(`/admin/vendors/${id}/vendor-type`, { vendorType });
 
 /**
  * Grant or revoke a vendor's Quick Commerce capability, with optional admin

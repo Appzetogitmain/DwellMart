@@ -219,6 +219,12 @@ export const register = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.');
     }
 
+    const initialVendorType = quickCommerceRequested
+        ? 'quick_commerce'
+        : (wholesaleRequested && !retailRequested)
+            ? 'wholesale'
+            : 'retail';
+
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
@@ -229,6 +235,7 @@ export const register = asyncHandler(async (req, res) => {
         storeDescription: String(storeDescription || '').trim(),
         address,
         status: 'pending',
+        vendorType: initialVendorType,
         commissionRate: initialCommissionRate,
         agreedToTerms: true,
         agreedToTermsAt: new Date(),
@@ -520,6 +527,7 @@ export const login = asyncHandler(async (req, res) => {
                     email: vendor.email,
                     storeLogo: vendor.storeLogo,
                     commissionRate: vendor.commissionRate,
+                    vendorType: vendor.vendorType,
                 },
             },
             'Login successful.'

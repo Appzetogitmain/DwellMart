@@ -135,6 +135,59 @@ export const useOrderStore = create(
         }
       },
 
+      // ── Enterprise Marketplace Checkout (v3 path) ──────────────────────────
+      //
+      // createCheckoutSession → returns { sessionId, summary, coupon, validationResult }
+      // confirmCheckout       → triggers OrderSplitterEngine, returns { orders[] }
+      //
+      // The legacy createOrder is kept for fallback.
+
+      createCheckoutSession: async ({ items, shippingAddress, paymentMethod, couponCode, customerLocation, shippingOption = 'standard' }) => {
+        if (!items?.length) throw new Error('Cart is empty.');
+        set({ isLoading: true, lastError: null });
+        try {
+          const payload = {
+            items: items.map((item) => ({
+              productId:       item.id || item.productId,
+              quantity:        Number(item.quantity || 1),
+              price:           Number(item.price || 0),
+              variant:         item.variant || undefined,
+              vendorId:        item.vendorId,
+              vendorName:      item.vendorName,
+              fulfillmentType: item.fulfillmentType || 'retail',
+              name:            item.name,
+              image:           item.image,
+            })),
+            shippingAddress,
+            paymentMethod,
+            couponCode:   couponCode   || undefined,
+            shippingOption,
+            customerLocation: customerLocation || undefined,
+          };
+          const response = await api.post('/user/checkout/session', payload);
+          const data = response?.data ?? response;
+          set({ isLoading: false, lastError: null });
+          return data; // { sessionId, summary, coupon, validationResult }
+        } catch (error) {
+          set({ isLoading: false, lastError: error?.message || 'Failed to create checkout session.' });
+          throw error;
+        }
+      },
+
+      confirmCheckout: async ({ sessionId, paymentGatewayRef = null }) => {
+        if (!sessionId) throw new Error('sessionId is required.');
+        set({ isLoading: true, lastError: null });
+        try {
+          const response = await api.post('/user/checkout/confirm', { sessionId, paymentGatewayRef });
+          const data = response?.data ?? response;
+          set({ isLoading: false, lastError: null });
+          return data; // { sessionId, orderCount, orders[] }
+        } catch (error) {
+          set({ isLoading: false, lastError: error?.message || 'Checkout confirmation failed.' });
+          throw error;
+        }
+      },
+
       fetchUserOrders: async (page = 1, limit = 20) => {
         set({ isLoading: true, lastError: null });
         try {

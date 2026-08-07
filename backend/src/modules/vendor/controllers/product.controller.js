@@ -9,12 +9,21 @@ import {
     resolveWholesalePayload,
     resolveQuickCommercePayload,
 } from '../../../services/pricingValidation.service.js';
+import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
 
+/**
+ * Derive which selling channels this vendor supports.
+ * Prefers vendorType via VendorCapabilities (canonical source of truth).
+ * Falls back to sellingChannels for legacy records without vendorType.
+ */
 const getVendorChannels = async (vendorId) => {
-    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
+    const vendor = await Vendor.findById(vendorId).select('vendorType sellingChannels').lean();
+    const caps = getVendorCapabilities(vendor?.vendorType);
     return {
-        wholesale: vendor?.sellingChannels?.wholesale?.enabled === true,
-        quickCommerce: vendor?.sellingChannels?.quickCommerce?.enabled === true,
+        wholesale: caps.internalChannels?.wholesale === true
+            ?? vendor?.sellingChannels?.wholesale?.enabled === true,
+        quickCommerce: caps.internalChannels?.quickCommerce === true
+            ?? vendor?.sellingChannels?.quickCommerce?.enabled === true,
     };
 };
 

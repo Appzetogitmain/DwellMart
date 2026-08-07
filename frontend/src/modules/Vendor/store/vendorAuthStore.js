@@ -4,11 +4,18 @@ import api from "../../../shared/utils/api";
 import {
   registerVendor,
   updateVendorProfile,
-  updateVendorSellingChannels,
   forgotVendorPassword,
   verifyVendorResetOTP,
   resetVendorPassword,
 } from "../services/vendorService";
+import { getVendorCapabilities, VendorTypes } from "../../../shared/config/vendorCapabilities";
+
+/**
+ * Derive capabilities object from a vendor object.
+ * Falls back to RETAIL if vendorType is unknown or not yet set.
+ */
+const deriveCapabilities = (vendor) =>
+  getVendorCapabilities(vendor?.vendorType ?? VendorTypes.RETAIL);
 
 export const useVendorAuthStore = create(
   persist(
@@ -18,6 +25,28 @@ export const useVendorAuthStore = create(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+
+      // ─── Derived capabilities (computed on every set) ──────────────────────
+      /**
+       * vendorType — read-only for vendors; managed exclusively by Super Admin.
+       * Drives all sidebar, form, settings, and route logic.
+       */
+      get vendorType() { return get().vendor?.vendorType ?? VendorTypes.RETAIL; },
+
+      /** Full capabilities object from VendorCapabilities config */
+      get capabilities() { return deriveCapabilities(get().vendor); },
+
+      /** Check if a feature flag is enabled for the current vendor type */
+      hasFeature: (featureKey) => {
+        const caps = deriveCapabilities(get().vendor);
+        return caps?.features?.[featureKey] === true;
+      },
+
+      /** Check if a fine-grained permission is enabled */
+      hasPermission: (permissionKey) => {
+        const caps = deriveCapabilities(get().vendor);
+        return caps?.permissions?.[permissionKey] === true;
+      },
 
       // Vendor login action
       login: async (email, password, rememberMe = false) => {
@@ -159,27 +188,25 @@ export const useVendorAuthStore = create(
         }
       },
 
-      // Update vendor selling channels — calls real PUT /vendor/auth/selling-channels
-      updateSellingChannels: async (payload) => {
-        set({ isLoading: true });
+      // Refresh vendor profile from server (e.g. after admin changes vendorType)
+      refreshProfile: async () => {
         try {
-          const response = await updateVendorSellingChannels(payload);
-          const data = response?.data ?? response;
-          const updatedVendor =
-            data && (data._id || data.id)
-              ? data
-              : (data?.vendor ?? { ...get().vendor, ...payload });
-
-          set({
-            vendor: updatedVendor,
-            isLoading: false,
-          });
-
-          return { success: true, vendor: updatedVendor };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
+          const response = await api.get("/vendor/auth/profile");
+          const vendor = response?.data?.vendor ?? response?.data;
+          if (vendor) set({ vendor });
+          return vendor;
+        } catch (err) {
+          console.warn('refreshProfile failed:', err.message);
         }
+      },
+
+      // Update vendor selling channels — REMOVED from vendor-facing UI.
+      // sellingChannels are now auto-synced internally from vendorType.
+      // This method is kept as a no-op stub so no existing call sites break
+      // during the migration period. Remove stub once all callers are cleaned up.
+      updateSellingChannels: async () => {
+        console.warn('[VendorAuthStore] updateSellingChannels is deprecated. sellingChannels are managed internally by vendorType.');
+        return { success: false, deprecated: true };
       },
 
       // Initialize vendor auth state from localStorage
@@ -190,16 +217,14 @@ export const useVendorAuthStore = create(
             localStorage.getItem("vendor-auth-storage") || "{}"
           );
           const refreshToken = localStorage.getItem("vendor-refresh-token");
-          const persistedVendor = storedState.state?.vendor || null;
-          if (persistedVendor) {
-            set({
-              vendor: persistedVendor,
-              token,
-              refreshToken: refreshToken || null,
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          }
+          const persistedVendor = storedState.state?.vendor || storedState.vendor || null;
+          set({
+            vendor: persistedVendor,
+            token,
+            refreshToken: refreshToken || null,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         }
       },
     }),

@@ -15,7 +15,7 @@ const AssignDelivery = () => {
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("unassigned");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,10 +61,10 @@ const AssignDelivery = () => {
         limit: itemsPerPage,
         assignableOnly: true,
       };
-      if (statusFilter !== "all") {
-        orderParams.status = statusFilter;
-      } else {
+      if (statusFilter === "unassigned") {
         orderParams.onlyUnassigned = true;
+      } else if (statusFilter !== "all") {
+        orderParams.status = statusFilter;
       }
 
       const [ordersRes, boyRows] = await Promise.all([
@@ -186,7 +186,8 @@ const AssignDelivery = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             options={[
-              { value: "all", label: "Unassigned (All status)" },
+              { value: "unassigned", label: "Unassigned Orders (Needs Rider)" },
+              { value: "all", label: "All Orders (Assigned & Unassigned)" },
               { value: "pending", label: "Pending" },
               { value: "processing", label: "Processing" },
               { value: "shipped", label: "Shipped" },

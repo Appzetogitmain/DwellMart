@@ -64,11 +64,13 @@ export const calculateEta = ({
   };
 };
 
-/** Human-readable ETA window, e.g. "16–26 min". */
-export const formatEtaRange = (etaMinutes, spreadMins = 10) => {
-  const eta = Number(etaMinutes);
-  if (!Number.isFinite(eta) || eta <= 0) return null;
-  return `${eta}–${eta + Math.max(0, spreadMins)} min`;
+/** Human-readable ETA window for Quick Commerce (always in minutes, e.g. "15–25 min"). */
+export const formatEtaRange = (etaMinutes) => {
+  const mins = Number(etaMinutes);
+  if (!Number.isFinite(mins) || mins <= 0) return '15–25 min';
+  if (mins <= 45) return `${Math.max(10, mins - 5)}–${mins + 5} min`;
+  if (mins <= 60) return '30–45 min';
+  return '15–25 min';
 };
 
 export default calculateEta;

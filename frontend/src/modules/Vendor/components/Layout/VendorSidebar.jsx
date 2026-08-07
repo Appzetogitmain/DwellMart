@@ -28,7 +28,7 @@ import {
 } from "react-icons/fi";
 import { MdCurrencyRupee } from "react-icons/md";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
-import vendorMenu from "../../config/vendorMenu.json";
+import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
 
 // Icon mapping for menu items
 const iconMap = {
@@ -92,6 +92,12 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const [expandedItems, setExpandedItems] = useState({});
   const [isMobile, setIsMobile] = useState(false);
 
+  // Derive capability-driven menu from vendorType
+  const vendorType = vendor?.vendorType ?? 'retail';
+  const caps = getVendorCapabilities(vendorType);
+  const activeMenu = caps?.menu ?? [];
+  const vendorTypeLabel = VENDOR_TYPE_LABELS[vendorType] ?? 'Retail';
+
   // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
@@ -112,26 +118,23 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
   // Auto-expand menu items when their route is active
   useEffect(() => {
-    const activeItem = vendorMenu.find((item) => {
+    const activeItem = activeMenu.find((item) => {
       if (item.route === "/vendor/dashboard") {
         return location.pathname === "/vendor/dashboard";
       }
-      const isChildRoute =
+      return (
         location.pathname.startsWith(item.route) &&
-        location.pathname !== item.route;
-      return isChildRoute;
+        location.pathname !== item.route
+      );
     });
     if (activeItem && activeItem.children && activeItem.children.length > 0) {
       setExpandedItems((prev) => {
-        if (prev[activeItem.title]) {
-          return prev;
-        }
-        return {
-          [activeItem.title]: true,
-        };
+        if (prev[activeItem.title]) return prev;
+        return { [activeItem.title]: true };
       });
     }
-  }, [location.pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, vendorType]);
 
   // Check if a menu item is active
   const isActive = (route) => {
@@ -275,6 +278,12 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
               <p className="text-xs text-slate-400 truncate">
                 {vendor?.email || "vendor@example.com"}
               </p>
+              {/* vendorType badge — read-only business identity */}
+              <span
+                style={{ fontSize: '10px' }}
+                className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary-600/30 text-primary-300 font-medium tracking-wide uppercase">
+                {vendorTypeLabel}
+              </span>
             </div>
           </div>
 
@@ -291,7 +300,7 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
 
       {/* Navigation Menu (with right border below top header) */}
       <nav className="flex-1 overflow-y-auto p-3 scrollbar-admin lg:pb-3 border-r border-slate-800 bg-slate-900">
-        {vendorMenu.map((item) => renderMenuItem(item))}
+        {activeMenu.map((item) => renderMenuItem(item))}
       </nav>
     </div>
   );
@@ -325,15 +334,17 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Desktop Fixed */}
+      {/* Sidebar - Desktop */}
       <div 
-        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20 transition-all duration-300 ease-in-out ${
+        className={`hidden lg:flex shrink-0 h-full overflow-hidden transition-all duration-300 ease-in-out ${
           showDesktop 
-            ? "translate-x-0 opacity-100 visible pointer-events-auto" 
-            : "-translate-x-full opacity-0 invisible pointer-events-none"
+            ? "w-64 opacity-100 visible pointer-events-auto" 
+            : "w-0 opacity-0 invisible pointer-events-none"
         }`}
       >
-        {sidebarContent}
+        <div className="w-64 h-full">
+          {sidebarContent}
+        </div>
       </div>
     </>
   );

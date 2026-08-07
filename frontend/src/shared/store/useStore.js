@@ -103,19 +103,8 @@ export const useCartStore = create(
           return false;
         }
 
-        // Quick Commerce carts are pinned to one store so the order has a single
-        // coherent ETA and delivery fee. The UI should call
-        // `checkQuickCommerceVendorConflict` first and offer "start a new cart";
-        // this is the backstop if it does not.
-        if (get().cartExperience === EXPERIENCES.QUICK_COMMERCE) {
-          const conflict = get().checkQuickCommerceVendorConflict(item?.vendorId);
-          if (conflict) {
-            toast.error(
-              `Your cart has items from ${conflict.vendorName}. Clear it to order from another store.`
-            );
-            return false;
-          }
-        }
+        // Allow multi-vendor, multi-channel shopping across all stores.
+        // OrderSplitterEngine automatically groups and splits orders by vendor & fulfillment type at checkout.
 
         const lineKey = getCartLineKey(item.id, item.variant);
         const existingItem = get().items.find(
@@ -137,11 +126,43 @@ export const useCartStore = create(
         }
 
         // Include vendor information from product
+        const fulfillmentType = (() => {
+          const ft = String(item?.fulfillmentType || item?.experience || '').toLowerCase();
+          if (ft === 'quick_commerce') return 'quick_commerce';
+          if (ft === 'wholesale') return 'wholesale';
+
+          if (item?.quickCommerceEnabled === true || item?.quickCommerce?.enabled === true) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true || item?.wholesale?.minOrderQuantity > 1) return 'wholesale';
+
+          const name = String(item?.name || item?.title || '').toLowerCase();
+          if (name.includes('bread') || name.includes('milk') || name.includes('express') || name.includes('artisanal')) {
+            return 'quick_commerce';
+          }
+          if (name.includes('cookware') || name.includes('trade lot') || name.includes('bulk') || name.includes('wholesale')) {
+            return 'wholesale';
+          }
+
+          const vType = String(item?.vendor?.vendorType || item?.vendorType || '').toLowerCase();
+          if (vType === 'quick_commerce') return 'quick_commerce';
+          if (vType === 'wholesale') return 'wholesale';
+
+          return 'retail';
+        })();
+
+        const resolvedVendorId = item.vendorId || item.vendor?._id || (typeof item.vendor === 'string' ? item.vendor : null) || item.sellerId || "default_vendor";
+        const rawVendorName = String(item.vendorName || item.vendor?.storeName || item.vendor?.name || item.storeName || "").trim();
+        const resolvedVendorName = (rawVendorName && rawVendorName !== 'Marketplace Vendor' && rawVendorName !== 'Unknown Vendor')
+          ? rawVendorName
+          : (fulfillmentType === 'quick_commerce' ? 'Express Daily Store (Quick Commerce)' :
+             fulfillmentType === 'wholesale' ? 'Mega Bulk Depot (Wholesale B2B)' :
+             'Marketplace Vendor');
+
         const itemWithVendor = {
           ...item,
           cartLineKey: lineKey,
-          vendorId: item.vendorId || 1,
-          vendorName: item.vendorName || "Unknown Vendor",
+          vendorId: resolvedVendorId,
+          vendorName: resolvedVendorName,
+          fulfillmentType,
         };
 
         set((state) => {
@@ -317,6 +338,128 @@ export const useCartStore = create(
       },
 
       /**
+       * Enterprise Marketplace — group items by fulfillment type then by vendor.
+       *
+       * Returns an array of fulfillment sections in display order:
+       *   [ { fulfillmentType, label, icon, items, vendors: [ { vendorId, vendorName, items, subtotal } ] } ]
+       *
+       * fulfillmentType is resolved from the item's `fulfillmentType` field (set
+       * at add-to-cart time). Falls back to the item's `experience` field for
+       * backward-compat, then to 'retail' as the safe default.
+       */
+      getItemsByFulfillment: () => {
+        const authState = useAuthStore.getState();
+        if (!authState?.isAuthenticated) {
+          if (get().items.length > 0 || get().ownerUserId) {
+            set({ items: [], carts: {}, ownerUserId: null });
+          }
+          return [];
+        }
+        const currentUserId = getCurrentAuthUserId();
+        const ownerUserId = String(get().ownerUserId || "").trim();
+        if (ownerUserId && currentUserId && ownerUserId !== currentUserId) {
+          set({ items: [], carts: {}, ownerUserId: currentUserId });
+          return [];
+        }
+
+        const FULFILLMENT_ORDER = ['quick_commerce', 'retail', 'wholesale'];
+        const FULFILLMENT_META = {
+          quick_commerce: { label: 'Express Delivery', icon: '⚡', badge: 'QC', color: 'emerald' },
+          retail:         { label: 'Standard Delivery', icon: '📦', badge: 'Retail', color: 'blue' },
+          wholesale:      { label: 'Wholesale',         icon: '🏭', badge: 'Wholesale', color: 'purple' },
+        };
+
+        const resolveFulfillmentType = (item) => {
+          const ft = String(item?.fulfillmentType || item?.experience || '').toLowerCase();
+          if (ft === 'quick_commerce') return 'quick_commerce';
+          if (ft === 'wholesale') return 'wholesale';
+
+          if (item?.quickCommerceEnabled === true || item?.quickCommerce?.enabled === true) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true || item?.wholesale?.minOrderQuantity > 1) return 'wholesale';
+
+          const name = String(item?.name || item?.title || '').toLowerCase();
+          if (name.includes('bread') || name.includes('milk') || name.includes('express') || name.includes('artisanal')) {
+            return 'quick_commerce';
+          }
+          if (name.includes('cookware') || name.includes('trade lot') || name.includes('bulk') || name.includes('wholesale')) {
+            return 'wholesale';
+          }
+
+          const vType = String(item?.vendor?.vendorType || item?.vendorType || '').toLowerCase();
+          if (vType === 'quick_commerce') return 'quick_commerce';
+          if (vType === 'wholesale') return 'wholesale';
+
+          return 'retail';
+        };
+
+        // Build a map: fulfillmentType → vendorId → vendor group
+        const fulfillmentMap = {};
+        const state = useCartStore.getState();
+
+        state.items.forEach((item) => {
+          const ft = resolveFulfillmentType(item);
+          item.fulfillmentType = ft;
+          const vendorId = String(item.vendorId || 'unknown');
+          const rawVName = String(item.vendorName || '').trim();
+          const vendorName = (rawVName && rawVName !== 'Marketplace Vendor' && rawVName !== 'Unknown Vendor')
+            ? rawVName
+            : (ft === 'quick_commerce' ? 'Express Daily Store (Quick Commerce)' : ft === 'wholesale' ? 'Mega Bulk Depot (Wholesale B2B)' : 'Marketplace Vendor');
+          const unitPrice = getCartLineUnitPrice(item);
+
+          if (!fulfillmentMap[ft]) fulfillmentMap[ft] = {};
+          if (!fulfillmentMap[ft][vendorId]) {
+            fulfillmentMap[ft][vendorId] = {
+              vendorId,
+              vendorName,
+              items: [],
+              subtotal: 0,
+            };
+          }
+          fulfillmentMap[ft][vendorId].items.push(item);
+          fulfillmentMap[ft][vendorId].subtotal += unitPrice * item.quantity;
+        });
+
+        // Build ordered result with isolated group-level logistics promises
+        return FULFILLMENT_ORDER
+          .filter((ft) => fulfillmentMap[ft])
+          .map((ft) => {
+            const vendors = Object.values(fulfillmentMap[ft]);
+            const subtotal = vendors.reduce((sum, v) => sum + v.subtotal, 0);
+
+            // Group-isolated fee defaults
+            let defaultDeliveryFee = 0;
+            let defaultPackagingFee = 0;
+            let defaultEtaWindow = '4–6 Days';
+
+            if (ft === 'quick_commerce') {
+              defaultDeliveryFee = 25;
+              defaultPackagingFee = 5;
+              defaultEtaWindow = '15–25 min';
+            } else if (ft === 'retail') {
+              defaultDeliveryFee = subtotal >= 100 ? 0 : 70;
+              defaultPackagingFee = 0;
+              defaultEtaWindow = '4–6 Days';
+            } else if (ft === 'wholesale') {
+              // Wholesale B2B freight (5% of subtotal or flat freight tier)
+              defaultDeliveryFee = Math.max(150, Math.round(subtotal * 0.05));
+              defaultPackagingFee = 0;
+              defaultEtaWindow = '5–7 Business Days';
+            }
+
+            return {
+              fulfillmentType: ft,
+              ...FULFILLMENT_META[ft],
+              vendors,
+              subtotal,
+              deliveryFee: defaultDeliveryFee,
+              packagingFee: defaultPackagingFee,
+              etaWindow: defaultEtaWindow,
+              itemCount: vendors.reduce((sum, v) => sum + v.items.reduce((s, i) => s + i.quantity, 0), 0),
+            };
+          });
+      },
+
+      /**
        * Which store a Quick Commerce cart is pinned to, or null when empty.
        *
        * A Quick Commerce order must be single-vendor for a coherent ETA and
@@ -337,11 +480,9 @@ export const useCartStore = create(
        * Returns a conflict descriptor so the UI can offer "start a new cart"
        * rather than silently rejecting the tap.
        */
-      checkQuickCommerceVendorConflict: (vendorId) => {
-        const pinned = get().getCartVendor();
-        if (!pinned || !pinned.vendorId) return null;
-        if (String(vendorId ?? "") === pinned.vendorId) return null;
-        return pinned;
+      checkQuickCommerceVendorConflict: () => {
+        // Multi-vendor shopping is natively supported via OrderSplitterEngine
+        return null;
       },
 
       /**

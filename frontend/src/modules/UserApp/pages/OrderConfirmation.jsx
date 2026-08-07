@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FiCheckCircle, FiTruck, FiEye } from 'react-icons/fi';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { FiCheckCircle, FiTruck, FiEye, FiZap, FiShoppingBag, FiBox } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import { useOrderStore } from '../../../shared/store/orderStore';
+import api from '../../../shared/utils/api';
 import { formatPrice } from '../../../shared/utils/helpers';
 import { formatVariantLabel } from '../../../shared/utils/variant';
 import PageTransition from '../../../shared/components/PageTransition';
@@ -14,36 +15,56 @@ import { Card, Alert, Button, Badge } from "../../../shared/components/ui";
 
 const MobileOrderConfirmation = () => {
   const { getTranslatedText: t } = usePageTranslation([
-    "Loading order...",
-    "Order Not Found",
-    "Go Home",
-    "Order Confirmed!",
+    "Loading order...", "Order Not Found", "Go Home", "Order Confirmed!",
     "Thank you for your purchase. Your order has been received and is being processed.",
-    "Order Number",
-    "Tracking Number",
-    "Order Date",
-    "Total Amount",
-    "Payment Method",
-    "Order Items",
-    "more item",
-    "more items",
-    "No item details available for this order.",
-    "View Order Details",
-    "Track Order",
-    "Continue Shopping",
-    "Credit/Debit Card",
-    "Cash on Delivery",
-    "Bank Transfer",
-    "N/A"
+    "Order Number", "Tracking Number", "Order Date", "Total Amount",
+    "Payment Method", "Order Items", "more item", "more items",
+    "No item details available for this order.", "View Order Details",
+    "Track Order", "Continue Shopping", "Credit/Debit Card", "Cash on Delivery",
+    "Bank Transfer", "N/A", "Your purchase", "sub-orders created",
+    "Express Delivery", "Standard Delivery", "Wholesale Order"
   ]);
 
   const { translateArray } = useDynamicTranslation();
   const { orderId } = useParams();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');   // mixed-cart session mode
   const navigate = useNavigate();
   const { getOrder, fetchOrderById, lastError } = useOrderStore();
+
   const [isResolving, setIsResolving] = useState(true);
-  const order = getOrder(orderId);
+  const [sessionOrders, setSessionOrders] = useState(null); // for mixed-cart
+  const order = orderId ? getOrder(orderId) : null;
   const [translatedOrderItems, setTranslatedOrderItems] = useState([]);
+
+  // Fetch session sub-orders for mixed-cart
+  useEffect(() => {
+    if (!sessionId) return;
+    (async () => {
+      try {
+        const res = await api.get(`/user/checkout/session/${sessionId}`);
+        const data = res?.data ?? res;
+        setSessionOrders(data);
+      } catch {
+        // If session fetch fails, silently fall through
+      } finally {
+        setIsResolving(false);
+      }
+    })();
+  }, [sessionId]);
+
+  // Fetch single order
+  useEffect(() => {
+    if (sessionId) return; // session mode handled above
+    let mounted = true;
+    (async () => {
+      if (!order && orderId) {
+        await fetchOrderById(orderId);
+      }
+      if (mounted) setIsResolving(false);
+    })();
+    return () => { mounted = false; };
+  }, [order, orderId, fetchOrderById, sessionId]);
 
   useEffect(() => {
     const translateContent = async () => {
@@ -55,41 +76,105 @@ const MobileOrderConfirmation = () => {
     translateContent();
   }, [order, translateArray]);
 
+  useEffect(() => {
+    if (!isResolving && !sessionId && !order) {
+      navigate('/home');
+    }
+  }, [isResolving, order, navigate, sessionId]);
+
   const orderItems = translatedOrderItems.length > 0 ? translatedOrderItems : (Array.isArray(order?.items) ? order.items : []);
   const displayOrderId = order?.id || order?.orderId || orderId;
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      if (!order && orderId) {
-        await fetchOrderById(orderId);
-      }
-      if (mounted) setIsResolving(false);
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [order, orderId, fetchOrderById]);
+  const ftLabel = (ft) => {
+    if (ft === 'quick_commerce') return { label: t('Express Delivery'), icon: <FiZap className="text-yellow-400" />, color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' };
+    if (ft === 'wholesale') return { label: t('Wholesale Order'), icon: <FiBox className="text-purple-400" />, color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' };
+    return { label: t('Standard Delivery'), icon: <FiShoppingBag className="text-blue-400" />, color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' };
+  };
 
-  useEffect(() => {
-    if (!isResolving && !order) {
-      navigate('/home');
-    }
-  }, [isResolving, order, navigate]);
+  const formatDate = (dateString) => {
+    if (!dateString) return t('N/A');
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return t('N/A');
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
 
   if (isResolving) {
     return (
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>
           <div className="flex items-center justify-center min-h-[60vh] px-4">
-             <p className="text-textColor-muted font-bold">{t('Loading order...')}</p>
+            <p className="text-textColor-muted font-bold">{t('Loading order...')}</p>
           </div>
         </MobileLayout>
       </PageTransition>
     );
   }
 
-  if (!order) {
+  // ── Session Mode: Mixed-Cart multi-order confirmation ──────────────────────
+  if (sessionId && sessionOrders) {
+    const ledger = sessionOrders?.session?.paymentAllocationLedger || [];
+    const orderIds = sessionOrders?.session?.orderIds || [];
+    return (
+      <PageTransition>
+        <MobileLayout showBottomNav={false} showCartBar={false}>
+          <div className="w-full min-h-screen flex items-center justify-center px-4 py-8 bg-surface-background">
+            <div className="w-full max-w-md lg:max-w-lg space-y-4">
+              <Alert
+                variant="success"
+                title={t('Order Confirmed!')}
+                description={`${t('Your purchase')} (${sessionId}) — ${orderIds.length} ${t('sub-orders created')}.`}
+              />
+
+              {/* Sub-orders by fulfillment group */}
+              {ledger.map((entry, i) => {
+                const { label, icon, color } = ftLabel(entry.fulfillmentType);
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <Card variant="default" padding="lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold ${color}`}>
+                          {icon}
+                          <span>{label}</span>
+                        </div>
+                        <span className="font-black text-brand-primary">{formatPrice(entry.amount)}</span>
+                      </div>
+                      <div className="text-sm text-content-secondary mb-1">
+                        <span className="font-semibold text-content">{entry.vendorName}</span>
+                      </div>
+                      {entry.orderId && (
+                        <Link
+                          to={`/orders/${entry.orderId}`}
+                          className="text-xs text-brand-primary font-semibold mt-2 inline-flex items-center gap-1 hover:underline"
+                        >
+                          <FiEye size={12} /> View Order
+                        </Link>
+                      )}
+                    </Card>
+                  </motion.div>
+                );
+              })}
+
+              <div className="space-y-2 pt-2">
+                <Button onClick={() => navigate('/orders')} variant="primary" size="lg" fullWidth leftIcon={<FiEye />}>
+                  {t('View Order Details')}
+                </Button>
+                <Button onClick={() => navigate('/home')} variant="outline" size="lg" fullWidth>
+                  {t('Continue Shopping')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </MobileLayout>
+      </PageTransition>
+    );
+  }
+
+  if (!sessionId && !order) {
     return (
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>
@@ -107,18 +192,8 @@ const MobileOrderConfirmation = () => {
         </MobileLayout>
       </PageTransition>
     );
-  }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return t('N/A');
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return t('N/A');
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  }
 
   return (
     <PageTransition>

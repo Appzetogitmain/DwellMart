@@ -21,6 +21,11 @@ import * as settingsController from '../controllers/settings.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
 import * as feedbackController from '../controllers/feedback.controller.js';
+import CheckoutSession from '../../../models/CheckoutSession.model.js';
+import { FulfillmentGroup } from '../../../models/FulfillmentGroup.model.js';
+import asyncHandler from '../../../utils/asyncHandler.js';
+import ApiResponse from '../../../utils/ApiResponse.js';
+import ApiError from '../../../utils/ApiError.js';
 import {
     downloadExcelTemplate,
     downloadCsvTemplate,
@@ -142,6 +147,49 @@ router.post('/orders/:id/retry-assignment', ...perm(PERMISSIONS.ORDERS_UPDATE), 
 router.post('/orders/:id/delivery-override', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.deliveryOverride);
 router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
+// ─── Checkout Sessions (Enterprise Marketplace) ───────────────────────────────
+// View CheckoutSession hierarchy — session → fulfillment groups → sub-orders
+
+const getCheckoutSessions = asyncHandler(async (req, res) => {
+    const page  = Math.max(1, Number(req.query.page)  || 1);
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+    const skip  = (page - 1) * limit;
+
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.userId) filter.userId = req.query.userId;
+
+    const [sessions, total] = await Promise.all([
+        CheckoutSession.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('userId', 'name email')
+            .lean(),
+        CheckoutSession.countDocuments(filter),
+    ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        sessions, total, page, pages: Math.ceil(total / limit) || 1,
+    }, 'Checkout sessions fetched.'));
+});
+
+const getCheckoutSessionById = asyncHandler(async (req, res) => {
+    const session = await CheckoutSession.findOne({ sessionId: req.params.sessionId })
+        .populate('userId', 'name email phone')
+        .lean();
+    if (!session) throw new ApiError(404, 'CheckoutSession not found.');
+
+    const groups = await FulfillmentGroup.find({ sessionId: session._id }).lean();
+
+    res.status(200).json(new ApiResponse(200, { session, groups }, 'Checkout session with fulfillment groups.'));
+});
+
+router.get('/checkout-sessions', ...perm(PERMISSIONS.ORDERS_VIEW), getCheckoutSessions);
+router.get('/checkout-sessions/:sessionId', ...perm(PERMISSIONS.ORDERS_VIEW), getCheckoutSessionById);
+
+
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getAllProducts);
 router.get('/products/template/excel', ...perm(PERMISSIONS.PRODUCTS_VIEW), downloadExcelTemplate);
@@ -183,6 +231,9 @@ router.get('/vendors/:id/commissions', ...perm(PERMISSIONS.VENDORS_VIEW), valida
 router.patch('/vendors/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
 router.patch('/vendors/:id/commission', ...perm(PERMISSIONS.VENDORS_EDIT), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
 router.patch('/vendors/:id/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_VENDORS_MANAGE, PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorQuickCommerceUpdateSchema), vendorController.updateVendorQuickCommerce);
+// Super Admin only — changes vendor business type and auto-syncs sellingChannels
+router.patch('/vendors/:id/vendor-type', ...adminAuth, requireSuperAdmin, validate(vendorIdParamSchema, 'params'), vendorController.updateVendorType);
+
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 router.get('/customers', ...perm(PERMISSIONS.USERS_VIEW), validate(customerListQuerySchema, 'query'), customerController.getAllCustomers);
