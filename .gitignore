@@ -2,10 +2,41 @@ branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 
-# Test & Scratch files
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+serviceAccountKey.json
+*serviceAccount*.json
+firebase-adminsdk-*.json
+
+# ─── Test & Scratch files ─────────────────────────────────────────────────────
 tests/
 test/
 test_*.js
 test.md
 *.test.js
+**/scripts/deepAuditPushPipeline.js
+**/scripts/audit*.js
+**/scripts/debug*.js
+**/scripts/test*.js
+scratch/
 
+# ─── Diagnostic / Dev-only HTML pages ────────────────────────────────────────
+**/public/push-diagnostic.html
+**/public/*-diagnostic.html
+**/public/*-debug.html
+**/public/*-test.html
+
+# ─── Build artifacts ──────────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+.cache/
+
+# ─── OS / IDE ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
