@@ -222,7 +222,11 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
 
     const order = await Order.findOne(query).select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
     if (!order) throw new ApiError(404, 'Order not found.');
-    res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
+    const orderObj = order.toObject();
+    const isCod = ['cod', 'cash'].includes(String(orderObj.paymentMethod || '').toLowerCase());
+    orderObj.codAmount = isCod ? Number(orderObj.total || 0) : 0;
+
+    res.status(200).json(new ApiResponse(200, orderObj, 'Order detail fetched.'));
 });
 
 // PATCH /api/delivery/orders/:id/status

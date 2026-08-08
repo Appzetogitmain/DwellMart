@@ -110,10 +110,10 @@ const OrderSummary = ({
   const retailGroup = displayGroups.find(g => g.fulfillmentType === 'retail');
   const wholesaleGroup = displayGroups.find(g => g.fulfillmentType === 'wholesale');
 
-  const qcFee = qcGroup ? (quickEstimate?.available ? Number(quickEstimate.deliveryFee || 0) : Number(qcGroup.deliveryFee || 25)) : 0;
-  const qcPkg = qcGroup ? (quickEstimate?.available ? Number(quickEstimate.packagingFee || 0) : Number(qcGroup.packagingFee || 5)) : 0;
-  const retailShipping = retailGroup ? Number(retailGroup.deliveryFee ?? 70) : 0;
-  const wholesaleFreight = wholesaleGroup ? Number(wholesaleGroup.deliveryFee ?? 150) : 0;
+  const qcFee = qcGroup ? (quickEstimate?.available ? Number(quickEstimate.deliveryFee || 0) : Number(qcGroup.deliveryFee || 0)) : 0;
+  const qcPkg = qcGroup ? (quickEstimate?.available ? Number(quickEstimate.packagingFee || 0) : Number(qcGroup.packagingFee || 0)) : 0;
+  const retailShipping = retailGroup ? Number(retailGroup.deliveryFee || 0) : 0;
+  const wholesaleFreight = wholesaleGroup ? Number(wholesaleGroup.deliveryFee || 0) : 0;
 
   return (
     <div className="rounded-2xl p-4 bg-surface border border-border shadow-sm space-y-4">

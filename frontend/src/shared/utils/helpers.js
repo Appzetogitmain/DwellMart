@@ -2,8 +2,11 @@
  * Format price with currency symbol
  */
 export const formatPrice = (price, currency = "₹") => {
-  const numPrice = price ?? 0;
-  return `${currency}${numPrice.toLocaleString("en-IN")}`;
+  const numPrice = Number(price ?? 0);
+  return `${currency}${numPrice.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
 /**

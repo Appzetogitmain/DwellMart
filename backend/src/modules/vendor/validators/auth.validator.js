@@ -102,6 +102,7 @@ export const updateQuickCommerceSettingsSchema = Joi.object({
     latitude: Joi.number().min(LATITUDE_BOUNDS.min).max(LATITUDE_BOUNDS.max).optional(),
     longitude: Joi.number().min(LONGITUDE_BOUNDS.min).max(LONGITUDE_BOUNDS.max).optional(),
     serviceRadiusKm: Joi.number().min(0.5).max(MAX_SERVICE_RADIUS_KM).optional(),
+    maxDeliveryDistanceKm: Joi.number().min(0.5).max(MAX_SERVICE_RADIUS_KM).optional(),
     servicedPincodes: Joi.array().items(Joi.string().trim().max(12)).max(200).optional(),
     preparationTimeMins: Joi.number().integer().min(0).max(240).optional(),
     businessHours: Joi.array().items(businessHourSchema).max(7).optional(),
@@ -110,6 +111,10 @@ export const updateQuickCommerceSettingsSchema = Joi.object({
     pausedUntil: Joi.date().allow(null).optional(),
     minOrderValue: Joi.number().min(0).optional(),
     packagingFee: Joi.number().min(0).optional(),
+    baseFee: Joi.number().min(0).optional(),
+    perKmFee: Joi.number().min(0).optional(),
+    freeAboveSubtotal: Joi.number().min(0).optional(),
+    freeDeliveryEnabled: Joi.boolean().optional(),
 })
     .min(1)
     // Coordinates are only meaningful as a pair — one without the other would

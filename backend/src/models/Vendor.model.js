@@ -127,9 +127,13 @@ const vendorSchema = new mongoose.Schema(
             },
             // Added to the ETA while the store is marked busy.
             busyExtraMins: { type: Number, min: 0, default: 10 },
-            pausedUntil: { type: Date },
             minOrderValue: { type: Number, min: 0, default: 0 },
             packagingFee: { type: Number, min: 0, default: 0 },
+            baseFee: { type: Number, min: 0 },
+            perKmFee: { type: Number, min: 0 },
+            freeAboveSubtotal: { type: Number, min: 0 },
+            freeDeliveryEnabled: { type: Boolean },
+            maxDeliveryDistanceKm: { type: Number, min: 0.5 },
         },
         wholesaleProfile: {
             gstNumber: { type: String, trim: true },

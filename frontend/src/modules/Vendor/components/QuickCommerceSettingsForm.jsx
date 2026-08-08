@@ -48,6 +48,9 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
     busyExtraMins: 10,
     minOrderValue: 0,
     packagingFee: 0,
+    baseFee: "",
+    perKmFee: "",
+    freeAboveSubtotal: "",
     servicedPincodes: "",
   });
   const [businessHours, setBusinessHours] = useState(emptyHours());
@@ -61,7 +64,6 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
     const coordinates = profile.location?.coordinates;
     setForm({
       storeType: profile.storeType || "dark_store",
-      // Stored as GeoJSON [longitude, latitude] — unpack in that order.
       latitude: Array.isArray(coordinates) ? coordinates[1] ?? "" : "",
       longitude: Array.isArray(coordinates) ? coordinates[0] ?? "" : "",
       serviceRadiusKm: profile.serviceRadiusKm ?? 5,
@@ -70,6 +72,9 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
       busyExtraMins: profile.busyExtraMins ?? 10,
       minOrderValue: profile.minOrderValue ?? 0,
       packagingFee: profile.packagingFee ?? 0,
+      baseFee: profile.baseFee ?? "",
+      perKmFee: profile.perKmFee ?? "",
+      freeAboveSubtotal: profile.freeAboveSubtotal ?? "",
       servicedPincodes: Array.isArray(profile.servicedPincodes)
         ? profile.servicedPincodes.join(", ")
         : "",
@@ -146,6 +151,9 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
       busyExtraMins: parseInt(form.busyExtraMins, 10),
       minOrderValue: Number(form.minOrderValue) || 0,
       packagingFee: Number(form.packagingFee) || 0,
+      ...(form.baseFee !== "" && form.baseFee !== null ? { baseFee: Number(form.baseFee) } : {}),
+      ...(form.perKmFee !== "" && form.perKmFee !== null ? { perKmFee: Number(form.perKmFee) } : {}),
+      ...(form.freeAboveSubtotal !== "" && form.freeAboveSubtotal !== null ? { freeAboveSubtotal: Number(form.freeAboveSubtotal) } : {}),
       businessHours: businessHours.map((entry) => ({
         day: entry.day,
         open: entry.open,

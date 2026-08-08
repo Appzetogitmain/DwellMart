@@ -8,7 +8,9 @@ import AnimatedSelect from "../../components/AnimatedSelect";
 import { assignDeliveryBoy, getAllDeliveryBoys, getAllOrders } from "../../services/adminService";
 import { formatCurrency } from "../../utils/adminHelpers";
 
-const ASSIGNABLE_STATUSES = ["pending", "processing", "shipped"];
+import toast from "react-hot-toast";
+
+const ASSIGNABLE_STATUSES = ["pending", "processing", "confirmed", "packed", "shipped", "dispatched", "out_for_delivery"];
 
 const AssignDelivery = () => {
   const [orders, setOrders] = useState([]);
@@ -103,17 +105,44 @@ const AssignDelivery = () => {
 
   const handleOpenAssign = (order) => {
     setSelectedOrder(order);
-    setSelectedDeliveryBoyId(String(order?.deliveryBoyId?._id || order?.deliveryBoyId || ""));
+    const existingBoyId = order?.deliveryBoyId?._id || order?.deliveryBoyId || "";
+    setSelectedDeliveryBoyId(String(existingBoyId));
   };
 
   const handleAssign = async () => {
     if (!selectedOrder || !selectedDeliveryBoyId) return;
     setIsAssigning(true);
     try {
-      await assignDeliveryBoy(selectedOrder.orderId || selectedOrder._id, selectedDeliveryBoyId);
+      const res = await assignDeliveryBoy(selectedOrder.orderId || selectedOrder._id, selectedDeliveryBoyId);
+      const updatedOrder = res?.data || res?.order || res;
+
+      const chosenBoy = deliveryBoys.find((b) => String(b.id || b._id) === String(selectedDeliveryBoyId));
+      const populatedBoy = (updatedOrder && typeof updatedOrder.deliveryBoyId === "object" && updatedOrder.deliveryBoyId?.name)
+        ? updatedOrder.deliveryBoyId
+        : (chosenBoy ? { _id: chosenBoy.id || chosenBoy._id, name: chosenBoy.name, phone: chosenBoy.phone } : { name: "Assigned Partner" });
+
+      const finalOrder = {
+        ...selectedOrder,
+        ...(updatedOrder || {}),
+        deliveryBoyId: populatedBoy,
+        status: updatedOrder?.status || (selectedOrder.status === "pending" ? "processing" : selectedOrder.status),
+      };
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          (o._id === selectedOrder._id || o.orderId === selectedOrder.orderId)
+            ? finalOrder
+            : o
+        )
+      );
+
+      toast.success("✓ Delivery partner assigned successfully");
       setSelectedOrder(null);
       setSelectedDeliveryBoyId("");
-      await fetchData();
+
+      fetchData();
+    } catch (err) {
+      toast.error("✕ Failed to assign delivery partner");
     } finally {
       setIsAssigning(false);
     }
@@ -148,8 +177,8 @@ const AssignDelivery = () => {
       label: "Assigned To",
       sortable: false,
       render: (value) => {
-        const name = value?.name || "Unassigned";
-        const phone = value?.phone || "";
+        const name = typeof value === "object" && value?.name ? value.name : "Unassigned";
+        const phone = typeof value === "object" && value?.phone ? value.phone : "";
         return (
           <div>
             <p className="font-medium text-gray-800">{name}</p>
@@ -162,14 +191,17 @@ const AssignDelivery = () => {
       key: "actions",
       label: "Action",
       sortable: false,
-      render: (_, row) => (
-        <button
-          onClick={() => handleOpenAssign(row)}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
-        >
-          {row.deliveryBoyId ? "Reassign" : "Assign"}
-        </button>
-      ),
+      render: (_, row) => {
+        const hasRider = Boolean(row.deliveryBoyId && (typeof row.deliveryBoyId === "object" ? row.deliveryBoyId.name || row.deliveryBoyId._id : row.deliveryBoyId));
+        return (
+          <button
+            onClick={() => handleOpenAssign(row)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
+          >
+            {hasRider ? "Reassign" : "Assign"}
+          </button>
+        );
+      },
     },
   ];
 

@@ -64,6 +64,8 @@ const quickCommerceSchema = Joi.object({
     baseDeliveryFee: Joi.number().min(0).max(10000),
     perKmDeliveryFee: Joi.number().min(0).max(10000),
     freeDeliveryAboveSubtotal: Joi.number().min(0),
+    freeDeliveryEnabled: Joi.boolean(),
+    packagingFee: Joi.number().min(0).max(1000),
     averageSpeedKmph: Joi.number().greater(0).max(200),
     maxServiceRadiusKm: Joi.number().greater(0).max(MAX_SERVICE_RADIUS_KM),
     vendorAckTimeoutSecs: Joi.number().integer().greater(0).max(3600),

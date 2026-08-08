@@ -154,7 +154,7 @@ export const useOrderStore = create(
               variant:         item.variant || undefined,
               vendorId:        item.vendorId,
               vendorName:      item.vendorName,
-              fulfillmentType: item.fulfillmentType || 'retail',
+              fulfillmentType: item.fulfillmentType || (item.quickCommerceEnabled ? 'quick_commerce' : item.wholesaleEnabled ? 'wholesale' : (getExperience() === 'quick_commerce' ? 'quick_commerce' : 'retail')),
               name:            item.name,
               image:           item.image,
             })),
@@ -318,17 +318,17 @@ export const useOrderStore = create(
       // Cancel an order
       cancelOrder: async (orderId, reason = 'Cancelled by customer') => {
         const order = get().getOrder(orderId);
-        if (!order) return false;
+        const targetId = order?.orderId || orderId;
 
         try {
-          await api.patch(`/user/orders/${orderId}/cancel`, { reason });
+          await api.patch(`/user/orders/${targetId}/cancel`, { reason });
         } catch (error) {
           throw error;
         }
 
         set((state) => ({
           orders: state.orders.map((o) =>
-            String(o.id) === String(orderId)
+            String(o.id) === String(orderId) || String(o.orderId) === String(orderId) || String(o._id) === String(orderId)
               ? { ...o, status: 'cancelled', cancelledAt: new Date().toISOString() }
               : o
           ),

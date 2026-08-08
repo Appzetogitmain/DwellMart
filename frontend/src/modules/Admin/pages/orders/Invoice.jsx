@@ -58,25 +58,17 @@ const Invoice = () => {
     );
   }
 
-  // Get order items - handle both array and number formats
+  // Get order items - handle array format safely
   const items = Array.isArray(order.items)
-    ? order.items
-    : Array.from({ length: order.items || 1 }, (_, i) => ({
-      id: i + 1,
-      name: `Item ${i + 1}`,
-      quantity: 1,
-      price: (order.total || 0) / (order.items || 1),
-    }));
+    ? order.items.map((item) => ({ ...item, price: Number(item.price || 0), quantity: Number(item.quantity || 1) }))
+    : [];
 
-  // Calculate totals
-  const subtotal = order.subtotal ?? order.total ?? 0;
-  const tax = order.tax ?? 0;
-  const discount = order.discount ?? 0;
-  const shipping = order.shipping ?? 0;
-  const finalTotal =
-    order.finalTotal !== undefined
-      ? order.finalTotal
-      : subtotal + tax + shipping - discount;
+  // Calculate totals directly from persisted backend order fields
+  const subtotal = Number(order.subtotal ?? (order.total || 0));
+  const tax = Number(order.tax ?? 0);
+  const discount = Number(order.discount ?? order.couponDiscount ?? 0);
+  const shipping = Number(order.shipping ?? order.quickCommerce?.deliveryFee ?? 0);
+  const finalTotal = Number(order.total ?? (subtotal + tax + shipping - discount));
 
   // Format payment method
   const formatPaymentMethod = (method) => {

@@ -25,6 +25,7 @@ import { FulfillmentGroup } from '../../models/FulfillmentGroup.model.js';
 import { CheckoutSession } from '../../models/CheckoutSession.model.js';
 import Product from '../../models/Product.model.js';
 import Vendor from '../../models/Vendor.model.js';
+import Settings from '../../models/Settings.model.js';
 
 import { resolvePriceForQuantity, deriveOrderType } from '../pricingEngine.service.js';
 import { isWholesaleMarketplaceEnabled } from '../featureFlags.service.js';
@@ -34,10 +35,14 @@ import {
     haversineDistanceKm,
     calculateEta,
     calculateDeliveryFee,
+    getQuickCommerceSettings,
+    resolveEffectiveQCSettings,
 } from '../quickCommerce.service.js';
 import { assertCartValid } from './CartValidationPipeline.js';
 import { commitReservation } from './InventoryReservationService.js';
 import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../events/marketplaceEventBus.js';
+import { roundMoney, assertPriceConsistency } from '../PriceReconciliationService.js';
+import { calculateVendorShippingForGroups } from '../vendorShipping.service.js';
 
 // ── ID helpers ──────────────────────────────────────────────────────────────
 
@@ -98,27 +103,33 @@ const groupItems = (items, productMap = null) => {
 // ── Build a QC delivery sub-document for an order ────────────────────────────
 const buildQcDelivery = async (vendorDoc, customerLocation, subtotal, settings = {}) => {
     const profile = vendorDoc?.quickCommerceProfile || {};
-    const vendorPoint = pointToLatLng(profile?.location);
-    if (!vendorPoint || !customerLocation?.latitude) return null;
+    const vendorPoint = pointToLatLng(profile?.location) || { latitude: 28.6139, longitude: 77.2090 };
+    if (!customerLocation?.latitude) return null;
+
+    const platformSettings = await getQuickCommerceSettings();
+    const mergedSettings = { ...platformSettings, ...settings };
+    const effective = resolveEffectiveQCSettings(vendorDoc, mergedSettings);
 
     const distKm = haversineDistanceKm(vendorPoint, customerLocation) || 0;
     const availability = resolveVendorAvailability(vendorDoc);
     const eta = calculateEta({
-        preparationTimeMins: Number(profile?.preparationTimeMins) || 20,
+        preparationTimeMins: Number(profile?.preparationTimeMins) || Number(mergedSettings.defaultPreparationMins) || 20,
         extraPrepMins: availability.extraPrepMins || 0,
         distanceKm: distKm,
-        averageSpeedKmph: Number(settings.averageSpeedKmph) || 20,
+        averageSpeedKmph: Number(mergedSettings.averageSpeedKmph) || 20,
     });
 
     const deliveryFee = calculateDeliveryFee({
         distanceKm: distKm,
-        baseFee:           Number(profile?.baseFee)           || Number(settings.baseFee)  || 30,
-        perKmFee:          Number(profile?.perKmFee)          || Number(settings.perKmFee) || 8,
-        freeAboveSubtotal: Number(profile?.freeAboveSubtotal) || 0,
+        baseFee:             effective.baseFee,
+        perKmFee:            effective.perKmFee,
+        freeAboveSubtotal:   effective.freeAboveSubtotal,
+        freeDeliveryEnabled: effective.freeDeliveryEnabled,
+        maxDistanceKm:       effective.maxDistanceKm,
         subtotal,
     });
 
-    const packagingFee = Number(profile?.packagingFee) || 0;
+    const packagingFee = effective.packagingFee;
 
     return {
         promisedEtaMinutes:  eta.etaMinutes,
@@ -153,7 +164,7 @@ const computeGroupPricing = async (
     for (const item of vendorItems) {
         const productId = String(item.productId || item.id || '');
         const product   = productMap.get(productId);
-        const basePrice = Number(item.price || 0);
+        const basePrice = Number(item.price ?? product?.price ?? 0);
         const qty       = Number(item.quantity || 1);
 
         const pricing = resolvePriceForQuantity(product || {}, basePrice, qty, {
@@ -195,17 +206,27 @@ const computeGroupPricing = async (
         }
     }
 
-    const deliveryFee  = qcDelivery?.deliveryFee  || shippingAmount;
-    const packagingFee = qcDelivery?.packagingFee  || 0;
-    const tax          = Number(taxAddedToTotal.toFixed(2));
-    const discount     = Number(discountAmount.toFixed(2));
-    const total        = Number(
-        Math.max(0, subtotal + deliveryFee + packagingFee + tax - discount).toFixed(2)
+    const deliveryFee  = roundMoney(qcDelivery?.deliveryFee ?? shippingAmount);
+    const packagingFee = roundMoney(qcDelivery?.packagingFee ?? 0);
+    const tax          = roundMoney(taxAddedToTotal);
+    const discount     = roundMoney(discountAmount);
+    const roundedSubtotal = roundMoney(subtotal);
+    const roundedSavings  = roundMoney(savings);
+    const total        = roundMoney(
+        Math.max(0, roundedSubtotal + deliveryFee + packagingFee + tax - discount)
     );
 
     return {
         pricedItems,
-        pricing: { subtotal, shipping: deliveryFee, packagingFee, tax, discount, total, savings },
+        pricing: {
+            subtotal: roundedSubtotal,
+            shipping: deliveryFee,
+            packagingFee,
+            tax,
+            discount,
+            total,
+            savings: roundedSavings,
+        },
     };
 };
 
@@ -251,7 +272,7 @@ export const splitAndCreateOrders = async ({
 
     const vendorIds = [...new Set(rawProducts.map((p) => String(p.vendorId || '')).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
-        .select('_id storeName sellingChannels quickCommerceProfile status')
+        .select('_id storeName sellingChannels quickCommerceProfile status freeShippingThreshold defaultShippingRate shippingEnabled')
         .lean();
     const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
 
@@ -275,16 +296,38 @@ export const splitAndCreateOrders = async ({
         //    This prevents the same discount being applied N times across N groups.
         let cartSubtotalForCoupon = 0;
         const groupSubtotals = {}; // key: `${ft}:${vendorId}`
+        const shippingGroupInputs = [];
+
         for (const [ft, vendorGroups] of Object.entries(grouped)) {
             for (const [vendorId, groupData] of Object.entries(vendorGroups)) {
                 const key = `${ft}:${vendorId}`;
-                const subtotal = groupData.items.reduce(
-                    (s, item) => s + Number(item.price || 0) * Number(item.quantity || 1), 0
-                );
+                const vendorDoc = vendorMap.get(vendorId);
+                const subtotal = groupData.items.reduce((s, item) => {
+                    const product = productMap.get(String(item.productId || item.id || ''));
+                    const unitPrice = Number(item.price ?? product?.price ?? 0);
+                    return s + unitPrice * Number(item.quantity || 1);
+                }, 0);
                 groupSubtotals[key] = subtotal;
                 cartSubtotalForCoupon += subtotal;
+
+                if (ft === 'retail' || ft === 'wholesale') {
+                    shippingGroupInputs.push({
+                        vendorId,
+                        subtotal,
+                        shippingEnabled: vendorDoc?.shippingEnabled !== false,
+                        defaultShippingRate: vendorDoc?.defaultShippingRate,
+                        freeShippingThreshold: vendorDoc?.freeShippingThreshold,
+                    });
+                }
             }
         }
+
+        const { shippingByVendor } = await calculateVendorShippingForGroups({
+            vendorGroups: shippingGroupInputs,
+            shippingAddress,
+            couponType: coupon?.type,
+        });
+
         for (const [ft, vendorGroups] of Object.entries(grouped)) {
             for (const [vendorId, groupData] of Object.entries(vendorGroups)) {
                 const vendorDoc  = vendorMap.get(vendorId) || null;
@@ -304,6 +347,10 @@ export const splitAndCreateOrders = async ({
                     qcDelivery = await buildQcDelivery(vendorDoc, customerLocation, tempPricing.subtotal, settings);
                 }
 
+                const calculatedShipping = (ft === 'retail' || ft === 'wholesale')
+                    ? (shippingByVendor[vendorId] ?? shippingAmount)
+                    : 0;
+
                 // Compute final pricing — use proportional coupon discount, not total
                 const { pricedItems, pricing } = await computeGroupPricing(
                     groupData.items,
@@ -311,7 +358,7 @@ export const splitAndCreateOrders = async ({
                     productMap,
                     wholesaleEnabled,
                     {
-                        shippingAmount: ft === 'retail' ? shippingAmount : 0,
+                        shippingAmount: calculatedShipping,
                         discountAmount: fgCouponDiscount,   // ← proportional, not total
                         qcDelivery,
                     }
@@ -357,6 +404,7 @@ export const splitAndCreateOrders = async ({
                         items:     pricedItems,
                         subtotal:  pricing.subtotal,
                         shipping:  pricing.shipping,
+                        packagingFee: pricing.packagingFee || 0,
                         tax:       pricing.tax,
                         discount:  pricing.discount,
                         orderType: deriveOrderType(pricingTypes),
@@ -364,12 +412,12 @@ export const splitAndCreateOrders = async ({
                     }],
                     shippingAddress,
                     paymentMethod,
-                    paymentStatus: 'pending',
-                    status:        'pending',
+                    paymentStatus: session.paymentStatus === 'paid' ? 'paid' : 'pending',
+                    status:        session.paymentStatus === 'paid' ? 'confirmed' : 'pending',
                     subtotal:      pricing.subtotal,
                     shipping:      pricing.shipping,
                     tax:           pricing.tax,
-                    discount:      pricing.discount,
+                    packagingFee:  pricing.packagingFee || 0,
                     total:         pricing.total,
                     totalSavings:  pricing.savings,
                     orderType:     deriveOrderType(pricingTypes),
@@ -450,7 +498,11 @@ export const splitAndCreateOrders = async ({
         );
 
         await dbSession.commitTransaction();
-        await dbSession.endSession();
+        assertPriceConsistency({
+            checkoutTotal: grandTotal,
+            orderTotals: createdOrders.map((o) => o.total),
+            context: `OrderSplitterEngine:${sessionId}`,
+        });
 
         // ── 6. Emit events (after commit — never inside transaction) ──────────
         for (const order of createdOrders) {
@@ -474,4 +526,129 @@ export const splitAndCreateOrders = async ({
         await dbSession.endSession();
         throw err;
     }
+};
+
+/**
+ * Compute full authoritative financial summary for a CheckoutSession prior to session creation.
+ * Reuses the EXACT SAME pricing, QC delivery, vendor shipping, tax, packaging, and coupon logic
+ * that splitAndCreateOrders uses, ensuring CheckoutSession.summary.grandTotal === Order.total === Cashfree Amount.
+ */
+export const calculateCheckoutSessionSummary = async ({
+    items = [],
+    shippingAddress = {},
+    customerLocation = null,
+    coupon = null,
+    shippingAmount = 0,
+    shippingOption = 'standard',
+}) => {
+    const rawProducts = await Product.find({
+        _id: { $in: items.map((i) => i.productId || i.id).filter(Boolean) },
+    }).lean();
+    const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
+
+    const vendorIds = [...new Set(rawProducts.map((p) => String(p.vendorId || '')).filter(Boolean))];
+    const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
+        .select('_id storeName sellingChannels quickCommerceProfile status freeShippingThreshold defaultShippingRate shippingEnabled')
+        .lean();
+    const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
+
+    const grouped = groupItems(items, productMap);
+
+    let cartSubtotalForCoupon = 0;
+    const groupSubtotals = {};
+    const shippingGroupInputs = [];
+
+    for (const [ft, vendorGroups] of Object.entries(grouped)) {
+        for (const [vendorId, groupData] of Object.entries(vendorGroups)) {
+            const key = `${ft}:${vendorId}`;
+            const vendorDoc = vendorMap.get(vendorId);
+            const subtotal = groupData.items.reduce((s, item) => {
+                const product = productMap.get(String(item.productId || item.id || ''));
+                const unitPrice = Number(item.price ?? product?.price ?? 0);
+                return s + unitPrice * Number(item.quantity || 1);
+            }, 0);
+            groupSubtotals[key] = subtotal;
+            cartSubtotalForCoupon += subtotal;
+
+            if (ft === 'retail' || ft === 'wholesale') {
+                shippingGroupInputs.push({
+                    vendorId,
+                    subtotal,
+                    shippingEnabled: vendorDoc?.shippingEnabled !== false,
+                    defaultShippingRate: vendorDoc?.defaultShippingRate,
+                    freeShippingThreshold: vendorDoc?.freeShippingThreshold,
+                });
+            }
+        }
+    }
+
+    const { shippingByVendor } = await calculateVendorShippingForGroups({
+        vendorGroups: shippingGroupInputs,
+        shippingAddress,
+        couponType: coupon?.type,
+    });
+
+    const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
+    const settings = settingsDoc?.value || {};
+    const wholesaleSettingsDoc = await Settings.findOne({ key: 'wholesale' }).lean();
+    const wholesaleEnabled = wholesaleSettingsDoc?.value?.enabled !== false;
+
+    let totalSubtotal = 0;
+    let totalShipping = 0;
+    let totalPackaging = 0;
+    let totalTax = 0;
+    let totalDiscount = 0;
+
+    for (const [ft, vendorGroups] of Object.entries(grouped)) {
+        for (const [vendorId, groupData] of Object.entries(vendorGroups)) {
+            const vendorDoc = vendorMap.get(vendorId) || null;
+            const key = `${ft}:${vendorId}`;
+            const fgSubtotal = groupSubtotals[key] || 0;
+            const couponRatio = cartSubtotalForCoupon > 0 ? fgSubtotal / cartSubtotalForCoupon : 0;
+            const fgCouponDiscount = coupon ? Number(((coupon.discount || 0) * couponRatio).toFixed(2)) : 0;
+
+            let qcDelivery = null;
+            if (ft === 'quick_commerce') {
+                const { pricing: tempPricing } = await computeGroupPricing(groupData.items, vendorDoc, productMap, wholesaleEnabled, {});
+                qcDelivery = await buildQcDelivery(vendorDoc, customerLocation, tempPricing.subtotal, settings);
+            }
+
+            const calculatedShipping = (ft === 'retail' || ft === 'wholesale')
+                ? (shippingByVendor[vendorId] ?? shippingAmount)
+                : 0;
+
+            const { pricing } = await computeGroupPricing(
+                groupData.items,
+                vendorDoc,
+                productMap,
+                wholesaleEnabled,
+                {
+                    shippingAmount: calculatedShipping,
+                    discountAmount: fgCouponDiscount,
+                    qcDelivery,
+                }
+            );
+
+            totalSubtotal += pricing.subtotal;
+            totalShipping += pricing.shipping;
+            totalPackaging += pricing.packagingFee;
+            totalTax += pricing.tax;
+            totalDiscount += pricing.discount;
+        }
+    }
+
+    const grandTotal = Math.max(0, totalSubtotal + totalShipping + totalPackaging + totalTax - totalDiscount);
+
+    return {
+        subtotal: roundMoney(totalSubtotal),
+        deliveryFee: roundMoney(totalShipping),
+        totalShipping: roundMoney(totalShipping),
+        packagingFee: roundMoney(totalPackaging),
+        totalPackagingFee: roundMoney(totalPackaging),
+        tax: roundMoney(totalTax),
+        totalTax: roundMoney(totalTax),
+        discount: roundMoney(totalDiscount),
+        totalDiscount: roundMoney(totalDiscount),
+        grandTotal: roundMoney(grandTotal),
+    };
 };

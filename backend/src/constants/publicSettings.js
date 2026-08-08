@@ -49,6 +49,26 @@ export const PUBLIC_SETTINGS_POLICY = {
      * numeric limit is named explicitly because the storefront needs it.
      */
     reviews: { booleansOnly: true, allowFields: ['maxRating', 'minRating'] },
+
+    /**
+     * Quick Commerce delivery pricing & service radius rules.
+     * Publicly readable so cart preview and storefront headers can display
+     * free delivery banners and minimum order thresholds.
+     */
+    quick_commerce: {
+        booleansOnly: false,
+        allowFields: [
+            'baseDeliveryFee',
+            'perKmDeliveryFee',
+            'freeDeliveryAboveSubtotal',
+            'freeDeliveryEnabled',
+            'maxServiceRadiusKm',
+            'packagingFee',
+            'averageSpeedKmph',
+            'vendorAckTimeoutSecs',
+            'defaultPreparationMins',
+        ],
+    },
 };
 
 /** @param {string} category */

@@ -164,7 +164,7 @@ export const RecentOrdersWidget = ({ orders = [], vendorId, isLoading }) => {
         <div className="space-y-2">
           {orders.slice(0, 4).map(order => {
             const vendorItem = order.vendorItems?.find(vi => vi.vendorId?.toString() === vendorId?.toString());
-            const displayAmount = vendorItem?.subtotal ?? order.totalAmount ?? 0;
+            const displayAmount = order.vendorSummary?.total ?? (vendorItem ? (Number(vendorItem.subtotal || 0) + Number(vendorItem.shipping || 0) + Number(vendorItem.tax || 0) - Number(vendorItem.discount || 0)) : (order.total || 0));
             return (
               <div
                 key={order._id}

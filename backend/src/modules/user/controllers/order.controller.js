@@ -27,12 +27,15 @@ import {
     haversineDistanceKm,
     calculateEta,
     calculateDeliveryFee,
+    getQuickCommerceSettings,
+    resolveEffectiveQCSettings,
 } from '../../../services/quickCommerce.service.js';
 import {
     assignRiderForQuickCommerceOrder,
     escalateUnassignedOrder,
     releaseRider,
 } from '../../../services/riderAssignment.service.js';
+import { roundMoney, assertPriceConsistency } from '../../../services/PriceReconciliationService.js';
 import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
@@ -540,9 +543,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
             throw new ApiError(400, 'Quick Commerce orders must be placed with a single store.');
         }
 
-        const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
-        const qcSettings = settingsDoc?.value || {};
+        const platformSettings = await getQuickCommerceSettings();
         const profile = quickCommerceContext.vendor.quickCommerceProfile || {};
+        const effective = resolveEffectiveQCSettings(quickCommerceContext.vendor, platformSettings);
 
         const groupSubtotal = vendorGroups[0].subtotal;
         const minOrderValue = Number(profile.minOrderValue) || 0;
@@ -554,19 +557,21 @@ export const placeOrder = asyncHandler(async (req, res) => {
             ? 0
             : calculateDeliveryFee({
                 distanceKm: quickCommerceContext.distanceKm,
-                baseFee: qcSettings.baseDeliveryFee,
-                perKmFee: qcSettings.perKmDeliveryFee,
-                freeAboveSubtotal: qcSettings.freeDeliveryAboveSubtotal,
+                baseFee:             effective.baseFee,
+                perKmFee:            effective.perKmFee,
+                freeAboveSubtotal:   effective.freeAboveSubtotal,
+                freeDeliveryEnabled: effective.freeDeliveryEnabled,
+                maxDistanceKm:       effective.maxDistanceKm,
                 subtotal: groupSubtotal,
             });
-        const packagingFee = Number(profile.packagingFee) || 0;
+        const packagingFee = effective.packagingFee;
 
         // The ETA promise is computed here, atomically with the order.
         const eta = calculateEta({
-            preparationTimeMins: profile.preparationTimeMins,
+            preparationTimeMins: profile.preparationTimeMins || platformSettings.defaultPreparationMins,
             extraPrepMins: quickCommerceContext.extraPrepMins,
             distanceKm: quickCommerceContext.distanceKm,
-            averageSpeedKmph: qcSettings.averageSpeedKmph,
+            averageSpeedKmph: platformSettings.averageSpeedKmph,
         });
 
         shipping = deliveryFee;
@@ -590,25 +595,35 @@ export const placeOrder = asyncHandler(async (req, res) => {
         shippingByVendor = result.shippingByVendor;
     }
 
-    // 4. Calculate final totals (using dynamic tax)
-    const packagingFee = quickCommerceCharges?.packagingFee || 0;
-    const tax = parseFloat(totalTaxReporting.toFixed(2));
-    const total = parseFloat(
-        (subtotal - couponDiscount + shipping + packagingFee + extraTaxToPay).toFixed(2)
+    // 4. Calculate final totals (using dynamic tax and monetary rounding)
+    const packagingFee = roundMoney(quickCommerceCharges?.packagingFee || 0);
+    const tax = roundMoney(totalTaxReporting);
+    const roundedSubtotal = roundMoney(subtotal);
+    const roundedShipping = roundMoney(shipping);
+    const roundedCouponDiscount = roundMoney(couponDiscount);
+    const total = roundMoney(
+        Math.max(0, roundedSubtotal - roundedCouponDiscount + roundedShipping + packagingFee + roundMoney(extraTaxToPay))
     );
 
-    // 5. Build vendor item groups
+    // 5. Build vendor item groups with explicit rounded totals
     const vendorItems = Object.values(vendorMap).map((v) => ({
         vendorId: v.vendorId,
         vendorName: v.vendorName,
         items: v.items,
-        subtotal: v.subtotal,
-        shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
-        tax: parseFloat(v.tax.toFixed(2)),
+        subtotal: roundMoney(v.subtotal),
+        shipping: roundMoney(shippingByVendor[String(v.vendorId)] || 0),
+        tax: roundMoney(v.tax),
         discount: 0,
         orderType: deriveOrderType(v.items),
         status: 'pending',
     }));
+
+    assertPriceConsistency({
+        checkoutTotal: total,
+        orderTotals: [total],
+        vendorGroups: vendorItems,
+        context: 'user.placeOrder',
+    });
 
     const orderType = deriveOrderType(enrichedItems);
     const orderSavings = parseFloat(totalSavings.toFixed(2));
@@ -867,9 +882,23 @@ export const getUserOrders = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, { orders, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Orders fetched.'));
 });
 
+const buildOrderLookupQuery = (paramId, userId) => {
+    const isObjectId = mongoose.isValidObjectId(paramId);
+    const query = {
+        $or: [
+            { orderId: paramId },
+            ...(isObjectId ? [{ _id: paramId }] : []),
+        ],
+    };
+    if (userId) {
+        query.userId = userId;
+    }
+    return query;
+};
+
 // GET /api/user/orders/:id
 export const getOrderDetail = asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id });
+    const order = await Order.findOne(buildOrderLookupQuery(req.params.id, req.user.id));
     if (!order) throw new ApiError(404, 'Order not found.');
     res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
 });
@@ -881,7 +910,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     let cancelledOrderRef = null;
     try {
         await session.withTransaction(async () => {
-            const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id }).session(session);
+            const order = await Order.findOne(buildOrderLookupQuery(req.params.id, req.user.id)).session(session);
             if (!order) throw new ApiError(404, 'Order not found.');
             if (!['pending', 'processing'].includes(order.status)) throw new ApiError(400, 'Order cannot be cancelled at this stage.');
 
@@ -1024,7 +1053,7 @@ const normalizeReturnRequest = (requestDoc) => {
 
 // POST /api/user/orders/:id/returns
 export const createReturnRequest = asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id });
+    const order = await Order.findOne(buildOrderLookupQuery(req.params.id, req.user.id));
     if (!order) throw new ApiError(404, 'Order not found.');
     if (order.status !== 'delivered') {
         throw new ApiError(400, 'Return can only be requested for delivered orders.');

@@ -16,7 +16,7 @@ import ApiError from '../../../utils/ApiError.js';
 const randomId = () => Math.random().toString(36).substring(2, 14).toUpperCase();
 
 import CheckoutSession from '../../../models/CheckoutSession.model.js';
-import { generateSessionId, splitAndCreateOrders } from '../../../services/checkout/OrderSplitterEngine.js';
+import { generateSessionId, splitAndCreateOrders, calculateCheckoutSessionSummary } from '../../../services/checkout/OrderSplitterEngine.js';
 import { validateCart } from '../../../services/checkout/CartValidationPipeline.js';
 import { reserveStock, releaseReservation } from '../../../services/checkout/InventoryReservationService.js';
 import Settings from '../../../models/Settings.model.js';
@@ -80,7 +80,13 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
     // 2. Validate cart (lightweight — full validation runs again in the splitter)
     const validation = await validateCart({ items, customerLocation });
     if (!validation.valid) {
-        return res.status(422).json(new ApiResponse(422, validation, 'Cart validation failed. Please resolve the issues before checking out.'));
+        const firstError = validation.items
+            ?.flatMap((i) => i.errors)
+            ?.filter(Boolean)[0]
+            || validation.globalErrors?.[0]
+            || 'Cart validation failed. Please resolve the issues before checking out.';
+        console.warn('[CheckoutSession Validation Failed]', JSON.stringify(validation, null, 2));
+        return res.status(422).json(new ApiResponse(422, validation, firstError));
     }
 
     // 3. Resolve coupon (optional)
@@ -121,8 +127,14 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         }
     }
 
-    // 5. Compute grand summary (preliminary — locks in at confirm step)
-    const subtotal = items.reduce((s, i) => s + Number(i.price || 0) * Number(i.quantity || 1), 0);
+    // 5. Compute full authoritative financial summary (reuses OrderSplitterEngine calculation)
+    const financialSummary = await calculateCheckoutSessionSummary({
+        items,
+        shippingAddress,
+        customerLocation,
+        coupon: resolvedCoupon,
+        shippingOption,
+    });
 
     // 6. Create CheckoutSession document
     const sessionId = generateSessionId();
@@ -133,12 +145,7 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         paymentStatus: 'pending',
         status:        'pending',
         shippingAddress,
-        // gatewayOrderId is set by Checkout.jsx after Cashfree order creation
-        summary: {
-            subtotal,
-            totalDiscount: resolvedCoupon?.discount || 0,
-            grandTotal:    Math.max(0, subtotal - (resolvedCoupon?.discount || 0)),
-        },
+        summary:       financialSummary,
         idempotencyKey:   idempotencyKey || undefined,
         idempotencyScope: idempotencyKey ? idempotencyScope : undefined,
         metadata: {
@@ -209,20 +216,9 @@ export const confirmCheckout = asyncHandler(async (req, res) => {
         throw new ApiError(409, `CheckoutSession is in "${session.status}" state and cannot be confirmed.`);
     }
 
-    // For online payments, store the gatewayOrderId so the webhook can look up the session
-    if (gatewayOrderId && session.paymentMethod !== 'cod') {
-        await CheckoutSession.updateOne(
-            { sessionId },
-            { $set: { gatewayOrderId, paymentStatus: 'initiated' } }
-        );
-        // Webhook will complete the session — return session info for frontend polling
-        return res.status(200).json(
-            new ApiResponse(200, {
-                sessionId,
-                status:  'awaiting_payment',
-                message: 'Session registered. Awaiting payment webhook confirmation.',
-            }, 'Awaiting payment confirmation.')
-        );
+    // For online payments, orders must be confirmed via Cashfree verify/webhook AFTER payment is captured
+    if (session.paymentMethod !== 'cod' && session.paymentStatus !== 'paid') {
+        throw new ApiError(400, 'Online payment is pending. Orders cannot be created until payment is verified.');
     }
 
     // COD path — create orders immediately

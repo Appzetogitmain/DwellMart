@@ -71,7 +71,14 @@ export const useCartStore = create(
       carts: {},
       cartExperience: getExperience(),
       ownerUserId: null,
-      addItem: (item) => {
+      addItem: (rawItem) => {
+        const id = String(rawItem?.id || rawItem?.productId || rawItem?._id || '').trim();
+        if (!id || id === 'undefined') {
+          toast.error("Product information is missing.");
+          return false;
+        }
+        const item = { ...rawItem, id, productId: id };
+
         const authState = useAuthStore.getState();
         if (!authState?.isAuthenticated) {
           setPostLoginAction({

@@ -25,6 +25,8 @@ import {
     resolveVendorAvailability,
     pointToLatLng,
     haversineDistanceKm,
+    getQuickCommerceSettings,
+    resolveEffectiveQCSettings,
 } from '../quickCommerce.service.js';
 import { resolvePriceForQuantity } from '../pricingEngine.service.js';
 import { isWholesaleMarketplaceEnabled } from '../featureFlags.service.js';
@@ -38,6 +40,12 @@ const FULFILLMENT_TYPES = ['quick_commerce', 'retail', 'wholesale'];
  * Legacy items that have `experience` instead are migrated gracefully.
  */
 const resolveFulfillmentType = (item, product = null) => {
+    if (product?.quickCommerceEnabled === true && product?.retailEnabled !== true) {
+        return 'quick_commerce';
+    }
+    if (product?.wholesaleEnabled === true && product?.retailEnabled !== true) {
+        return 'wholesale';
+    }
     const ft = String(item?.fulfillmentType || item?.experience || '').toLowerCase();
     if (ft === 'quick_commerce') return 'quick_commerce';
     if (ft === 'wholesale')      return 'wholesale';
@@ -165,10 +173,11 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
                     const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
                     if (vendorPoint) {
                         const distKm  = haversineDistanceKm(vendorPoint, customerLocation);
-                        const isDevMode = process.env.NODE_ENV !== 'production' || process.env.DISABLE_GEO_FENCING === 'true';
-                        const radiusKm = isDevMode ? 10000 : (Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25);
+                        const platformSettings = await getQuickCommerceSettings();
+                        const effectiveSettings = resolveEffectiveQCSettings(vendor, platformSettings);
+                        const radiusKm = effectiveSettings.maxDistanceKm || 3;
                         if (distKm > radiusKm) {
-                            errors.push(`${productName}: seller does not deliver to your location.`);
+                            errors.push(`${productName}: seller does not deliver to your location (distance ${distKm.toFixed(1)} km exceeds maximum ${radiusKm} km radius).`);
                         }
                     }
                 }

@@ -77,12 +77,20 @@ const AllOrders = () => {
     return filtered;
   }, [orders, searchQuery, selectedStatus, selectedExperience, vendorId]);
 
-  // Get per-vendor subtotal from vendorItems
+  // Get per-vendor allocated total from vendorSummary or vendorItems group
   const getVendorSubtotal = (order) => {
+    if (order.vendorSummary?.total !== undefined) return order.vendorSummary.total;
     const vendorItem = order.vendorItems?.find(
       (vi) => vi.vendorId?.toString() === vendorId?.toString()
     );
-    return vendorItem?.subtotal ?? order.total ?? order.totalAmount ?? 0;
+    if (vendorItem) {
+      const vSub = Number(vendorItem.subtotal || 0);
+      const vShip = Number(vendorItem.shipping || 0);
+      const vTax = Number(vendorItem.tax || 0);
+      const vDisc = Number(vendorItem.discount || 0);
+      return vSub + vShip + vTax - vDisc;
+    }
+    return order.total ?? order.totalAmount ?? 0;
   };
 
   const getOrderStatus = (order) => {

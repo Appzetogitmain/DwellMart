@@ -29,7 +29,7 @@ const useCurrency = () => {
         return new Intl.NumberFormat(currentCurrency.locale || 'en-IN', {
             style: 'currency',
             currency: currentCurrency.code,
-            minimumFractionDigits: 0,
+            minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }).format(converted);
     };

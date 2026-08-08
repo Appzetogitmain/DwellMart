@@ -101,8 +101,9 @@ export const calculateVendorShippingForGroups = async ({
         const chosenRate = pickRateByMethod(candidateRates, shippingOption);
 
         if (chosenRate) {
-            const threshold = Math.max(0, toNumber(chosenRate.freeShippingThreshold, 0));
-            if (threshold > 0 && subtotal >= threshold) {
+            const rateThreshold = toNumber(chosenRate.freeShippingThreshold, 0);
+            const effectiveThreshold = rateThreshold > 0 ? rateThreshold : defaultThreshold;
+            if (effectiveThreshold > 0 && subtotal >= effectiveThreshold) {
                 shippingByVendor[vendorId] = 0;
             } else {
                 shippingByVendor[vendorId] = Math.max(0, toNumber(chosenRate.rate, 0));

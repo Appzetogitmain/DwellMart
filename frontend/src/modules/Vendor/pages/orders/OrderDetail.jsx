@@ -310,14 +310,70 @@ const OrderDetail = () => {
                         )}
                     </div>
 
-                    {/* Order Status */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                        <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                            <FiDollarSign />
-                            Order Summary
+                    {/* Order Financial Breakdown */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-3">
+                        <h2 className="font-semibold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <FiDollarSign className="text-emerald-600" />
+                            Allocated Order Financial Breakdown
                         </h2>
-                        <div className="flex items-center justify-between">
-                            <span className="text-gray-600">Your items status</span>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex items-center justify-between text-gray-600">
+                                <span>Items Subtotal</span>
+                                <span className="font-semibold text-gray-800">
+                                    {formatPrice(vendorItem?.subtotal ?? vendorSubtotal)}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between text-gray-600">
+                                <span>Delivery / Shipping Allocation</span>
+                                <span className="font-semibold text-gray-800">
+                                    {formatPrice(vendorItem?.shipping ?? order?.shipping ?? 0)}
+                                </span>
+                            </div>
+                            {(() => {
+                                const resolvedPkgFee = Number(vendorItem?.packagingFee ?? order?.quickCommerce?.delivery?.packagingFee ?? order?.packagingFee ?? 0);
+                                return (
+                                    <>
+                                        {resolvedPkgFee > 0 && (
+                                            <div className="flex items-center justify-between text-gray-600">
+                                                <span>Packaging Fee</span>
+                                                <span className="font-semibold text-gray-800">
+                                                    {formatPrice(resolvedPkgFee)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between text-gray-600">
+                                            <span>Estimated GST & Tax Allocation</span>
+                                            <span className="font-semibold text-gray-800">
+                                                {formatPrice(vendorItem?.tax ?? order?.tax ?? 0)}
+                                            </span>
+                                        </div>
+                                        {(vendorItem?.discount > 0) && (
+                                            <div className="flex items-center justify-between text-emerald-600">
+                                                <span>Coupon / Discount</span>
+                                                <span className="font-semibold">
+                                                    -{formatPrice(vendorItem?.discount ?? 0)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="border-t border-gray-200 pt-2 flex items-center justify-between text-base font-bold text-gray-900">
+                                            <span>Your Allocated Group Total</span>
+                                            <span className="text-emerald-600">
+                                                {formatPrice(
+                                                    (vendorItem?.subtotal ?? vendorSubtotal) +
+                                                    (vendorItem?.shipping ?? order?.shipping ?? 0) +
+                                                    resolvedPkgFee +
+                                                    (vendorItem?.tax ?? order?.tax ?? 0) -
+                                                    (vendorItem?.discount ?? 0)
+                                                )}
+                                            </span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-gray-100 pt-3 text-xs">
+                            <span className="text-gray-500">Item Status</span>
                             <Badge
                                 variant={
                                     currentStatus === 'delivered'

@@ -104,11 +104,11 @@ const OrderDetail = () => {
   const itemsCount = Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0);
   const itemsArray = Array.isArray(order.items) ? order.items : [];
 
-  // Calculate order breakdown
-  const subtotal = order.subtotal ?? (order.total * 0.95);
-  const shipping = order.shipping ?? (order.total * 0.05);
-  const tax = order.tax ?? 0;
-  const discount = order.discount ?? 0;
+  // Calculate order breakdown directly from persisted backend fields
+  const subtotal = Number(order.subtotal ?? (order.total || 0));
+  const shipping = Number(order.shipping ?? order.quickCommerce?.deliveryFee ?? 0);
+  const tax = Number(order.tax ?? 0);
+  const discount = Number(order.discount ?? order.couponDiscount ?? 0);
 
   // Get payment method display name
   const getPaymentMethodName = (method) => {

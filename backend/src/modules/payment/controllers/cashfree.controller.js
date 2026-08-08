@@ -15,6 +15,7 @@ import {
     verifyCashfreeSignature,
 } from '../../../services/billing/cashfree.service.js';
 import { activateInternalSubscription } from '../../../services/billing/subscriptionState.service.js';
+import { roundMoney } from '../../../services/PriceReconciliationService.js';
 
 export const createPaymentSession = asyncHandler(async (req, res) => {
     const { orderId, subscriptionPlanId, email, checkoutSessionId, sessionId } = req.body;
@@ -42,7 +43,7 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
             );
         }
 
-        const amount = Number(session.summary?.grandTotal ?? session.grandTotal ?? 0);
+        const amount = roundMoney(session.summary?.grandTotal ?? session.grandTotal ?? 0);
         if (amount <= 0) {
             throw new ApiError(400, 'Invalid payment amount for CheckoutSession.');
         }
@@ -211,8 +212,15 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 
     if (checkoutSession) {
         const lookupId = checkoutSession.gatewayOrderId || checkoutSession.sessionId;
-        const cfOrder  = await fetchCashfreeOrder(lookupId).catch(() => null);
-        const isPaid   = cfOrder?.order_status === 'PAID';
+        const cfOrder = await fetchCashfreeOrder(lookupId).catch(() => null);
+        let payments = [];
+        try {
+            payments = await fetchCashfreeOrderPayments(lookupId);
+        } catch {
+            // No payment attempts yet
+        }
+
+        const isPaid = cfOrder?.order_status === 'PAID' || (Array.isArray(payments) && payments.some(p => p.payment_status === 'SUCCESS'));
 
         if (isPaid) {
             if (checkoutSession.status !== 'completed') {
@@ -237,17 +245,26 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                 await checkoutSession.save();
 
                 return res.status(200).json(
-                    new ApiResponse(200, { verified: true, isPaid: true, checkoutSession, ordersCreated: orders.length }, 'CheckoutSession payment verified and orders created.')
+                    new ApiResponse(200, { verified: true, isPaid: true, checkoutSession, orders, ordersCreated: orders.length }, 'CheckoutSession payment verified and orders created.')
                 );
             }
 
+            const Order = (await import('../../../models/Order.model.js')).default;
+            const orders = await Order.find({ checkoutSessionId: checkoutSession._id }).lean();
+
             return res.status(200).json(
-                new ApiResponse(200, { verified: true, isPaid: true, checkoutSession }, 'CheckoutSession payment verified.')
+                new ApiResponse(200, { verified: true, isPaid: true, checkoutSession, orders }, 'CheckoutSession payment verified.')
             );
         }
 
+        // Payment was NOT successful (user cancelled, dropped, or transaction failed)
+        await CheckoutSession.updateOne(
+            { _id: checkoutSession._id },
+            { $set: { paymentStatus: 'failed' } }
+        );
+
         return res.status(200).json(
-            new ApiResponse(200, { verified: true, isPaid: false, checkoutSession, cfOrder }, 'CheckoutSession payment pending.')
+            new ApiResponse(200, { verified: true, isPaid: false, isCancelled: true, checkoutSession, cfOrder, payments }, 'Payment was cancelled or failed. Your order has not been placed.')
         );
     }
 

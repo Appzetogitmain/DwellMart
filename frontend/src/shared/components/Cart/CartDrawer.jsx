@@ -169,10 +169,16 @@ const CartDrawer = () => {
                             </span>
                           )}
                         </div>
-                        <span className="text-xs font-black text-[#ffc101] bg-slate-950/80 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                        <span className="text-xs font-black text-[#ffc101] bg-slate-950/80 px-2.5 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase">Item Subtotal:</span>
                           <Price amount={fg.subtotal} />
                         </span>
                       </div>
+                      {fg.fulfillmentType === 'quick_commerce' && (
+                        <div className="px-4 py-1.5 bg-slate-950/50 border-b border-slate-800 text-[11px] text-emerald-400/90 font-medium flex items-center gap-1.5">
+                          <span>⚡ Quick Commerce — Delivery fee & packaging calculated at checkout</span>
+                        </div>
+                      )}
 
                       {/* ── Vendor Groups inside this Fulfillment Section ── */}
                       <div className="p-3 space-y-3 bg-slate-950/30">

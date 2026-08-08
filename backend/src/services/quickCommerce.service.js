@@ -8,6 +8,7 @@ import {
     DEFAULT_BASE_DELIVERY_FEE,
     DEFAULT_PER_KM_FEE,
 } from '../constants/quickCommerce.js';
+import Settings from '../models/Settings.model.js';
 
 /**
  * Quick Commerce vendor operations.
@@ -235,43 +236,131 @@ export const calculateEta = ({
 };
 
 /**
- * Quick Commerce delivery fee.
- *
- * Distance-based with a free threshold, replacing the Marketplace per-vendor
- * shipping-rate engine for Quick Commerce orders.
+ * Helper: Fetch authoritative Admin Quick Commerce settings from MongoDB.
+ */
+export const getQuickCommerceSettings = async () => {
+    try {
+        const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
+        const val = settingsDoc?.value || {};
+
+        return {
+            baseDeliveryFee:           Number.isFinite(Number(val.baseDeliveryFee)) ? Number(val.baseDeliveryFee) : DEFAULT_BASE_DELIVERY_FEE,
+            perKmDeliveryFee:          Number.isFinite(Number(val.perKmDeliveryFee)) ? Number(val.perKmDeliveryFee) : DEFAULT_PER_KM_FEE,
+            freeDeliveryAboveSubtotal: Number.isFinite(Number(val.freeDeliveryAboveSubtotal)) ? Number(val.freeDeliveryAboveSubtotal) : 500,
+            freeDeliveryEnabled:       val.freeDeliveryEnabled !== false,
+            maxServiceRadiusKm:        Number.isFinite(Number(val.maxServiceRadiusKm)) ? Number(val.maxServiceRadiusKm) : MAX_SERVICE_RADIUS_KM,
+            packagingFee:              Number.isFinite(Number(val.packagingFee)) ? Number(val.packagingFee) : 0,
+            averageSpeedKmph:          Number.isFinite(Number(val.averageSpeedKmph)) ? Number(val.averageSpeedKmph) : DEFAULT_AVERAGE_SPEED_KMPH,
+            vendorAckTimeoutSecs:      Number.isFinite(Number(val.vendorAckTimeoutSecs)) ? Number(val.vendorAckTimeoutSecs) : 120,
+            defaultPreparationMins:    Number.isFinite(Number(val.defaultPreparationMins)) ? Number(val.defaultPreparationMins) : DEFAULT_PREPARATION_MINS,
+        };
+    } catch {
+        return {
+            baseDeliveryFee:           DEFAULT_BASE_DELIVERY_FEE,
+            perKmDeliveryFee:          DEFAULT_PER_KM_FEE,
+            freeDeliveryAboveSubtotal: 500,
+            freeDeliveryEnabled:       true,
+            maxServiceRadiusKm:        MAX_SERVICE_RADIUS_KM,
+            packagingFee:              0,
+            averageSpeedKmph:          DEFAULT_AVERAGE_SPEED_KMPH,
+            vendorAckTimeoutSecs:      120,
+            defaultPreparationMins:    DEFAULT_PREPARATION_MINS,
+        };
+    }
+};
+
+/**
+ * Helper: Resolve Configuration Hierarchy (Vendor Profile -> Admin Settings -> Safe Defaults).
+ */
+export const resolveEffectiveQCSettings = (vendorDoc = null, platformSettings = {}) => {
+    const profile = vendorDoc?.quickCommerceProfile || {};
+    const overrides = profile.overrides || {};
+    const hasCustomVendorOverride = overrides.useCustomDeliveryFee === true;
+
+    // Admin Quick Commerce Settings are the single authoritative source of truth
+    const adminBaseFee = Number.isFinite(Number(platformSettings.baseDeliveryFee))
+        ? Number(platformSettings.baseDeliveryFee)
+        : DEFAULT_BASE_DELIVERY_FEE;
+
+    const adminPerKmFee = Number.isFinite(Number(platformSettings.perKmDeliveryFee))
+        ? Number(platformSettings.perKmDeliveryFee)
+        : DEFAULT_PER_KM_FEE;
+
+    const adminMaxRadius = Number.isFinite(Number(platformSettings.maxServiceRadiusKm))
+        ? Number(platformSettings.maxServiceRadiusKm)
+        : MAX_SERVICE_RADIUS_KM;
+
+    const adminFreeAbove = Number.isFinite(Number(platformSettings.freeDeliveryAboveSubtotal))
+        ? Number(platformSettings.freeDeliveryAboveSubtotal)
+        : 590;
+
+    const adminFreeEnabled = platformSettings.freeDeliveryEnabled !== false;
+
+    const adminPackagingFee = Number.isFinite(Number(platformSettings.packagingFee))
+        ? Number(platformSettings.packagingFee)
+        : 0;
+
+    // Apply vendor profile values only if custom vendor override is explicitly authorized
+    const baseFee = hasCustomVendorOverride && Number.isFinite(Number(profile.baseFee))
+        ? Number(profile.baseFee)
+        : adminBaseFee;
+
+    const perKmFee = hasCustomVendorOverride && Number.isFinite(Number(profile.perKmFee))
+        ? Number(profile.perKmFee)
+        : adminPerKmFee;
+
+    const maxDistanceKm = hasCustomVendorOverride && Number.isFinite(Number(profile.serviceRadiusKm))
+        ? Number(profile.serviceRadiusKm)
+        : adminMaxRadius;
+
+    const freeAboveSubtotal = hasCustomVendorOverride && Number.isFinite(Number(profile.freeAboveSubtotal))
+        ? Number(profile.freeAboveSubtotal)
+        : adminFreeAbove;
+
+    const freeDeliveryEnabled = hasCustomVendorOverride && typeof profile.freeDeliveryEnabled === 'boolean'
+        ? profile.freeDeliveryEnabled
+        : adminFreeEnabled;
+
+    const packagingFee = hasCustomVendorOverride && Number.isFinite(Number(profile.packagingFee))
+        ? Number(profile.packagingFee)
+        : adminPackagingFee;
+
+    return {
+        baseFee,
+        perKmFee,
+        maxDistanceKm,
+        freeAboveSubtotal,
+        freeDeliveryEnabled,
+        packagingFee,
+    };
+};
+
+/**
+ * Quick Commerce delivery fee — Authoritative calculation.
  */
 export const calculateDeliveryFee = ({
     distanceKm,
     baseFee = DEFAULT_BASE_DELIVERY_FEE,
     perKmFee = DEFAULT_PER_KM_FEE,
     freeAboveSubtotal = 0,
+    freeDeliveryEnabled = true,
     subtotal = 0,
+    maxDistanceKm = null,
 }) => {
-    if (Number(freeAboveSubtotal) > 0 && Number(subtotal) >= Number(freeAboveSubtotal)) {
+    // If free delivery is enabled and subtotal reaches threshold, fee is waived
+    if (freeDeliveryEnabled && Number(freeAboveSubtotal) > 0 && Number(subtotal) >= Number(freeAboveSubtotal)) {
         return 0;
     }
-    // Cap distance for Quick Commerce delivery fee to standard express radius (max 5 km)
-    const distance = Math.min(5, Math.max(0, Number(distanceKm) || 0));
+    
+    // Cap distance for calculation according to maximum service radius
+    const capKm = Number.isFinite(Number(maxDistanceKm)) ? Number(maxDistanceKm) : MAX_SERVICE_RADIUS_KM;
+    const distance = Math.min(capKm, Math.max(0, Number(distanceKm) || 0));
     const fee = Number(baseFee) + distance * Number(perKmFee);
     return Number(Math.max(0, fee).toFixed(2));
 };
 
 /**
- * Find Quick Commerce vendors that can actually deliver to a point.
- *
- * Uses a deliberate TWO-STAGE filter, which is the subtle part of this query:
- * `$geoNear.maxDistance` accepts only one global value, but every vendor has
- * its OWN `serviceRadiusKm`. So we over-fetch to the platform ceiling and then
- * discard vendors whose personal radius does not reach the customer. A naive
- * single-radius query silently returns vendors that cannot deliver.
- *
- * @param {object} params
- * @param {number} params.latitude
- * @param {number} params.longitude
- * @param {number} [params.limit=50]
- * @param {boolean} [params.orderableOnly=false] Drop stores that are currently
- *   closed/paused. Discovery keeps them (greyed out); ordering must not.
- * @returns {Promise<Array>} vendors with `distanceKm` and derived `availability`
+ * Find Quick Commerce vendors that can deliver to a point.
  */
 export const findNearbyVendors = async ({
     latitude,
@@ -279,8 +368,9 @@ export const findNearbyVendors = async ({
     limit = 50,
     orderableOnly = false,
 }) => {
-    // Imported lazily to keep this service free of model-level import cycles.
     const { default: Vendor } = await import('../models/Vendor.model.js');
+    const platformSettings = await getQuickCommerceSettings();
+    const maxRadius = platformSettings.maxServiceRadiusKm || MAX_SERVICE_RADIUS_KM;
 
     const point = buildLocationPoint({ latitude, longitude });
 
@@ -289,8 +379,7 @@ export const findNearbyVendors = async ({
             $geoNear: {
                 near: point,
                 distanceField: 'distanceMeters',
-                // Stage 1: cast the widest net the platform permits.
-                maxDistance: MAX_SERVICE_RADIUS_KM * 1000,
+                maxDistance: maxRadius * 1000,
                 spherical: true,
                 key: 'quickCommerceProfile.location',
                 query: {
@@ -300,15 +389,18 @@ export const findNearbyVendors = async ({
             },
         },
         {
-            // Stage 2: honour each vendor's own radius (defaulting to 5km when
-            // unset, matching the schema default).
             $match: {
                 $expr: {
                     $lte: [
                         '$distanceMeters',
                         {
                             $multiply: [
-                                { $ifNull: ['$quickCommerceProfile.serviceRadiusKm', 5] },
+                                {
+                                    $ifNull: [
+                                        '$quickCommerceProfile.maxDeliveryDistanceKm',
+                                        { $ifNull: ['$quickCommerceProfile.serviceRadiusKm', maxRadius] }
+                                    ]
+                                },
                                 1000,
                             ],
                         },

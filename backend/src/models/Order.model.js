@@ -49,6 +49,7 @@ const vendorItemGroupSchema = new mongoose.Schema({
     items: [orderItemSchema],
     subtotal: Number,
     shipping: Number,
+    packagingFee: Number,
     tax: Number,
     discount: Number,
     orderType: { type: String, enum: ['retail', 'wholesale', 'mixed'], default: 'retail' },

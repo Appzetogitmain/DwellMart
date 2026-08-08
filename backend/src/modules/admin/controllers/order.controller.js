@@ -16,6 +16,8 @@ import { pointToLatLng } from '../../../services/quickCommerce.service.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { EXPERIENCES } from '../../../constants/experiences.js';
 import { QUICK_COMMERCE_ASSIGNMENT_STATUS } from '../../../constants/quickCommerce.js';
+import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
+import { emitToRoom, emitToUserRoom } from '../../../socket.js';
 
 /**
  * GET /api/admin/orders/quick-commerce/unassigned
@@ -417,6 +419,23 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
         });
     }
     await order.save();
+    await order.populate('deliveryBoyId', 'name phone email vehicleType vehicleNumber');
+
+    // Emit domain event for event bus listeners
+    marketplaceEventBus.emit(MARKETPLACE_EVENTS.DELIVERY_ASSIGNED, { order, deliveryBoy });
+
+    // Emit Socket.IO events for real-time UI synchronization
+    const payload = {
+        orderId: String(order.orderId || order._id),
+        status: String(order.status),
+        deliveryBoyId: String(deliveryBoy._id),
+        deliveryBoyName: deliveryBoy.name,
+        order,
+    };
+    emitToRoom('admin', 'delivery_assigned', payload);
+    emitToRoom('admin', 'order_updated', order);
+    emitToUserRoom(deliveryBoy._id, 'delivery', 'delivery:assigned', payload);
+    emitToRoom(`order_${order._id}`, 'delivery_assigned', payload);
 
     await createNotification({
         recipientId: deliveryBoy._id,

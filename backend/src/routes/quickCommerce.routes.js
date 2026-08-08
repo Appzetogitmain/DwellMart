@@ -15,6 +15,8 @@ import {
     haversineDistanceKm,
     calculateEta,
     calculateDeliveryFee,
+    getQuickCommerceSettings,
+    resolveEffectiveQCSettings,
 } from '../services/quickCommerce.service.js';
 import { resolvePriceForQuantity } from '../services/pricingEngine.service.js';
 import { resolveVariantPrice } from '../services/variantPricing.service.js';
@@ -322,35 +324,37 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
     }
 
     const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
-    const distanceKm = haversineDistanceKm(vendorPoint, { latitude, longitude });
+    const distanceKm = haversineDistanceKm(vendorPoint, { latitude, longitude }) || 0;
     const isDevMode = process.env.NODE_ENV !== 'production' || process.env.DISABLE_GEO_FENCING === 'true';
     const radiusKm = isDevMode ? 10000 : (Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25);
     if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
         return notAvailable('OUT_OF_DELIVERY_RANGE', `${vendor.storeName} does not deliver to your location.`);
     }
 
-    const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
-    const qcSettings = settingsDoc?.value || {};
+    const platformSettings = await getQuickCommerceSettings();
     const profile = vendor.quickCommerceProfile || {};
+    const effective = resolveEffectiveQCSettings(vendor, platformSettings);
 
     const deliveryFee = couponType === 'freeship'
         ? 0
         : calculateDeliveryFee({
             distanceKm,
-            baseFee: qcSettings.baseDeliveryFee,
-            perKmFee: qcSettings.perKmDeliveryFee,
-            freeAboveSubtotal: qcSettings.freeDeliveryAboveSubtotal,
+            baseFee:             effective.baseFee,
+            perKmFee:            effective.perKmFee,
+            freeAboveSubtotal:   effective.freeAboveSubtotal,
+            freeDeliveryEnabled: effective.freeDeliveryEnabled,
+            maxDistanceKm:       effective.maxDistanceKm,
             subtotal,
         });
 
-    const packagingFee = Number(profile.packagingFee) || 0;
+    const packagingFee = effective.packagingFee;
     const minOrderValue = Number(profile.minOrderValue) || 0;
 
     const eta = calculateEta({
-        preparationTimeMins: profile.preparationTimeMins,
+        preparationTimeMins: profile.preparationTimeMins || platformSettings.defaultPreparationMins,
         extraPrepMins: availability.extraPrepMins,
         distanceKm,
-        averageSpeedKmph: qcSettings.averageSpeedKmph,
+        averageSpeedKmph: platformSettings.averageSpeedKmph,
     });
 
     res.status(200).json(new ApiResponse(200, {
