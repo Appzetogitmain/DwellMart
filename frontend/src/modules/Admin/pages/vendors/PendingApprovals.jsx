@@ -6,6 +6,7 @@ import DataTable from "../../components/DataTable";
 import ConfirmModal from "../../components/ConfirmModal";
 import { useVendorStore } from "../../store/vendorStore";
 import { VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
+import { getImageUrl } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
 
 
@@ -210,7 +211,7 @@ const PendingApprovals = () => {
   const getModalContent = () => {
     const renderDocumentLink = () => {
       if (!actionModal.documentUrl) return null;
-      const url = actionModal.documentUrl.startsWith('http') ? actionModal.documentUrl : `http://localhost:5000${actionModal.documentUrl}`;
+      const url = getImageUrl(actionModal.documentUrl);
       return (
         <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between shadow-sm">
           <span className="text-sm font-semibold text-gray-800">{actionModal.documentLabel || "Document"} Provided</span>

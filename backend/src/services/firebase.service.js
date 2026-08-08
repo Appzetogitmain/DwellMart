@@ -92,11 +92,16 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
     try {
         const response = await messagingService.sendEachForMulticast(payload);
 
-        // Cleanup invalid or expired tokens automatically
+        // Cleanup invalid or expired tokens automatically and log exact FCM errors
         const invalidTokens = [];
+        const fcmErrors = [];
         response.responses.forEach((resp, idx) => {
             if (!resp.success) {
-                const code = resp.error?.code;
+                const code = resp.error?.code || 'unknown_error';
+                const message = resp.error?.message || 'FCM delivery failed';
+                fcmErrors.push({ code, message });
+                console.warn(`[Firebase] Push failed for token [${tokens[idx]?.slice(0, 15)}...]: [${code}] ${message}`);
+
                 if (
                     code === 'messaging/invalid-registration-token' ||
                     code === 'messaging/registration-token-not-registered'
@@ -117,9 +122,10 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
         return {
             successCount: response.successCount,
             failureCount: response.failureCount,
+            fcmErrors,
         };
     } catch (error) {
         console.error('[Firebase] Multicast push dispatch error:', error.message);
-        return { successCount: 0, failureCount: tokens.length, error: error.message };
+        return { successCount: 0, failureCount: tokens.length, error: error.message, fcmErrors: [{ code: 'dispatch_error', message: error.message }] };
     }
 };

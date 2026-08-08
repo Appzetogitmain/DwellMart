@@ -142,14 +142,8 @@ const VendorDetail = () => {
     setEarningsSummary(summary);
   }, [vendor, commissions]);
 
-  const backendBaseUrl = window.location.origin.includes('localhost') 
-    ? 'http://localhost:5000' 
-    : window.location.origin.replace('://admin.', '://api.'); // Heuristic for production
-
   const getFullUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("http")) return url;
-    return `${backendBaseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+    return getImageUrl(url);
   };
 
   const registrationDocument = vendor?.documents?.tradeLicense?.url

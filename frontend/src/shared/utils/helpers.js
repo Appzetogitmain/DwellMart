@@ -91,7 +91,14 @@ export const getImageUrl = (image, fallback = "/placeholder.jpg") => {
     return image;
   }
 
-  const baseUrl = import.meta.env.VITE_IMAGE_BASE_URL || "http://localhost:5000";
+  const getBase = () => {
+    if (import.meta.env.VITE_IMAGE_BASE_URL) return import.meta.env.VITE_IMAGE_BASE_URL;
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+      return window.location.origin;
+    }
+    return "http://localhost:5000";
+  };
+  const baseUrl = getBase();
   // Clean up the image path - only prepend if it doesn't look like a frontend-only path
   const cleanPath = image.startsWith("/") ? image.substring(1) : image;
   return `${baseUrl}/${cleanPath}`;

@@ -246,9 +246,7 @@ export const useNotificationStore = create((set, get) => ({
                 `${getApiBase()}/device-tokens/register`,
                 {
                     fcmToken,
-                    deviceType: 'web',
-                    platform: navigator.platform || 'browser',
-                    browser: navigator.userAgent || '',
+                    platform: 'web',
                 },
                 { headers: authHeader() }
             );

@@ -22,21 +22,26 @@ const resolveRecipientContext = (req) => {
 
 // POST /api/device-tokens/register
 export const registerToken = asyncHandler(async (req, res) => {
-    const { fcmToken, deviceType = 'web', platform = 'browser', appVersion = '1.0.0', browser = '' } = req.body;
-    if (!fcmToken) throw new ApiError(400, 'fcmToken is required.');
+    const { fcmToken, token, platform = 'web' } = req.body;
+    const targetToken = fcmToken || token;
+
+    if (!targetToken) throw new ApiError(400, 'fcmToken is required.');
+
+    // Normalize platform to either 'web' or 'app'
+    const rawPlatform = String(platform).toLowerCase();
+    const normalizedPlatform = ['app', 'mobile', 'ios', 'android'].includes(rawPlatform) ? 'app' : 'web';
+    const deviceType = normalizedPlatform === 'app' ? 'android' : 'web';
 
     const { recipientId, recipientType } = resolveRecipientContext(req);
 
     const tokenDoc = await DeviceToken.findOneAndUpdate(
-        { fcmToken },
+        { fcmToken: targetToken },
         {
             $set: {
                 recipientId,
                 recipientType,
-                deviceType: String(deviceType).toLowerCase(),
-                platform,
-                appVersion,
-                browser,
+                deviceType,
+                platform: normalizedPlatform,
                 isActive: true,
                 lastSeen: new Date(),
                 lastUsed: new Date(),

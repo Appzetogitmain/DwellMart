@@ -139,6 +139,7 @@ export const broadcastPush = asyncHandler(async (req, res) => {
     // 3. Send ONE FCM multicast (only if tokens exist)
     let fcmSent = 0;
     let fcmFailed = 0;
+    let fcmErrors = [];
 
     if (tokens.length > 0) {
         const fcmResult = await sendMulticastPushNotification({
@@ -156,6 +157,7 @@ export const broadcastPush = asyncHandler(async (req, res) => {
         });
         fcmSent = fcmResult.successCount || 0;
         fcmFailed = fcmResult.failureCount || 0;
+        fcmErrors = fcmResult.fcmErrors || [];
     }
 
     // 4. Bulk-insert one Notification record per recipient for in-app display
@@ -223,6 +225,7 @@ export const broadcastPush = asyncHandler(async (req, res) => {
                 tokensFound: tokens.length,
                 fcmSent,
                 fcmFailed,
+                ...(fcmErrors.length > 0 ? { fcmErrors } : {}),
                 inAppCreated,
             },
             'Push notification broadcast completed.'
