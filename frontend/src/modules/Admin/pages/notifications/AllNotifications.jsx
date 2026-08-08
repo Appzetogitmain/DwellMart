@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiBell, FiCheck, FiChevronDown } from "react-icons/fi";
-import { useNotificationStore } from "../../store/notificationStore";
+import { useNotificationStore } from "../../../../shared/store/useNotificationStore";
 import { formatDateTime } from "../../utils/adminHelpers";
 
 const AllNotifications = () => {
@@ -12,11 +12,15 @@ const AllNotifications = () => {
     unreadCount,
     isLoading,
     page,
-    hasMore,
+    pages,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
   } = useNotificationStore();
+
+  // Derive hasMore from pages / page
+  const hasMore = page < pages;
+
 
   const handleNotificationClick = (notification) => {
     markAsRead(notification._id);
@@ -34,7 +38,7 @@ const AllNotifications = () => {
   };
 
   useEffect(() => {
-    fetchNotifications(1);
+    fetchNotifications({ page: 1 });
   }, [fetchNotifications]);
 
   return (
@@ -101,6 +105,11 @@ const AllNotifications = () => {
                       )}
                     </div>
                     <p className="text-sm text-gray-600">{notification.message}</p>
+                    {notification.image && (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 max-h-36 bg-gray-50">
+                        <img src={notification.image} alt={notification.title} className="w-full h-28 object-cover" />
+                      </div>
+                    )}
                     <p className="text-xs text-gray-500 mt-2">
                       {formatDateTime(notification.createdAt)}
                     </p>
@@ -123,7 +132,7 @@ const AllNotifications = () => {
         {hasMore && (
           <div className="mt-6 text-center">
             <button
-              onClick={() => fetchNotifications(page + 1)}
+              onClick={() => fetchNotifications({ page: page + 1 })}
               disabled={isLoading}
               className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >

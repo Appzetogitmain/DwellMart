@@ -195,6 +195,12 @@ export const NotificationDrawer = () => {
                                                     {n.message || n.body}
                                                 </p>
 
+                                                {n.image && (
+                                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 max-h-32">
+                                                        <img src={n.image} alt={n.title} className="w-full h-24 object-cover" />
+                                                    </div>
+                                                )}
+
                                                 <div className="mt-2.5 flex items-center justify-between gap-2">
                                                     {n.actionUrl ? (
                                                         <button

@@ -137,10 +137,23 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         marketplaceEventBus.emit(MARKETPLACE_EVENTS.VENDOR_REJECTED, { vendor, reason });
     }
 
+    // Build the email message body based on final status
+    const resolvedVendorType = vendor.vendorType
+        ? vendor.vendorType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+        : 'Vendor';
+    const vendorMessage =
+        status === 'approved'
+            ? `Congratulations! Your DwellMart Vendor account has been approved as a ${resolvedVendorType} Vendor. You can now log in and start selling.`
+            : status === 'rejected'
+            ? `Your vendor application was not approved.${reason ? ` Reason: ${reason}` : ' Please contact support for details.'}`
+            : status === 'suspended'
+            ? `Your DwellMart Vendor account has been suspended.${reason ? ` Reason: ${reason}` : ''} Please contact support.`
+            : `Your DwellMart Vendor account status has been updated to: ${status}.`;
+
     try {
         await sendEmail({
             to: vendor.email,
-            subject: `Vendor Account ${status[0].toUpperCase()}${status.slice(1)}`,
+            subject: `DwellMart Vendor Account ${status[0].toUpperCase()}${status.slice(1)}`,
             text: vendorMessage,
             html: `<p>${vendorMessage}</p>`,
         });

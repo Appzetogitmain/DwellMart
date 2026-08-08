@@ -380,25 +380,45 @@ export const uploadAdminImage = (file, folder = 'general', publicId) => {
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────
-export const sendPushNotification = (data) =>
-    api.post('/admin/notifications/push', data);
 
-export const sendCustomMessage = (data) =>
-    api.post('/admin/notifications/message', data);
+/**
+ * Broadcast a push notification to a target group.
+ * POST /api/admin/notifications/broadcast-push
+ * @param {Object} data - { title, message, target, category, priority, actionUrl, metadata }
+ */
+export const broadcastPushNotification = (data) =>
+    api.post('/admin/notifications/broadcast-push', data);
 
-// ─── Policies ─────────────────────────────────────────────────────────────────
-export const getPolicy = (type) =>
-    api.get(`/admin/policies/${type}`);
+// ─── Custom Message Templates ─────────────────────────────────────────────────
 
-export const updatePolicy = (type, content) =>
-    api.put(`/admin/policies/${type}`, { content });
+export const getCustomMessages = (params = {}) =>
+    api.get('/admin/notifications/custom-messages', { params });
+
+export const createCustomMessage = (data) =>
+    api.post('/admin/notifications/custom-messages', data);
+
+export const updateCustomMessage = (id, data) =>
+    api.put(`/admin/notifications/custom-messages/${id}`, data);
+
+export const deleteCustomMessage = (id) =>
+    api.delete(`/admin/notifications/custom-messages/${id}`);
+
+export const toggleCustomMessage = (id) =>
+    api.patch(`/admin/notifications/custom-messages/${id}/toggle`);
 
 // ─── Header Notifications ─────────────────────────────────────────────────────
 export const getAdminNotifications = (params) => api.get('/admin/notifications', { params });
 export const markNotificationAsRead = (id) => api.put(`/admin/notifications/${id}/read`);
 export const markAllNotificationsAsRead = () => api.put('/admin/notifications/read-all');
 
+export const getPolicy = (type) =>
+    api.get(`/admin/policies/${type}`);
+
+export const updatePolicy = (type, content) =>
+    api.put(`/admin/policies/${type}`, { content });
+
 // ─── Sub Admin Management ─────────────────────────────────────────────────────
+
 export const getAllSubAdmins = (params = {}) => api.get('/admin/subadmins', { params });
 export const getSubAdminById = (id) => api.get(`/admin/subadmins/${id}`);
 export const createSubAdmin = (data) => api.post('/admin/subadmins', data);

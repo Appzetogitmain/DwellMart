@@ -65,7 +65,10 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
             ...(image ? { imageUrl: image } : {}),
         },
         data: Object.fromEntries(
-            Object.entries(data || {}).map(([k, v]) => [String(k), String(v ?? '')])
+            Object.entries({
+                ...data,
+                ...(image ? { image } : {}),
+            }).map(([k, v]) => [String(k), String(v ?? '')])
         ),
         webpush: {
             headers: {
@@ -75,6 +78,7 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
                 title: String(title || ''),
                 body: String(body || ''),
                 icon: image || '/login_logo.png',
+                ...(image ? { image } : {}),
                 badge: '/login_logo.png',
                 requireInteraction: true,
             },

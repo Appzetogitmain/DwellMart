@@ -17,6 +17,7 @@ export const vendorIdParamSchema = Joi.object({
 export const vendorStatusUpdateSchema = Joi.object({
     status: Joi.string().valid('approved', 'suspended', 'rejected').required(),
     reason: Joi.string().trim().allow('').max(500).optional(),
+    vendorType: Joi.string().valid('quick_commerce', 'retail', 'wholesale').optional(),
 });
 
 export const vendorCommissionUpdateSchema = Joi.object({

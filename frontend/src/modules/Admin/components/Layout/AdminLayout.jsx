@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import AdminBottomNav from './AdminBottomNav';
 import useAdminHeaderHeight from '../../hooks/useAdminHeaderHeight';
+import { initNotificationListeners } from '../../../../shared/services/notificationSocketService';
 
 const AdminLayout = () => {
   const [isDesktopOpen, setIsDesktopOpen] = useState(() => {
@@ -12,6 +13,12 @@ const AdminLayout = () => {
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const headerHeight = useAdminHeaderHeight();
+
+  // Initialize Socket.IO notification listeners for the entire admin session
+  useEffect(() => {
+    initNotificationListeners();
+  }, []);
+
 
   const toggleSidebar = () => {
     if (window.innerWidth >= 1024) {

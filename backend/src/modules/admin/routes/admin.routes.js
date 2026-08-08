@@ -12,6 +12,8 @@ import * as analyticsController from '../controllers/analytics.controller.js';
 import * as reportController from '../controllers/report.controller.js';
 import * as marketingController from '../controllers/marketing.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
+import { broadcastPush } from '../controllers/broadcastPush.controller.js';
+import * as customMessageController from '../controllers/customMessage.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as documentController from '../../vendor/controllers/document.controller.js';
 import * as subscriptionPlanController from '../controllers/subscriptionPlan.controller.js';
@@ -312,6 +314,16 @@ router.get('/reports/inventory', ...perm(PERMISSIONS.REPORTS_VIEW), reportContro
 router.get('/notifications', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.getAdminNotifications);
 router.put('/notifications/:id/read', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.markAsRead);
 router.put('/notifications/read-all', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.markAllAsRead);
+
+// Admin Push Broadcast
+router.post('/notifications/broadcast-push', ...perm(PERMISSIONS.DASHBOARD_VIEW), broadcastPush);
+
+// Custom Message Templates (CRUD)
+router.get('/notifications/custom-messages', ...perm(PERMISSIONS.DASHBOARD_VIEW), customMessageController.listCustomMessages);
+router.post('/notifications/custom-messages', ...perm(PERMISSIONS.DASHBOARD_VIEW), customMessageController.createCustomMessage);
+router.put('/notifications/custom-messages/:id', ...perm(PERMISSIONS.DASHBOARD_VIEW), customMessageController.updateCustomMessage);
+router.patch('/notifications/custom-messages/:id/toggle', ...perm(PERMISSIONS.DASHBOARD_VIEW), customMessageController.toggleCustomMessageStatus);
+router.delete('/notifications/custom-messages/:id', ...perm(PERMISSIONS.DASHBOARD_VIEW), customMessageController.deleteCustomMessage);
 
 // ─── Subscription Plans & Vendor Subscriptions ───────────────────────────────
 router.get('/subscription-plans', ...perm(PERMISSIONS.VENDORS_VIEW), subscriptionPlanController.getAllPlans);

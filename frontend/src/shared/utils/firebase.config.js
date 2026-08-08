@@ -98,7 +98,8 @@ export const setupFcmForegroundListener = async () => {
         onMessage(messaging, async (payload) => {
             const title = payload?.notification?.title || payload?.data?.title || 'DwellMart Notification';
             const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || '';
-            const icon = payload?.notification?.icon || '/favicon.png';
+            const image = payload?.notification?.imageUrl || payload?.notification?.image || payload?.data?.image || '';
+            const icon = payload?.notification?.icon || image || '/favicon.png';
             const actionUrl = payload?.data?.actionUrl || '/notifications';
 
             toast(`${title}${body ? `\n${body}` : ''}`, { duration: 7000 });
@@ -108,7 +109,8 @@ export const setupFcmForegroundListener = async () => {
                 await registration.showNotification(title, {
                     body,
                     icon,
-                    badge: icon,
+                    ...(image ? { image } : {}),
+                    badge: '/favicon.png',
                     tag: `dwell-mart-${Date.now()}`,
                     data: {
                         ...(payload?.data || {}),
