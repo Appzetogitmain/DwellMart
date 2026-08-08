@@ -3,7 +3,14 @@ import axios from 'axios';
 import { requestFcmWebToken, setupFcmForegroundListener } from '../utils/firebase.config';
 
 const getApiBase = () => {
-    return import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const customUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+    if (customUrl) {
+        return customUrl.endsWith('/api') ? customUrl : `${customUrl}/api`;
+    }
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        return `${window.location.origin}/api`;
+    }
+    return 'http://localhost:5000/api';
 };
 
 const getAuthToken = () => {

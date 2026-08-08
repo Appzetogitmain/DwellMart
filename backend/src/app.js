@@ -83,12 +83,12 @@ app.use(compression());
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({
-    limit: '10mb',
+    limit: '50mb',
     verify: (req, res, buf) => {
         req.rawBody = buf.toString();
     },
 }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ─── Rate Limiting ───────────────────────────────────────────────────────────
 app.use('/api', apiLimiter);

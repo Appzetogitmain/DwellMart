@@ -77,24 +77,79 @@ const PushNotifications = () => {
     }
   };
 
+  // Helper: Client-side image compression to prevent 413 Request Entity Too Large on production servers
+  const compressImageFile = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.82) => {
+    return new Promise((resolve) => {
+      if (file.size <= 400 * 1024 || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+        return resolve(file);
+      }
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return resolve(file);
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Image Upload Handler
   const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (!file.type.startsWith('image/')) {
+    if (!rawFile.type.startsWith('image/')) {
       toast.error('Please select a valid image file (PNG, JPG, WEBP, etc.).');
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB.');
+    if (rawFile.size > 10 * 1024 * 1024) {
+      toast.error('Image file size must be less than 10MB.');
       return;
     }
 
     setIsUploadingImage(true);
     try {
-      const res = await uploadAdminImage(file, 'notifications');
+      // Compress image client-side before upload to stay well under Nginx/Express body limits
+      const fileToUpload = await compressImageFile(rawFile);
+      const res = await uploadAdminImage(fileToUpload, 'notifications');
       const imageUrl = res?.data?.url || res?.data?.data?.url || res?.url;
       if (imageUrl) {
         setFormData((prev) => ({ ...prev, image: imageUrl }));
@@ -103,8 +158,12 @@ const PushNotifications = () => {
         throw new Error('Image URL was not returned');
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to upload image.';
-      toast.error(msg);
+      if (err?.response?.status === 413) {
+        toast.error('Image file size is too large for the server. Please select a smaller image.');
+      } else {
+        const msg = err?.response?.data?.message || err?.message || 'Failed to upload image.';
+        toast.error(msg);
+      }
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
