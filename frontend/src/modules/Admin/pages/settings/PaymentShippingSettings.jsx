@@ -6,25 +6,45 @@ import AnimatedSelect from '../../components/AnimatedSelect';
 import toast from 'react-hot-toast';
 
 const PaymentShippingSettings = () => {
-  const { settings, updateSettings, initialize } = useSettingsStore();
+  const { settings, updateSettings, fetchCategorySettings } = useSettingsStore();
   const [paymentData, setPaymentData] = useState({});
-  const [shippingData, setShippingData] = useState({});
+  const [shippingData, setShippingData] = useState({
+    freeShippingThreshold: 100,
+    defaultShippingRate: 5,
+    shippingMethods: ['standard'],
+  });
   const [activeSection, setActiveSection] = useState('payment');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    initialize();
-    if (settings) {
-      if (settings.payment) setPaymentData(settings.payment);
-      if (settings.shipping) setShippingData(settings.shipping);
-    }
-  }, []);
+    const loadSettings = async () => {
+      setLoading(true);
+      try {
+        const [payData, shipData] = await Promise.all([
+          fetchCategorySettings('payment'),
+          fetchCategorySettings('shipping'),
+        ]);
 
-  useEffect(() => {
-    if (settings) {
-      if (settings.payment) setPaymentData(settings.payment);
-      if (settings.shipping) setShippingData(settings.shipping);
-    }
-  }, [settings]);
+        if (payData && Object.keys(payData).length > 0) {
+          setPaymentData(payData);
+        }
+        if (shipData && Object.keys(shipData).length > 0) {
+          setShippingData({
+            freeShippingThreshold: shipData.freeShippingThreshold !== undefined ? shipData.freeShippingThreshold : 100,
+            defaultShippingRate: shipData.defaultShippingRate !== undefined ? shipData.defaultShippingRate : 5,
+            shippingMethods: shipData.shippingMethods || ['standard'],
+            ...shipData,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load payment/shipping settings', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [fetchCategorySettings]);
 
   const handlePaymentChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,7 +62,6 @@ const PaymentShippingSettings = () => {
     });
   };
 
-
   const handleShippingMethodToggle = (method) => {
     const methods = shippingData.shippingMethods || [];
     if (methods.includes(method)) {
@@ -58,11 +77,21 @@ const PaymentShippingSettings = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateSettings('payment', paymentData);
-    updateSettings('shipping', shippingData);
-    toast.success('Settings saved successfully');
+    try {
+      const formattedShipping = {
+        ...shippingData,
+        freeShippingThreshold: shippingData.freeShippingThreshold === '' ? 0 : Number(shippingData.freeShippingThreshold),
+        defaultShippingRate: shippingData.defaultShippingRate === '' ? 0 : Number(shippingData.defaultShippingRate),
+      };
+
+      await updateSettings('payment', paymentData);
+      await updateSettings('shipping', formattedShipping);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      toast.error('Failed to save settings');
+    }
   };
 
   const sections = [
@@ -177,7 +206,7 @@ const PaymentShippingSettings = () => {
                   <input
                     type="number"
                     name="freeShippingThreshold"
-                    value={shippingData.freeShippingThreshold || 100}
+                    value={shippingData.freeShippingThreshold ?? ''}
                     onChange={handleShippingChange}
                     min="0"
                     step="0.01"
@@ -193,7 +222,7 @@ const PaymentShippingSettings = () => {
                   <input
                     type="number"
                     name="defaultShippingRate"
-                    value={shippingData.defaultShippingRate || 5}
+                    value={shippingData.defaultShippingRate ?? ''}
                     onChange={handleShippingChange}
                     min="0"
                     step="0.01"

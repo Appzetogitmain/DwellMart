@@ -105,6 +105,24 @@ export const useSettingsStore = create((set, get) => ({
     }
   },
 
+  // Fetch specific category settings from API
+  fetchCategorySettings: async (category) => {
+    try {
+      const res = await api.get(`/admin/settings/${category}`);
+      const data = res?.data?.data || res?.data?.value || res?.data || {};
+      set((state) => ({
+        settings: {
+          ...state.settings,
+          [category]: data,
+        },
+      }));
+      return data;
+    } catch (error) {
+      console.error(`Failed to fetch ${category} settings`, error);
+      return {};
+    }
+  },
+
   // Backward compatibility wrapper for updateSettings and dynamic endpoints
   updateSettings: async (category, settingsData) => {
     if (category === "general" || category === "vendor") {
