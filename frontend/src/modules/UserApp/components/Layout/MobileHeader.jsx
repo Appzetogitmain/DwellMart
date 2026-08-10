@@ -114,28 +114,32 @@ const MobileHeader = ({ hideSellButton = false }) => {
     return () => window.removeEventListener("resize", measureTopRow);
   }, []);
 
-  // Handle scroll to hide/show top row with smooth throttling
+  // Handle scroll to hide/show top row with smooth hysteresis threshold to prevent glitching
   useEffect(() => {
     let ticking = false;
+    const SCROLL_THRESHOLD = 15; // Minimum scroll delta before toggling header visibility
 
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
           const lastScrollY = lastScrollYRef.current;
+          const diff = currentScrollY - lastScrollY;
 
-          // Show top row when at top or scrolling up
-          if (currentScrollY < 10) {
+          // Always visible near top of page
+          if (currentScrollY <= 15) {
             setIsTopRowVisible(true);
-          } else if (currentScrollY < lastScrollY) {
-            // Scrolling up - show top row
-            setIsTopRowVisible(true);
-          } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
-            // Scrolling down and past threshold - hide top row
+            lastScrollYRef.current = currentScrollY;
+          } else if (diff > SCROLL_THRESHOLD && currentScrollY > 60) {
+            // Scrolling down past threshold -> hide header
             setIsTopRowVisible(false);
+            lastScrollYRef.current = currentScrollY;
+          } else if (diff < -SCROLL_THRESHOLD) {
+            // Scrolling up past threshold -> show header
+            setIsTopRowVisible(true);
+            lastScrollYRef.current = currentScrollY;
           }
 
-          lastScrollYRef.current = currentScrollY;
           ticking = false;
         });
         ticking = true;
@@ -263,10 +267,8 @@ const MobileHeader = ({ hideSellButton = false }) => {
         y: isTopRowVisible ? 0 : -(topRowHeight + 12),
       }}
       transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 30,
-        mass: 0.8,
+        duration: 0.25,
+        ease: [0.25, 0.1, 0.25, 1.0],
       }}>
       <div className="px-4 h-full flex items-center overflow-visible">
         {/* First Row: Logo and Actions */}
@@ -278,10 +280,8 @@ const MobileHeader = ({ hideSellButton = false }) => {
             opacity: isTopRowVisible ? 1 : 0,
           }}
           transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 35,
-            mass: 0.6,
+            duration: 0.2,
+            ease: "easeInOut",
           }}
           style={{
             pointerEvents: isTopRowVisible ? "auto" : "none",

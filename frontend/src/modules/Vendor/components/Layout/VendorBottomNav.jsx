@@ -7,9 +7,15 @@ import {
   FiShoppingBag,
 } from "react-icons/fi";
 import { MdCurrencyRupee } from "react-icons/md";
+import useKeyboardVisible from "../../../UserApp/hooks/useKeyboardVisible";
 
 const VendorBottomNav = () => {
   const location = useLocation();
+  const isKeyboardVisible = useKeyboardVisible();
+
+  if (isKeyboardVisible) {
+    return null;
+  }
 
   const navItems = [
     { path: "/vendor/dashboard", icon: FiHome, label: "Home" },

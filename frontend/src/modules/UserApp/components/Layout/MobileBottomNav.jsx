@@ -4,11 +4,17 @@ import { motion } from "framer-motion";
 import { FiHome, FiGrid, FiSearch, FiHeart, FiUser } from "react-icons/fi";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
+import useKeyboardVisible from "../../hooks/useKeyboardVisible";
 
 const MobileBottomNav = () => {
   const location = useLocation();
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const { isAuthenticated } = useAuthStore();
+  const isKeyboardVisible = useKeyboardVisible();
+
+  if (isKeyboardVisible) {
+    return null;
+  }
 
   const navItems = [
     { path: "/home", icon: FiHome, label: "Home" },

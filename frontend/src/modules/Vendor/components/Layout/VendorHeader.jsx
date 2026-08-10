@@ -55,21 +55,21 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}>
-      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-10 xl:px-12 py-4">
+      <div className="flex items-center justify-between px-3 sm:px-6 lg:px-10 xl:px-12 py-2 sm:py-3.5 gap-2">
         {/* Left: Menu Button & Page Heading */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button
             onClick={onMenuClick}
-            className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition-colors shadow-xs shrink-0 cursor-pointer"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center border border-slate-700 transition-colors shadow-xs shrink-0 cursor-pointer"
             aria-label="Toggle Sidebar"
             title="Toggle Sidebar">
-            <FiMenu className="text-xl text-white" />
+            <FiMenu className="text-base sm:text-xl text-white" />
           </button>
 
-          {/* Page Heading */}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight">
+          {/* Page Heading & Badge */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <h1 className="text-base sm:text-xl lg:text-2xl font-bold text-white tracking-tight truncate">
                 {pageName}
               </h1>
 
@@ -77,20 +77,22 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
               {subscriptionInfo?.isExpiringSoon && (
                 <button
                   onClick={() => navigate('/vendor/renew-subscription')}
-                  className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/40 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:bg-amber-500/30 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 sm:px-2.5 sm:py-0.5 bg-amber-500/20 text-amber-300 border border-amber-400/40 rounded-md sm:rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1 hover:bg-amber-500/30 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                   title="Subscription Expiring Soon - Click to Renew">
-                  <FiClock className="text-amber-400 animate-pulse" />
-                  <span>Expiring Soon ({subscriptionInfo.daysRemaining}d left) • Renew</span>
+                  <FiClock className="text-amber-400 text-xs animate-pulse" />
+                  <span className="hidden sm:inline">Expiring Soon ({subscriptionInfo.daysRemaining}d left) • Renew</span>
+                  <span className="inline sm:hidden">{subscriptionInfo.daysRemaining}d left • Renew</span>
                 </button>
               )}
 
               {subscriptionInfo?.isExpired && (
                 <button
                   onClick={() => navigate('/vendor/renew-subscription')}
-                  className="px-2.5 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-400/40 rounded-lg text-[11px] font-bold flex items-center gap-1 hover:bg-rose-500/30 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 sm:px-2.5 sm:py-0.5 bg-rose-500/20 text-rose-300 border border-rose-400/40 rounded-lg text-[10px] sm:text-[11px] font-bold flex items-center gap-1 hover:bg-rose-500/30 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                   title="Subscription Expired - Click to Resubscribe">
-                  <FiAlertTriangle className="text-rose-400" />
-                  <span>Subscription Expired • Renew</span>
+                  <FiAlertTriangle className="text-rose-400 text-xs" />
+                  <span className="hidden sm:inline">Subscription Expired • Renew</span>
+                  <span className="inline sm:hidden">Expired • Renew</span>
                 </button>
               )}
             </div>
@@ -102,18 +104,27 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
         </div>
 
         {/* Right: Notifications & Logout */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Notifications */}
           <div className="relative">
-            <NotificationBell className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0 cursor-pointer" iconClassName="text-lg text-white" />
+            <NotificationBell className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0 cursor-pointer" iconClassName="text-sm sm:text-lg text-white" />
           </div>
 
-          {/* Logout Button */}
+          {/* Logout Button (Desktop) */}
           <button
             onClick={handleLogout}
-            className="px-3 sm:px-3.5 py-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all font-semibold text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0">
+            className="hidden sm:flex px-3.5 py-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all font-semibold text-sm items-center gap-2 shadow-xs shrink-0 cursor-pointer">
             <FiLogOut className="text-base" />
             <span>Logout</span>
+          </button>
+
+          {/* Logout Button (Mobile Icon-Only) */}
+          <button
+            onClick={handleLogout}
+            className="flex sm:hidden w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 transition-all items-center justify-center shadow-xs shrink-0 cursor-pointer"
+            aria-label="Logout"
+            title="Logout">
+            <FiLogOut className="text-sm" />
           </button>
         </div>
       </div>

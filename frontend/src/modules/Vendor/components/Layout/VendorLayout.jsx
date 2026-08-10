@@ -111,7 +111,7 @@ const VendorLayout = () => {
 
         {/* Page Content */}
         <main
-          className="flex-1 bg-gray-50 px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 overflow-y-auto overflow-x-hidden scrollbar-admin w-full min-w-0"
+          className="flex-1 bg-gray-50 px-3 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-y-auto overflow-x-hidden scrollbar-admin w-full min-w-0"
           style={{
             paddingBottom: `calc(${Math.max(bottomPadding, 64)}px + env(safe-area-inset-bottom, 0px))`,
           }}
