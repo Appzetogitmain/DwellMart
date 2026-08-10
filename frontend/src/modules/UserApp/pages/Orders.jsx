@@ -68,7 +68,6 @@ const MobileOrders = () => {
   const handleRefresh = async () => {
     if (!user?.id) return;
     await fetchUserOrders(1, 20);
-    toast.success(t('Orders refreshed'));
   };
 
   const hasMore = orderPagination.page < orderPagination.pages;

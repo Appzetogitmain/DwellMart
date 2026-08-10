@@ -580,12 +580,7 @@ const MobileHome = () => {
 
   // Pull to refresh handler
   const handleRefresh = async () => {
-    const ok = await fetchHomeData();
-    if (!ok) {
-      toast.error(t("Refresh failed. Showing available data."));
-      return;
-    }
-    toast.success(t("Refreshed"));
+    await fetchHomeData();
   };
 
   const {
