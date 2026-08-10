@@ -3,7 +3,8 @@ echo "🚀 Deploying DwellMart to dwellmart.in..."
 
 # Navigate to project directory
 cd ~/dwellmart || cd ~/DwellMart
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 
 # FRONTEND
 echo "📦 Building Frontend..."
