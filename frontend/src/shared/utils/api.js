@@ -53,6 +53,16 @@ const EXCLUDED_AUTH_SUFFIXES = [
   '/settings/reviews',
 ];
 
+// Endpoints that are called as background/optional features — 401 is expected
+// when the user is a guest. Never show a toast or redirect for these.
+const SILENT_BACKGROUND_ENDPOINTS = [
+  '/notifications/unread-count',
+  '/notifications',
+  '/device-tokens/register',
+  '/device-tokens/unregister',
+  '/support/unread-count',
+];
+
 const refreshInFlight = {
   admin: null,
   vendor: null,
@@ -189,10 +199,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response.data,
   async (error) => {
+    // ── Silently ignore intentionally cancelled/aborted requests ────────────
+    // These happen when the user navigates away or a new search supersedes
+    // the previous one (AbortController). Never show a toast for these.
+    if (
+      error?.code === 'ERR_CANCELED' ||
+      error?.name === 'CanceledError' ||
+      error?.name === 'AbortError' ||
+      axios.isCancel?.(error)
+    ) {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config || {};
-    const scope = getScopeFromUrl(originalRequest.url || '');
+    const requestUrl = originalRequest.url || '';
+    const scope = getScopeFromUrl(requestUrl);
     const currentPath = window.location.pathname;
     const pathScope = getScopeFromPath(currentPath);
+
+    // ── Silent background endpoints — 401 is expected for guests ────────────
+    // Notification and device-token endpoints are called optimistically for
+    // logged-in users. When the user is a guest these return 401, which is
+    // intentional and should never pop up a toast or trigger a redirect.
+    const isSilentBackground = SILENT_BACKGROUND_ENDPOINTS.some((ep) => requestUrl.includes(ep));
+    if (isSilentBackground) {
+      return Promise.reject(error);
+    }
 
     if (shouldAttemptRefresh(error, scope)) {
       try {
@@ -236,13 +268,18 @@ api.interceptors.response.use(
 
       const routeConfig = AUTH_SCOPES[scope];
       if (scope === 'user') {
+        // Only redirect to login when the user is on a PROTECTED page.
+        // Public pages (/search, /product/*, /, /category/*, etc.) should
+        // never redirect guest users to login on a background 401.
+        const PROTECTED_USER_PATHS = ['/profile', '/orders', '/checkout', '/wishlist', '/addresses'];
+        const isProtectedPage = PROTECTED_USER_PATHS.some((p) => currentPath.startsWith(p));
         const isAuthPage =
           currentPath === '/login' ||
           currentPath === '/register' ||
           currentPath === '/verification' ||
           currentPath === '/forgot-password' ||
           currentPath === '/reset-password';
-        if (!isAuthPage) {
+        if (isProtectedPage && !isAuthPage) {
           redirectTo(routeConfig.loginPath);
         }
       } else if (currentPath.startsWith(routeConfig.areaPrefix) && currentPath !== routeConfig.loginPath) {

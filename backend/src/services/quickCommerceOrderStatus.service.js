@@ -22,6 +22,7 @@ import {
     QUICK_COMMERCE_RIDER_STATUSES,
 } from '../constants/quickCommerce.js';
 import { EXPERIENCES } from '../constants/experiences.js';
+import { ensureVendorCommissionsForOrder } from './commission.service.js';
 
 /** Customer-facing copy for each status. */
 const STATUS_MESSAGES = {
@@ -126,6 +127,9 @@ export const applyQuickCommerceStatus = (order, nextStatus) => {
             );
             order.quickCommerce.slaBreached = now.getTime() > promisedAt + promisedMins * 60 * 1000;
         }
+        ensureVendorCommissionsForOrder(order).catch((err) => {
+            console.warn(`[QC Commission] Failed to ensure commission for order ${order.orderId || order._id}: ${err.message}`);
+        });
     }
 
     return order;

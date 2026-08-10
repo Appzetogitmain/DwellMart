@@ -14,6 +14,7 @@ import {
     FiShoppingBag,
 } from 'react-icons/fi';
 import { useNotificationStore } from '../../store/useNotificationStore';
+import { navigateToNotificationTarget } from '../../utils/notificationNavigator';
 
 export const NotificationDrawer = () => {
     const navigate = useNavigate();
@@ -56,13 +57,8 @@ export const NotificationDrawer = () => {
     };
 
     const handleActionClick = (notification) => {
-        if (!notification.isRead) {
-            markAsRead(notification._id);
-        }
-        if (notification.actionUrl) {
-            setDrawerOpen(false);
-            navigate(notification.actionUrl);
-        }
+        setDrawerOpen(false);
+        navigateToNotificationTarget(notification, navigate, 'user', markAsRead);
     };
 
     const tabs = [
@@ -172,7 +168,8 @@ export const NotificationDrawer = () => {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
-                                        className={`group relative p-3.5 rounded-xl border transition-all ${
+                                        onClick={() => handleActionClick(n)}
+                                        className={`group relative p-3.5 rounded-xl border transition-all cursor-pointer ${
                                             !n.isRead
                                                 ? 'bg-blue-50/40 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/40'
                                                 : 'bg-white border-gray-100 dark:bg-gray-900 dark:border-gray-800 hover:border-gray-200'

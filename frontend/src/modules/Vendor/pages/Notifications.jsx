@@ -7,6 +7,7 @@ import Badge from "../../../shared/components/Badge";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorNotificationStore } from "../store/vendorNotificationStore";
+import { navigateToNotificationTarget } from "../../../shared/utils/notificationNavigator";
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -254,13 +255,7 @@ const Notifications = () => {
           pagination={true}
           itemsPerPage={10}
           onRowClick={(row) => {
-            if (row.data?.returnRequestId) navigate("/vendor/return-requests");
-            else if (row.data?.documentId) navigate("/vendor/profile?tab=documents");
-            else if (row.orderId || row.data?.orderId)
-              navigate("/vendor/orders/all-orders");
-            if (!row.isRead) {
-              handleMarkRead(row._id);
-            }
+            navigateToNotificationTarget(row, navigate, "vendor", handleMarkRead);
           }}
         />
       ) : (

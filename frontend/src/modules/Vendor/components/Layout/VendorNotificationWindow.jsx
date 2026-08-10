@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { formatDateTime } from "../../../Admin/utils/adminHelpers";
 import { useVendorNotificationStore } from "../../store/vendorNotificationStore";
+import { navigateToNotificationTarget } from "../../../../shared/utils/notificationNavigator";
 
 const VendorNotificationWindow = ({ isOpen, onClose, position = "right" }) => {
   const navigate = useNavigate();
@@ -46,25 +47,8 @@ const VendorNotificationWindow = ({ isOpen, onClose, position = "right" }) => {
     return colors[type] || colors.system;
   };
 
-  const getNotificationRoute = (notification) => {
-    const orderId = notification.orderId || notification.data?.orderId;
-    if (orderId) {
-      return "/vendor/orders/all-orders";
-    }
-    if (notification.data?.returnRequestId) {
-      return "/vendor/return-requests";
-    }
-    if (notification.data?.documentId) {
-      return "/vendor/profile?tab=documents";
-    }
-    return "/vendor/dashboard";
-  };
-
   const handleNotificationClick = (notification) => {
-    if (!notification.isRead) {
-      markAsRead(notification._id);
-    }
-    navigate(getNotificationRoute(notification));
+    navigateToNotificationTarget(notification, navigate, "vendor", markAsRead);
     onClose();
   };
 

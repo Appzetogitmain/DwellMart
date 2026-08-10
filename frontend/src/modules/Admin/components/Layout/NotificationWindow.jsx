@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateTime } from '../../utils/adminHelpers';
 import { useNavigate } from 'react-router-dom';
 import { useNotificationStore } from '../../store/notificationStore';
+import { navigateToNotificationTarget } from '../../../../shared/utils/notificationNavigator';
 
 const NotificationWindow = ({ isOpen, onClose, position = 'right' }) => {
   const navigate = useNavigate();
@@ -49,21 +50,8 @@ const NotificationWindow = ({ isOpen, onClose, position = 'right' }) => {
   };
 
   const handleNotificationClick = (notification) => {
-    markAsRead(notification._id);
-    const orderId = notification.orderId || notification.data?.orderId;
-    const feedbackId = notification.feedbackId || notification.data?.feedbackId;
-    const vendorId = notification.vendorId || notification.data?.vendorId;
-
-    if (feedbackId || notification.title?.toLowerCase().includes('feedback')) {
-      navigate('/admin/support/feedbacks');
-      onClose();
-    } else if (orderId) {
-      navigate('/admin/orders');
-      onClose();
-    } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
-      navigate(vendorId ? `/admin/vendors/${vendorId}` : '/admin/vendors');
-      onClose();
-    }
+    navigateToNotificationTarget(notification, navigate, 'admin', markAsRead);
+    onClose();
   };
 
   const positionClasses = {

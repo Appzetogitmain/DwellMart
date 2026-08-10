@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiClock } from 'react-icons/fi';
 import VendorSidebar from './VendorSidebar';
@@ -18,15 +18,22 @@ const VendorLayout = () => {
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [subscription, setSubscription] = useState(null);
+  // Initialize isExpired/isExpiringSoon to false (not null) so the layout
+  // doesn't shift when the subscription API call completes.
   const [isExpired, setIsExpired] = useState(false);
   const [isExpiringSoon, setIsExpiringSoon] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState(0);
+  const [daysRemaining, setDaysRemaining] = useState(14);
+  const profileRefreshed = useRef(false);
 
   const navigate = useNavigate();
   const headerHeight = useAdminHeaderHeight();
 
+  // Refresh profile only ONCE on mount (not on every render)
   useEffect(() => {
-    refreshProfile();
+    if (!profileRefreshed.current) {
+      profileRefreshed.current = true;
+      refreshProfile();
+    }
   }, [refreshProfile]);
 
   const toggleSidebar = () => {

@@ -17,6 +17,7 @@ import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js
 import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
 import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
 import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
+import { getVendorWithdrawableCommissions } from '../../../services/commission.service.js';
 import {
     baseQuickCommerceMatch,
     resolveDateRange,
@@ -393,7 +394,7 @@ export const getEarnings = asyncHandler(async (req, res) => {
 
     const [commissionDocs, totalCommissions, settlements, totalSettlements] = await Promise.all([
         Commission.find({ vendorId: req.user.id })
-            .populate('orderId', 'orderId status deliveredAt')
+            .populate('orderId', 'orderId status deliveredAt createdAt')
             .sort({ createdAt: -1 })
             .skip(commissionSkip)
             .limit(numericLimit),
@@ -405,8 +406,11 @@ export const getEarnings = asyncHandler(async (req, res) => {
         Settlement.countDocuments({ vendorId: req.user.id }),
     ]);
     const allCommissionsForSummary = await Commission.find({ vendorId: req.user.id })
-        .populate('orderId', 'orderId status deliveredAt')
+        .populate('orderId', 'orderId status deliveredAt createdAt')
         .sort({ createdAt: -1 });
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const commissions = commissionDocs.map((doc) => {
         const commission = doc.toObject();
@@ -414,10 +418,17 @@ export const getEarnings = asyncHandler(async (req, res) => {
         const orderDisplayId = commission.orderId?.orderId || String(orderRef || '');
         const orderStatus = String(commission.orderId?.status || '').toLowerCase();
         const effectiveStatus = orderStatus === 'cancelled' ? 'cancelled' : String(commission.status || 'pending');
+        const deliveredAt = commission.orderId?.deliveredAt;
+        const orderDate = commission.orderId?.createdAt || deliveredAt || commission.createdAt;
+        const isEscrowLocked = effectiveStatus === 'pending' && deliveredAt && new Date(deliveredAt) > sevenDaysAgo;
+
         return {
             ...commission,
             orderRef,
             orderDisplayId,
+            orderDate,
+            deliveredAt,
+            isEscrowLocked,
             effectiveStatus,
         };
     });
@@ -492,34 +503,18 @@ export const getEarnings = asyncHandler(async (req, res) => {
 
 // POST /api/vendor/earnings/request-payout
 export const requestPayout = asyncHandler(async (req, res) => {
-    // 1. Fetch all pending commissions for this vendor
-    const pendingCommissions = await Commission.find({ vendorId: req.user.id, status: 'pending' })
-        .populate('orderId', 'status deliveredAt');
+    const { withdrawableAmount, eligibleCommissionIds } = await getVendorWithdrawableCommissions(req.user.id);
 
-    let withdrawableAmount = 0;
-    const eligibleCommissionIds = [];
-
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    // 2. Filter for those delivered > 7 days ago
-    for (const c of pendingCommissions) {
-        const orderStatus = String(c.orderId?.status || '').toLowerCase();
-        const deliveredAt = c.orderId?.deliveredAt;
-        
-        if (orderStatus === 'delivered' && deliveredAt && new Date(deliveredAt) <= sevenDaysAgo) {
-            withdrawableAmount += Number(c.vendorEarnings || 0);
-            eligibleCommissionIds.push(c._id);
-        }
-    }
-
-    // 3. Minimum payout threshold check (e.g. 500)
+    // Minimum payout threshold check (₹500)
     const MINIMUM_PAYOUT = 500;
     if (withdrawableAmount < MINIMUM_PAYOUT) {
-        throw new ApiError(400, `Minimum payout amount is ₹${MINIMUM_PAYOUT}. Your withdrawable balance is ₹${withdrawableAmount}.`);
+        throw new ApiError(
+            400,
+            `Minimum payout amount is ₹${MINIMUM_PAYOUT}. Your withdrawable balance is ₹${withdrawableAmount}.`
+        );
     }
 
-    if (eligibleCommissionIds.length === 0) {
+    if (!eligibleCommissionIds || eligibleCommissionIds.length === 0) {
         throw new ApiError(400, 'No eligible commissions available for payout.');
     }
 
@@ -539,13 +534,16 @@ export const requestPayout = asyncHandler(async (req, res) => {
         { $set: { status: 'requested', settlementId: settlement._id } }
     );
 
-    // 6. Notify the admin
-    await createNotification({
+    // 6. Notify the admin (non-blocking)
+    createNotification({
+        recipientId: req.user.id,
         recipientType: 'admin',
         title: 'New Payout Request',
-        message: `Vendor ${req.user.name || req.user.storeName} has requested a payout of ₹${withdrawableAmount}.`,
+        message: `Vendor ${req.user.name || req.user.storeName || 'Vendor'} has requested a payout of ₹${withdrawableAmount}.`,
         type: 'system',
-        link: '/admin/vendors/payout-requests'
+        actionUrl: '/admin/vendors/payout-requests'
+    }).catch((err) => {
+        console.warn(`[Payout Notification Warning]: ${err.message}`);
     });
 
     res.status(201).json(new ApiResponse(201, settlement, 'Payout request submitted successfully.'));

@@ -42,24 +42,25 @@ export const uploadImages = asyncHandler(async (req, res) => {
     const successfulUploads = settledUploads
         .filter((item) => item.status === 'fulfilled')
         .map((item) => item.value);
-    const failedUploads = settledUploads.filter((item) => item.status === 'rejected');
+    const failedCount = settledUploads.filter((item) => item.status === 'rejected').length;
 
-    if (failedUploads.length > 0) {
-        // Roll back successful Cloudinary uploads to keep this endpoint atomic.
-        await Promise.allSettled(
-            successfulUploads
-                .map((upload) => upload?.publicId)
-                .filter(Boolean)
-                .map((publicId) => deleteFromCloudinary(publicId))
-        );
-
-        // Best-effort cleanup for any temp files that may still exist.
-        await cleanupLocalFiles(files.map((file) => file?.path));
-
-        throw new ApiError(500, 'Failed to upload all images. Please try again.');
+    // Best-effort cleanup for any temp files that may still exist after failures.
+    const failedFiles = files.filter((_, i) => settledUploads[i]?.status === 'rejected');
+    if (failedFiles.length > 0) {
+        await cleanupLocalFiles(failedFiles.map((file) => file?.path));
     }
+
+    if (successfulUploads.length === 0) {
+        throw new ApiError(500, 'Failed to upload images. Please try again.');
+    }
+
+    // Partial success — return what was uploaded, warn about failures
+    const message = failedCount > 0
+        ? `${successfulUploads.length} image(s) uploaded. ${failedCount} failed.`
+        : 'Images uploaded successfully';
 
     return res
         .status(201)
-        .json(new ApiResponse(201, successfulUploads, 'Images uploaded successfully'));
+        .json(new ApiResponse(201, successfulUploads, message));
 });
+

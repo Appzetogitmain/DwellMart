@@ -604,12 +604,9 @@ const AppRoutes = () => {
           path="vendors/vendor-analytics"
           element={<AdminRouteGuard permission="vendors.view"><AdminVendorAnalytics /></AdminRouteGuard>}
         />
-        <Route
-          path="vendors/vendor-subscriptions"
-          element={<AdminRouteGuard permission="vendors.view"><VendorSubscriptions /></AdminRouteGuard>}
-        />
-        <Route path="vendors/:id" element={<AdminRouteGuard permission="vendors.view"><VendorDetail /></AdminRouteGuard>} />
+        <Route path="vendors/vendor-subscriptions" element={<AdminRouteGuard permission="vendors.view"><VendorSubscriptions /></AdminRouteGuard>} />
         <Route path="vendors/payout-requests" element={<AdminRouteGuard permission="vendors.approve"><PayoutRequests /></AdminRouteGuard>} />
+        <Route path="vendors/:id" element={<AdminRouteGuard permission="vendors.view"><VendorDetail /></AdminRouteGuard>} />
 
         <Route path="subscription-plans" element={<AdminRouteGuard permission="vendors.view"><AdminSubscriptionPlans /></AdminRouteGuard>} />
         <Route path="vendor-terms" element={<AdminRouteGuard permission="vendors.view"><AdminVendorTerms /></AdminRouteGuard>} />
@@ -823,11 +820,23 @@ function App() {
             <CartDrawer />
             <Toaster
               position="top-right"
+              containerStyle={{
+                top: 76,
+                left: 12,
+                right: 12,
+                zIndex: 99999,
+              }}
               toastOptions={{
                 duration: 3000,
                 style: {
                   background: "#212121",
                   color: "#fff",
+                  maxWidth: "calc(100vw - 24px)",
+                  wordBreak: "break-word",
+                  fontSize: "14px",
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
                 },
                 success: {
                   duration: 3000,

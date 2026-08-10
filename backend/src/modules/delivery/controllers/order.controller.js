@@ -16,6 +16,7 @@ import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js
 import { EXPERIENCES } from '../../../constants/experiences.js';
 import { getRiderAnalytics } from '../../../services/quickCommerceAnalytics.service.js';
 import { getOrComputeAnalyticsCache } from '../../../services/analyticsCache.service.js';
+import { ensureVendorCommissionsForOrder } from '../../../services/commission.service.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -338,6 +339,9 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     }
     if (status === 'delivered') {
         order.deliveredAt = new Date();
+        ensureVendorCommissionsForOrder(order).catch((err) => {
+            console.warn(`[Delivery Commission] Failed to ensure commission for order ${order.orderId || order._id}: ${err.message}`);
+        });
     }
     await order.save();
 

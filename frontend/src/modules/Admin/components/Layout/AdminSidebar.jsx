@@ -108,6 +108,7 @@ export const CHILD_PERMISSION_MAP = {
   "Commission Rates": "vendors.edit",
   "Vendor Analytics": "vendors.view",
   "Vendor Subscriptions": "vendors.view",
+  "Payout Requests": "vendors.approve",
 
   // Customers
   "View Customers": "users.view",
@@ -189,6 +190,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Commission Rates": "/admin/vendors/commission-rates",
       "Vendor Analytics": "/admin/vendors/vendor-analytics",
       "Vendor Subscriptions": "/admin/vendors/vendor-subscriptions",
+      "Payout Requests": "/admin/vendors/payout-requests",
     },
     "/admin/customers": {
       "View Customers": "/admin/customers/view-customers",

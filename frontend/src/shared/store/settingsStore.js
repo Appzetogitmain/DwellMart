@@ -28,13 +28,15 @@ export const useSettingsStore = create((set, get) => ({
   isLoading: false,
   isInitialized: false,
 
-  // Initialize and fetch public settings from API
+  // Initialize and fetch settings from API
   initialize: async () => {
     if (get().isInitialized && get().settings?.general?.storeName) return;
     set({ isLoading: true });
     try {
-      const res = await api.get("/settings/general");
-      const data = res?.data?.data || res?.data || {};
+      const isAdmin = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem('adminToken'));
+      const endpoint = isAdmin ? "/admin/settings/general" : "/settings/general";
+      const res = await api.get(endpoint);
+      const data = res?.data || res || {};
       const mergedGeneral = {
         ...defaultGeneralSettings,
         ...data,
@@ -48,12 +50,12 @@ export const useSettingsStore = create((set, get) => ({
       let reviews = {};
       try {
         const fRes = await api.get("/settings/features");
-        features = fRes?.data?.data || fRes?.data || {};
+        features = fRes?.data || fRes || {};
       } catch (e) {}
 
       try {
         const rRes = await api.get("/settings/reviews");
-        reviews = rRes?.data?.data || rRes?.data || {};
+        reviews = rRes?.data || rRes || {};
       } catch (e) {}
 
       set({
@@ -76,7 +78,7 @@ export const useSettingsStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const res = await api.put("/admin/settings/general", generalData);
-      const updatedData = res?.data?.data || res?.data || generalData;
+      const updatedData = res?.data || res || generalData;
 
       const mergedGeneral = {
         ...defaultGeneralSettings,

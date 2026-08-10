@@ -245,11 +245,32 @@ const MobileSearch = ({ isShopPage = false }) => {
       setShowSuggestions(false);
       setIsListening(false);
       saveRecentSearch(transcript);
+      // ── Trigger the actual search by updating URL params ──
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('sort', sortBy || 'newest');
+      newParams.delete('page');
+      if (transcript.trim()) {
+        newParams.set('q', transcript.trim());
+      } else {
+        newParams.delete('q');
+      }
+      setSearchParams(newParams);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false);
-      toast.error(t('Voice recognition error'));
+      // Show specific, actionable error messages
+      if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        toast.error('Microphone access denied. Please allow microphone permission in your browser settings.');
+      } else if (event.error === 'no-speech') {
+        toast.error('No speech detected. Please try again and speak clearly.');
+      } else if (event.error === 'network') {
+        toast.error('Voice search requires an internet connection. Please check your connection.');
+      } else if (event.error === 'aborted') {
+        // User cancelled — no toast needed
+      } else {
+        toast.error(t('Voice recognition error') + ': ' + (event.error || 'unknown'));
+      }
     };
 
     recognition.onend = () => {

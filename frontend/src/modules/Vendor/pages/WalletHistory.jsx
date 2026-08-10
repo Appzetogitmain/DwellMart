@@ -1,10 +1,14 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   FiDollarSign,
   FiClock,
   FiCheckCircle,
+  FiAlertCircle,
+  FiX,
+  FiSend,
+  FiShield,
 } from "react-icons/fi";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Badge from "../../../shared/components/Badge";
 import ExportButton from "../../Admin/components/ExportButton";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
@@ -20,101 +24,97 @@ const WalletHistory = () => {
   const [filterType, setFilterType] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [walletSummary, setWalletSummary] = useState(null);
+  const [recentRejectedSettlement, setRecentRejectedSettlement] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [requestPayoutModalOpen, setRequestPayoutModalOpen] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
 
-  useEffect(() => {
+  const fetchWallet = async () => {
     if (!vendorId) return;
+    setIsLoading(true);
+    try {
+      const res = await getVendorEarnings();
+      const data = res?.data ?? res;
+      const commissions = Array.isArray(data?.commissions) ? data.commissions : [];
+      const settlements = Array.isArray(data?.settlements) ? data.settlements : [];
 
-    const fetchWallet = async () => {
-      setIsLoading(true);
-      try {
-        const res = await getVendorEarnings();
-        const data = res?.data ?? res;
-        const commissions = Array.isArray(data?.commissions) ? data.commissions : [];
-        const settlements = Array.isArray(data?.settlements) ? data.settlements : [];
-
-        const allTransactions = [
-          ...commissions.map((c) => ({
-            id: c._id || c.id,
-            type: "earning",
-            orderId: c.orderDisplayId || c.orderRef || c.orderId,
-            amount: c.vendorEarnings,
-            commission: c.commission,
-            status: c.effectiveStatus || c.status,
-            date: c.createdAt,
-            description: `Earning from Order ${c.orderDisplayId || c.orderRef || c.orderId}`,
-            paymentMethod: null,
-            transactionId: null,
-          })),
-          ...settlements.map((s) => ({
-            id: s._id || s.id,
-            type: "settlement",
-            orderId: null,
-            amount: s.amount,
-            commission: 0,
-            status: s.status === "failed" ? "failed" : "paid",
-            date: s.createdAt,
-            description: "Settlement Payment",
-            paymentMethod: s.paymentMethod,
-            transactionId: s.transactionId,
-          })),
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        setTransactions(allTransactions);
-        setWalletSummary(data?.summary || null);
-      } catch {
-        setTransactions([]);
-        setWalletSummary(null);
-      } finally {
-        setIsLoading(false);
+      const rejected = settlements.find((s) => s.status === "rejected");
+      if (rejected) {
+        setRecentRejectedSettlement(rejected);
       }
-    };
-    
+
+      const allTransactions = [
+        ...commissions.map((c) => ({
+          id: c._id || c.id,
+          type: "earning",
+          orderId: c.orderDisplayId || c.orderRef || c.orderId,
+          amount: c.vendorEarnings,
+          commission: c.commission,
+          status: c.isEscrowLocked ? "escrow" : (c.effectiveStatus || c.status),
+          isEscrowLocked: c.isEscrowLocked,
+          date: c.orderDate || c.createdAt,
+          description: `Earning from Order ${c.orderDisplayId || c.orderRef || c.orderId}`,
+          paymentMethod: null,
+          transactionId: null,
+        })),
+        ...settlements.map((s) => ({
+          id: s._id || s.id,
+          type: "settlement",
+          orderId: null,
+          amount: s.amount,
+          commission: 0,
+          status: s.status,
+          rejectionReason: s.rejectionReason,
+          isEscrowLocked: false,
+          date: s.createdAt,
+          description: s.status === "rejected" ? "Payout Request Rejected" : "Settlement Payout",
+          paymentMethod: s.paymentMethod,
+          transactionId: s.transactionId,
+        })),
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      setTransactions(allTransactions);
+      setWalletSummary(data?.summary || null);
+    } catch {
+      setTransactions([]);
+      setWalletSummary(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchWallet();
   }, [vendorId]);
 
-  const handleRequestPayout = async () => {
+  const confirmRequestPayout = async () => {
     if (!walletSummary || (walletSummary.withdrawableEarnings || 0) < 500) {
       toast.error("Minimum withdrawable balance must be ₹500.");
       return;
     }
-    
-    if (window.confirm("Are you sure you want to request a payout for your available balance?")) {
-      setIsRequesting(true);
-      try {
-        await requestVendorPayout({ paymentMethod: "bank_transfer" });
-        toast.success("Payout request submitted successfully!");
-        // Refresh wallet
-        const res = await getVendorEarnings();
-        setWalletSummary(res?.data?.summary || res?.summary || null);
-        // (ideally we should also refresh transactions, but a page reload works too or just refreshing state)
-        window.location.reload();
-      } catch (err) {
-        toast.error(err?.response?.data?.message || "Failed to request payout");
-      } finally {
-        setIsRequesting(false);
-      }
+
+    setIsRequesting(true);
+    try {
+      await requestVendorPayout({ paymentMethod: "bank_transfer" });
+      toast.success("✓ Payout request submitted successfully!");
+      setRequestPayoutModalOpen(false);
+      await fetchWallet();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "✕ Failed to request payout.");
+    } finally {
+      setIsRequesting(false);
     }
   };
 
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
 
-    // Filter by type
     if (filterType !== "all") {
       filtered = filtered.filter((t) => t.type === filterType);
     }
 
-    // Filter by status
-    if (filterType === "earning") {
-      // For earnings, we can filter by status (pending/paid)
-      // This is handled by the filterType already
-    }
-
-    // Filter by date range
     if (dateRange.start) {
       filtered = filtered.filter(
         (t) => new Date(t.date) >= new Date(dateRange.start)
@@ -129,21 +129,10 @@ const WalletHistory = () => {
     return filtered;
   }, [transactions, filterType, dateRange]);
 
-  // Calculate wallet balance
-  const walletBalance = useMemo(() => {
-    if (!walletSummary) return 0;
-    return walletSummary.totalEarnings;
-  }, [walletSummary]);
-
-  const withdrawableBalance = useMemo(() => {
-    if (!walletSummary) return 0;
-    return walletSummary.withdrawableEarnings || 0;
-  }, [walletSummary]);
-
-  const lockedBalance = useMemo(() => {
-    if (!walletSummary) return 0;
-    return walletSummary.lockedEarnings || 0;
-  }, [walletSummary]);
+  const walletBalance = walletSummary?.totalEarnings || 0;
+  const withdrawableBalance = walletSummary?.withdrawableEarnings || 0;
+  const lockedBalance = walletSummary?.lockedEarnings || 0;
+  const requestedBalance = walletSummary?.requestedEarnings || 0;
 
   if (!vendorId) {
     return (
@@ -152,67 +141,6 @@ const WalletHistory = () => {
       </div>
     );
   }
-
-  const columns = [
-    {
-      key: "date",
-      label: "Date",
-      sortable: true,
-      render: (value) => new Date(value).toLocaleDateString(),
-    },
-    {
-      key: "description",
-      label: "Description",
-      sortable: true,
-    },
-    {
-      key: "type",
-      label: "Type",
-      sortable: true,
-      render: (value) => (
-        <Badge variant={value === "earning" ? "info" : "success"}>
-          {value === "earning" ? "Earning" : "Settlement"}
-        </Badge>
-      ),
-    },
-    {
-      key: "amount",
-      label: "Amount",
-      sortable: true,
-      render: (value) => (
-        <span className="font-semibold text-green-600">
-          {formatPrice(value)}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      sortable: true,
-      render: (value) => (
-        <Badge
-          variant={
-            value === "paid"
-              ? "success"
-              : value === "pending"
-                ? "warning"
-                : "error"
-          }>
-          {value?.toUpperCase() || "N/A"}
-        </Badge>
-      ),
-    },
-    {
-      key: "paymentMethod",
-      label: "Payment Method",
-      sortable: false,
-      render: (value) => (
-        <span className="text-sm text-gray-600 capitalize">
-          {value ? value.replace("_", " ") : "N/A"}
-        </span>
-      ),
-    },
-  ];
 
   return (
     <motion.div
@@ -230,11 +158,36 @@ const WalletHistory = () => {
         </div>
       </div>
 
+      {/* Rejection Alert Banner (if recent payout was rejected) */}
+      {recentRejectedSettlement && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <FiAlertCircle className="text-red-600 text-xl flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-red-900 text-sm">
+                Recent Payout Request Rejected ({formatPrice(recentRejectedSettlement.amount)})
+              </h4>
+              <p className="text-xs text-red-700 mt-1">
+                Reason: <strong>{recentRejectedSettlement.rejectionReason || "Bank account details verification failed."}</strong>
+              </p>
+              <p className="text-[11px] text-red-600 mt-1 font-medium">
+                The funds have been safely returned to your withdrawable balance.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setRecentRejectedSettlement(null)}
+            className="text-red-400 hover:text-red-700 p-1 rounded-lg transition-colors">
+            <FiX className="text-lg" />
+          </button>
+        </div>
+      )}
+
       {/* Wallet Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-blue-100">Total Earnings</p>
+            <p className="text-blue-100 font-medium">Total Earnings</p>
             <FiDollarSign className="text-2xl text-blue-200" />
           </div>
           <p className="text-3xl font-bold">{formatPrice(walletBalance)}</p>
@@ -243,32 +196,41 @@ const WalletHistory = () => {
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-green-100">Withdrawable Balance</p>
+              <p className="text-green-100 font-medium">Withdrawable Balance</p>
               <FiCheckCircle className="text-2xl text-green-200" />
             </div>
             <p className="text-3xl font-bold">{formatPrice(withdrawableBalance)}</p>
             <p className="text-sm text-green-100 mt-2">Available to withdraw</p>
           </div>
           <button
-            onClick={handleRequestPayout}
-            disabled={isRequesting || withdrawableBalance < 500}
-            className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors ${
-              withdrawableBalance >= 500 
-                ? "bg-white text-green-700 hover:bg-green-50" 
+            onClick={() => setRequestPayoutModalOpen(true)}
+            disabled={isRequesting || withdrawableBalance < 500 || requestedBalance > 0}
+            className={`mt-4 w-full py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 ${
+              withdrawableBalance >= 500 && requestedBalance === 0
+                ? "bg-white text-green-800 hover:bg-green-50 shadow-md"
                 : "bg-green-400/50 text-green-100 cursor-not-allowed"
-            }`}
-          >
-            {isRequesting ? "Processing..." : "Request Payout"}
+            }`}>
+            <FiSend /> {requestedBalance > 0 ? "Payout Pending" : "Request Payout"}
           </button>
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-orange-100">Locked Balance</p>
+            <p className="text-orange-100 font-medium">Locked Balance</p>
             <FiClock className="text-2xl text-orange-200" />
           </div>
           <p className="text-3xl font-bold">{formatPrice(lockedBalance)}</p>
           <p className="text-sm text-orange-100 mt-2">7-Day Escrow Period</p>
         </div>
+        {requestedBalance > 0 ? (
+          <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-purple-100 font-medium">Payout Requested</p>
+              <FiClock className="text-2xl text-purple-200" />
+            </div>
+            <p className="text-3xl font-bold">{formatPrice(requestedBalance)}</p>
+            <p className="text-sm text-purple-100 mt-2">Awaiting Admin Transfer</p>
+          </div>
+        ) : null}
       </div>
 
       {/* Filters */}
@@ -334,10 +296,10 @@ const WalletHistory = () => {
             {filteredTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100/80 transition-colors">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold text-gray-800">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="font-bold text-gray-800 text-base">
                       {transaction.description}
                     </h3>
                     <Badge
@@ -345,53 +307,59 @@ const WalletHistory = () => {
                         transaction.type === "earning" ? "info" : "success"
                       }>
                       {transaction.type === "earning"
-                        ? "Earning"
-                        : "Settlement"}
+                        ? "EARNING"
+                        : "SETTLEMENT"}
                     </Badge>
-                    {transaction.orderId && (
-                      <span className="text-sm text-gray-500">
-                        Order: {transaction.orderId}
-                      </span>
-                    )}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                     <div>
-                      <p className="text-gray-600">Date</p>
+                      <p className="text-xs text-gray-500 font-medium">Date</p>
                       <p className="font-semibold text-gray-800">
-                        {new Date(transaction.date).toLocaleDateString()}
+                        {new Date(transaction.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Amount</p>
-                      <p className="font-semibold text-green-600">
+                      <p className="text-xs text-gray-500 font-medium">Net Amount</p>
+                      <p className="font-bold text-green-600 text-base">
                         {formatPrice(transaction.amount)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-600">Status</p>
+                      <p className="text-xs text-gray-500 font-medium">Status</p>
                       <Badge
                         variant={
-                          transaction.status === "paid"
+                          transaction.status === "completed" || transaction.status === "paid"
                             ? "success"
-                            : transaction.status === "pending"
-                              ? "warning"
-                              : "error"
+                            : transaction.status === "escrow" || transaction.status === "pending" || transaction.status === "requested"
+                            ? "warning"
+                            : "error"
                         }>
-                        {transaction.status?.toUpperCase() || "N/A"}
+                        {transaction.status === "escrow"
+                          ? "LOCKED (7-DAY ESCROW)"
+                          : transaction.status === "requested"
+                          ? "AWAITING TRANSFER"
+                          : transaction.status === "rejected"
+                          ? "REJECTED"
+                          : (transaction.status?.toUpperCase() || "N/A")}
                       </Badge>
                     </div>
                     {transaction.paymentMethod && (
                       <div>
-                        <p className="text-gray-600">Payment Method</p>
+                        <p className="text-xs text-gray-500 font-medium">Payment Method</p>
                         <p className="font-semibold text-gray-800 capitalize">
                           {transaction.paymentMethod.replace("_", " ")}
                         </p>
                       </div>
                     )}
                   </div>
+                  {transaction.rejectionReason && (
+                    <p className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
+                      Reason for Rejection: {transaction.rejectionReason}
+                    </p>
+                  )}
                   {transaction.transactionId && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Transaction ID: {transaction.transactionId}
+                    <p className="text-xs text-gray-500 mt-2 font-mono">
+                      UTR Ref: {transaction.transactionId}
                     </p>
                   )}
                 </div>
@@ -404,6 +372,91 @@ const WalletHistory = () => {
           </div>
         )}
       </div>
+
+      {/* ── CUSTOM REQUEST PAYOUT CONFIRMATION MODAL ──────────────────────── */}
+      <AnimatePresence>
+        {requestPayoutModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-100">
+              <div className="flex items-center gap-3 mb-4 text-green-700">
+                <div className="p-3 bg-green-50 rounded-xl border border-green-100">
+                  <FiSend className="text-2xl text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Request Payout
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Submit withdrawal request to DwellMart Admin
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-600 font-medium">
+                      Withdrawable Amount
+                    </span>
+                    <span className="text-2xl font-bold text-green-700">
+                      {formatPrice(withdrawableBalance)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 flex justify-between pt-2 border-t border-green-200/50 mt-2">
+                    <span>Payment Method:</span>
+                    <strong className="text-gray-800">Bank Transfer / UPI</strong>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Vendor:</span>
+                    <strong className="text-gray-800">{vendor?.storeName || vendor?.name}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Bank Name:</span>
+                    <strong className="text-gray-800">{vendor?.bankDetails?.bankName || "Registered Bank"}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Account Number:</span>
+                    <strong className="text-gray-800 font-mono">
+                      {vendor?.bankDetails?.accountNumber
+                        ? "•••• " + vendor.bankDetails.accountNumber.slice(-4)
+                        : "Registered Account"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 flex items-start gap-2">
+                  <FiShield className="text-blue-600 text-base flex-shrink-0 mt-0.5" />
+                  <span>
+                    Your request will be submitted to Admin for direct bank transfer.
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setRequestPayoutModalOpen(false)}
+                  disabled={isRequesting}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRequestPayout}
+                  disabled={isRequesting}
+                  className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold shadow-md transition-colors flex items-center gap-2">
+                  {isRequesting ? "Submitting..." : "Confirm Request"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

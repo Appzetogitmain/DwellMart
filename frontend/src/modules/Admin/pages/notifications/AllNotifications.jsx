@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { FiBell, FiCheck, FiChevronDown } from "react-icons/fi";
 import { useNotificationStore } from "../../../../shared/store/useNotificationStore";
 import { formatDateTime } from "../../utils/adminHelpers";
+import { navigateToNotificationTarget } from "../../../../shared/utils/notificationNavigator";
 
 const AllNotifications = () => {
   const navigate = useNavigate();
@@ -21,20 +22,8 @@ const AllNotifications = () => {
   // Derive hasMore from pages / page
   const hasMore = page < pages;
 
-
   const handleNotificationClick = (notification) => {
-    markAsRead(notification._id);
-    const orderId = notification.orderId || notification.data?.orderId;
-    const feedbackId = notification.feedbackId || notification.data?.feedbackId;
-    const vendorId = notification.vendorId || notification.data?.vendorId;
-
-    if (feedbackId || notification.title?.toLowerCase().includes('feedback')) {
-      navigate('/admin/support/feedbacks');
-    } else if (orderId) {
-      navigate('/admin/orders');
-    } else if (vendorId || notification.title?.toLowerCase().includes('vendor')) {
-      navigate(vendorId ? `/admin/vendors/${vendorId}` : '/admin/vendors');
-    }
+    navigateToNotificationTarget(notification, navigate, "admin", markAsRead);
   };
 
   useEffect(() => {

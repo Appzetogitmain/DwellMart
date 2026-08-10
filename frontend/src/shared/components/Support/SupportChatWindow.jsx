@@ -36,9 +36,36 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
     const isClosed = activeConversation?.status === 'closed' || activeConversation?.isClosed;
     const isUserReadOnly = isClosed && !isAdmin;
 
+    const scrollToBottom = (behavior = 'smooth') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        scrollToBottom('smooth');
     }, [messages, typingUser]);
+
+    useEffect(() => {
+        const handleViewportResize = () => {
+            scrollToBottom('smooth');
+        };
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleViewportResize);
+        }
+
+        return () => {
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', handleViewportResize);
+            }
+        };
+    }, []);
+
+    const handleInputFocus = () => {
+        scrollToBottom('smooth');
+        setTimeout(() => scrollToBottom('smooth'), 150);
+        setTimeout(() => scrollToBottom('smooth'), 350);
+        setTimeout(() => scrollToBottom('smooth'), 600);
+    };
 
     if (!activeConversation) {
         return (
@@ -136,15 +163,18 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
     };
 
     return (
-        <div className={`flex flex-col h-full rounded-2xl border overflow-hidden shadow-sm transition-colors ${
+        <div className={`flex flex-col h-full rounded-none lg:rounded-2xl border-0 lg:border overflow-hidden shadow-none lg:shadow-sm transition-colors ${
             isDark
-                ? 'bg-slate-800/90 border-slate-700/80 text-slate-100 shadow-xl'
+                ? 'bg-slate-900 lg:bg-slate-800/90 border-slate-700/80 text-slate-100 shadow-xl'
                 : 'bg-surface border-border'
         }`}>
             {/* Header */}
-            <div className={`flex-shrink-0 p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
-                isDark ? 'bg-slate-950/80 border-slate-700/80' : 'bg-surface-muted border-border'
-            }`}>
+            <div
+                className={`flex-shrink-0 p-3 sm:p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                    isDark ? 'bg-slate-950/90 border-slate-700/80' : 'bg-surface-muted border-border'
+                }`}
+                style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
+            >
                 <div className="flex items-center gap-3">
                     {onBack && (
                         <button
@@ -362,9 +392,13 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
             )}
 
             {/* Input Footer */}
-            <form onSubmit={handleSend} className={`flex-shrink-0 p-3 border-t ${
-                isDark ? 'bg-slate-950/90 border-slate-700/80' : 'bg-surface border-border'
-            }`}>
+            <form
+                onSubmit={handleSend}
+                className={`flex-shrink-0 p-3 border-t ${
+                    isDark ? 'bg-slate-950/90 border-slate-700/80' : 'bg-surface border-border'
+                }`}
+                style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+            >
                 <div className="flex items-center gap-2">
                     <label
                         className={`p-2.5 rounded-xl cursor-pointer transition-colors ${
@@ -388,6 +422,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
                         type="text"
                         value={inputMessage}
                         onChange={handleInputChange}
+                        onFocus={handleInputFocus}
                         disabled={isUserReadOnly || isSending}
                         placeholder={
                             isUserReadOnly

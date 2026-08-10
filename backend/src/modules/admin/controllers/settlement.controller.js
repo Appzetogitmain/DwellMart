@@ -46,6 +46,7 @@ export const getSettlements = asyncHandler(async (req, res) => {
 // PUT /api/admin/settlements/:id/approve
 export const approveSettlement = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const { transactionId } = req.body;
 
     const settlement = await Settlement.findById(id);
     if (!settlement) {
@@ -56,12 +57,15 @@ export const approveSettlement = asyncHandler(async (req, res) => {
         throw new ApiError(400, `Cannot approve settlement with status '${settlement.status}'.`);
     }
 
+    const utr = String(transactionId || '').trim();
+    if (!utr || utr.length < 3) {
+        throw new ApiError(400, 'Bank UTR / Transaction Reference ID is required to approve payout.');
+    }
+
     // Mark settlement as completed
     settlement.status = 'completed';
-    // If Admin passed in a transactionId (e.g. from a manual bank transfer)
-    if (req.body.transactionId) {
-        settlement.transactionId = req.body.transactionId;
-    }
+    settlement.approvedAt = new Date();
+    settlement.transactionId = utr;
     await settlement.save();
 
     // Update associated commissions to 'paid'
@@ -73,7 +77,8 @@ export const approveSettlement = asyncHandler(async (req, res) => {
     // Notify the vendor
     const vendor = await Vendor.findById(settlement.vendorId);
     if (vendor) {
-        const message = `Your payout request of ₹${settlement.amount} has been approved and processed!`;
+        const utrNote = settlement.transactionId ? ` (UTR Ref: ${settlement.transactionId})` : '';
+        const message = `Your payout request of ₹${settlement.amount} has been approved and processed${utrNote}!`;
         
         await createNotification({
             recipientId: vendor._id,
@@ -81,12 +86,12 @@ export const approveSettlement = asyncHandler(async (req, res) => {
             title: 'Payout Approved',
             message,
             type: 'system',
-        });
+        }).catch((err) => console.warn(`Vendor notification warning: ${err.message}`));
 
         try {
             await sendEmail({
                 to: vendor.email,
-                subject: 'Payout Approved',
+                subject: 'Payout Approved & Processed',
                 text: message,
                 html: `<p>${message}</p>`,
             });
@@ -96,4 +101,63 @@ export const approveSettlement = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(new ApiResponse(200, settlement, 'Settlement approved successfully.'));
+});
+
+// PUT /api/admin/settlements/:id/reject
+export const rejectSettlement = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const rejectionReason = String(reason || '').trim();
+    if (!rejectionReason || rejectionReason.length < 3) {
+        throw new ApiError(400, 'Rejection reason is required (at least 3 characters).');
+    }
+
+    const settlement = await Settlement.findById(id);
+    if (!settlement) {
+        throw new ApiError(404, 'Settlement not found.');
+    }
+
+    if (settlement.status !== 'pending') {
+        throw new ApiError(400, `Cannot reject settlement with status '${settlement.status}'.`);
+    }
+
+    // Mark settlement as rejected
+    settlement.status = 'rejected';
+    settlement.rejectionReason = rejectionReason;
+    settlement.rejectedAt = new Date();
+    await settlement.save();
+
+    // Revert associated commissions back to 'pending' so funds become withdrawable again!
+    await Commission.updateMany(
+        { _id: { $in: settlement.commissionIds } },
+        { $set: { status: 'pending', settlementId: null } }
+    );
+
+    // Notify the vendor
+    const vendor = await Vendor.findById(settlement.vendorId);
+    if (vendor) {
+        const message = `Your payout request of ₹${settlement.amount} was rejected. Reason: ${rejectionReason}`;
+        
+        await createNotification({
+            recipientId: vendor._id,
+            recipientType: 'vendor',
+            title: 'Payout Request Rejected',
+            message,
+            type: 'system',
+        }).catch((err) => console.warn(`Vendor notification warning: ${err.message}`));
+
+        try {
+            await sendEmail({
+                to: vendor.email,
+                subject: 'Payout Request Rejected',
+                text: message,
+                html: `<p>${message}</p>`,
+            });
+        } catch (err) {
+            console.warn(`Vendor payout email failed for ${vendor.email}: ${err.message}`);
+        }
+    }
+
+    res.status(200).json(new ApiResponse(200, settlement, 'Settlement rejected successfully. Funds returned to vendor withdrawable balance.'));
 });

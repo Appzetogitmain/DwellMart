@@ -683,7 +683,7 @@ const MobileCheckout = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full pb-24 min-h-screen bg-surface-muted">
+        <div className="w-full pb-44 lg:pb-12 min-h-screen bg-surface-muted">
           {/* Header */}
           <div className="bg-surface border-b border-border sticky top-0 z-30 shadow-sm">
             {/* Title Bar */}
@@ -1299,7 +1299,7 @@ const MobileCheckout = () => {
             </div>
 
             {/* Navigation Buttons (Mobile Fixed Bottom) */}
-            <div className="fixed bottom-16 left-0 right-0 bg-surface border-t border-border p-4 z-40 safe-area-bottom lg:hidden">
+            <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border p-4 z-40 safe-area-bottom lg:hidden shadow-lg">
               {step === 2 && fulfillmentGroups.length > 1 && (
                 <div className="mb-2 p-2.5 rounded-xl bg-slate-900 border border-amber-500/40 text-[11px] text-slate-200">
                   ℹ️ Order will be split into <strong>{fulfillmentGroups.length} independent shipments</strong> ({fulfillmentGroups.map(fg => fg.fulfillmentType === 'quick_commerce' ? 'QC 15–25m' : fg.fulfillmentType === 'wholesale' ? 'Wholesale 5–7d' : 'Retail 4–6d').join(', ')}).

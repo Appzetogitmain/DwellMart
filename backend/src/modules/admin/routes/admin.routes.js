@@ -351,5 +351,6 @@ router.put('/settings/:category', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsCo
 // ─── Settlements ──────────────────────────────────────────────────────────────
 router.get('/settlements', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);
 router.put('/settlements/:id/approve', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.approveSettlement);
+router.put('/settlements/:id/reject', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.rejectSettlement);
 
 export default router;

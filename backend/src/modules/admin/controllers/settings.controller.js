@@ -133,6 +133,7 @@ export const getPublicGeneralSettings = asyncHandler(async (req, res) => {
             ...DEFAULT_GENERAL_SETTINGS.socialMedia,
             ...(val.socialMedia || {}),
         },
+        defaultCommissionRate: val.defaultCommissionRate ?? DEFAULT_GENERAL_SETTINGS.defaultCommissionRate,
     };
 
     res.status(200).json(new ApiResponse(200, publicSettings, 'Public general settings fetched successfully.'));

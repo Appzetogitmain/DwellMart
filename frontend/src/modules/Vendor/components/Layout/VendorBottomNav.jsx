@@ -8,10 +8,12 @@ import {
 } from "react-icons/fi";
 import { MdCurrencyRupee } from "react-icons/md";
 import useKeyboardVisible from "../../../UserApp/hooks/useKeyboardVisible";
+import { useSupportChatStore } from "../../../../shared/store/supportChatStore";
 
 const VendorBottomNav = () => {
   const location = useLocation();
   const isKeyboardVisible = useKeyboardVisible();
+  const { activeConversation } = useSupportChatStore();
 
   if (isKeyboardVisible) {
     return null;
@@ -31,30 +33,24 @@ const VendorBottomNav = () => {
     return location.pathname.startsWith(path);
   };
 
-  // Animation variants for icon
-  const iconVariants = {
-    inactive: {
-      scale: 1,
-      color: "#878787",
-    },
-    active: {
-      scale: 1.1,
-      color: "#2874F0", // Primary color
-      transition: {
-        duration: 0.3,
-        ease: "easeOut",
-      },
-    },
-  };
+  const isVendorSupportChatOpen =
+    (location.pathname.startsWith('/vendor/support') ||
+     location.pathname.startsWith('/vendor/chat') ||
+     location.pathname.startsWith('/vendor/support-tickets')) &&
+    Boolean(activeConversation);
+
+  if (isVendorSupportChatOpen) {
+    return null;
+  }
 
   const navContent = (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden"
+    <nav
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:hidden"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div className="flex items-center justify-around h-16 px-1" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -63,27 +59,26 @@ const VendorBottomNav = () => {
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-col items-center justify-center flex-1 h-full gap-1">
+              className="flex flex-col items-center justify-center flex-1 h-full py-1 text-center"
+            >
               <motion.div
-                className={`relative flex items-center justify-center ${
-                  active ? "text-[#2874F0]" : "text-[#878787]"
+                className={`relative flex items-center justify-center w-9 h-8 rounded-xl transition-all ${
+                  active ? "bg-amber-500/10 text-amber-600" : "text-gray-400"
                 }`}
-                variants={iconVariants}
-                initial="inactive"
-                animate={active ? "active" : "inactive"}>
+                whileTap={{ scale: 0.92 }}
+              >
                 <Icon
-                  className="text-2xl"
+                  className="text-xl"
                   style={{
-                    fill: "none",
-                    stroke: "currentColor",
-                    strokeWidth: 2,
+                    strokeWidth: active ? 2.2 : 1.8,
                   }}
                 />
               </motion.div>
               <span
-                className={`text-xs font-medium ${
-                  active ? "text-primary-600" : "text-gray-500"
-                }`}>
+                className={`text-[11px] font-semibold tracking-tight mt-0.5 ${
+                  active ? "text-amber-600 font-bold" : "text-gray-500"
+                }`}
+              >
                 {item.label}
               </span>
             </Link>

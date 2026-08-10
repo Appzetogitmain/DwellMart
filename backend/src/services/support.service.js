@@ -191,22 +191,40 @@ export const sendMessageService = async ({
     // Notify Recipient
     if (normalizedSenderRole === 'admin') {
         const recipientType = conversation.userRole === 'customer' ? 'user' : conversation.userRole;
+        const targetUrl =
+            conversation.userRole === 'delivery'
+                ? '/delivery/support'
+                : conversation.userRole === 'vendor'
+                ? '/vendor/support-tickets'
+                : '/support';
+
         await notifySupportActivity({
             recipientId: conversation.user,
             recipientType,
             title: 'DwellMart Support Reply',
-            message: `Admin replied: "${previewText}"`,
-            type: 'system',
-            data: { conversationId: String(conversation._id) },
+            message: `Support team replied: "${previewText}"`,
+            type: 'support',
+            data: {
+                conversationId: String(conversation._id),
+                actionUrl: targetUrl,
+                type: 'support',
+                title: 'DwellMart Support Reply',
+                message: `Support team replied: "${previewText}"`,
+            },
             socketEvent: 'notification',
         });
     } else {
         await notifySupportActivity({
             recipientType: 'admin',
-            title: `Message from ${normalizedSenderRole.toUpperCase()}`,
-            message: `New message: "${previewText}"`,
-            type: 'system',
-            data: { conversationId: String(conversation._id), role: normalizedSenderRole },
+            title: `Support Ticket Reply from ${normalizedSenderRole.toUpperCase()}`,
+            message: `New message on ticket: "${previewText}"`,
+            type: 'support',
+            data: {
+                conversationId: String(conversation._id),
+                role: normalizedSenderRole,
+                actionUrl: '/admin/support',
+                type: 'support',
+            },
             socketEvent: 'notification',
         });
     }

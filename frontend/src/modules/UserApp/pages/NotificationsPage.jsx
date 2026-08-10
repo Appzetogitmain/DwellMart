@@ -16,6 +16,7 @@ import {
 import { useNotificationStore } from '../../../shared/store/useNotificationStore';
 import DesktopHeader from '../components/Layout/DesktopHeader';
 import Footer from '../components/Layout/Footer';
+import { navigateToNotificationTarget } from '../../../shared/utils/notificationNavigator';
 
 const NotificationsPage = () => {
     const navigate = useNavigate();
@@ -68,8 +69,7 @@ const NotificationsPage = () => {
     });
 
     const handleActionClick = (n) => {
-        if (!n.isRead) markAsRead(n._id);
-        if (n.actionUrl) navigate(n.actionUrl);
+        navigateToNotificationTarget(n, navigate, 'user', markAsRead);
     };
 
     const tabs = [
@@ -170,7 +170,8 @@ const NotificationsPage = () => {
                         filteredNotifications.map((n) => (
                             <div
                                 key={n._id}
-                                className={`p-4 rounded-2xl border transition-all ${
+                                onClick={() => handleActionClick(n)}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer hover:border-primary-300 ${
                                     !n.isRead
                                         ? 'bg-blue-50/40 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/40'
                                         : 'bg-white border-gray-100 dark:bg-gray-900 dark:border-gray-800'

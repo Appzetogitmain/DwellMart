@@ -4,6 +4,7 @@ import { FiBell, FiCheck, FiTrash2, FiInbox, FiRefreshCw } from "react-icons/fi"
 import { useNavigate } from "react-router-dom";
 import PageTransition from "../../../shared/components/PageTransition";
 import { useDeliveryNotificationStore } from "../store/deliveryNotificationStore";
+import { navigateToNotificationTarget } from "../../../shared/utils/notificationNavigator";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -31,12 +32,7 @@ const DeliveryNotifications = () => {
   }, [fetchNotifications]);
 
   const handleNotificationClick = (notification) => {
-    const data = notification?.data || {};
-    const orderId = String(data?.orderId || "").trim();
-    if (orderId) {
-      navigate(`/delivery/orders/${orderId}`);
-      return;
-    }
+    navigateToNotificationTarget(notification, navigate, 'delivery', markAsRead);
   };
 
   return (
@@ -97,12 +93,10 @@ const DeliveryNotifications = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03 }}
                 onClick={() => handleNotificationClick(notification)}
-                className={`rounded-2xl p-4 shadow-lg border transition-all duration-200 ${
+                className={`rounded-2xl p-4 shadow-lg border transition-all duration-200 cursor-pointer hover:border-amber-400/80 ${
                   notification?.isRead
                     ? "bg-slate-800/80 border-slate-700/60"
                     : "bg-slate-800 border-amber-500/40 shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                } ${
-                  notification?.data?.orderId ? "cursor-pointer hover:border-amber-400" : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">

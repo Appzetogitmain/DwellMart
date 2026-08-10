@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useVendorAuthStore } from '../store/vendorAuthStore';
-import SubscriptionExpiredOverlay from './SubscriptionExpiredOverlay';
-import api from '../../../shared/utils/api';
 
 const decodeJwtPayload = (token) => {
   try {
@@ -16,55 +14,36 @@ const decodeJwtPayload = (token) => {
   }
 };
 
+/**
+ * VendorProtectedRoute — Auth gate ONLY.
+ *
+ * Only checks whether a valid, non-expired vendor JWT exists.
+ * Subscription status is intentionally NOT checked here to avoid
+ * a full-page spinner flash on every navigation.
+ * VendorLayout owns the subscription check and shows its own
+ * non-blocking banners/overlays without remounting the whole tree.
+ */
 const VendorProtectedRoute = ({ children }) => {
   const { isAuthenticated, token } = useVendorAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('vendor-token');
 
-  // Auto re-hydrate vendor auth state from localStorage on page refresh
+  // Re-hydrate vendor auth state from localStorage on page refresh
   useEffect(() => {
     if (!isAuthenticated && accessToken) {
       useVendorAuthStore.getState().initialize();
     }
   }, [isAuthenticated, accessToken]);
 
+  if (!accessToken) {
+    return <Navigate to="/vendor/login" state={{ from: location }} replace />;
+  }
+
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();
   const tokenExpiryMs =
     typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
   const isExpired = tokenExpiryMs ? Date.now() >= tokenExpiryMs : false;
-
-  const [subscriptionStatus, setSubscriptionStatus] = useState('loading');
-
-  useEffect(() => {
-    if (!accessToken || isExpired) return;
-
-    const checkSubscription = async () => {
-      try {
-        const res = await api.get('/vendor/subscription');
-        const data = res?.data;
-        if (data?.hasSubscription && data?.isActive) {
-          setSubscriptionStatus('active');
-        } else {
-          setSubscriptionStatus('expired');
-        }
-      } catch (err) {
-        const errorCode = err?.response?.data?.errorCode || err?.errorCode;
-        if (errorCode === 'SUBSCRIPTION_EXPIRED' || errorCode === 'SUBSCRIPTION_INACTIVE') {
-          setSubscriptionStatus('expired');
-        } else {
-          // For other errors (network, etc.), allow access to avoid lockout
-          setSubscriptionStatus('active');
-        }
-      }
-    };
-
-    checkSubscription();
-  }, [accessToken, isExpired]);
-
-  if (!accessToken) {
-    return <Navigate to="/vendor/login" state={{ from: location }} replace />;
-  }
 
   if (isExpired) {
     localStorage.removeItem('vendor-token');
@@ -78,23 +57,6 @@ const VendorProtectedRoute = ({ children }) => {
     localStorage.removeItem('vendor-refresh-token');
     localStorage.removeItem('vendor-auth-storage');
     return <Navigate to="/vendor/login" state={{ from: location }} replace />;
-  }
-
-  if (subscriptionStatus === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-500" />
-      </div>
-    );
-  }
-
-  if (subscriptionStatus === 'expired') {
-    return (
-      <>
-        {children}
-        <SubscriptionExpiredOverlay isOpen={false} />
-      </>
-    );
   }
 
   return children;

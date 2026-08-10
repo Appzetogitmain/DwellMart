@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Notification from '../models/Notification.model.js';
 import { emitToRoom, emitToUserRoom } from '../socket.js';
+import { dispatchPushNotification } from './push.service.js';
 
 /**
  * Creates and persists a support notification in DB and emits real-time socket events
@@ -10,7 +11,7 @@ export const notifySupportActivity = async ({
     recipientType, // 'user' (customer), 'vendor', 'delivery', 'admin'
     title,
     message,
-    type = 'system',
+    type = 'support',
     data = {},
     socketEvent = 'notification',
 }) => {
@@ -29,8 +30,9 @@ export const notifySupportActivity = async ({
             data: new Map(Object.entries(data)),
         });
 
+        const notifObj = savedNotification ? savedNotification.toObject() : { title, message, data };
         const payload = {
-            notification: savedNotification ? savedNotification.toObject() : { title, message, data },
+            notification: notifObj,
             title,
             message,
             data,
@@ -39,10 +41,26 @@ export const notifySupportActivity = async ({
 
         if (recipientType === 'admin') {
             emitToRoom('admin', socketEvent, payload);
+            emitToRoom('admin', 'notification:new', payload);
             emitToRoom('admin', 'notification_count', { type: 'admin' });
         } else if (recipientId && recipientType) {
             emitToUserRoom(recipientId, recipientType, socketEvent, payload);
+            emitToUserRoom(recipientId, recipientType, 'notification:new', payload);
             emitToUserRoom(recipientId, recipientType, 'notification_count', { type: recipientType });
+
+            // Push Notification to device via FCM
+            dispatchPushNotification({
+                recipientId,
+                recipientType,
+                title,
+                body: message,
+                data: {
+                    ...data,
+                    type,
+                    title,
+                    message,
+                },
+            }).catch((err) => console.error('[SupportNotification] FCM push error:', err.message));
         }
 
         return savedNotification;
