@@ -34,6 +34,7 @@ const MobileOrderConfirmation = () => {
 
   const [isResolving, setIsResolving] = useState(true);
   const [sessionOrders, setSessionOrders] = useState(null); // for mixed-cart
+  const [sessionError, setSessionError] = useState(null);
   const order = orderId ? getOrder(orderId) : null;
   const [translatedOrderItems, setTranslatedOrderItems] = useState([]);
 
@@ -44,9 +45,10 @@ const MobileOrderConfirmation = () => {
       try {
         const res = await api.get(`/user/checkout/session/${sessionId}`);
         const data = res?.data ?? res;
-        setSessionOrders(data);
-      } catch {
-        // If session fetch fails, silently fall through
+        setSessionOrders({ session: data });
+        setSessionError(null);
+      } catch (error) {
+        setSessionError(error?.message || 'Unable to load the orders for this checkout.');
       } finally {
         setIsResolving(false);
       }
@@ -110,10 +112,31 @@ const MobileOrderConfirmation = () => {
     );
   }
 
+  if (sessionId && (!sessionOrders || sessionError)) {
+    return (
+      <PageTransition>
+        <MobileLayout showBottomNav={false} showCartBar={false}>
+          <div className="flex items-center justify-center min-h-[60vh] px-4">
+            <div className="text-center max-w-sm">
+              <h2 className="text-xl font-bold text-textColor-primary mb-3">{t('Order Not Found')}</h2>
+              <p className="text-sm text-textColor-muted mb-4">
+                {sessionError || 'The order confirmation is not ready yet.'}
+              </p>
+              <Button onClick={() => navigate('/orders')} variant="primary" size="md">
+                {t('View Order Details')}
+              </Button>
+            </div>
+          </div>
+        </MobileLayout>
+      </PageTransition>
+    );
+  }
+
   // ── Session Mode: Mixed-Cart multi-order confirmation ──────────────────────
   if (sessionId && sessionOrders) {
-    const ledger = sessionOrders?.session?.paymentAllocationLedger || [];
-    const orderIds = sessionOrders?.session?.orderIds || [];
+    const session = sessionOrders?.session || sessionOrders;
+    const ledger = session?.paymentAllocationLedger || [];
+    const orderIds = session?.orderIds || [];
     return (
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>

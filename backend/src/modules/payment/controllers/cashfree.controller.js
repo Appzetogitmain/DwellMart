@@ -53,7 +53,8 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
         const customerEmail = session.shippingAddress?.email || session.guestInfo?.email || req.user?.email || email || 'customer@dwellmart.com';
         const customerPhone = session.shippingAddress?.phone || session.guestInfo?.phone || req.user?.phone || '9999999999';
 
-        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+        const notifyUrl = process.env.CASHFREE_NOTIFY_URL || undefined;
         const cfSession = await createCashfreeOrder({
             orderId: session.sessionId,
             amount,
@@ -64,7 +65,11 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
                 email: customerEmail,
                 phone: customerPhone,
             },
-            returnUrl: `${clientUrl}/order-confirmation/${session.sessionId}?order_id={order_id}`,
+            // Cashfree may replace the current page on mobile (especially for
+            // UPI app hand-offs). Return to a CheckoutSession-aware screen;
+            // session.sessionId is not an Order.orderId yet.
+            returnUrl: `${clientUrl}/payment-return?session_id=${encodeURIComponent(session.sessionId)}&order_id={order_id}`,
+            notifyUrl,
         });
 
         session.gatewayOrderId   = session.sessionId;
@@ -95,7 +100,7 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
             );
         }
 
-        const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+        const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
         const session = await createCashfreeOrder({
             orderId: order.orderId,
             amount: order.total,
@@ -257,14 +262,41 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             );
         }
 
-        // Payment was NOT successful (user cancelled, dropped, or transaction failed)
-        await CheckoutSession.updateOne(
-            { _id: checkoutSession._id },
-            { $set: { paymentStatus: 'failed' } }
-        );
+        // An ACTIVE Cashfree order can contain a failed attempt while still
+        // allowing the customer to retry. Do not turn that transient state
+        // into a failed CheckoutSession while the gateway is still settling.
+        const orderStatus = String(cfOrder?.order_status || '').toUpperCase();
+        const paymentStatuses = Array.isArray(payments)
+            ? payments.map((payment) => String(payment?.payment_status || '').toUpperCase())
+            : [];
+        const isPending = !cfOrder
+            || ['ACTIVE', 'PENDING'].includes(orderStatus)
+            || paymentStatuses.some((status) => ['PENDING', 'NOT_ATTEMPTED'].includes(status));
+        const isCancelled = !isPending;
+
+        if (isCancelled) {
+            await CheckoutSession.updateOne(
+                { _id: checkoutSession._id },
+                { $set: { paymentStatus: 'failed' } }
+            );
+        }
 
         return res.status(200).json(
-            new ApiResponse(200, { verified: true, isPaid: false, isCancelled: true, checkoutSession, cfOrder, payments }, 'Payment was cancelled or failed. Your order has not been placed.')
+            new ApiResponse(
+                200,
+                {
+                    verified: true,
+                    isPaid: false,
+                    isPending,
+                    isCancelled,
+                    checkoutSession,
+                    cfOrder,
+                    payments,
+                },
+                isPending
+                    ? 'Payment confirmation is pending.'
+                    : 'Payment was cancelled or failed. Your order has not been placed.'
+            )
         );
     }
 
