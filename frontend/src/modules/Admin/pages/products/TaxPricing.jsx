@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { FiPlus, FiEdit, FiTrash2, FiSave } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,11 +9,50 @@ import {
   getTaxPricingRules,
   updateTaxPricingRules,
 } from "../../services/adminService";
+import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import toast from "react-hot-toast";
 
 const TaxPricing = () => {
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith("/app");
+  const { categories, initialize: initCategories } = useCategoryStore();
+
+  useEffect(() => {
+    initCategories();
+  }, [initCategories]);
+
+  const applicableOptions = useMemo(() => {
+    const baseOptions = [{ value: "all", label: "All Products" }];
+    const catOptions = (categories || []).map((cat) => ({
+      value: cat.slug || cat.name?.toLowerCase() || String(cat.id || cat._id),
+      label: cat.name,
+    }));
+
+    const combined = [...baseOptions, ...catOptions];
+    const existingValues = new Set(combined.map((o) => o.value));
+
+    // Retain legacy default options as fallback if not already present
+    const legacyDefaults = [
+      { value: "electronics", label: "Electronics" },
+      { value: "clothing", label: "Clothing" },
+      { value: "services", label: "Services" },
+    ];
+
+    legacyDefaults.forEach((item) => {
+      if (!existingValues.has(item.value)) {
+        combined.push(item);
+      }
+    });
+
+    return combined;
+  }, [categories]);
+
+  const getApplicableLabel = (val) => {
+    const found = applicableOptions.find((opt) => opt.value === val);
+    if (found) return found.label;
+    if (!val || val === "all") return "All Products";
+    return val;
+  };
   const [taxRules, setTaxRules] = useState([
     {
       id: 1,
@@ -193,7 +232,7 @@ const TaxPricing = () => {
                     <div className="mt-2 space-y-1 text-sm text-gray-600">
                       <p>Rate: {tax.rate}%</p>
                       <p>Type: {tax.type}</p>
-                      <p>Applicable To: {tax.applicableTo}</p>
+                      <p>Applicable To: {getApplicableLabel(tax.applicableTo)}</p>
                       <p
                         className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           tax.status === "active"
@@ -407,6 +446,8 @@ const TaxPricing = () => {
                   <AnimatedSelect
                     name="applicableTo"
                     value={editingTax.applicableTo || "all"}
+                    searchable={true}
+                    placeholder="Search category or select option..."
                     onChange={(e) => {
                       setEditingTax({
                         ...editingTax,
@@ -421,12 +462,7 @@ const TaxPricing = () => {
                           applicableInput.value = e.target.value;
                       }
                     }}
-                    options={[
-                      { value: "all", label: "All Products" },
-                      { value: "electronics", label: "Electronics" },
-                      { value: "clothing", label: "Clothing" },
-                      { value: "services", label: "Services" },
-                    ]}
+                    options={applicableOptions}
                   />
                   <AnimatedSelect
                     name="status"
