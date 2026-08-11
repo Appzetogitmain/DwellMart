@@ -225,7 +225,14 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             // No payment attempts yet
         }
 
-        const isPaid = cfOrder?.order_status === 'PAID' || (Array.isArray(payments) && payments.some(p => p.payment_status === 'SUCCESS'));
+        const expectedAmount = roundMoney(checkoutSession.summary?.grandTotal ?? 0);
+        const gatewayAmount = roundMoney(cfOrder?.order_amount ?? 0);
+        const isPaid = (cfOrder?.order_status === 'PAID' || (Array.isArray(payments) && payments.some(p => p.payment_status === 'SUCCESS')));
+
+        if (isPaid && cfOrder && Math.abs(gatewayAmount - expectedAmount) > 0.01) {
+            console.error(`[Security Alert] Payment amount mismatch for session ${checkoutSession.sessionId}! Expected ₹${expectedAmount}, Gateway paid ₹${gatewayAmount}`);
+            throw new ApiError(400, 'Payment verification failed due to amount mismatch.');
+        }
 
         if (isPaid) {
             if (checkoutSession.status !== 'completed') {
@@ -382,6 +389,24 @@ export const handleWebhook = asyncHandler(async (req, res) => {
                 if (isSuccess) {
                     if (session.status === 'completed') {
                         console.log(`[Webhook] Session ${session.sessionId} already completed. Skipping (idempotent).`);
+                        return;
+                    }
+
+                    const expectedAmount = roundMoney(session.summary?.grandTotal ?? 0);
+                    const webhookPaidAmount = roundMoney(orderData.order_amount ?? paymentData.payment_amount ?? 0);
+                    if (webhookPaidAmount > 0 && Math.abs(webhookPaidAmount - expectedAmount) > 0.01) {
+                        console.error(`[Webhook Security Alert] Payment amount mismatch for session ${session.sessionId}! Expected ₹${expectedAmount}, Gateway paid ₹${webhookPaidAmount}`);
+                        await CheckoutSession.updateOne(
+                            { _id: session._id },
+                            {
+                                $set: {
+                                    paymentStatus: 'failed',
+                                    status: 'failed',
+                                    failedAt: new Date(),
+                                    failureReason: `Payment amount mismatch: Expected ₹${expectedAmount}, paid ₹${webhookPaidAmount}`,
+                                },
+                            }
+                        );
                         return;
                     }
 

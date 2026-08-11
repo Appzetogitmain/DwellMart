@@ -27,7 +27,8 @@ import Product from '../../models/Product.model.js';
 import Vendor from '../../models/Vendor.model.js';
 import Settings from '../../models/Settings.model.js';
 
-import { resolvePriceForQuantity, deriveOrderType } from '../pricingEngine.service.js';
+import ApiError from '../../utils/ApiError.js';
+import { resolvePriceForQuantity, deriveOrderType, resolveVariantSelection } from '../pricingEngine.service.js';
 import { isWholesaleMarketplaceEnabled } from '../featureFlags.service.js';
 import {
     resolveVendorAvailability,
@@ -164,7 +165,26 @@ const computeGroupPricing = async (
     for (const item of vendorItems) {
         const productId = String(item.productId || item.id || '');
         const product   = productMap.get(productId);
-        const basePrice = Number(item.price ?? product?.price ?? 0);
+        if (!product) {
+            throw new ApiError(400, `Product not found: ${productId}`);
+        }
+
+        const { price: dbAuthoritativeBasePrice } = resolveVariantSelection(product, item.variant);
+
+        // Price Tampering Detection (Defense-in-depth)
+        if (item.price !== undefined && item.price !== null) {
+            const clientPrice = Number(item.price);
+            if (Number.isFinite(clientPrice) && Math.abs(clientPrice - dbAuthoritativeBasePrice) > 0.01) {
+                throw new ApiError(400, `Product price has changed or submitted price is invalid for ${product.name || 'product'}. Please refresh your cart and try again.`, [{
+                    code: 'CART_PRICE_MISMATCH',
+                    productId: String(product._id),
+                    submittedPrice: clientPrice,
+                    authoritativePrice: dbAuthoritativeBasePrice,
+                }]);
+            }
+        }
+
+        const basePrice = dbAuthoritativeBasePrice;
         const qty       = Number(item.quantity || 1);
 
         const pricing = resolvePriceForQuantity(product || {}, basePrice, qty, {
@@ -304,7 +324,7 @@ export const splitAndCreateOrders = async ({
                 const vendorDoc = vendorMap.get(vendorId);
                 const subtotal = groupData.items.reduce((s, item) => {
                     const product = productMap.get(String(item.productId || item.id || ''));
-                    const unitPrice = Number(item.price ?? product?.price ?? 0);
+                    const { price: unitPrice } = resolveVariantSelection(product || {}, item.variant);
                     return s + unitPrice * Number(item.quantity || 1);
                 }, 0);
                 groupSubtotals[key] = subtotal;
@@ -564,7 +584,7 @@ export const calculateCheckoutSessionSummary = async ({
             const vendorDoc = vendorMap.get(vendorId);
             const subtotal = groupData.items.reduce((s, item) => {
                 const product = productMap.get(String(item.productId || item.id || ''));
-                const unitPrice = Number(item.price ?? product?.price ?? 0);
+                const { price: unitPrice } = resolveVariantSelection(product || {}, item.variant);
                 return s + unitPrice * Number(item.quantity || 1);
             }, 0);
             groupSubtotals[key] = subtotal;

@@ -98,7 +98,18 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
             $or: [{ expiresAt: { $gt: new Date() } }, { expiresAt: null }],
         }).lean();
         if (couponDoc) {
-            const cartTotal = items.reduce((s, i) => s + Number(i.price || 0) * Number(i.quantity || 1), 0);
+            const Product = (await import('../../../models/Product.model.js')).default;
+            const { resolveVariantSelection } = await import('../../../services/pricingEngine.service.js');
+            const productIds = items.map((i) => i.productId || i.id).filter(Boolean);
+            const rawProducts = await Product.find({ _id: { $in: productIds } }).lean();
+            const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
+
+            const cartTotal = items.reduce((s, i) => {
+                const product = productMap.get(String(i.productId || i.id || ''));
+                const { price: unitPrice } = resolveVariantSelection(product || {}, i.variant);
+                return s + unitPrice * Number(i.quantity || 1);
+            }, 0);
+
             // Simple percentage / fixed calc — authoritative calculation runs at order creation
             const discount = couponDoc.type === 'percent'
                 ? Math.min(cartTotal * (couponDoc.discount / 100), couponDoc.maxDiscount || Infinity)

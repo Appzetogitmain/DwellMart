@@ -28,7 +28,7 @@ import {
     getQuickCommerceSettings,
     resolveEffectiveQCSettings,
 } from '../quickCommerce.service.js';
-import { resolvePriceForQuantity } from '../pricingEngine.service.js';
+import { resolvePriceForQuantity, resolveVariantSelection } from '../pricingEngine.service.js';
 import { isWholesaleMarketplaceEnabled } from '../featureFlags.service.js';
 import { isVendorEligibleForOrders, getVendorIneligibleReason } from '../../utils/vendorEligibility.js';
 
@@ -133,6 +133,13 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
         }
 
         const productName = product.name || 'Unknown Product';
+
+        // ── Variant Selection & Price Resolution ──
+        try {
+            resolveVariantSelection(product, item.variant);
+        } catch (variantErr) {
+            errors.push(variantErr.message || `Invalid variant selected for ${productName}.`);
+        }
 
         // ── Active / visible ──
         if (!product.isActive || !product.isVisible) {
