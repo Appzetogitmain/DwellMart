@@ -27,6 +27,28 @@ const formatContent = (content) => {
     .join('');
 };
 
+const DEFAULT_PRIVACY_CONTENT = `
+<h2>1. Introduction</h2>
+<p>Welcome to DwellMart. Your privacy is of utmost importance to us. This Privacy Policy outlines how we collect, process, store, and safeguard your personal information across our website and mobile applications.</p>
+
+<h2>2. Information We Collect</h2>
+<p>We collect information that you voluntarily provide when creating an account, browsing products, placing orders, or contacting customer support. This includes your full name, email address, contact number, delivery addresses, and transactional information.</p>
+
+<h2>3. Data Protection & Privacy Officer</h2>
+<p>For any privacy inquiries, data access requests, or policy feedback, please contact our designated Privacy Officer:</p>
+<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+  <p style="margin: 0 0 6px 0;"><strong>Name:</strong> Devesh Lal</p>
+  <p style="margin: 0 0 6px 0;"><strong>Mobile:</strong> 9999188143</p>
+  <p style="margin: 0;"><strong>Email:</strong> <a href="mailto:davesh0007@gmail.com" style="color: #2563eb;">davesh0007@gmail.com</a></p>
+</div>
+
+<h2>4. How We Use Your Data</h2>
+<p>Your data is strictly used to process marketplace orders, coordinate quick delivery services, send real-time order notifications, prevent fraudulent activities, and improve user experience.</p>
+
+<h2>5. Data Security & Third Parties</h2>
+<p>We implement robust encryption and security standards. We never sell your personal data. Data is shared exclusively with verified vendors, payment gateways, and delivery partners solely for order fulfillment.</p>
+`;
+
 const StaticPage = ({ slug: slugProp }) => {
   // Accept slug either from props (used in App.jsx) or from URL params
   const params = useParams();
@@ -51,6 +73,7 @@ const StaticPage = ({ slug: slugProp }) => {
   }, [slug]);
 
   const pageTitle = page?.title || DEFAULT_TITLES[slug] || 'Page';
+  const effectiveContent = page?.content || (slug === 'privacy' ? DEFAULT_PRIVACY_CONTENT : null);
 
   let bodyContent = null;
 
@@ -68,26 +91,13 @@ const StaticPage = ({ slug: slugProp }) => {
         </div>
       </div>
     );
-  } else if (notFound || (!isLoading && !page)) {
+  } else if (!effectiveContent && (notFound || !page)) {
     bodyContent = (
       <div className="py-16 px-4 flex items-center justify-center min-h-[50vh]">
         <div className="text-center space-y-4">
           <p className="text-6xl">📄</p>
           <h1 className="text-2xl font-bold text-gray-800">{DEFAULT_TITLES[slug] || 'Page Not Found'}</h1>
           <p className="text-gray-500 max-w-sm">This page is being prepared. Check back soon.</p>
-          <Link to="/" className="inline-flex items-center gap-2 mt-4 text-primary-600 hover:underline font-medium">
-            <FiArrowLeft /> Back to Home
-          </Link>
-        </div>
-      </div>
-    );
-  } else if (!page.content) {
-    bodyContent = (
-      <div className="py-16 px-4 flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-4">
-          <p className="text-6xl">📝</p>
-          <h1 className="text-2xl font-bold text-gray-800">{pageTitle}</h1>
-          <p className="text-gray-500 max-w-sm">This page is coming soon. We're working on it!</p>
           <Link to="/" className="inline-flex items-center gap-2 mt-4 text-primary-600 hover:underline font-medium">
             <FiArrowLeft /> Back to Home
           </Link>
@@ -110,7 +120,7 @@ const StaticPage = ({ slug: slugProp }) => {
           {/* Header Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 px-6 sm:px-8 pt-8 pb-6 mb-6">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">{pageTitle}</h1>
-            {page.lastUpdated && (
+            {page?.lastUpdated && (
               <p className="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
                 <FiClock />
                 Last updated: {new Date(page.lastUpdated).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -122,8 +132,21 @@ const StaticPage = ({ slug: slugProp }) => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 px-6 sm:px-8 py-8 mb-12">
             <div
               className="prose prose-slate max-w-none text-slate-800 leading-relaxed [&_font[color]]:!text-[attr(color)] [&_[style*='color']]:![color:inherit]"
-              dangerouslySetInnerHTML={{ __html: formatContent(page.content) }}
+              dangerouslySetInnerHTML={{ __html: formatContent(effectiveContent) }}
             />
+
+            {/* Privacy Contact Card appended if page content exists */}
+            {slug === 'privacy' && page?.content && (
+              <div className="mt-8 pt-6 border-t border-slate-200 bg-slate-50 p-6 rounded-2xl">
+                <h3 className="text-lg font-bold text-slate-900 mb-2">Privacy & Data Officer Contact</h3>
+                <p className="text-sm text-slate-600 mb-3">For any privacy questions or data requests, contact:</p>
+                <div className="space-y-1 text-sm font-medium text-slate-800">
+                  <p><strong>Name:</strong> Devesh Lal</p>
+                  <p><strong>Mobile:</strong> 9999188143</p>
+                  <p><strong>Email:</strong> <a href="mailto:davesh0007@gmail.com" className="text-brand-primary hover:underline">davesh0007@gmail.com</a></p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiMail, FiPhone, FiMapPin, FiClock, FiSend, FiCheckCircle, FiArrowLeft } from 'react-icons/fi';
+import { FiMail, FiPhone, FiMapPin, FiClock, FiSend, FiCheckCircle, FiArrowLeft, FiUser } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
@@ -110,11 +110,22 @@ const ContactUs = () => {
                   <div className="space-y-6">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
+                        <FiUser />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-content-secondary">Contact Person</h4>
+                        <p className="text-content font-bold text-base mt-0.5">Devesh Lal</p>
+                        <p className="text-xs text-content-muted mt-0.5">Support & Operations Lead</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xl shrink-0">
                         <FiMail />
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold text-content-secondary">Email Us</h4>
-                        <p className="text-content font-medium text-base mt-0.5">{email}</p>
+                        <p className="text-content font-medium text-base mt-0.5">davesh0007@gmail.com</p>
                         <p className="text-xs text-content-muted mt-1">Our support team responds promptly.</p>
                       </div>
                     </div>
@@ -124,8 +135,8 @@ const ContactUs = () => {
                         <FiPhone />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-content-secondary">Call Us</h4>
-                        <p className="text-content font-medium text-base mt-0.5">{phone}</p>
+                        <h4 className="text-sm font-semibold text-content-secondary">Call / Mobile</h4>
+                        <p className="text-content font-medium text-base mt-0.5">9999188143</p>
                         <p className="text-xs text-content-muted mt-1">{hours}</p>
                       </div>
                     </div>

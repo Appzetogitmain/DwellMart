@@ -160,6 +160,8 @@ import DeliveryRegister from "./modules/Delivery/pages/Register";
 import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
 import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
 import DeliveryCashSettlements from "./modules/Delivery/pages/CashSettlements";
+import DeliveryPrivacyPolicy from "./modules/Delivery/pages/PrivacyPolicy";
+import DeliveryContactUs from "./modules/Delivery/pages/ContactUs";
 const DeliveryProtectedRoute = lazy(() => import("./modules/Delivery/components/DeliveryProtectedRoute"));
 const DeliveryLayout = lazy(() => import("./modules/Delivery/components/Layout/DeliveryLayout"));
 const DeliveryDashboard = lazy(() => import("./modules/Delivery/pages/Dashboard"));
@@ -175,6 +177,8 @@ import VendorVerification from "./modules/Vendor/pages/Verification";
 import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
 import VendorRenewSubscription from "./modules/Vendor/pages/VendorRenewSubscription";
+import VendorPrivacyPolicy from "./modules/Vendor/pages/PrivacyPolicy";
+import VendorContactUs from "./modules/Vendor/pages/ContactUs";
 const VendorProtectedRoute = lazy(() => import("./modules/Vendor/components/VendorProtectedRoute"));
 const VendorActionRoute = lazy(() => import("./modules/Vendor/components/VendorActionRoute"));
 const VendorLayout = lazy(() => import("./modules/Vendor/components/Layout/VendorLayout"));
@@ -710,6 +714,8 @@ const AppRoutes = () => {
         path="/delivery/reset-password"
         element={<DeliveryResetPassword />}
       />
+      <Route path="/delivery/privacy" element={<DeliveryPrivacyPolicy />} />
+      <Route path="/delivery/contact" element={<DeliveryContactUs />} />
       <Route
         path="/delivery"
         element={
@@ -737,6 +743,8 @@ const AppRoutes = () => {
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
       {/* Renewal page — outside VendorProtectedRoute so expired vendors can access it */}
       <Route path="/vendor/renew-subscription" element={<VendorRenewSubscription />} />
+      <Route path="/vendor/privacy" element={<VendorPrivacyPolicy />} />
+      <Route path="/vendor/contact" element={<VendorContactUs />} />
       <Route
         path="/vendor"
         element={
