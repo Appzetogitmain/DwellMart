@@ -284,8 +284,8 @@ const AnimatedSelect = ({
         )}
       </AnimatePresence>
 
-      {/* Hidden input for form validation */}
-      {required && (
+      {/* Hidden input for form submission and validation */}
+      {name && (
         <input
           type="hidden"
           name={name}

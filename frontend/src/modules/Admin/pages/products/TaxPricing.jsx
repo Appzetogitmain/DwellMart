@@ -399,11 +399,11 @@ const TaxPricing = () => {
                     const formData = new FormData(e.target);
                     try {
                       await handleSaveTax({
-                        name: formData.get("name"),
-                        rate: parseFloat(formData.get("rate")),
-                        type: formData.get("type"),
-                        applicableTo: formData.get("applicableTo"),
-                        status: formData.get("status"),
+                        name: String(formData.get("name") || editingTax.name || "").trim(),
+                        rate: parseFloat(formData.get("rate") || editingTax.rate || 0),
+                        type: formData.get("type") || editingTax.type || "percentage",
+                        applicableTo: formData.get("applicableTo") || editingTax.applicableTo || "all",
+                        status: formData.get("status") || editingTax.status || "active",
                       });
                     } catch (error) {
                       // interceptor handles toasts
@@ -569,14 +569,14 @@ const TaxPricing = () => {
                     const formData = new FormData(e.target);
                     try {
                       await handleSavePricing({
-                        name: formData.get("name"),
-                        type: formData.get("type"),
-                        value: parseFloat(formData.get("value")),
+                        name: String(formData.get("name") || editingPricing.name || "").trim(),
+                        type: formData.get("type") || editingPricing.type || "discount",
+                        value: parseFloat(formData.get("value") || editingPricing.value || 0),
                         minQuantity: formData.get("minQuantity")
                           ? parseInt(formData.get("minQuantity"))
-                          : null,
-                        applicableTo: formData.get("applicableTo") || null,
-                        status: formData.get("status"),
+                          : editingPricing.minQuantity || null,
+                        applicableTo: formData.get("applicableTo") || editingPricing.applicableTo || null,
+                        status: formData.get("status") || editingPricing.status || "active",
                       });
                     } catch (error) {
                       // interceptor handles toasts
