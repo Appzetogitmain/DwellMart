@@ -29,6 +29,7 @@ import { getLocationQueryParams, getCustomerLocation } from "../../../shared/uti
 import { formatEtaRange } from "../../../shared/utils/quickCommerceEta";
 import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
 import { reverseGeocode } from "../../../shared/maps/googleMaps";
+import PlaceAutocompleteInput from "../../../shared/maps/PlaceAutocompleteInput";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -567,6 +568,28 @@ const MobileCheckout = () => {
     );
   };
 
+  const handleAddressPlaceSelect = async (placeAddress) => {
+    setSelectedAddressId(null);
+    setFormData((previous) => ({
+      ...previous,
+      address: placeAddress.address || previous.address,
+      city: placeAddress.city || previous.city,
+      state: placeAddress.state || previous.state,
+      zipCode: placeAddress.zipCode || previous.zipCode,
+      country: placeAddress.country || previous.country,
+    }));
+
+    if (isQuickCommerce && placeAddress.location) {
+      await setQuickLocation({
+        ...placeAddress.location,
+        pincode: placeAddress.zipCode || undefined,
+        label: placeAddress.formattedAddress || placeAddress.address || "Selected address",
+        source: "address_search",
+      });
+    }
+    toast.success("Address details filled from your selection.");
+  };
+
   const handleNewAddress = async (addressData) => {
     try {
       const newAddress = await addAddress(addressData);
@@ -932,14 +955,23 @@ const MobileCheckout = () => {
                         <label className="block text-sm font-semibold text-content-secondary mb-2">
                           {t('Address')}
                         </label>
+                        <PlaceAutocompleteInput
+                          onSelect={handleAddressPlaceSelect}
+                          className="mb-2"
+                          placeholder="Search and select your address"
+                        />
                         <textarea
                           name="address"
                           value={formData.address}
                           onChange={handleInputChange}
                           required
                           rows={3}
+                          placeholder="Flat / house number, street, landmark"
                           className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                         />
+                        <p className="mt-1 text-xs text-content-muted">
+                          Search for an address above, or enter it manually.
+                        </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
