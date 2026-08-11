@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FiSave, FiMapPin, FiCrosshair } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { updateVendorQuickCommerceSettings } from "../services/vendorService";
+import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
 
 const STORE_TYPES = [
   { value: "dark_store", label: "Dark Store" },
@@ -290,6 +291,15 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
               />
             </div>
           </div>
+          <GoogleMapPicker
+            className="mt-3"
+            value={{ latitude: form.latitude, longitude: form.longitude }}
+            onChange={({ latitude, longitude }) => {
+              setField("latitude", Number(latitude.toFixed(6)));
+              setField("longitude", Number(longitude.toFixed(6)));
+            }}
+            height={220}
+          />
           <p className="text-xs text-gray-500 mt-1">
             Customers within your delivery radius of this point can order from you.
             Without a location your store cannot be found.

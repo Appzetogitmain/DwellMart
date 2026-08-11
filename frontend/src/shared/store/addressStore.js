@@ -2,10 +2,16 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../utils/api';
 
-const normalizeAddress = (address) => ({
-  ...address,
-  id: address?.id || address?._id,
-});
+const normalizeAddress = (address) => {
+  const coordinates = address?.location?.coordinates;
+  return {
+    ...address,
+    id: address?.id || address?._id,
+    ...(Array.isArray(coordinates) && coordinates.length === 2
+      ? { longitude: Number(coordinates[0]), latitude: Number(coordinates[1]) }
+      : {}),
+  };
+};
 const normalizePhone = (value) => String(value || '').replace(/\D/g, '').slice(-10);
 const normalizeText = (value) => String(value ?? '').trim();
 
@@ -46,6 +52,9 @@ export const useAddressStore = create(
             state: normalizeText(address?.state),
             zipCode: normalizeText(address?.zipCode),
             country: normalizeText(address?.country),
+            ...(Number.isFinite(Number(address?.latitude)) && Number.isFinite(Number(address?.longitude))
+              ? { latitude: Number(address.latitude), longitude: Number(address.longitude) }
+              : {}),
             isDefault: state.addresses.length === 0 || Boolean(address?.isDefault),
           };
           const response = await api.post('/user/addresses', payload);
@@ -79,6 +88,9 @@ export const useAddressStore = create(
             ...(updatedAddress?.state !== undefined ? { state: normalizeText(updatedAddress?.state) } : {}),
             ...(updatedAddress?.zipCode !== undefined ? { zipCode: normalizeText(updatedAddress?.zipCode) } : {}),
             ...(updatedAddress?.country !== undefined ? { country: normalizeText(updatedAddress?.country) } : {}),
+            ...(updatedAddress?.latitude !== undefined && updatedAddress?.longitude !== undefined
+              ? { latitude: Number(updatedAddress.latitude), longitude: Number(updatedAddress.longitude) }
+              : {}),
           };
           const response = await api.put(`/user/addresses/${id}`, payload);
           const updated = normalizeAddress(response?.data ?? response);

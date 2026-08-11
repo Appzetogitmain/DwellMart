@@ -10,6 +10,7 @@ import ProtectedRoute from '../../../shared/components/Auth/ProtectedRoute';
 import { useAddressStore } from '../../../shared/store/addressStore';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import GoogleMapPicker from '../../../shared/maps/GoogleMapPicker';
 
 const MobileAddresses = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -61,6 +62,8 @@ const MobileAddresses = () => {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm();
 
@@ -228,6 +231,8 @@ const MobileAddresses = () => {
                 register={register}
                 handleSubmit={handleSubmit}
                 errors={errors}
+                setValue={setValue}
+                watch={watch}
                 t={t}
               />
             )}
@@ -246,8 +251,12 @@ const AddressFormModal = ({
   register,
   handleSubmit,
   errors,
+  setValue,
+  watch,
   t,
 }) => {
+  const latitude = watch('latitude');
+  const longitude = watch('longitude');
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -354,6 +363,22 @@ const AddressFormModal = ({
               className={`w-full px-4 py-3 rounded-xl border-2 ${errors.country ? 'border-status-error' : 'border-border'
                 } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-base`}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-content-secondary mb-2">Exact delivery pin (recommended for Quick Commerce)</label>
+            <GoogleMapPicker
+              value={{ latitude, longitude }}
+              onChange={({ latitude: nextLatitude, longitude: nextLongitude }) => {
+                setValue('latitude', Number(nextLatitude.toFixed(6)));
+                setValue('longitude', Number(nextLongitude.toFixed(6)));
+              }}
+              height={210}
+            />
+            <p className="mt-1 text-xs text-content-muted">
+              {Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude))
+                ? "Exact location saved with this address."
+                : "Optional. You can still save a manual address."}
+            </p>
           </div>
           <div className="flex gap-3 pt-4">
             <button
