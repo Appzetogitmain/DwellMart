@@ -19,6 +19,7 @@
  *   - Idempotent: safe to call multiple times.
  */
 
+import mongoose from 'mongoose';
 import Product from '../../models/Product.model.js';
 import Vendor from '../../models/Vendor.model.js';
 import {
@@ -98,7 +99,7 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
     }
 
     // ── 1. Batch-fetch Products & Vendors ──────────────────────────────────
-    const productIds = [...new Set(items.map((i) => i.productId || i.id).filter(Boolean))];
+    const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
     const [rawProducts, wholesaleEnabled] = await Promise.all([
         Product.find({ _id: { $in: productIds } })
             .select('_id name isActive isVisible stock stockQuantity lowStockThreshold vendorId '
@@ -110,7 +111,7 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
 
     const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 
-    const vendorIds = [...new Set(rawProducts.map((p) => String(p.vendorId || '')).filter(Boolean))];
+    const vendorIds = [...new Set(rawProducts.map((p) => p.vendorId ? new mongoose.Types.ObjectId(String(p.vendorId)) : null).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
         .select('_id storeName status vendorType sellingChannels quickCommerceProfile')
         .lean();
@@ -197,6 +198,9 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
         } else if (product.stockQuantity < quantity) {
             errors.push(`Only ${product.stockQuantity} unit(s) of ${productName} available (requested ${quantity}).`);
         } else if (product.stockQuantity < quantity * 1.5) {
+            // P1-12 FIX: Low-stock is informational only — never a hard error.
+            // strictMode MUST NOT promote this to an error: a customer who already
+            // paid must not have order creation fail because stock is "low but sufficient".
             warnings.push(`Low stock: only ${product.stockQuantity} units left for ${productName}.`);
         }
 
@@ -227,7 +231,9 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
             productId,
             productName,
             fulfillmentType: ft,
-            valid: errors.length === 0 && (!strictMode || warnings.length === 0),
+            // P1-12 FIX: warnings must NEVER cause valid=false, even in strictMode.
+            // Only hard errors block checkout. Low-stock is advisory information only.
+            valid: errors.length === 0,
             errors,
             warnings,
         });

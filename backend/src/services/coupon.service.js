@@ -27,8 +27,18 @@ export const validateCoupon = async (code, cartTotal) => {
 };
 
 /**
- * Increment coupon usage count
+ * Increment coupon usage count.
+ * Accepts either a coupon code string (e.g., 'SAVE10') or a MongoDB ObjectId.
  */
-export const incrementCouponUsage = async (couponId) => {
-    await Coupon.findByIdAndUpdate(couponId, { $inc: { usedCount: 1 } });
+export const incrementCouponUsage = async (codeOrId) => {
+    if (!codeOrId) return;
+    // Try as code first (most callers pass the code string)
+    const result = await Coupon.findOneAndUpdate(
+        { code: String(codeOrId).toUpperCase() },
+        { $inc: { usedCount: 1 } }
+    );
+    // Fall back to ObjectId lookup if code lookup found nothing
+    if (!result && String(codeOrId).match(/^[a-fA-F0-9]{24}$/)) {
+        await Coupon.findByIdAndUpdate(codeOrId, { $inc: { usedCount: 1 } });
+    }
 };

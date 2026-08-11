@@ -171,18 +171,39 @@ export const getPublicSettingsByCategory = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/admin/settings/:category
- * Fetch specific category settings
+ * Fetch specific category settings.
+ * P2-SEC-01 FIX: Payment/gateway secrets are redacted before returning —
+ * they are set-only. The UI can show "••••• (set)" without exposing the real value.
  */
 export const getSettingsByCategory = asyncHandler(async (req, res) => {
     const { category } = req.params;
-    
+
     if (category === GENERAL_SETTINGS_KEY) {
         return getGeneralSettings(req, res);
     }
-    
-    const setting = await Settings.findOne({ key: category });
-    
-    res.status(200).json(new ApiResponse(200, setting?.value || {}, `${category} settings fetched successfully.`));
+
+    const setting = await Settings.findOne({ key: category }).lean();
+    let value = setting?.value || {};
+
+    // P2-SEC-01: Redact sensitive gateway credentials from admin read responses.
+    // These fields must never travel over the wire — even to authenticated admins —
+    // because the admin panel JS runs client-side and traffic is logged.
+    const SECRET_FIELDS = [
+        'cashfreeSecretKey', 'secretKey', 'apiSecret', 'webhookSecret',
+        'clientSecret', 'stripeSecretKey', 'razorpayKeySecret',
+        'paytmMerchantKey', 'paypalClientSecret',
+    ];
+
+    if (category === 'payment' || category === 'gateway' || category === 'integrations') {
+        value = { ...value };
+        for (const field of SECRET_FIELDS) {
+            if (value[field]) {
+                value[field] = '••••• (set)';
+            }
+        }
+    }
+
+    res.status(200).json(new ApiResponse(200, value, `${category} settings fetched successfully.`));
 });
 
 /**

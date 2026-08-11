@@ -14,8 +14,11 @@
  */
 
 export const EXPERIENCES = {
-    MARKETPLACE: 'marketplace',
+    MARKETPLACE:    'marketplace',
     QUICK_COMMERCE: 'quick_commerce',
+    // P2-CON-01 FIX: WHOLESALE was missing, causing EXPERIENCES.WHOLESALE === undefined.
+    // Wholesale B2B is a distinct fulfillment channel that requires its own catalog/pricing logic.
+    WHOLESALE:      'wholesale',
 };
 
 export const EXPERIENCE_VALUES = Object.values(EXPERIENCES);
@@ -25,6 +28,7 @@ export const DEFAULT_EXPERIENCE = EXPERIENCES.MARKETPLACE;
 /**
  * Normalize an arbitrary experience hint into a known value.
  * Unknown/missing input resolves to marketplace (backward compatible).
+ * P2-CON-01: 'wholesale' is now a valid experience value.
  */
 export const normalizeExperience = (raw) => {
     const value = String(raw ?? '').trim().toLowerCase();

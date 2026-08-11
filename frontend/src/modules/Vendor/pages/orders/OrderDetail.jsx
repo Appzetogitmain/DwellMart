@@ -26,7 +26,7 @@ const OrderDetail = () => {
     const [loading, setLoading] = useState(true);
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
-    const vendorId = vendor?.id;
+    const vendorId = vendor?.id || vendor?._id || vendor?.userId;
     const shippingAddress = order?.shippingAddress ?? order?.address ?? null;
     const customerName =
         order?.customer?.name ??
@@ -40,7 +40,7 @@ const OrderDetail = () => {
         'N/A';
 
     useEffect(() => {
-        if (!id || !vendorId) return;
+        if (!id) return;
 
         const fetchOrder = async () => {
             setLoading(true);
@@ -84,8 +84,8 @@ const OrderDetail = () => {
 
     // Derive per-vendor status & orderType from vendorItems
     const vendorItem = order?.vendorItems?.find(
-        (vi) => vi.vendorId?.toString() === vendorId?.toString()
-    );
+        (vi) => String(vi.vendorId?._id || vi.vendorId) === String(vendorId)
+    ) || order?.vendorItems?.[0];
     const orderType = String(vendorItem?.orderType || order?.orderType || 'retail').toLowerCase();
     const currentStatus = String(vendorItem?.status ?? order?.status ?? 'pending').toLowerCase();
 
@@ -139,8 +139,8 @@ const OrderDetail = () => {
     );
 
     // Items this vendor sold in this order
-    const vendorItems = vendorItem?.items ?? [];
-    const vendorSubtotal = vendorItem?.subtotal ?? 0;
+    const vendorItems = (vendorItem?.items && vendorItem.items.length > 0) ? vendorItem.items : (order?.items || []);
+    const vendorSubtotal = vendorItem?.subtotal ?? order?.subtotal ?? 0;
 
     if (loading) {
         return (

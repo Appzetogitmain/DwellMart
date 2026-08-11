@@ -45,10 +45,19 @@ export const createCashfreeOrder = async ({
         throw new ApiError(400, 'Cashfree API credentials are not configured.');
     }
 
+    const numericAmount = Number(amount || 0);
+
+    // P2-SEC-08 FIX: Do NOT silently charge ₹1 on free/fully-discounted orders.
+    // A customer who receives 100% coupon discount owes ₹0 — charging ₹1 is unauthorized.
+    // Callers must detect total === 0 and route to a free-order/COD path instead.
+    if (numericAmount <= 0) {
+        throw new ApiError(400, 'Payment gateway cannot process a ₹0 order. Use the free-order or COD checkout path for fully-discounted orders.');
+    }
+
     const sanitizedPhone = String(customer.phone || '9999999999').replace(/\D/g, '').slice(-10) || '9999999999';
     const payload = {
         order_id: String(orderId),
-        order_amount: Math.max(Number(amount || 0), 1),
+        order_amount: Math.round(numericAmount * 100) / 100, // round to 2 decimal places
         order_currency: String(currency || 'INR').toUpperCase(),
         customer_details: {
             customer_id: String(customer.id || customer._id || `cust_${Date.now()}`),
@@ -91,7 +100,15 @@ export const createCashfreeOrder = async ({
     };
 };
 
+let _mockHandler = null;
+
+export const setMockCashfreeHandler = (handler) => {
+    _mockHandler = handler;
+};
+
 export const fetchCashfreeOrder = async (orderId) => {
+    if (_mockHandler?.fetchOrder) return _mockHandler.fetchOrder(orderId);
+
     const creds = await getCashfreeCredentials();
 
     if (!creds.appId || !creds.secretKey) {
@@ -120,6 +137,8 @@ export const fetchCashfreeOrder = async (orderId) => {
 };
 
 export const fetchCashfreeOrderPayments = async (orderId) => {
+    if (_mockHandler?.fetchPayments) return _mockHandler.fetchPayments(orderId);
+
     const creds = await getCashfreeCredentials();
 
     if (!creds.appId || !creds.secretKey) {
@@ -145,16 +164,35 @@ export const fetchCashfreeOrderPayments = async (orderId) => {
 };
 
 export const verifyCashfreeSignature = async (rawBody, timestamp, signature) => {
+    if (_mockHandler?.verifySignature) return _mockHandler.verifySignature(rawBody, timestamp, signature);
+
     const creds = await getCashfreeCredentials();
     if (!creds.secretKey || !signature || !timestamp) return false;
 
     try {
+        // P2-SEC-02 FIX: Enforce a 5-minute replay window.
+        // Webhooks with a stale timestamp are rejected regardless of signature validity.
+        // This makes replay attacks impractical — an attacker cannot replay a valid webhook
+        // after the window expires even if they intercepted the request.
+        const REPLAY_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+        const webhookTimeMs = Number(timestamp) * 1000; // Cashfree sends Unix seconds
+        const ageMs = Date.now() - webhookTimeMs;
+        if (Math.abs(ageMs) > REPLAY_WINDOW_MS) {
+            console.warn(`[Cashfree Webhook] Rejected: timestamp age ${Math.round(ageMs / 1000)}s exceeds 5-minute window.`);
+            return false;
+        }
+
         const dataToSign = timestamp + rawBody;
         const expectedSignature = crypto
             .createHmac('sha256', creds.secretKey)
             .update(dataToSign)
             .digest('base64');
-        return expectedSignature === signature;
+
+        // Timing-safe comparison to prevent HMAC oracle attacks
+        const expectedBuf = Buffer.from(expectedSignature);
+        const actualBuf   = Buffer.from(signature);
+        if (expectedBuf.length !== actualBuf.length) return false;
+        return crypto.timingSafeEqual(expectedBuf, actualBuf);
     } catch {
         return false;
     }

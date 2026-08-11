@@ -632,12 +632,12 @@ const getVendorProductCountsMap = async (vendorIds = []) => {
 
     if (validObjectIds.length === 0) return new Map();
 
+    // P1-09 FIX: Removed phantom 'isApproved' and 'status' fields that don't exist in Product schema.
+    // These caused every vendor to show 0 products. Only filter on real schema fields.
     const counts = await Product.aggregate([
         {
             $match: {
                 vendorId: { $in: validObjectIds },
-                isApproved: true,
-                status: 'published',
                 isActive: { $ne: false },
                 isDeleted: { $ne: true },
             }

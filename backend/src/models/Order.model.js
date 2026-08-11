@@ -376,8 +376,13 @@ orderSchema.index(
     }
 );
 
-orderSchema.index({ isDeleted: 1, createdAt: -1 });
-orderSchema.index({ isDeleted: 1, status: 1, createdAt: -1 });
+// P2-DB-01 FIX: Compound index for "my orders" queries (most frequent user-facing read)
+orderSchema.index({ userId: 1, createdAt: -1 });
+orderSchema.index({ userId: 1, status: 1, createdAt: -1 });
+
+// P2-DB-03 FIX: Removed isDeleted indexes — isDeleted field does NOT exist in Order schema.
+// Phantom indexes consume memory and never match any document.
+
 orderSchema.index({ 'vendorItems.vendorId': 1, createdAt: -1 });
 orderSchema.index({ 'integration.eligibleForPartner': 1, status: 1, createdAt: -1 });
 orderSchema.index({ 'integration.partnerStatus': 1, createdAt: -1 });
@@ -387,6 +392,7 @@ orderSchema.index({ experience: 1, 'quickCommerce.status': 1, createdAt: -1 });
 orderSchema.index({ experience: 1, status: 1, createdAt: -1 });
 orderSchema.index({ deliveryBoyId: 1, status: 1, createdAt: -1 });
 orderSchema.index({ vendorId: 1, createdAt: -1 });
+orderSchema.index({ vendorId: 1, status: 1, createdAt: -1 });
 orderSchema.index({ vendorId: 1, fulfillmentType: 1, createdAt: -1 });
 orderSchema.index({ checkoutSessionId: 1 });
 orderSchema.index({ fulfillmentGroupId: 1 });

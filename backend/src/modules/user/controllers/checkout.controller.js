@@ -21,6 +21,7 @@ import { validateCart } from '../../../services/checkout/CartValidationPipeline.
 import { reserveStock, releaseReservation } from '../../../services/checkout/InventoryReservationService.js';
 import Settings from '../../../models/Settings.model.js';
 import Coupon from '../../../models/Coupon.model.js';
+import { incrementCouponUsage } from '../../../services/coupon.service.js';
 
 // ── POST /api/checkout/validate ───────────────────────────────────────────────
 /**
@@ -95,30 +96,51 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         const couponDoc = await Coupon.findOne({
             code: String(couponCode).toUpperCase().trim(),
             isActive: true,
-            $or: [{ expiresAt: { $gt: new Date() } }, { expiresAt: null }],
         }).lean();
         if (couponDoc) {
-            const Product = (await import('../../../models/Product.model.js')).default;
-            const { resolveVariantSelection } = await import('../../../services/pricingEngine.service.js');
-            const productIds = items.map((i) => i.productId || i.id).filter(Boolean);
-            const rawProducts = await Product.find({ _id: { $in: productIds } }).lean();
-            const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
+            const now = new Date();
+            // P1-03 FIX: validate all coupon constraints here just like the public validator does
+            const couponError = (() => {
+                if (couponDoc.startsAt && new Date(couponDoc.startsAt) > now) return 'Coupon is not active yet.';
+                if (couponDoc.expiresAt && new Date(couponDoc.expiresAt) < now) return 'Coupon has expired.';
+                if (couponDoc.usageLimit && (couponDoc.usedCount || 0) >= couponDoc.usageLimit) return 'Coupon usage limit has been reached.';
+                return null;
+            })();
 
-            const cartTotal = items.reduce((s, i) => {
-                const product = productMap.get(String(i.productId || i.id || ''));
-                const { price: unitPrice } = resolveVariantSelection(product || {}, i.variant);
-                return s + unitPrice * Number(i.quantity || 1);
-            }, 0);
+            if (!couponError) {
+                const Product = (await import('../../../models/Product.model.js')).default;
+                const { resolveVariantSelection } = await import('../../../services/pricingEngine.service.js');
+                const productIds = items.map((i) => i.productId || i.id).filter(Boolean);
+                const rawProducts = await Product.find({ _id: { $in: productIds } }).lean();
+                const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 
-            // Simple percentage / fixed calc — authoritative calculation runs at order creation
-            const discount = couponDoc.type === 'percent'
-                ? Math.min(cartTotal * (couponDoc.discount / 100), couponDoc.maxDiscount || Infinity)
-                : Math.min(couponDoc.discount, cartTotal);
-            resolvedCoupon = {
-                code:     couponDoc.code,
-                type:     couponDoc.type,
-                discount: Number(discount.toFixed(2)),
-            };
+                const cartTotal = items.reduce((s, i) => {
+                    const product = productMap.get(String(i.productId || i.id || ''));
+                    const { price: unitPrice } = resolveVariantSelection(product || {}, i.variant);
+                    return s + unitPrice * Number(i.quantity || 1);
+                }, 0);
+
+                if (cartTotal < (couponDoc.minOrderValue || 0)) {
+                    // Silently skip — UI should have already validated, but we don't hard-fail session creation
+                    console.warn(`[Checkout] Coupon ${couponDoc.code} minOrderValue not met (cart=${cartTotal}, min=${couponDoc.minOrderValue})`);
+                } else {
+                    // P1-03 FIX: Use correct schema fields: type='percentage'/'fixed'/'freeship', value=amount
+                    let discount = 0;
+                    if (couponDoc.type === 'percentage') {
+                        discount = cartTotal * (couponDoc.value / 100);
+                        if (couponDoc.maxDiscount) discount = Math.min(discount, couponDoc.maxDiscount);
+                    } else if (couponDoc.type === 'fixed') {
+                        discount = Math.min(couponDoc.value, cartTotal);
+                    } else if (couponDoc.type === 'freeship') {
+                        discount = 0; // handled at shipping level
+                    }
+                    resolvedCoupon = {
+                        code:     couponDoc.code,
+                        type:     couponDoc.type,
+                        discount: Number(discount.toFixed(2)),
+                    };
+                }
+            }
         }
     }
 
@@ -218,6 +240,15 @@ export const confirmCheckout = asyncHandler(async (req, res) => {
 
     const session = await CheckoutSession.findOne({ sessionId }).lean();
     if (!session) throw new ApiError(404, `CheckoutSession "${sessionId}" not found.`);
+
+    if (session.userId) {
+        if (!userId) {
+            throw new ApiError(401, 'Authentication required to confirm this checkout session.');
+        }
+        if (String(session.userId) !== String(userId)) {
+            throw new ApiError(403, 'Access denied. You do not own this checkout session.');
+        }
+    }
     if (session.status === 'completed') {
         return res.status(200).json(
             new ApiResponse(200, { sessionId, orders: session.orderIds }, 'Already completed.')
@@ -245,6 +276,13 @@ export const confirmCheckout = asyncHandler(async (req, res) => {
         userId,
         settings:        { shippingOption },
     });
+
+    // P1-04 FIX: Increment coupon usage count after successful order creation
+    if (coupon?.code) {
+        incrementCouponUsage(coupon.code).catch((err) =>
+            console.error('[Checkout] Failed to increment coupon usage:', err?.message)
+        );
+    }
 
     await CheckoutSession.updateOne(
         { sessionId },

@@ -149,49 +149,105 @@ export const reserveStock = async (items, sessionId, dbSession = null) => {
  * @param {string}  sessionId  — the CheckoutSession.sessionId
  * @param {Object}  dbSession  — REQUIRED: the Mongoose session (inside transaction)
  */
-export const commitReservation = async (sessionId, dbSession) => {
+export const commitReservation = async (sessionId, items = [], dbSession = null) => {
+    // Handle overload where dbSession is passed as 2nd argument (commitReservation(sessionId, dbSession))
+    if (items && !Array.isArray(items) && typeof items === 'object') {
+        dbSession = items;
+        items = [];
+    }
+
     if (!dbSession) throw new Error('commitReservation requires a Mongoose dbSession (called inside transaction).');
 
     const reservations = await InventoryReservation.find(
         { sessionId, status: 'reserved' }
     ).session(dbSession).lean();
 
-    if (reservations.length === 0) {
-        // No reservations found — could be legacy order (no reservation step)
-        // or already committed. Log but don't throw.
-        console.warn(`[InventoryReservation] No active reservations for session ${sessionId}. Skipping commit.`);
-        return 0;
+    if (reservations.length > 0) {
+        // ── PATH A: Active Hold Present ─────────────────────────────────────
+        const updatePromises = reservations.map((r) =>
+            Product.findByIdAndUpdate(
+                r.productId,
+                {
+                    $inc: {
+                        stockQuantity:    -r.quantity,
+                        reservedQuantity: -r.quantity,
+                    },
+                },
+                { session: dbSession }
+            )
+        );
+
+        await Promise.all(updatePromises);
+
+        // Mark all reservations as committed
+        await InventoryReservation.updateMany(
+            { sessionId, status: 'reserved' },
+            { $set: { status: 'committed', committedAt: new Date() } },
+            { session: dbSession }
+        );
+
+        setImmediate(async () => {
+            for (const r of reservations) {
+                try {
+                    const product = await Product.findById(r.productId).select('stockQuantity lowStockThreshold');
+                    if (!product) continue;
+                    const qty       = product.stockQuantity;
+                    const threshold = Number(product.lowStockThreshold) || 5;
+                    if (qty <= 0)         product.stock = 'out_of_stock';
+                    else if (qty <= threshold) product.stock = 'low_stock';
+                    else                   product.stock = 'in_stock';
+                    await product.save();
+                } catch { /* non-critical */ }
+            }
+        });
+
+        return { count: reservations.length, mode: 'reservation_committed' };
     }
 
-    // For each reservation: deduct from stockQuantity and reduce reservedQuantity
-    const updatePromises = reservations.map((r) =>
-        Product.findByIdAndUpdate(
-            r.productId,
+    // ── PATH B: No Active Reservation (Expired / Released Hold Recovery) ─────
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        console.warn(`[InventoryReservation] No active reservations or cart items for session ${sessionId}. Skipping commit.`);
+        return { count: 0, mode: 'skipped' };
+    }
+
+    const deductedProducts = [];
+    for (const item of items) {
+        const productId = String(item.productId || item.id || item._id || '');
+        if (!productId || !mongoose.isValidObjectId(productId)) continue;
+        const quantity = Number(item.quantity || 1);
+
+        // Atomic conditional stock consumption:
+        // Only succeeds if availableStock (stockQuantity - reservedQuantity) >= quantity
+        const updated = await Product.findOneAndUpdate(
             {
-                $inc: {
-                    stockQuantity:    -r.quantity,
-                    reservedQuantity: -r.quantity,
+                _id: productId,
+                $expr: {
+                    $gte: [
+                        { $subtract: ['$stockQuantity', { $ifNull: ['$reservedQuantity', 0] }] },
+                        quantity,
+                    ],
                 },
             },
-            { session: dbSession }
-        )
-    );
+            { $inc: { stockQuantity: -quantity } },
+            { session: dbSession, new: true }
+        ).lean();
 
-    await Promise.all(updatePromises);
+        if (!updated) {
+            const product = await Product.findById(productId).select('name stockQuantity reservedQuantity').lean();
+            const available = (product?.stockQuantity || 0) - (product?.reservedQuantity || 0);
+            const err = new Error(`Insufficient stock for product "${product?.name || item.name || productId}". Requested: ${quantity}, Available: ${Math.max(0, available)}.`);
+            err.statusCode = 409;
+            err.code       = 'OUT_OF_STOCK';
+            throw err;
+        }
 
-    // Mark all reservations as committed
-    await InventoryReservation.updateMany(
-        { sessionId, status: 'reserved' },
-        { $set: { status: 'committed', committedAt: new Date() } },
-        { session: dbSession }
-    );
+        deductedProducts.push({ productId, quantity });
+    }
 
-    // Update stock status field (in_stock / low_stock / out_of_stock)
-    // Runs outside transaction after commit to avoid bloat
     setImmediate(async () => {
-        for (const r of reservations) {
+        for (const item of deductedProducts) {
             try {
-                const product = await Product.findById(r.productId).select('stockQuantity lowStockThreshold');
+                const product = await Product.findById(item.productId).select('stockQuantity lowStockThreshold');
                 if (!product) continue;
                 const qty       = product.stockQuantity;
                 const threshold = Number(product.lowStockThreshold) || 5;
@@ -203,7 +259,7 @@ export const commitReservation = async (sessionId, dbSession) => {
         }
     });
 
-    return reservations.length;
+    return { count: deductedProducts.length, mode: 'direct_stock_consumed' };
 };
 
 // ── Cleanup: Release reservation ──────────────────────────────────────────────

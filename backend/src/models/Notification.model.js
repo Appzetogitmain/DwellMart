@@ -2,7 +2,9 @@ import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema(
     {
-        recipientId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+        // P1-21 FIX: recipientId is required for user/vendor/delivery notifications
+        // but admin notifications are broadcast to the admin room (no specific recipient).
+        recipientId: { type: mongoose.Schema.Types.ObjectId, required: false, index: true },
         recipientType: { type: String, enum: ['user', 'vendor', 'delivery', 'admin'], required: true, index: true },
         title: { type: String, required: true },
         message: { type: String, required: true },

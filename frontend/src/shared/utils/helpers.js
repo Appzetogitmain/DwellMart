@@ -96,6 +96,16 @@ export const getImageUrl = (image, fallback = "/placeholder.jpg") => {
 
   const getBase = () => {
     if (import.meta.env.VITE_IMAGE_BASE_URL) return import.meta.env.VITE_IMAGE_BASE_URL;
+    // P3-04 FIX: Use VITE_API_BASE_URL (strips /api suffix to get origin) instead of
+    // hardcoded localhost. Falls back to window.location.origin in production builds,
+    // and localhost:5000 only during local development when no env var is configured.
+    if (import.meta.env.VITE_API_BASE_URL) {
+      const apiBase = import.meta.env.VITE_API_BASE_URL;
+      // If it's a relative URL (e.g. /api), use the current origin
+      if (apiBase.startsWith('/')) return typeof window !== 'undefined' ? window.location.origin : '';
+      // If it's absolute (e.g. https://api.dwellmart.com/api), strip path to get origin
+      try { return new URL(apiBase).origin; } catch { /* fall through */ }
+    }
     if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
       return window.location.origin;
     }

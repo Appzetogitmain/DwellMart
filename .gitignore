@@ -12,15 +12,12 @@ serviceAccountKey.json
 firebase-adminsdk-*.json
 
 # ─── Test & Scratch files ─────────────────────────────────────────────────────
-tests/
-test/
-test_*.js
-test.md
-*.test.js
-**/scripts/deepAuditPushPipeline.js
-**/scripts/audit*.js
-**/scripts/debug*.js
-**/scripts/test*.js
+# P0-08 FIX: tests/ MUST be tracked in version control for CI to run the release gate.
+# Do NOT exclude test files — they are the definition of production-readiness.
+# test/        <- removed
+# tests/       <- removed
+# test_*.js    <- removed
+# *.test.js    <- removed
 scratch/
 
 # ─── Diagnostic / Dev-only HTML pages ────────────────────────────────────────

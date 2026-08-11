@@ -2,6 +2,35 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Settings from '../../../models/Settings.model.js';
+import sanitizeHtml from 'sanitize-html';
+
+// P0-07 FIX: Same sanitization allowlist as staticPages.controller.js
+const SANITIZE_OPTIONS = {
+    allowedTags: [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'br', 'hr',
+        'strong', 'em', 'u', 'b', 'i',
+        'ul', 'ol', 'li',
+        'a', 'blockquote', 'pre', 'code',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'div', 'span',
+    ],
+    allowedAttributes: {
+        'a': ['href', 'title', 'target', 'rel'],
+        'table': ['border', 'cellpadding', 'cellspacing'],
+        '*': ['class', 'style'],
+    },
+    allowedStyles: {
+        '*': {
+            'color': [/^[a-zA-Z#0-9()., ]+$/],
+            'text-align': [/^left$/, /^right$/, /^center$/, /^justify$/],
+            'font-weight': [/^bold$/, /^normal$/, /^\d+$/],
+            'font-size': [/^\d+(px|em|rem|%)$/],
+        },
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    disallowedTagsMode: 'discard',
+};
 
 const TERMS_KEY = 'vendor_terms_and_conditions';
 
@@ -21,9 +50,15 @@ export const updateVendorTerms = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Terms content is required.');
     }
 
+    // P0-07 FIX: Sanitize HTML content before storing to prevent stored XSS
+    const sanitizedContent = sanitizeHtml(String(content).trim(), SANITIZE_OPTIONS);
+    if (!sanitizedContent) {
+        throw new ApiError(400, 'Terms content is empty after sanitization.');
+    }
+
     const setting = await Settings.findOneAndUpdate(
         { key: TERMS_KEY },
-        { key: TERMS_KEY, value: { content: String(content).trim() } },
+        { key: TERMS_KEY, value: { content: sanitizedContent } },
         { upsert: true, new: true }
     );
 

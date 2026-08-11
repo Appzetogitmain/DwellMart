@@ -28,9 +28,17 @@ export const createNotification = async ({
         const normalizedRecipientType = String(recipientType || 'user').toLowerCase();
         const normalizedType = String(type || 'system').toLowerCase();
 
+        // P1-21 FIX: Admin broadcast notifications don't have a specific recipient ObjectId.
+        // If recipientId is the literal string 'admin' or missing for admin-type notifications,
+        // omit recipientId from the document (the schema now allows null for admin type).
+        const isAdminBroadcast = normalizedRecipientType === 'admin';
+        const resolvedRecipientId = isAdminBroadcast
+            ? (recipientId && String(recipientId) !== 'admin' ? recipientId : undefined)
+            : recipientId;
+
         // 1. Persist notification in MongoDB
         const notification = await Notification.create({
-            recipientId,
+            ...(resolvedRecipientId ? { recipientId: resolvedRecipientId } : {}),
             recipientType: normalizedRecipientType,
             title,
             message: finalBody,

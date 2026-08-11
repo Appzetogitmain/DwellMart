@@ -100,6 +100,7 @@ const checkoutSessionSchema = new mongoose.Schema(
         idempotencyKey:   { type: String, sparse: true },
         idempotencyScope: { type: String, sparse: true },
 
+        processingStartedAt: { type: Date },
         completedAt:   { type: Date },
         failedAt:      { type: Date },
         failureReason: { type: String, trim: true },

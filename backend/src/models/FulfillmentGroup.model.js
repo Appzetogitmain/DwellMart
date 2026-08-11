@@ -134,7 +134,7 @@ const fulfillmentGroupSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-fulfillmentGroupSchema.index({ sessionId: 1, vendorId: 1, fulfillmentType: 1 });
+fulfillmentGroupSchema.index({ sessionId: 1, vendorId: 1, fulfillmentType: 1 }, { unique: true });
 fulfillmentGroupSchema.index({ status: 1, createdAt: -1 });
 
 const FulfillmentGroup = mongoose.model('FulfillmentGroup', fulfillmentGroupSchema);

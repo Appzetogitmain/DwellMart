@@ -297,11 +297,30 @@ export const validateBulkUpload = async ({
         defaultVendor = vendorMap.get(String(targetVendorId));
     }
 
-    // Existing Product SKUs in DB
-    const existingProducts = await Product.find({}, { sku: 1, name: 1, price: 1, stockQuantity: 1, vendorId: 1 }).lean();
+    // P1-11 FIX: Don't load ALL products from DB — this crashes on large catalogs.
+    // Instead, collect the SKUs from the import file first, then fetch only those records.
+    // Cap import rows at 10,000 to prevent single-request resource exhaustion.
+    const MAX_IMPORT_ROWS = 10_000;
+    if (rawRows.length > MAX_IMPORT_ROWS) {
+        throw new Error(`Import file exceeds maximum allowed rows (${MAX_IMPORT_ROWS}). Please split into smaller files.`);
+    }
+
+    // Collect all SKUs from file for targeted DB lookup
+    const fileSkus = rawRows
+        .map((r) => String(r['SKU'] || '').trim().toLowerCase())
+        .filter(Boolean);
+
+    // Fetch only products whose SKU appears in this import file
+    const existingProducts = fileSkus.length > 0
+        ? await Product.find(
+            { sku: { $in: fileSkus } },
+            { sku: 1, name: 1, price: 1, stockQuantity: 1, vendorId: 1 }
+          ).lean()
+        : [];
+
     const existingSkuMap = new Map();
     existingProducts.forEach((p) => {
-        if (p.sku) existingSkuMap.set(p.sku.toLowerCase().trim(), p);
+        if (p.sku) existingSkuMap.set(String(p.sku).toLowerCase().trim(), p);
     });
 
     const fileSkusSeen = new Set();

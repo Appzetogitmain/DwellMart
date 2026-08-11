@@ -60,9 +60,16 @@ export const buildCatalogFilter = ({
     } else {
         // Marketplace: retail is opt-out (legacy products have no flag), so
         // "not explicitly false" is the correct test.
-        // If wholesale is disabled platform-wide, wholesale-only products
-        // (retailEnabled: false, wholesaleEnabled: true) must never be listed.
-        filter.retailEnabled = { $ne: false };
+        // P1-10 FIX: Only apply this filter when the caller is NOT on the wholesale channel.
+        // If the caller requests wholesale products (extra?.sellingChannel === 'wholesale' or
+        // extra?.wholesaleEnabled === true), wholesale-only products (retailEnabled: false)
+        // must be visible. Otherwise wholesale-only products are forever invisible.
+        const isWholesaleChannel = extra?.wholesaleEnabled === true;
+        if (!isWholesaleChannel) {
+            // Retail channel: exclude pure wholesale-only products
+            filter.retailEnabled = { $ne: false };
+        }
+        // Wholesale channel: show all products that have wholesaleEnabled: true (set by caller via extra)
 
         if (Array.isArray(categoryIds)) {
             filter.categoryId = { $in: categoryIds };

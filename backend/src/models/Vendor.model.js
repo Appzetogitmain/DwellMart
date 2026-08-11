@@ -26,7 +26,6 @@ const vendorSchema = new mongoose.Schema(
             type: String,
             enum: VENDOR_TYPE_VALUES,
             default: 'retail',
-            index: true,
         },
         status: {
             type: String,
@@ -257,7 +256,6 @@ vendorSchema.methods.toPublicVendor = function () {
 };
 
 vendorSchema.index({ status: 1, vendorType: 1 });
-vendorSchema.index({ vendorType: 1 });
 // Keep channel indexes for catalog/search that still uses sellingChannels internally
 vendorSchema.index({ status: 1, 'sellingChannels.wholesale.enabled': 1 });
 vendorSchema.index({ 'sellingChannels.wholesale.enabled': 1 });

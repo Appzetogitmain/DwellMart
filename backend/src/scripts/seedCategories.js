@@ -541,13 +541,14 @@ const MARKETPLACE_CATEGORIES_TREE = [
         slug: 'industrial-b2b',
         displayOrder: 12,
         image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80',
+        supportedExperiences: [EXPERIENCES.WHOLESALE],
         subcategories: [
-            { name: 'Machinery', slug: 'machinery', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Industrial Tools', slug: 'industrial-tools-b2b', image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Safety Equipment', slug: 'safety-equipment', image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Packaging Materials', slug: 'packaging-materials-b2b', image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Raw Materials', slug: 'raw-materials', image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Electrical Components', slug: 'electrical-components', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Machinery', slug: 'machinery', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Industrial Tools', slug: 'industrial-tools-b2b', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Safety Equipment', slug: 'safety-equipment', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Packaging Materials', slug: 'packaging-materials-b2b', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Raw Materials', slug: 'raw-materials', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Electrical Components', slug: 'electrical-components', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
         ],
     },
     {
@@ -555,11 +556,12 @@ const MARKETPLACE_CATEGORIES_TREE = [
         slug: 'manufacturers-hub',
         displayOrder: 13,
         image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80',
+        supportedExperiences: [EXPERIENCES.WHOLESALE],
         subcategories: [
-            { name: 'Factory Direct Products', slug: 'factory-direct-products', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
-            { name: 'OEM Manufacturers', slug: 'oem-manufacturers', image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Bulk Orders', slug: 'bulk-orders', image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Export Products', slug: 'export-products', image: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Factory Direct Products', slug: 'factory-direct-products', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=400&q=80' },
+            { name: 'OEM Manufacturers', slug: 'oem-manufacturers', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Bulk Orders', slug: 'bulk-orders', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Export Products', slug: 'export-products', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=400&q=80' },
         ],
     },
     {
@@ -567,18 +569,29 @@ const MARKETPLACE_CATEGORIES_TREE = [
         slug: 'wholesale-market',
         displayOrder: 14,
         image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
+        supportedExperiences: [EXPERIENCES.WHOLESALE],
         subcategories: [
-            { name: 'FMCG Wholesale', slug: 'fmcg-wholesale', image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Textile Wholesale', slug: 'textile-wholesale', image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Electronics Wholesale', slug: 'electronics-wholesale', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Packaging Wholesale', slug: 'packaging-wholesale', image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80' },
-            { name: 'Building Materials', slug: 'building-materials-wholesale', image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
+            { name: 'FMCG Wholesale', slug: 'fmcg-wholesale', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Textile Wholesale', slug: 'textile-wholesale', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Electronics Wholesale', slug: 'electronics-wholesale', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Packaging Wholesale', slug: 'packaging-wholesale', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=400&q=80' },
+            { name: 'Building Materials', slug: 'building-materials-wholesale', supportedExperiences: [EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
+        ],
+    },
+    {
+        name: 'Wholesale Groceries',
+        slug: 'wholesale-groceries',
+        displayOrder: 15,
+        image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
+        supportedExperiences: [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE],
+        subcategories: [
+            { name: 'Bulk Staples', slug: 'bulk-staples', supportedExperiences: [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE], image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80' },
         ],
     },
     {
         name: 'Books & Education',
         slug: 'books-education',
-        displayOrder: 15,
+        displayOrder: 16,
         image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=400&q=80',
         subcategories: [
             { name: 'Books', slug: 'books-education-books', image: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=400&q=80' },
@@ -590,7 +603,7 @@ const MARKETPLACE_CATEGORIES_TREE = [
     {
         name: 'Jewellery',
         slug: 'jewellery',
-        displayOrder: 16,
+        displayOrder: 17,
         image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=400&q=80',
         subcategories: [
             { name: 'Gold Jewellery', slug: 'gold-jewellery', image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=400&q=80' },
@@ -729,10 +742,11 @@ export const seedCategoriesInDb = async () => {
 
     // ── 2. Seed Marketplace & Wholesale Category Tree (Hybrid 2-Level & 3-Level) ────
     for (const mainCat of MARKETPLACE_CATEGORIES_TREE) {
+        const defaultExp = mainCat.supportedExperiences || [EXPERIENCES.MARKETPLACE];
         let level1Doc = await Category.findOne({ slug: mainCat.slug });
         if (level1Doc) {
             level1Doc.name = mainCat.name;
-            level1Doc.supportedExperiences = Array.from(new Set([...(level1Doc.supportedExperiences || []), EXPERIENCES.MARKETPLACE]));
+            level1Doc.supportedExperiences = Array.from(new Set([...(level1Doc.supportedExperiences || []), ...defaultExp]));
             level1Doc.displayOrder = mainCat.displayOrder;
             if (mainCat.image) level1Doc.image = mainCat.image;
             level1Doc.parentId = null;
@@ -745,7 +759,7 @@ export const seedCategoriesInDb = async () => {
                 displayOrder: mainCat.displayOrder,
                 image: mainCat.image,
                 parentId: null,
-                supportedExperiences: [EXPERIENCES.MARKETPLACE],
+                supportedExperiences: defaultExp,
             });
             createdCount++;
         }
@@ -754,12 +768,13 @@ export const seedCategoriesInDb = async () => {
         const level2Items = mainCat.departments || mainCat.subcategories || [];
         let l2Order = 1;
         for (const l2Item of level2Items) {
+            const l2Exp = l2Item.supportedExperiences || defaultExp;
             const l2Image = l2Item.image || level1Doc.image || '';
             let level2Doc = await Category.findOne({ slug: l2Item.slug });
             if (level2Doc) {
                 level2Doc.name = l2Item.name;
                 level2Doc.parentId = level1Doc._id;
-                level2Doc.supportedExperiences = Array.from(new Set([...(level2Doc.supportedExperiences || []), EXPERIENCES.MARKETPLACE]));
+                level2Doc.supportedExperiences = Array.from(new Set([...(level2Doc.supportedExperiences || []), ...l2Exp]));
                 level2Doc.displayOrder = l2Order++;
                 if (l2Image) level2Doc.image = l2Image;
                 await level2Doc.save();
@@ -771,7 +786,7 @@ export const seedCategoriesInDb = async () => {
                     displayOrder: l2Order++,
                     parentId: level1Doc._id,
                     image: l2Image,
-                    supportedExperiences: [EXPERIENCES.MARKETPLACE],
+                    supportedExperiences: l2Exp,
                 });
                 createdCount++;
             }
@@ -780,12 +795,13 @@ export const seedCategoriesInDb = async () => {
             if (Array.isArray(l2Item.subcategories)) {
                 let l3Order = 1;
                 for (const l3Item of l2Item.subcategories) {
+                    const l3Exp = l3Item.supportedExperiences || l2Exp;
                     const l3Image = l3Item.image || level2Doc.image || '';
                     let level3Doc = await Category.findOne({ slug: l3Item.slug });
                     if (level3Doc) {
                         level3Doc.name = l3Item.name;
                         level3Doc.parentId = level2Doc._id;
-                        level3Doc.supportedExperiences = Array.from(new Set([...(level3Doc.supportedExperiences || []), EXPERIENCES.MARKETPLACE]));
+                        level3Doc.supportedExperiences = Array.from(new Set([...(level3Doc.supportedExperiences || []), ...l3Exp]));
                         level3Doc.displayOrder = l3Order++;
                         if (l3Image) level3Doc.image = l3Image;
                         await level3Doc.save();
@@ -797,7 +813,7 @@ export const seedCategoriesInDb = async () => {
                             displayOrder: l3Order++,
                             parentId: level2Doc._id,
                             image: l3Image,
-                            supportedExperiences: [EXPERIENCES.MARKETPLACE],
+                            supportedExperiences: l3Exp,
                         });
                         createdCount++;
                     }
@@ -806,7 +822,8 @@ export const seedCategoriesInDb = async () => {
         }
     }
 
-    return { createdCount, updatedCount };
+    const total = await Category.countDocuments({});
+    return { createdCount, updatedCount, total };
 };
 
 async function main() {

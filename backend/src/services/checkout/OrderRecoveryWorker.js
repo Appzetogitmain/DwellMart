@@ -25,6 +25,7 @@ import Order from '../../models/Order.model.js';
 import { splitAndCreateOrders } from './OrderSplitterEngine.js';
 import { releaseReservation } from './InventoryReservationService.js';
 import { createNotification } from '../notification.service.js';
+import { claimCheckoutSessionForProcessing, releaseClaimOnError } from './CheckoutSessionClaimService.js';
 
 const MAX_RECOVERY_ATTEMPTS   = 3;
 const STUCK_THRESHOLD_MINUTES = 30;
@@ -54,8 +55,7 @@ const recoverSession = async (session) => {
         await releaseReservation(sessionId, 'session_expired').catch(() => null);
 
         await createNotification({
-            role:    'admin',
-            type:    'system_alert',
+            recipientType: 'admin',
             title:   'Checkout Recovery: Session Force-Failed',
             message: `Session ${sessionId} was paid but stuck for ${Math.round(stuckMins)} minutes. Force-failed. Customer may need manual refund.`,
             data:    { sessionId, stuckMins: Math.round(stuckMins) },
@@ -65,16 +65,14 @@ const recoverSession = async (session) => {
         return { action: 'force_failed', sessionId };
     }
 
-    // Check if orders already exist (partial completion scenario)
-    const existingOrderCount = session.orderIds?.length || 0;
-    if (existingOrderCount > 0) {
-        // Orders already created — just mark session completed
-        await CheckoutSession.updateOne(
-            { sessionId },
-            { $set: { status: 'completed', completedAt: new Date() } }
-        );
-        console.log(`[OrderRecoveryWorker] Session resumed (${existingOrderCount} orders already existed): ${sessionId}`);
-        return { action: 'resumed', sessionId, orders: existingOrderCount };
+    // Single source of truth claim
+    const claimResult = await claimCheckoutSessionForProcessing(sessionId);
+    if (!claimResult.claimed) {
+        if (claimResult.isCompleted) {
+            console.log(`[OrderRecoveryWorker] Session already completed (${claimResult.orders?.length || 0} orders exist): ${sessionId}`);
+            return { action: 'resumed', sessionId, orders: claimResult.orders?.length || 0 };
+        }
+        return { action: 'skipped_busy', sessionId };
     }
 
     // No orders — attempt to re-run the splitter
@@ -107,12 +105,11 @@ const recoverSession = async (session) => {
 
         await CheckoutSession.updateOne(
             { sessionId },
-            { $set: { status: 'completed', completedAt: new Date() } }
+            { $set: { status: 'completed', completedAt: new Date(), orderIds: orders.map(o => o._id) } }
         );
 
         await createNotification({
-            role:    'admin',
-            type:    'system_alert',
+            recipientType: 'admin',
             title:   'Checkout Recovery: Session Recovered',
             message: `Session ${sessionId} was successfully recovered. ${orders.length} order(s) created.`,
             data:    { sessionId, orderCount: orders.length },
@@ -121,6 +118,8 @@ const recoverSession = async (session) => {
         console.log(`[OrderRecoveryWorker] Session recovered: ${sessionId} (${orders.length} orders)`);
         return { action: 'recovered', sessionId, orders: orders.length };
     } catch (err) {
+        await releaseClaimOnError(sessionId, err.message);
+
         // Increment recovery attempt count in metadata
         const attempts = (session.metadata?.recoveryAttempts || 0) + 1;
 
@@ -140,8 +139,7 @@ const recoverSession = async (session) => {
             await releaseReservation(sessionId, 'payment_failed').catch(() => null);
 
             await createNotification({
-                role:    'admin',
-                type:    'system_alert',
+                recipientType: 'admin',
                 title:   'Checkout Recovery: Session Failed',
                 message: `Session ${sessionId} could not be recovered after ${attempts} attempts. Customer may need manual refund. Error: ${err?.message}`,
                 data:    { sessionId, attempts, error: err?.message },
@@ -170,7 +168,10 @@ export const runRecoveryWorker = async () => {
         const stuckSessions = await CheckoutSession.find({
             paymentStatus: 'paid',
             status:        { $in: ['pending', 'processing'] },
-            'metadata.recoveryAttempts': { $lt: MAX_RECOVERY_ATTEMPTS },
+            $or: [
+                { 'metadata.recoveryAttempts': { $lt: MAX_RECOVERY_ATTEMPTS } },
+                { 'metadata.recoveryAttempts': { $exists: false } },
+            ],
         })
             .sort({ createdAt: 1 })
             .limit(10)

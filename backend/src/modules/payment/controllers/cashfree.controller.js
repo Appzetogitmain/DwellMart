@@ -7,6 +7,7 @@ import Vendor from '../../../models/Vendor.model.js';
 import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import Payment from '../../../models/Payment.model.js';
 import { CheckoutSession } from '../../../models/CheckoutSession.model.js';
+import { claimCheckoutSessionForProcessing, releaseClaimOnError } from '../../../services/checkout/CheckoutSessionClaimService.js';
 import {
     createCashfreeOrder,
     fetchCashfreeOrder,
@@ -16,6 +17,41 @@ import {
 } from '../../../services/billing/cashfree.service.js';
 import { activateInternalSubscription } from '../../../services/billing/subscriptionState.service.js';
 import { roundMoney } from '../../../services/PriceReconciliationService.js';
+import { incrementCouponUsage } from '../../../services/coupon.service.js';
+
+const checkSessionOwnership = (session, reqUser) => {
+    if (session.userId) {
+        const callerUserId = reqUser?._id || reqUser?.id;
+        if (!callerUserId) {
+            throw new ApiError(401, 'Authentication required to access this payment session.');
+        }
+        if (String(session.userId) !== String(callerUserId)) {
+            throw new ApiError(403, 'Access denied. You do not own this checkout session.');
+        }
+    }
+};
+
+const sanitizeCheckoutSessionResponse = (checkoutSession, orders = [], isOwner = false) => {
+    if (isOwner) {
+        return { checkoutSession, orders };
+    }
+    const sanitizedSession = {
+        sessionId: checkoutSession.sessionId,
+        status: checkoutSession.status,
+        paymentStatus: checkoutSession.paymentStatus,
+        paymentMethod: checkoutSession.paymentMethod,
+        summary: checkoutSession.summary || { grandTotal: checkoutSession.grandTotal },
+        completedAt: checkoutSession.completedAt,
+    };
+    const sanitizedOrders = (orders || []).map((o) => ({
+        orderId: o.orderId,
+        fulfillmentType: o.fulfillmentType,
+        status: o.status,
+        total: o.total,
+        itemCount: o.items?.length || 0,
+    }));
+    return { checkoutSession: sanitizedSession, orders: sanitizedOrders };
+};
 
 export const createPaymentSession = asyncHandler(async (req, res) => {
     const { orderId, subscriptionPlanId, email, checkoutSessionId, sessionId } = req.body;
@@ -36,6 +72,8 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
         if (!session) {
             throw new ApiError(404, 'CheckoutSession not found.');
         }
+
+        checkSessionOwnership(session, req.user);
 
         if (session.paymentStatus === 'paid') {
             return res.status(200).json(
@@ -216,6 +254,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     });
 
     if (checkoutSession) {
+        checkSessionOwnership(checkoutSession, req.user);
+        const callerUserId = req.user?._id || req.user?.id;
+        const isOwner = Boolean(callerUserId && String(checkoutSession.userId) === String(callerUserId));
+
         const lookupId = checkoutSession.gatewayOrderId || checkoutSession.sessionId;
         const cfOrder = await fetchCashfreeOrder(lookupId).catch(() => null);
         let payments = [];
@@ -235,9 +277,27 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         }
 
         if (isPaid) {
-            if (checkoutSession.status !== 'completed') {
-                checkoutSession.paymentStatus = 'paid';
-                
+            const claimResult = await claimCheckoutSessionForProcessing(checkoutSession.sessionId, {
+                paymentDetails: { paymentStatus: 'paid' },
+            });
+
+            if (!claimResult.claimed) {
+                // Already completed or claimed by concurrent handler
+                const existingOrders = claimResult.orders || [];
+                if (existingOrders.length > 0 && claimResult.session?.status !== 'completed') {
+                    await CheckoutSession.updateOne(
+                        { _id: claimResult.session._id },
+                        { $set: { status: 'completed', completedAt: new Date(), orderIds: existingOrders.map(o => o._id) } }
+                    );
+                    claimResult.session.status = 'completed';
+                }
+                const sanitized = sanitizeCheckoutSessionResponse(claimResult.session, existingOrders, isOwner);
+                return res.status(200).json(
+                    new ApiResponse(200, { verified: true, isPaid: true, checkoutSession: sanitized.checkoutSession, orders: sanitized.orders, ordersCreated: existingOrders.length }, 'CheckoutSession payment verified (idempotent).')
+                );
+            }
+
+            try {
                 const { splitAndCreateOrders } = await import('../../../services/checkout/OrderSplitterEngine.js');
                 const { items, coupon, customerLocation, shippingOption } = checkoutSession.metadata || {};
 
@@ -252,21 +312,28 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                     settings:        { shippingOption },
                 });
 
-                checkoutSession.status = 'completed';
-                checkoutSession.completedAt = new Date();
-                await checkoutSession.save();
-
-                return res.status(200).json(
-                    new ApiResponse(200, { verified: true, isPaid: true, checkoutSession, orders, ordersCreated: orders.length }, 'CheckoutSession payment verified and orders created.')
+                await CheckoutSession.updateOne(
+                    { _id: checkoutSession._id },
+                    { $set: { status: 'completed', completedAt: new Date(), orderIds: orders.map(o => o._id) } }
                 );
+
+                // P1-04 FIX: Increment coupon usage after successful order creation (online payment path)
+                if (coupon?.code) {
+                    incrementCouponUsage(coupon.code).catch((err) =>
+                        console.error('[VerifyPayment] Failed to increment coupon usage:', err?.message)
+                    );
+                }
+
+                const finalSession = await CheckoutSession.findById(checkoutSession._id);
+                const sanitized = sanitizeCheckoutSessionResponse(finalSession, orders, isOwner);
+                return res.status(200).json(
+                    new ApiResponse(200, { verified: true, isPaid: true, checkoutSession: sanitized.checkoutSession, orders: sanitized.orders, ordersCreated: orders.length }, 'CheckoutSession payment verified and orders created.')
+                );
+            } catch (err) {
+                console.error(`[VerifyPayment] Error: ${err.message}`, err);
+                await releaseClaimOnError(checkoutSession.sessionId, err.message);
+                throw new ApiError(500, err.message || 'Payment verification and order creation failed.');
             }
-
-            const Order = (await import('../../../models/Order.model.js')).default;
-            const orders = await Order.find({ checkoutSessionId: checkoutSession._id }).lean();
-
-            return res.status(200).json(
-                new ApiResponse(200, { verified: true, isPaid: true, checkoutSession, orders }, 'CheckoutSession payment verified.')
-            );
         }
 
         // An ACTIVE Cashfree order can contain a failed attempt while still
@@ -288,6 +355,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             );
         }
 
+        // P0-06 FIX: Sanitize the session before returning — the raw document contains
+        // shippingAddress and guestInfo PII that must not be leaked to non-owners.
+        const sanitizedPending = sanitizeCheckoutSessionResponse(checkoutSession, [], isOwner);
         return res.status(200).json(
             new ApiResponse(
                 200,
@@ -296,9 +366,8 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                     isPaid: false,
                     isPending,
                     isCancelled,
-                    checkoutSession,
-                    cfOrder,
-                    payments,
+                    checkoutSession: sanitizedPending.checkoutSession,
+                    cfOrder: cfOrder ? { order_status: cfOrder.order_status, order_amount: cfOrder.order_amount } : null,
                 },
                 isPending
                     ? 'Payment confirmation is pending.'
@@ -324,9 +393,12 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         );
     }
 
-    const cfOrder = await fetchCashfreeOrder(targetId).catch(() => null);
+    const fallbackCfOrder = await fetchCashfreeOrder(targetId).catch(() => null);
+    if (!fallbackCfOrder) {
+        throw new ApiError(404, `No payment record found for ID: ${targetId}`);
+    }
     return res.status(200).json(
-        new ApiResponse(200, { verified: true, isPaid: cfOrder?.order_status === 'PAID', cfOrder }, 'Cashfree payment checked.')
+        new ApiResponse(200, { verified: true, isPaid: fallbackCfOrder?.order_status === 'PAID', cfOrder: fallbackCfOrder }, 'Cashfree payment checked.')
     );
 });
 
@@ -355,8 +427,8 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     // ── 2. Always return 200 immediately — Cashfree retries on non-200 ─────────
     res.status(200).json({ status: 'OK' });
 
-    // ── 3. Process asynchronously after response sent ─────────────────────────
-    setImmediate(async () => {
+    // ── 3. Process asynchronously after response sent (sync in test mode) ───────
+    const processAsync = async () => {
         try {
             if (!cfOrderId) return;
 
@@ -387,11 +459,6 @@ export const handleWebhook = asyncHandler(async (req, res) => {
 
             if (session) {
                 if (isSuccess) {
-                    if (session.status === 'completed') {
-                        console.log(`[Webhook] Session ${session.sessionId} already completed. Skipping (idempotent).`);
-                        return;
-                    }
-
                     const expectedAmount = roundMoney(session.summary?.grandTotal ?? 0);
                     const webhookPaidAmount = roundMoney(orderData.order_amount ?? paymentData.payment_amount ?? 0);
                     if (webhookPaidAmount > 0 && Math.abs(webhookPaidAmount - expectedAmount) > 0.01) {
@@ -410,38 +477,48 @@ export const handleWebhook = asyncHandler(async (req, res) => {
                         return;
                     }
 
-                    // Mark payment captured before running splitter
-                    await CheckoutSession.updateOne(
-                        { _id: session._id },
-                        {
-                            $set: {
-                                paymentStatus:    'paid',
-                                gatewayReference: paymentData.cf_payment_id || cfOrderId,
-                            },
-                        }
-                    );
-
-                    // Run the order splitter engine
-                    const { splitAndCreateOrders } = await import('../../../services/checkout/OrderSplitterEngine.js');
-                    const { items, coupon, customerLocation, shippingOption } = session.metadata || {};
-
-                    const { orders } = await splitAndCreateOrders({
-                        sessionId:       session.sessionId,
-                        items:           (items && items.length) ? items : (session.items || []),
-                        shippingAddress: session.shippingAddress,
-                        paymentMethod:   session.paymentMethod || 'card',
-                        customerLocation,
-                        coupon,
-                        userId:          session.userId ? String(session.userId) : null,
-                        settings:        { shippingOption },
+                    const claimResult = await claimCheckoutSessionForProcessing(session.sessionId, {
+                        paymentDetails: {
+                            paymentStatus:    'paid',
+                            gatewayReference: paymentData.cf_payment_id || cfOrderId,
+                        },
                     });
+                    if (!claimResult.claimed) {
+                        console.log(`[Webhook] Session ${session.sessionId} already claimed/completed. Skipping order creation (idempotent).`);
+                        return;
+                    }
 
-                    await CheckoutSession.updateOne(
-                        { sessionId: session.sessionId },
-                        { $set: { status: 'completed', completedAt: new Date() } }
-                    );
+                    try {
+                        // Run the order splitter engine
+                        const { splitAndCreateOrders } = await import('../../../services/checkout/OrderSplitterEngine.js');
+                        const { items, coupon, customerLocation, shippingOption } = session.metadata || {};
 
-                    console.log(`[Webhook] CheckoutSession ${session.sessionId} completed — ${orders.length} orders created.`);
+                        const { orders } = await splitAndCreateOrders({
+                            sessionId:       session.sessionId,
+                            items:           (items && items.length) ? items : (session.items || []),
+                            shippingAddress: session.shippingAddress,
+                            paymentMethod:   session.paymentMethod || 'card',
+                            customerLocation,
+                            coupon,
+                            userId:          session.userId ? String(session.userId) : null,
+                            settings:        { shippingOption },
+                        });
+
+                        await CheckoutSession.updateOne(
+                            { sessionId: session.sessionId },
+                            { $set: { status: 'completed', completedAt: new Date(), orderIds: orders.map(o => o._id) } }
+                        );
+
+                        // P1-04 FIX: Increment coupon usage after successful order creation (webhook path)
+                        if (coupon?.code) {
+                            incrementCouponUsage(coupon.code).catch(() => null);
+                        }
+
+                        console.log(`[Webhook] CheckoutSession ${session.sessionId} completed — ${orders.length} orders created.`);
+                    } catch (err) {
+                        await releaseClaimOnError(session.sessionId, err.message);
+                        throw err;
+                    }
                 }
 
                 if (isFailed) {
@@ -478,7 +555,13 @@ export const handleWebhook = asyncHandler(async (req, res) => {
         } catch (err) {
             console.error('[Webhook] Error processing Cashfree webhook:', err?.message, err?.stack);
         }
-    });
+    };
+
+    if (process.env.NODE_ENV === 'test' || global.__TEST_MODE__) {
+        await processAsync();
+    } else {
+        setImmediate(processAsync);
+    }
 });
 
 

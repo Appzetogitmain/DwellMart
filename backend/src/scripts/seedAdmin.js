@@ -9,30 +9,40 @@ if (!MONGO_URI) {
     process.exit(1);
 }
 
+// P1-14 FIX: Credentials must come from environment variables.
+// Never hardcode production credentials in source code.
+// Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env before running.
+const SEED_EMAIL    = process.env.SEED_ADMIN_EMAIL;
+const SEED_PASSWORD = process.env.SEED_ADMIN_PASSWORD;
+
+if (!SEED_EMAIL || !SEED_PASSWORD) {
+    console.error('❌ SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set in .env');
+    console.error('   Example: SEED_ADMIN_EMAIL=admin@yourcompany.com SEED_ADMIN_PASSWORD=<strong-password>');
+    process.exit(1);
+}
+
 const seedAdmin = async () => {
     try {
         await mongoose.connect(MONGO_URI);
         console.log('✅ Connected to MongoDB');
 
-        const existing = await Admin.findOne({ email: 'admin@admin.com' });
+        const existing = await Admin.findOne({ email: SEED_EMAIL });
 
         if (existing) {
-            // Update password in case it changed
-            existing.password = 'admin123';
-            existing.name = 'Super Admin';
-            existing.role = 'superadmin';
-            existing.isActive = true;
-            await existing.save();
-            console.log('✅ Admin credentials updated: admin@admin.com / admin123');
+            // P1-14 FIX: Never overwrite existing credentials on re-run.
+            // If you need to reset a password, use the admin password-reset endpoint.
+            console.log(`ℹ️  Admin account already exists for ${SEED_EMAIL}. Skipping seed.`);
+            console.log('   To reset a password, use the admin reset-password API endpoint.');
         } else {
             await Admin.create({
-                name: 'Super Admin',
-                email: 'admin@admin.com',
-                password: 'admin123',
+                name: process.env.SEED_ADMIN_NAME || 'Super Admin',
+                email: SEED_EMAIL,
+                password: SEED_PASSWORD,
                 role: 'superadmin',
                 isActive: true,
             });
-            console.log('✅ Admin created: admin@admin.com / admin123');
+            console.log(`✅ Admin created: ${SEED_EMAIL}`);
+            console.log('⚠️  Please change this password immediately after first login.');
         }
     } catch (err) {
         console.error('❌ Seed failed:', err.message);

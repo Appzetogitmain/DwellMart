@@ -43,7 +43,10 @@ const authenticateFromEnvironment = ({ clientId, apiKey }) => {
     const envClientId = String(process.env.INTEGRATION_CLIENT_ID || '').trim();
     const envApiKey = String(process.env.INTEGRATION_API_KEY || '').trim();
     if (!envClientId || !envApiKey) return null;
-    if (clientId !== envClientId || apiKey !== envApiKey) return null;
+
+    // P2-SEC-05 FIX: Use timing-safe comparison to prevent timing oracle attacks.
+    // Plain `!==` leaks how many characters matched, enabling credential brute-force.
+    if (!safeCompare(clientId, envClientId) || !safeCompare(apiKey, envApiKey)) return null;
 
     return {
         id: null,
