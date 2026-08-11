@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiSave, FiUser, FiLock, FiShield, FiFile } from 'react-icons/fi';
+import { FiSave, FiUser, FiLock, FiShield, FiFile, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { changeVendorPassword } from "../../services/vendorService";
@@ -8,7 +8,7 @@ import Documents from '../Documents';
 import toast from 'react-hot-toast';
 
 const ProfileSettings = () => {
-  const { vendor, updateProfile, logout } = useVendorAuthStore();
+  const { vendor, updateProfile, logout, deleteAccount } = useVendorAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -25,6 +25,9 @@ const ProfileSettings = () => {
     confirmPassword: '',
   });
   const [activeSection, setActiveSection] = useState(getActiveTab());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setActiveSection(getActiveTab());
@@ -93,6 +96,21 @@ const ProfileSettings = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      toast.success('Account deleted successfully');
+      navigate('/vendor/login');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    }
+  };
+
   const sections = [
     { id: 'profile', label: 'Profile Info', icon: FiUser },
     { id: 'documents', label: 'Documents', icon: FiFile },
@@ -114,11 +132,12 @@ const ProfileSettings = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 max-w-full overflow-x-hidden"
-    >
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6 max-w-full overflow-x-hidden"
+      >
       <div className="lg:hidden">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Profile Settings</h1>
         <p className="text-sm sm:text-base text-gray-600">Manage your profile and account security</p>
@@ -321,6 +340,28 @@ const ProfileSettings = () => {
                   Logout
                 </button>
               </div>
+
+              {/* Danger Zone */}
+              <div className="border-2 border-red-200 rounded-xl p-5 bg-red-50">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                    <FiAlertTriangle className="text-red-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-red-700">Danger Zone</h3>
+                </div>
+                <p className="text-xs text-red-600 mb-4 leading-relaxed">
+                  This action is permanent and cannot be undone. Your account will be deactivated and your personal data anonymized.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  disabled={isDeleting}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FiTrash2 className="text-sm" />
+                  Delete Account
+                </button>
+              </div>
             </div>
           )}
           
@@ -331,6 +372,59 @@ const ProfileSettings = () => {
         </div>
       </div>
     </motion.div>
+
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowDeleteModal(false); setDeleteConfirmText(''); } }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <FiTrash2 className="text-red-600 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Delete Store Account</h2>
+                <p className="text-xs text-gray-500">Danger Zone</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              This action is permanent and cannot be undone. Your store account will be deactivated and your personal data anonymized.
+            </p>
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">
+                Type DELETE to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-400 focus:outline-none font-mono text-sm transition-colors"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+                className="flex-1 py-3 rounded-xl border-2 border-gray-200 font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <FiTrash2 className="text-sm" />
+                {isDeleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

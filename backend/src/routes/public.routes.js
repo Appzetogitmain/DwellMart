@@ -820,6 +820,7 @@ router.get('/vendors/:id', detailCache, asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({
         _id: req.params.id,
         status: 'approved',
+        isActive: { $ne: false },
     }).select('-password -otp -otpExpiry').lean();
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, toPublicVendor(vendor), 'Vendor detail fetched.'));
@@ -844,6 +845,7 @@ router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => 
     const vendor = await Vendor.findOne({
         _id: req.params.id,
         status: 'approved',
+        isActive: { $ne: false },
     }).select('_id').lean();
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 

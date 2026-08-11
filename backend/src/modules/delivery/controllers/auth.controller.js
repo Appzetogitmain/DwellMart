@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
+import Order from '../../../models/Order.model.js';
 import Admin from '../../../models/Admin.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -14,6 +15,7 @@ import {
     persistRefreshSession,
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
+import { buildDeletedEmail, FINAL_ORDER_STATUSES } from '../../../utils/accountDeletion.js';
 
 const getUploadedPath = (file) => {
     if (!file?.filename) return '';
@@ -323,4 +325,42 @@ export const updateProfile = asyncHandler(async (req, res) => {
         { new: true, runValidators: true }
     );
     res.status(200).json(new ApiResponse(200, deliveryBoy, 'Profile updated.'));
+});
+
+// DELETE /api/delivery/auth/account
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const deliveryBoy = await DeliveryBoy.findById(req.user.id).select('+refreshTokenHash +refreshTokenExpiresAt');
+    if (!deliveryBoy) throw new ApiError(404, 'Delivery account not found.');
+
+    const activeDelivery = await Order.exists({
+        deliveryBoyId: deliveryBoy._id,
+        isDeleted: { $ne: true },
+        status: { $nin: FINAL_ORDER_STATUSES },
+    });
+    if (activeDelivery) {
+        throw new ApiError(409, 'Finish or have an administrator reassign your active delivery before deleting this account.');
+    }
+
+    // Soft delete: anonymize PII and deactivate the account
+    const deletedAt = Date.now();
+    deliveryBoy.name = `Deleted Rider ${deletedAt}`;
+    deliveryBoy.email = buildDeletedEmail('delivery', deliveryBoy._id, deletedAt);
+    deliveryBoy.phone = undefined;
+    deliveryBoy.address = undefined;
+    deliveryBoy.vehicleType = undefined;
+    deliveryBoy.vehicleNumber = undefined;
+    deliveryBoy.avatar = undefined;
+    deliveryBoy.documents = undefined;
+    deliveryBoy.isActive = false;
+    deliveryBoy.isAvailable = false;
+    deliveryBoy.status = 'offline';
+    deliveryBoy.activeOrderId = null;
+    deliveryBoy.currentLocation = undefined;
+    deliveryBoy.location = undefined;
+    deliveryBoy.lastLocationAt = undefined;
+    deliveryBoy.refreshTokenHash = undefined;
+    deliveryBoy.refreshTokenExpiresAt = undefined;
+    await deliveryBoy.save({ validateBeforeSave: false });
+
+    return res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });

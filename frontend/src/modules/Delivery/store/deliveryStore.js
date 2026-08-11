@@ -232,6 +232,37 @@ export const useDeliveryAuthStore = create(
         localStorage.removeItem('delivery-refresh-token');
       },
 
+      // Delete delivery account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/delivery/auth/account');
+          // Run full cleanup identical to logout
+          try {
+            await useNotificationStore.getState().unregisterDeviceToken();
+          } catch {}
+          set({
+            deliveryBoy: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            orders: [],
+            ordersPagination: {
+              total: 0,
+              page: 1,
+              limit: 20,
+              pages: 1,
+            },
+            selectedOrder: null,
+          });
+          localStorage.removeItem('delivery-token');
+          localStorage.removeItem('delivery-refresh-token');
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Update delivery boy status
       updateStatus: async (status) => {
         const current = get().deliveryBoy;

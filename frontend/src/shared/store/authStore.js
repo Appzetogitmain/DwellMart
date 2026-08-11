@@ -212,6 +212,33 @@ export const useAuthStore = create(
         localStorage.removeItem('address-storage');
       },
 
+      // Delete account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/user/auth/account');
+          // Run full cleanup identical to logout
+          try {
+            await useNotificationStore.getState().unregisterDeviceToken();
+          } catch {}
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            pendingEmail: null,
+          });
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh-token');
+          localStorage.removeItem('cart-storage');
+          localStorage.removeItem('wishlist-storage');
+          localStorage.removeItem('address-storage');
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Update user profile
       updateProfile: async (profileData) => {
         set({ isLoading: true });

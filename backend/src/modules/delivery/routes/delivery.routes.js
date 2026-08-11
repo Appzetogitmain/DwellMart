@@ -46,6 +46,7 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...deliveryAuth, authController.getProfile);
 router.put('/auth/profile', ...deliveryAuth, authController.updateProfile);
+router.delete('/auth/account', ...deliveryAuth, authController.deleteAccount);
 
 // Orders
 router.get('/orders', ...deliveryAuth, orderController.getAssignedOrders);

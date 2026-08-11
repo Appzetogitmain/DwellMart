@@ -2,16 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
-import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiRefreshCw } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import PageTransition from '../../../shared/components/PageTransition';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../../shared/utils/helpers';
 
 const DeliveryProfile = () => {
   const navigate = useNavigate();
-  const { deliveryBoy, updateProfile, fetchProfile, fetchProfileSummary, isLoading, logout } = useDeliveryAuthStore();
+  const { deliveryBoy, updateProfile, fetchProfile, fetchProfileSummary, isLoading, logout, deleteAccount } = useDeliveryAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState({
     totalDeliveries: 0,
     completedToday: 0,
@@ -112,6 +115,21 @@ const DeliveryProfile = () => {
     logout();
     toast.success('Logged out successfully');
     navigate('/delivery/login');
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      toast.success('Account deleted successfully');
+      navigate('/delivery/login');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    }
   };
 
   const stats = [
@@ -353,8 +371,67 @@ const DeliveryProfile = () => {
             <FiLogOut className="text-lg" />
             <span>Logout Account</span>
           </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={isLoading || isDeleting}
+            className="w-full flex items-center justify-center gap-2 py-3.5 bg-red-900/20 hover:bg-red-900/30 border border-red-700/40 text-red-300 rounded-2xl font-bold text-sm transition-all mt-3"
+          >
+            <FiTrash2 className="text-lg" />
+            <span>Delete Account</span>
+          </button>
         </motion.div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowDeleteModal(false); setDeleteConfirmText(''); } }}
+        >
+          <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-900/40 border border-red-700/40 flex items-center justify-center flex-shrink-0">
+                <FiTrash2 className="text-red-400 text-xl" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Delete Account</h2>
+                <p className="text-xs text-slate-400">Danger Zone</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300 mb-5 leading-relaxed">
+              This action is permanent and cannot be undone. Your account will be deactivated and your personal data anonymized.
+            </p>
+            <div className="mb-5">
+              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                Type DELETE to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-900 text-white focus:border-red-500 focus:outline-none font-mono text-sm transition-colors"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+                className="flex-1 py-3 rounded-xl border border-slate-600 font-semibold text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <FiTrash2 className="text-sm" />
+                {isDeleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 };

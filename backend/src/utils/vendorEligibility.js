@@ -13,7 +13,7 @@ export const ACTIVE_VENDOR_STATUSES = ['approved'];
  */
 export const isVendorEligibleForOrders = (vendor) => {
     if (!vendor) return false;
-    return ACTIVE_VENDOR_STATUSES.includes(vendor.status);
+    return vendor.isActive !== false && ACTIVE_VENDOR_STATUSES.includes(vendor.status);
 };
 
 /**

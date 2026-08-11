@@ -34,6 +34,9 @@ const vendorSchema = new mongoose.Schema(
             index: true,
         },
         suspensionReason: { type: String },
+        // Soft-deleted vendors are excluded from authentication, checkout, and
+        // discovery while historical orders keep their vendor reference.
+        isActive: { type: Boolean, default: true, index: true },
         commissionRate: { type: Number, default: 10, min: 0, max: 100 },
         isVerified: { type: Boolean, default: false },
         rating: { type: Number, default: 0 },

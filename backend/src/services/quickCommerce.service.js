@@ -384,6 +384,7 @@ export const findNearbyVendors = async ({
                 key: 'quickCommerceProfile.location',
                 query: {
                     status: 'approved',
+                    isActive: { $ne: false },
                     'sellingChannels.quickCommerce.enabled': true,
                 },
             },
@@ -433,6 +434,7 @@ export const findVendorsByPincode = async ({ pincode, limit = 50, orderableOnly 
 
     const vendors = await Vendor.find({
         status: 'approved',
+        isActive: { $ne: false },
         'sellingChannels.quickCommerce.enabled': true,
         'quickCommerceProfile.servicedPincodes': normalized,
     })

@@ -172,6 +172,29 @@ export const useVendorAuthStore = create(
         localStorage.removeItem("vendor-refresh-token");
       },
 
+      // Delete vendor account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete("/vendor/auth/account");
+          // Run full cleanup identical to logout
+          try {
+            await useNotificationStore.getState().unregisterDeviceToken();
+          } catch {}
+          set({
+            vendor: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+          });
+          localStorage.removeItem("vendor-token");
+          localStorage.removeItem("vendor-refresh-token");
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Update vendor profile — calls real PUT /vendor/auth/profile
       updateProfile: async (profileData) => {
         set({ isLoading: true });

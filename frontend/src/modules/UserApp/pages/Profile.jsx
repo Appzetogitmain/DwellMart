@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
@@ -62,10 +62,16 @@ const MobileProfile = () => {
     'Profile picture updated successfully!',
     'Failed to upload profile picture',
     'Account Settings',
-    'Confirm Password'
+    'Confirm Password',
+    'Delete Account',
+    'Danger Zone',
+    'This action is permanent and cannot be undone. Your account will be deactivated and your personal data anonymized.',
+    'Type DELETE to confirm',
+    'Cancel',
+    'Deleting...'
   ]);
   const navigate = useNavigate();
-  const { user, updateProfile, uploadProfileAvatar, changePassword, logout, isLoading } = useAuthStore();
+  const { user, updateProfile, uploadProfileAvatar, changePassword, logout, deleteAccount, isLoading } = useAuthStore();
   const avatarInputRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'personal', 'password'
@@ -75,6 +81,8 @@ const MobileProfile = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const unreadNotificationCount = useUserNotificationStore((state) => state.unreadCount);
   const ensureNotificationHydrated = useUserNotificationStore((state) => state.ensureHydrated);
 
@@ -153,6 +161,19 @@ const MobileProfile = () => {
     logout();
     navigate('/home');
     toast.success(t('Logged out successfully'));
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      toast.success(t('Account deleted successfully'));
+      navigate('/home');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to delete account');
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    }
   };
 
   const handleAvatarPick = () => {
@@ -351,13 +372,20 @@ const MobileProfile = () => {
                     </div>
 
                     {/* Logout Option */}
-                    <div className="pt-2">
+                    <div className="pt-2 space-y-3">
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-status-error font-bold text-sm shadow-sm border border-status-errorBg hover:bg-status-errorBg transition-colors bg-surface"
                       >
                         <FiLogOut className="text-lg" />
                         <span>{t('Sign Out')}</span>
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-700 font-bold text-sm shadow-sm border border-red-200 hover:bg-red-50 transition-colors bg-surface"
+                      >
+                        <FiTrash2 className="text-lg" />
+                        <span>{t('Delete Account')}</span>
                       </button>
                     </div>
                   </motion.div>
@@ -652,15 +680,97 @@ const MobileProfile = () => {
                         {isLoading ? t('Changing Password...') : t('Change Password')}
                       </button>
                     </form>
+
+                    {/* Danger Zone */}
+                    <div className="mt-8 border-2 border-red-200 rounded-2xl p-6 bg-red-50">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+                          <FiAlertTriangle className="text-red-600 text-lg" />
+                        </div>
+                        <h3 className="text-base font-bold text-red-700">{t('Danger Zone')}</h3>
+                      </div>
+                      <p className="text-sm text-red-600 mb-4 leading-relaxed">
+                        {t('This action is permanent and cannot be undone. Your account will be deactivated and your personal data anonymized.')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteModal(true)}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <FiTrash2 />
+                        {t('Delete Account')}
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </div>
             </div>
-          </div>
+        </div>
       </MobileLayout>
+
+      {/* Delete Account Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) { setShowDeleteModal(false); setDeleteConfirmText(''); } }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-surface rounded-2xl shadow-2xl border border-border w-full max-w-md p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <FiTrash2 className="text-red-600 text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-content">{t('Delete Account')}</h2>
+                  <p className="text-xs text-content-muted">{t('Danger Zone')}</p>
+                </div>
+              </div>
+              <p className="text-sm text-content-secondary mb-5 leading-relaxed">
+                {t('This action is permanent and cannot be undone. Your account will be deactivated and your personal data anonymized.')}
+              </p>
+              <div className="mb-5">
+                <label className="block text-xs font-bold text-content-secondary mb-2 uppercase tracking-wider">
+                  {t('Type DELETE to confirm')}
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-border focus:border-red-400 focus:outline-none bg-surface text-content font-mono text-sm transition-colors"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(''); }}
+                  className="flex-1 py-3 rounded-xl border-2 border-border font-semibold text-sm text-content-secondary hover:bg-surface-muted transition-colors"
+                >
+                  {t('Cancel')}
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== 'DELETE' || isLoading}
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <FiTrash2 className="text-sm" />
+                  {isLoading ? t('Deleting...') : t('Delete Account')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 };
 
 export default MobileProfile;
-

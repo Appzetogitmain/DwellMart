@@ -4,6 +4,8 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
+import Product from '../../../models/Product.model.js';
+import Order from '../../../models/Order.model.js';
 import Admin from '../../../models/Admin.model.js';
 import Settings from '../../../models/Settings.model.js';
 import EmailVerification from '../../../models/EmailVerification.model.js';
@@ -29,6 +31,7 @@ import {
     pointToLatLng,
     resolveVendorAvailability,
 } from '../../../services/quickCommerce.service.js';
+import { buildDeletedEmail, FINAL_ORDER_STATUSES } from '../../../utils/accountDeletion.js';
 
 const hasCompleteWholesaleProfile = (profile) => Boolean(
     profile?.gstNumber
@@ -496,6 +499,7 @@ export const login = asyncHandler(async (req, res) => {
 
     const vendor = await Vendor.findOne({ email: normalizedEmail }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
+    if (vendor.isActive === false) throw new ApiError(403, 'Vendor account is deactivated. Contact support.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
 
     const onboarding = await getVendorOnboardingState(vendor);
@@ -538,9 +542,10 @@ export const login = asyncHandler(async (req, res) => {
 export const refresh = asyncHandler(async (req, res) => {
     const { refreshToken } = req.body;
     const decoded = decodeRefreshTokenOrThrow(refreshToken);
-    const vendor = await Vendor.findById(decoded.id).select('+refreshTokenHash +refreshTokenExpiresAt status isVerified suspensionReason');
+    const vendor = await Vendor.findById(decoded.id).select('+refreshTokenHash +refreshTokenExpiresAt status isVerified isActive suspensionReason');
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
+    if (vendor.isActive === false) throw new ApiError(403, 'Vendor account is deactivated. Contact support.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
 
     const onboarding = await getVendorOnboardingState(vendor);
@@ -786,4 +791,60 @@ export const updateBankDetails = asyncHandler(async (req, res) => {
     ).select('-password -otp -otpExpiry');
 
     res.status(200).json(new ApiResponse(200, vendor, 'Bank details updated.'));
+});
+
+// DELETE /api/vendor/auth/account
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const vendor = await Vendor.findById(req.user.id).select('+refreshTokenHash +refreshTokenExpiresAt');
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const activeOrder = await Order.exists({
+        isDeleted: { $ne: true },
+        status: { $nin: FINAL_ORDER_STATUSES },
+        $or: [
+            { vendorId: vendor._id },
+            { 'vendorItems.vendorId': vendor._id },
+            { 'items.vendorId': vendor._id },
+        ],
+    });
+    if (activeOrder) {
+        throw new ApiError(409, 'Complete or resolve your active orders before deleting this vendor account.');
+    }
+
+    // Soft delete: anonymize PII and deactivate the account
+    const deletedAt = Date.now();
+    vendor.name = `Deleted Vendor ${deletedAt}`;
+    vendor.storeName = 'Closed Store ' + deletedAt;
+    vendor.email = buildDeletedEmail('vendor', vendor._id, deletedAt);
+    vendor.phone = undefined;
+    vendor.country = undefined;
+    vendor.address = undefined;
+    vendor.storeLogo = undefined;
+    vendor.storeDescription = undefined;
+    vendor.bankDetails = undefined;
+    vendor.documents = undefined;
+    vendor.wholesaleProfile = undefined;
+    vendor.quickCommerceProfile = undefined;
+    vendor.isActive = false;
+    vendor.refreshTokenHash = undefined;
+    vendor.refreshTokenExpiresAt = undefined;
+    const session = await Vendor.db.startSession();
+    try {
+        await session.withTransaction(async () => {
+            await vendor.save({ session, validateBeforeSave: false });
+            await Product.updateMany(
+                { vendorId: vendor._id },
+                { $set: { isActive: false, isVisible: false, retailEnabled: false, wholesaleEnabled: false, quickCommerceEnabled: false } },
+                { session }
+            );
+            await EmailVerification.deleteOne(
+                { email: String(req.user.email || '').trim().toLowerCase() },
+                { session }
+            );
+        });
+    } finally {
+        await session.endSession();
+    }
+
+    return res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });

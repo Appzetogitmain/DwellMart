@@ -109,6 +109,7 @@ router.put('/auth/selling-channels', ...vendorAuth, validate(updateSellingChanne
 router.put('/quick-commerce/settings', ...vendorAuth, validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
 router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
+router.delete('/auth/account', ...vendorAuthOnly, authController.deleteAccount);
 
 // Subscription (uses vendorAuthOnly so vendor can access even when expired)
 router.get('/subscription', ...vendorAuthOnly, subscriptionController.getCurrentSubscription);

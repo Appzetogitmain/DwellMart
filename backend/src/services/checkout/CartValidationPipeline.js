@@ -113,7 +113,7 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
 
     const vendorIds = [...new Set(rawProducts.map((p) => p.vendorId ? new mongoose.Types.ObjectId(String(p.vendorId)) : null).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
-        .select('_id storeName status vendorType sellingChannels quickCommerceProfile')
+        .select('_id storeName status isActive vendorType sellingChannels quickCommerceProfile')
         .lean();
     const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
 

@@ -145,13 +145,17 @@ const TaxPricing = () => {
     const currentPricingRules = [...pricingRules];
     let nextTaxRules = [];
 
-    if (editingTax) {
+    const isEdit = editingTax?.id != null && editingTax.id !== "";
+
+    if (isEdit) {
       nextTaxRules = currentTaxRules.map((t) =>
-          t.id === editingTax.id ? { ...taxData, id: editingTax.id } : t
-        );
+        String(t.id) === String(editingTax.id) ? { ...taxData, id: editingTax.id } : t
+      );
       await persistRules(nextTaxRules, currentPricingRules, "Tax rule updated");
     } else {
-      nextTaxRules = [...currentTaxRules, { ...taxData, id: currentTaxRules.length + 1 }];
+      const maxId = currentTaxRules.reduce((max, t) => Math.max(max, Number(t.id) || 0), 0);
+      const newId = maxId + 1;
+      nextTaxRules = [...currentTaxRules, { ...taxData, id: newId }];
       await persistRules(nextTaxRules, currentPricingRules, "Tax rule added");
     }
     setEditingTax(null);
@@ -162,17 +166,21 @@ const TaxPricing = () => {
     const currentPricingRules = [...pricingRules];
     let nextPricingRules = [];
 
-    if (editingPricing) {
+    const isEdit = editingPricing?.id != null && editingPricing.id !== "";
+
+    if (isEdit) {
       nextPricingRules = currentPricingRules.map((p) =>
-          p.id === editingPricing.id
-            ? { ...pricingData, id: editingPricing.id }
-            : p
-        );
+        String(p.id) === String(editingPricing.id)
+          ? { ...pricingData, id: editingPricing.id }
+          : p
+      );
       await persistRules(currentTaxRules, nextPricingRules, "Pricing rule updated");
     } else {
+      const maxId = currentPricingRules.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0);
+      const newId = maxId + 1;
       nextPricingRules = [
         ...currentPricingRules,
-        { ...pricingData, id: currentPricingRules.length + 1 },
+        { ...pricingData, id: newId },
       ];
       await persistRules(currentTaxRules, nextPricingRules, "Pricing rule added");
     }

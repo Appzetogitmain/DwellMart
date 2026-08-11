@@ -16,6 +16,7 @@ import {
     persistRefreshSession,
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
+import { buildDeletedEmail } from '../../../utils/accountDeletion.js';
 
 const extractCloudinaryPublicId = (url = '') => {
     const raw = String(url || '').trim();
@@ -320,4 +321,29 @@ export const uploadProfileAvatar = asyncHandler(async (req, res) => {
         }
         throw error;
     }
+});
+
+// DELETE /api/user/auth/account
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id).select('+refreshTokenHash +refreshTokenExpiresAt avatar');
+    if (!user) throw new ApiError(404, 'User not found.');
+
+    // Delete avatar from Cloudinary if it exists
+    const avatarPublicId = extractCloudinaryPublicId(String(user.avatar || ''));
+    if (avatarPublicId) {
+        await deleteFromCloudinary(avatarPublicId).catch(() => null);
+    }
+
+    // Soft delete: anonymize PII and deactivate the account
+    const deletedAt = Date.now();
+    user.name = `Deleted User ${deletedAt}`;
+    user.email = buildDeletedEmail('customer', user._id, deletedAt);
+    user.phone = undefined;
+    user.avatar = undefined;
+    user.isActive = false;
+    user.refreshTokenHash = undefined;
+    user.refreshTokenExpiresAt = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });
