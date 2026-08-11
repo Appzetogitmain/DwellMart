@@ -93,6 +93,7 @@ export const SETTINGS_CATEGORY_SCHEMAS = {
     payment: paymentSchema,
     quick_commerce: quickCommerceSchema,
     reviews: reviewsSchema,
+    delivery: Joi.object({ maxCodCashLimit: Joi.number().min(0) }).unknown(true),
     shipping: Joi.object().unknown(true),
     seo: Joi.object().unknown(true),
     notifications: Joi.object().unknown(true),

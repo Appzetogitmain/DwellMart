@@ -134,13 +134,24 @@ export const releaseRider = async (riderId, orderId, { incrementDeliveries = fal
  *
  * @returns {Promise<{rider: object|null, radiusKm: number|null, attempts: number}>}
  */
-export const findAndClaimNearestRider = async ({ pickup, orderId, radii = RIDER_SEARCH_RADII_KM }) => {
+import { checkRiderCanAcceptCod } from './deliveryCash.service.js';
+
+export const findAndClaimNearestRider = async ({ pickup, orderId, order, radii = RIDER_SEARCH_RADII_KM }) => {
     let attempts = 0;
+    const isCod = ['cod', 'cash'].includes(String(order?.paymentMethod || '').toLowerCase());
+    const codAmount = isCod ? Number(order?.total || 0) : 0;
 
     for (const radiusKm of radii) {
         const candidates = await findCandidateRiders(pickup, radiusKm);
         for (const candidate of candidates) {
             attempts += 1;
+            if (isCod) {
+                const { allowed } = await checkRiderCanAcceptCod(candidate._id, codAmount);
+                if (!allowed) {
+                    console.warn(`[Rider Assignment] Rider ${candidate._id} skipped: COD cash limit reached.`);
+                    continue;
+                }
+            }
             const claimed = await claimRider(candidate._id, orderId);
             if (claimed) {
                 return { rider: claimed, radiusKm, attempts, distanceKm: candidate.distanceKm };
@@ -170,6 +181,7 @@ export const assignRiderForQuickCommerceOrder = async (order, pickup) => {
         const { rider, radiusKm, attempts, distanceKm } = await findAndClaimNearestRider({
             pickup,
             orderId,
+            order,
         });
 
         if (rider) {

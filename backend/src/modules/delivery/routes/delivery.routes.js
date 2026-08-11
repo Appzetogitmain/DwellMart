@@ -3,6 +3,7 @@ import * as authController from '../controllers/auth.controller.js';
 import * as orderController from '../controllers/order.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as locationController from '../controllers/location.controller.js';
+import * as settlementController from '../controllers/settlement.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -81,5 +82,10 @@ router.get('/notifications', ...deliveryAuth, notificationController.getDelivery
 router.put('/notifications/:id/read', ...deliveryAuth, notificationController.markDeliveryNotificationAsRead);
 router.put('/notifications/read-all', ...deliveryAuth, notificationController.markAllDeliveryNotificationsAsRead);
 router.delete('/notifications/:id', ...deliveryAuth, notificationController.deleteDeliveryNotification);
+
+// Cash Settlements
+router.get('/cash-settlements/summary', ...deliveryAuth, settlementController.getCashSettlementSummary);
+router.post('/cash-settlements/request', ...deliveryAuth, settlementController.createCashSettlementRequest);
+router.get('/cash-settlements/history', ...deliveryAuth, settlementController.getCashSettlementHistory);
 
 export default router;

@@ -316,7 +316,30 @@ const OrderDetail = () => {
                             <FiDollarSign className="text-emerald-600" />
                             Allocated Order Financial Breakdown
                         </h2>
-                        <div className="space-y-2 text-sm">
+
+                        {/* Payment Method Badge */}
+                        {(() => {
+                            const rawMethod = String(order?.paymentMethod || '').toLowerCase();
+                            const isCod = rawMethod === 'cod' || rawMethod === 'cash';
+                            return (
+                                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                                    isCod 
+                                        ? 'bg-amber-50 border-amber-200 text-amber-900' 
+                                        : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                }`}>
+                                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Payment Method</span>
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                                        isCod 
+                                            ? 'bg-amber-500 text-slate-950' 
+                                            : 'bg-emerald-600 text-white'
+                                    }`}>
+                                        {isCod ? '💵 Cash on Delivery (COD)' : `💳 Prepaid${['card', 'upi', 'wallet', 'bank', 'netbanking'].includes(rawMethod) ? ` (${rawMethod.toUpperCase()})` : ''}`}
+                                    </span>
+                                </div>
+                            );
+                        })()}
+
+                        <div className="space-y-2 text-sm pt-1">
                             <div className="flex items-center justify-between text-gray-600">
                                 <span>Items Subtotal</span>
                                 <span className="font-semibold text-gray-800">

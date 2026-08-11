@@ -69,6 +69,10 @@ export const PUBLIC_SETTINGS_POLICY = {
             'defaultPreparationMins',
         ],
     },
+    delivery: {
+        booleansOnly: false,
+        allowFields: ['maxCodCashLimit'],
+    },
 };
 
 /** @param {string} category */

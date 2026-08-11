@@ -15,6 +15,19 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     }
   }
 
+  // Auto-detect role from current window location if role is default ('user')
+  let activeRole = role;
+  if (!activeRole || activeRole === 'user') {
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (currentPath.startsWith('/admin')) {
+      activeRole = 'admin';
+    } else if (currentPath.startsWith('/delivery')) {
+      activeRole = 'delivery';
+    } else if (currentPath.startsWith('/vendor')) {
+      activeRole = 'vendor';
+    }
+  }
+
   const data = notification.data || {};
   const type = String(notification.type || data.type || '').toLowerCase();
   const title = String(notification.title || '').toLowerCase();
@@ -37,7 +50,32 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     }
   }
 
-  // 2. CHAT & SUPPORT TICKET NOTIFICATIONS
+  // 2. COD SETTLEMENT & EARNINGS NOTIFICATIONS
+  const isSettlementNotification =
+    Boolean(data.settlementId) ||
+    type.includes('settlement') ||
+    type.includes('payout') ||
+    title.includes('settlement') ||
+    title.includes('cod settlement') ||
+    message.includes('settlement') ||
+    message.includes('cod settlement');
+
+  if (isSettlementNotification) {
+    if (activeRole === 'admin') {
+      navigate('/admin/delivery/cash-collection');
+      return;
+    }
+    if (activeRole === 'delivery') {
+      navigate('/delivery/cash-settlements');
+      return;
+    }
+    if (activeRole === 'vendor') {
+      navigate('/vendor/earnings');
+      return;
+    }
+  }
+
+  // 3. CHAT & SUPPORT TICKET NOTIFICATIONS
   const isChatNotification =
     type.includes('chat') ||
     type.includes('support') ||
@@ -51,15 +89,15 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     message.includes('message');
 
   if (isChatNotification) {
-    if (role === 'delivery') {
+    if (activeRole === 'delivery') {
       navigate('/delivery/support');
       return;
     }
-    if (role === 'vendor') {
+    if (activeRole === 'vendor') {
       navigate('/vendor/support-tickets');
       return;
     }
-    if (role === 'admin') {
+    if (activeRole === 'admin') {
       navigate('/admin/support');
       return;
     }
@@ -68,7 +106,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     return;
   }
 
-  // 3. ORDER NOTIFICATIONS
+  // 4. ORDER NOTIFICATIONS
   // Extract orderId from data, explicit fields, or regex in title/message
   let orderId = data.orderId || data.orderRefId || notification.orderId;
 
@@ -92,7 +130,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     message.includes('assigned');
 
   if (isOrderNotification) {
-    if (role === 'delivery') {
+    if (activeRole === 'delivery') {
       if (orderId) {
         navigate(`/delivery/orders/${orderId}`);
       } else {
@@ -101,7 +139,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
       return;
     }
 
-    if (role === 'vendor') {
+    if (activeRole === 'vendor') {
       if (orderId) {
         navigate(`/vendor/orders/${orderId}`);
       } else {
@@ -110,7 +148,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
       return;
     }
 
-    if (role === 'admin') {
+    if (activeRole === 'admin') {
       if (orderId) {
         navigate(`/admin/orders/${orderId}`);
       } else {
@@ -128,7 +166,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     return;
   }
 
-  // 4. PRODUCT & INVENTORY NOTIFICATIONS
+  // 5. PRODUCT & INVENTORY NOTIFICATIONS
   const productId = data.productId || notification.productId;
   const isProductNotification =
     Boolean(productId) ||
@@ -139,7 +177,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     title.includes('stock');
 
   if (isProductNotification) {
-    if (role === 'vendor') {
+    if (activeRole === 'vendor') {
       if (productId) {
         navigate(`/vendor/products/${productId}`);
       } else {
@@ -148,7 +186,7 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
       return;
     }
 
-    if (role === 'admin') {
+    if (activeRole === 'admin') {
       if (productId) {
         navigate(`/admin/products/${productId}`);
       } else {
@@ -163,21 +201,9 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     }
   }
 
-  // 5. EARNINGS & PAYOUT NOTIFICATIONS
-  if (type.includes('earning') || type.includes('payout') || type.includes('settlement')) {
-    if (role === 'vendor') {
-      navigate('/vendor/earnings');
-      return;
-    }
-    if (role === 'admin') {
-      navigate('/admin/finance');
-      return;
-    }
-  }
-
   // 6. DEFAULT FALLBACK BY ROLE
-  if (role === 'delivery') navigate('/delivery/notifications');
-  else if (role === 'vendor') navigate('/vendor/notifications');
-  else if (role === 'admin') navigate('/admin/notifications');
+  if (activeRole === 'delivery') navigate('/delivery/notifications');
+  else if (activeRole === 'vendor') navigate('/vendor/notifications');
+  else if (activeRole === 'admin') navigate('/admin/notifications');
   else navigate('/notifications');
 };

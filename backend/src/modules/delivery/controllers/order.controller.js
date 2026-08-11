@@ -17,6 +17,8 @@ import { EXPERIENCES } from '../../../constants/experiences.js';
 import { getRiderAnalytics } from '../../../services/quickCommerceAnalytics.service.js';
 import { getOrComputeAnalyticsCache } from '../../../services/analyticsCache.service.js';
 import { ensureVendorCommissionsForOrder } from '../../../services/commission.service.js';
+import { recordCodCollection } from '../../../services/deliveryCash.service.js';
+
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -342,6 +344,9 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         ensureVendorCommissionsForOrder(order).catch((err) => {
             console.warn(`[Delivery Commission] Failed to ensure commission for order ${order.orderId || order._id}: ${err.message}`);
         });
+        recordCodCollection({ order, deliveryBoyId: req.user.id }).catch((err) => {
+            console.warn(`[Delivery COD Collection] Failed to record COD ledger entry for order ${order.orderId || order._id}: ${err.message}`);
+        });
     }
     await order.save();
 
@@ -489,6 +494,9 @@ export const updateQuickCommerceStatus = asyncHandler(async (req, res) => {
     // Delivery frees the rider for the next order.
     if (status === QUICK_COMMERCE_ORDER_STATUS.DELIVERED) {
         await releaseRider(req.user.id, order._id, { incrementDeliveries: true });
+        recordCodCollection({ order, deliveryBoyId: req.user.id }).catch((err) => {
+            console.warn(`[Delivery COD Collection] Failed to record COD ledger entry for order ${order.orderId || order._id}: ${err.message}`);
+        });
     }
 
     await publishQuickCommerceStatus(order, status);
