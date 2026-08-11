@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHome,
   FiPackage,
+  FiDollarSign,
   FiBell,
   FiHelpCircle,
   FiUser,
@@ -20,6 +21,7 @@ import { loginLogo } from "../../../../shared/utils/imagePaths";
 const menuItems = [
   { icon: FiHome, label: "Dashboard", path: "/delivery/dashboard" },
   { icon: FiPackage, label: "Orders", path: "/delivery/orders" },
+  { icon: FiDollarSign, label: "Cash & Settlement", path: "/delivery/cash-settlements" },
   { icon: FiBell, label: "Notifications", path: "/delivery/notifications" },
   { icon: FiHelpCircle, label: "Support", path: "/delivery/support" },
   { icon: FiUser, label: "Profile", path: "/delivery/profile" },

@@ -31,6 +31,17 @@ const buildDocUrl = (req, relativePath = '') => {
     return baseUrl;
 };
 
+import {
+    calculateRiderCashInHand,
+    completeCashSettlement,
+    rejectCashSettlement,
+    cancelCashSettlement,
+    autoCleanupStalePendingRequests,
+    getMaxCodCashLimit,
+} from '../../../services/deliveryCash.service.js';
+import DeliveryCashSettlement from '../../../models/DeliveryCashSettlement.model.js';
+import DeliveryCashLedger from '../../../models/DeliveryCashLedger.model.js';
+
 /**
  * @desc    Get all delivery boys with filtering and pagination
  * @route   GET /api/admin/delivery-boys
@@ -67,36 +78,25 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
         .limit(numericLimit);
 
     const total = await DeliveryBoy.countDocuments(filter);
+    const maxCodCashLimit = await getMaxCodCashLimit();
 
     // Aggregate stats for each delivery boy
     const boysWithStats = await Promise.all(deliveryBoys.map(async (boy) => {
-        const stats = await Order.aggregate([
-            { $match: { deliveryBoyId: boy._id } },
-            {
-                $group: {
-                    _id: null,
-                    totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-                    pendingDeliveries: { $sum: { $cond: [{ $in: ['$status', ['pending', 'processing', 'shipped']] }, 1, 0] } },
-                    cashInHand: {
-                        $sum: {
-                            $cond: [
-                                {
-                                    $and: [
-                                        { $eq: ['$status', 'delivered'] },
-                                        { $in: ['$paymentMethod', ['cod', 'cash']] },
-                                        { $ne: ['$isCashSettled', true] }
-                                    ]
-                                },
-                                '$total',
-                                0
-                            ]
-                        }
+        const [stats, cashInHand] = await Promise.all([
+            Order.aggregate([
+                { $match: { deliveryBoyId: boy._id } },
+                {
+                    $group: {
+                        _id: null,
+                        totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+                        pendingDeliveries: { $sum: { $cond: [{ $in: ['$status', ['pending', 'processing', 'shipped']] }, 1, 0] } },
                     }
                 }
-            }
+            ]),
+            calculateRiderCashInHand(boy._id),
         ]);
 
-        const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, pendingDeliveries: 0, cashInHand: 0 };
+        const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, pendingDeliveries: 0 };
         return {
             ...boy._doc,
             id: boy._id,
@@ -110,10 +110,13 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
                 drivingLicense: buildDocUrl(req, boy.documents?.drivingLicense || ''),
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
+            cashInHand,
+            maxCodCashLimit,
+            isBlockedByLimit: cashInHand >= maxCodCashLimit,
             stats: {
                 totalDeliveries: boyStats.totalDeliveries,
                 pendingDeliveries: boyStats.pendingDeliveries,
-                cashInHand: boyStats.cashInHand
+                cashInHand,
             }
         };
     }));
@@ -145,33 +148,22 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
 
     const orders = await Order.find({ deliveryBoyId: boy._id }).sort({ createdAt: -1 }).limit(50);
 
-    const stats = await Order.aggregate([
-        { $match: { deliveryBoyId: boy._id } },
-        {
-            $group: {
-                _id: null,
-                totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-                totalEarnings: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
-                cashInHand: {
-                    $sum: {
-                        $cond: [
-                            {
-                                $and: [
-                                    { $eq: ['$status', 'delivered'] },
-                                    { $in: ['$paymentMethod', ['cod', 'cash']] },
-                                    { $ne: ['$isCashSettled', true] }
-                                ]
-                            },
-                            '$total',
-                            0
-                        ]
-                    }
+    const [stats, cashInHand, maxCodCashLimit] = await Promise.all([
+        Order.aggregate([
+            { $match: { deliveryBoyId: boy._id } },
+            {
+                $group: {
+                    _id: null,
+                    totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+                    totalEarnings: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
                 }
             }
-        }
+        ]),
+        calculateRiderCashInHand(boy._id),
+        getMaxCodCashLimit(),
     ]);
 
-    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalEarnings: 0, cashInHand: 0 };
+    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalEarnings: 0 };
 
     res.status(200).json(
         new ApiResponse(200, {
@@ -183,7 +175,13 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                 drivingLicense: buildDocUrl(req, boy.documents?.drivingLicense || ''),
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
-            stats: boyStats,
+            cashInHand,
+            maxCodCashLimit,
+            isBlockedByLimit: cashInHand >= maxCodCashLimit,
+            stats: {
+                ...boyStats,
+                cashInHand,
+            },
             recentOrders: orders
         }, 'Delivery boy details fetched successfully')
     );
@@ -391,61 +389,152 @@ export const deleteDeliveryBoy = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Settle cash in hand for a delivery boy
+ * @desc    Settle cash in hand for a delivery boy (Initiated by Admin)
  * @route   POST /api/admin/delivery-boys/:id/settle-cash
  * @access  Private (Admin)
  */
 export const settleCash = asyncHandler(async (req, res) => {
-    const boy = await DeliveryBoy.findById(req.params.id);
-    if (!boy) {
-        throw new ApiError(404, 'Delivery boy not found');
-    }
+    const { settlementId, amount, settlementMethod = 'cash', referenceNumber = '', notes = '' } = req.body;
+    const deliveryBoyId = req.params.id;
 
-    const baseFilter = {
-        deliveryBoyId: req.params.id,
-        status: 'delivered',
-        paymentMethod: { $in: ['cod', 'cash'] },
-        isCashSettled: { $ne: true },
-        isDeleted: { $ne: true },
-    };
-
-    const unsettledStats = await Order.aggregate([
-        { $match: baseFilter },
-        {
-            $group: {
-                _id: null,
-                count: { $sum: 1 },
-                totalAmount: { $sum: '$total' },
-            },
-        },
-    ]);
-
-    const unsettledCount = unsettledStats?.[0]?.count || 0;
-    const settledAmount = Number(unsettledStats?.[0]?.totalAmount || 0);
-
-    if (unsettledCount === 0) {
-        return res.status(200).json(
-            new ApiResponse(200, { modifiedCount: 0, settledAmount: 0 }, 'No pending cash to settle')
-        );
-    }
-
-    const result = await Order.updateMany(
-        baseFilter,
-        {
-            $set: { isCashSettled: true, settledAt: new Date() }
-        }
-    );
-
-    await DeliveryBoy.findByIdAndUpdate(req.params.id, {
-        $inc: { cashCollected: settledAmount },
+    const result = await completeCashSettlement({
+        settlementId,
+        deliveryBoyId,
+        amount,
+        settlementMethod,
+        referenceNumber,
+        notes,
+        adminId: req.user?._id,
     });
 
     res.status(200).json(
         new ApiResponse(
             200,
-            { modifiedCount: result.modifiedCount, settledAmount },
-            `Settled cash for ${result.modifiedCount} orders`
+            {
+                settlement: result.settlement,
+                settledAmount: result.settlement.amount,
+                newCashInHand: result.newCashInHand,
+            },
+            `Cash settlement of ₹${result.settlement.amount} completed successfully.`
         )
+    );
+});
+
+
+
+/**
+ * @desc    Get all rider cash settlement requests for Admin
+ * @route   GET /api/admin/delivery-settlements
+ * @access  Private (Admin)
+ */
+export const getDeliverySettlements = asyncHandler(async (req, res) => {
+    // Run stale pending request cleanup across all riders first
+    await autoCleanupStalePendingRequests();
+
+    const { page = 1, limit = 20, status = 'all', search = '' } = req.query;
+    const numericPage = Math.max(1, Number(page) || 1);
+    const numericLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
+    const skip = (numericPage - 1) * numericLimit;
+
+    const filter = {};
+    if (status && status !== 'all') {
+        filter.status = status;
+    }
+
+    if (search) {
+        const matchingBoys = await DeliveryBoy.find({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } },
+            ],
+        }).select('_id');
+        filter.deliveryBoyId = { $in: matchingBoys.map((b) => b._id) };
+    }
+
+    const [rawSettlements, total] = await Promise.all([
+        DeliveryCashSettlement.find(filter)
+            .populate('deliveryBoyId', 'name email phone vehicleType vehicleNumber')
+            .populate('receivedBy', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit)
+            .lean(),
+        DeliveryCashSettlement.countDocuments(filter),
+    ]);
+
+    // Enrich settlements with live Cash In Hand and invalid/stale status flag
+    const settlements = await Promise.all(
+        rawSettlements.map(async (item) => {
+            const riderId = item.deliveryBoyId?._id || item.deliveryBoyId;
+            const currentCashInHand = riderId ? await calculateRiderCashInHand(riderId) : 0;
+            const isInvalid = item.status === 'pending' && item.amount > currentCashInHand;
+
+            if (item.deliveryBoyId && typeof item.deliveryBoyId === 'object') {
+                item.deliveryBoyId.cashInHand = currentCashInHand;
+            }
+
+            return {
+                ...item,
+                riderCashInHand: currentCashInHand,
+                isInvalid,
+                invalidReason: isInvalid
+                    ? `Requested amount (₹${item.amount}) exceeds rider's current available Cash In Hand (₹${currentCashInHand}).`
+                    : null,
+            };
+        })
+    );
+
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                settlements,
+                pagination: {
+                    total,
+                    page: numericPage,
+                    limit: numericLimit,
+                    pages: Math.ceil(total / numericLimit) || 1,
+                },
+            },
+            'Delivery settlements fetched successfully.'
+        )
+    );
+});
+
+/**
+ * @desc    Reject a rider settlement request (Admin)
+ * @route   POST /api/admin/delivery-settlements/:id/reject
+ * @access  Private (Admin)
+ */
+export const rejectDeliveryCashSettlementHandler = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const settlement = await rejectCashSettlement({
+        settlementId: req.params.id,
+        reason,
+        adminId: req.user?._id,
+    });
+
+    res.status(200).json(
+        new ApiResponse(200, settlement, 'Settlement request rejected successfully.')
+    );
+});
+
+/**
+ * @desc    Cancel a rider settlement request (Admin)
+ * @route   POST /api/admin/delivery-settlements/:id/cancel
+ * @access  Private (Admin)
+ */
+export const cancelDeliveryCashSettlementHandler = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const settlement = await cancelCashSettlement({
+        settlementId: req.params.id,
+        reason: reason || 'Cancelled by Admin: Stale request or insufficient rider cash in hand.',
+        adminId: req.user?._id,
+    });
+
+    res.status(200).json(
+        new ApiResponse(200, settlement, 'Settlement request cancelled successfully.')
     );
 });
 

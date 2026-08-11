@@ -261,8 +261,17 @@ export const updateDeliveryBoyStatus = (id, isActive) =>
 export const updateDeliveryBoyApplicationStatus = (id, applicationStatus, reason = '') =>
     api.patch(`/admin/delivery-boys/${id}/application-status`, { applicationStatus, reason });
 
-export const settleCash = (id, amount) =>
-    api.post(`/admin/delivery-boys/${id}/settle-cash`, { amount });
+export const settleCash = (id, payload) =>
+    api.post(`/admin/delivery-boys/${id}/settle-cash`, typeof payload === 'object' ? payload : { amount: payload });
+
+export const getDeliverySettlements = (params) =>
+    api.get('/admin/delivery-settlements', { params });
+
+export const rejectDeliveryCashSettlement = (id, reason) =>
+    api.post(`/admin/delivery-settlements/${id}/reject`, { reason });
+
+export const cancelDeliveryCashSettlement = (id, reason) =>
+    api.post(`/admin/delivery-settlements/${id}/cancel`, { reason });
 
 export const updateDeliveryBoy = (id, data) =>
     api.put(`/admin/delivery-boys/${id}`, data);

@@ -58,7 +58,13 @@ export const NotificationDrawer = () => {
 
     const handleActionClick = (notification) => {
         setDrawerOpen(false);
-        navigateToNotificationTarget(notification, navigate, 'user', markAsRead);
+        const path = typeof window !== 'undefined' ? window.location.pathname : '';
+        let currentRole = 'user';
+        if (path.startsWith('/admin')) currentRole = 'admin';
+        else if (path.startsWith('/delivery')) currentRole = 'delivery';
+        else if (path.startsWith('/vendor')) currentRole = 'vendor';
+
+        navigateToNotificationTarget(notification, navigate, currentRole, markAsRead);
     };
 
     const tabs = [

@@ -159,6 +159,7 @@ import DeliveryLogin from "./modules/Delivery/pages/Login";
 import DeliveryRegister from "./modules/Delivery/pages/Register";
 import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
 import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
+import DeliveryCashSettlements from "./modules/Delivery/pages/CashSettlements";
 const DeliveryProtectedRoute = lazy(() => import("./modules/Delivery/components/DeliveryProtectedRoute"));
 const DeliveryLayout = lazy(() => import("./modules/Delivery/components/Layout/DeliveryLayout"));
 const DeliveryDashboard = lazy(() => import("./modules/Delivery/pages/Dashboard"));
@@ -718,6 +719,7 @@ const AppRoutes = () => {
         }>
         <Route index element={<Navigate to="/delivery/dashboard" replace />} />
         <Route path="dashboard" element={<DeliveryDashboard />} />
+        <Route path="cash-settlements" element={<DeliveryCashSettlements />} />
         <Route path="orders" element={<DeliveryOrders />} />
         <Route path="orders/:id" element={<DeliveryOrderDetail />} />
         <Route path="notifications" element={<DeliveryNotifications />} />

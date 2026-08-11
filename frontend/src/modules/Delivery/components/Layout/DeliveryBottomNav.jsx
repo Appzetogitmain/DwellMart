@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiHome, FiPackage, FiUser, FiBell, FiHelpCircle } from "react-icons/fi";
+import { FiHome, FiPackage, FiDollarSign, FiUser, FiBell, FiHelpCircle } from "react-icons/fi";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
 import { useSupportChatStore } from "../../../../shared/store/supportChatStore";
 
@@ -66,7 +66,7 @@ const DeliveryBottomNav = () => {
   const navItems = [
     { path: "/delivery/dashboard", icon: FiHome, label: "Dashboard" },
     { path: "/delivery/orders", icon: FiPackage, label: "Orders" },
-    { path: "/delivery/support", icon: FiHelpCircle, label: "Support" },
+    { path: "/delivery/cash-settlements", icon: FiDollarSign, label: "Cash" },
     { path: "/delivery/notifications", icon: FiBell, label: "Alerts" },
     { path: "/delivery/profile", icon: FiUser, label: "Profile" },
   ];
