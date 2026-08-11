@@ -58,7 +58,7 @@ export const createCashfreeOrder = async ({
         },
         order_meta: {
             return_url: returnUrl || `http://localhost:3000/order-confirmation/${orderId}?order_id={order_id}`,
-            notify_url: notifyUrl || null,
+            ...(notifyUrl ? { notify_url: notifyUrl } : {}),
         },
     };
 

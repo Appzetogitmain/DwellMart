@@ -147,6 +147,7 @@ import UserContactUs from "./modules/UserApp/pages/ContactUs";
 import Feedback from "./modules/UserApp/pages/Feedback";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
+import PaymentReturn from "./modules/UserApp/pages/PaymentReturn";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
 import SellOnDwellmart from "./modules/UserApp/pages/SellOnDwellmart";
 import ShopWithConfidence from "./modules/UserApp/pages/ShopWithConfidence";
@@ -455,6 +456,26 @@ const AppRoutes = () => {
         element={
           <RouteWrapper>
             <MobileCampaignSale />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/payment-return"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <PaymentReturn />
+            </ProtectedRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/order-confirmation"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <MobileOrderConfirmation />
+            </ProtectedRoute>
           </RouteWrapper>
         }
       />
