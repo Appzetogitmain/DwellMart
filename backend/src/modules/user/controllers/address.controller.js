@@ -5,6 +5,13 @@ import Address from '../../../models/Address.model.js';
 
 const toTrimmed = (value) => String(value ?? '').trim();
 const toPhone = (value) => String(value ?? '').replace(/\D/g, '').slice(-10);
+const toLocation = (input = {}) => {
+    const latitude = Number(input.latitude);
+    const longitude = Number(input.longitude);
+    return Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? { type: 'Point', coordinates: [longitude, latitude] }
+        : undefined;
+};
 
 const buildAddressPayload = (input = {}) => ({
     name: toTrimmed(input.name),
@@ -15,6 +22,7 @@ const buildAddressPayload = (input = {}) => ({
     state: toTrimmed(input.state),
     zipCode: toTrimmed(input.zipCode),
     country: toTrimmed(input.country),
+    ...(toLocation(input) ? { location: toLocation(input) } : {}),
 });
 
 // GET /api/user/addresses
@@ -70,6 +78,9 @@ export const updateAddress = asyncHandler(async (req, res) => {
             payload[field] = toTrimmed(req.body[field]);
         }
     });
+    if (Object.prototype.hasOwnProperty.call(req.body, 'latitude')) {
+        payload.location = toLocation(req.body);
+    }
 
     Object.assign(addr, payload);
     await addr.save();

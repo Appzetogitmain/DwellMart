@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useExperienceStore } from "../../../../shared/store/experienceStore";
 import { useAddressStore } from "../../../../shared/store/addressStore";
 import { Button, Input, Card } from "../../../../shared/components/ui";
+import GoogleMapPicker from "../../../../shared/maps/GoogleMapPicker";
 
 /**
  * Quick Commerce location capture — Refactored to Design System
@@ -14,6 +15,7 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
   const { addresses } = useAddressStore();
   const [pincode, setPincode] = useState("");
   const [isLocating, setIsLocating] = useState(false);
+  const [mapPoint, setMapPoint] = useState(null);
 
   const savedWithCoordinates = (addresses || []).filter(
     (address) => Number.isFinite(Number(address?.latitude)) && Number.isFinite(Number(address?.longitude))
@@ -84,6 +86,19 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
     onClose?.();
   };
 
+  const handleUseMapPoint = async () => {
+    if (!mapPoint) {
+      toast.error("Tap the map to place your delivery pin.");
+      return;
+    }
+    await setLocation({
+      ...mapPoint,
+      label: "Map-selected delivery location",
+      source: "map",
+    });
+    onClose?.();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -119,6 +134,16 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
         >
           {isLocating ? "Getting your location..." : "Use my current location"}
         </Button>
+
+        <div className="mt-4">
+          <p className="text-xs font-bold text-textColor-muted uppercase tracking-wider mb-2">Or place an exact pin</p>
+          <GoogleMapPicker value={mapPoint} onChange={setMapPoint} height={190} />
+          {mapPoint && (
+            <Button fullWidth variant="secondary" onClick={handleUseMapPoint} isLoading={isCheckingServiceability} className="mt-2 font-extrabold">
+              Use this map location
+            </Button>
+          )}
+        </div>
 
         {savedWithCoordinates.length + savedWithPincode.length > 0 && (
           <div className="mt-4">

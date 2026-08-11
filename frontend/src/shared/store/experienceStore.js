@@ -20,21 +20,9 @@ import { useCartStore } from "./useStore";
  * Switching experience never clears the other experience's cart.
  */
 // ── Dev Testing: Force Indore test location ──────────────────────────────────
-// The Quick Commerce dark store is in Indore (22.7196, 75.8577).
-// Any previously saved location (e.g. Delhi) that is > 3 km away would block
-// Quick Commerce checkout. For testing we always override to Indore.
-const INDORE_TEST_LOCATION = {
-  latitude: 22.7196,
-  longitude: 75.8577,
-  label: "Indore (Test Location)",
-  source: "default",
-};
-// Always persist the Indore test location so the QC checkout works
-persistLocation(INDORE_TEST_LOCATION);
-
 export const useExperienceStore = create((set, get) => ({
   experience: getExperience(),
-  location: INDORE_TEST_LOCATION,
+  location: getCustomerLocation(),
   serviceability: null,
   isCheckingServiceability: false,
 

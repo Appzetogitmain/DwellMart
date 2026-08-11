@@ -11,10 +11,17 @@ const addressSchema = new mongoose.Schema(
         state: { type: String, required: true },
         zipCode: { type: String, required: true },
         country: { type: String, required: true },
+        // Optional exact delivery pin. Existing/manual addresses remain valid.
+        location: {
+            type: { type: String, enum: ['Point'] },
+            coordinates: { type: [Number], validate: (value) => !value || value.length === 2 },
+        },
         isDefault: { type: Boolean, default: false },
     },
     { timestamps: true }
 );
+
+addressSchema.index({ location: '2dsphere' });
 
 const Address = mongoose.model('Address', addressSchema);
 export default Address;

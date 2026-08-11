@@ -27,6 +27,8 @@ import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { getQuickCommerceCheckoutEstimate } from "../../../shared/services/quickCommerceService";
 import { getLocationQueryParams, getCustomerLocation } from "../../../shared/utils/experience";
 import { formatEtaRange } from "../../../shared/utils/quickCommerceEta";
+import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
+import { reverseGeocode } from "../../../shared/maps/googleMaps";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -115,6 +117,8 @@ const MobileCheckout = () => {
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
   const { createCheckoutSession, confirmCheckout } = useOrderStore();
   const quickLocation = useExperienceStore((state) => state.location);
+  const setQuickLocation = useExperienceStore((state) => state.setLocation);
+  const clearQuickLocation = useExperienceStore((state) => state.clearLocation);
   // Detect if ANY items in cart are QC (for fee + ETA estimation)
   const fulfillmentGroups = useMemo(() => getItemsByFulfillment(), [items, getItemsByFulfillment]);
   const isQuickCommerce = fulfillmentGroups.some((fg) => fg.fulfillmentType === 'quick_commerce');
@@ -132,6 +136,8 @@ const MobileCheckout = () => {
   const [step, setStep] = useState(1);
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [showCheckoutMap, setShowCheckoutMap] = useState(false);
+  const [isLocatingCheckout, setIsLocatingCheckout] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -306,8 +312,7 @@ const MobileCheckout = () => {
   // ETA. `placeOrder` requires coordinates for the same reason.
   const hasPreciseQuickLocation = (() => {
     const params = getLocationQueryParams(quickLocation);
-    if (params.lat !== undefined && params.lng !== undefined) return true;
-    return true; // Fallback to store coordinates for estimation
+    return params.lat !== undefined && params.lng !== undefined;
   })();
 
   // The server will reject these too — surfacing them here just avoids sending
@@ -351,11 +356,12 @@ const MobileCheckout = () => {
         .filter((item) => item.productId);
 
       const locationParams = getLocationQueryParams(quickLocation);
-      const lat = locationParams.lat !== undefined ? Number(locationParams.lat) : 22.7196;
-      const lng = locationParams.lng !== undefined ? Number(locationParams.lng) : 75.8577;
-
       if (!validItems.length) {
         if (active) setQuickEstimate(null);
+        return;
+      }
+      if (locationParams.lat === undefined || locationParams.lng === undefined) {
+        if (active) setQuickEstimate({ available: false, message: "Set your exact delivery location to see the fee and ETA." });
         return;
       }
 
@@ -363,8 +369,8 @@ const MobileCheckout = () => {
       try {
         const response = await getQuickCommerceCheckoutEstimate({
           items: validItems,
-          latitude: lat,
-          longitude: lng,
+          latitude: Number(locationParams.lat),
+          longitude: Number(locationParams.lng),
           couponType: appliedCoupon?.type || null,
         });
         const payload = response?.data ?? response;
@@ -488,6 +494,77 @@ const MobileCheckout = () => {
       state: address.state,
       country: address.country,
     });
+    const latitude = Number(address?.latitude);
+    const longitude = Number(address?.longitude);
+    if (isQuickCommerce && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      setQuickLocation({
+        latitude,
+        longitude,
+        pincode: address.zipCode || undefined,
+        label: address.name || address.address || "Saved address",
+        source: "address",
+      });
+    } else if (isQuickCommerce) {
+      clearQuickLocation();
+    }
+  };
+
+  const applyCheckoutLocation = async (point, source) => {
+    const latitude = Number(point?.latitude);
+    const longitude = Number(point?.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      toast.error("Could not use that location.");
+      return;
+    }
+
+    const location = {
+      latitude: Number(latitude.toFixed(6)),
+      longitude: Number(longitude.toFixed(6)),
+      label: source === "gps" ? "Current location" : "Map-selected delivery location",
+      source,
+    };
+    setSelectedAddressId(null);
+    await setQuickLocation(location);
+
+    try {
+      const address = await reverseGeocode(location);
+      setFormData((previous) => ({
+        ...previous,
+        address: address.address || previous.address,
+        city: address.city || previous.city,
+        state: address.state || previous.state,
+        zipCode: address.zipCode || previous.zipCode,
+        country: address.country || previous.country,
+      }));
+      toast.success("Delivery location and address updated.");
+    } catch {
+      toast.success("Delivery location updated. Please complete any missing address fields.");
+    }
+  };
+
+  const handleCheckoutGps = () => {
+    if (!navigator.geolocation) {
+      toast.error("Your browser does not support location access.");
+      return;
+    }
+    setIsLocatingCheckout(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          await applyCheckoutLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }, "gps");
+        } finally {
+          setIsLocatingCheckout(false);
+        }
+      },
+      () => {
+        setIsLocatingCheckout(false);
+        toast.error("Could not read your location. Check browser permission and try again.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   };
 
   const handleNewAddress = async (addressData) => {
@@ -584,10 +661,9 @@ const MobileCheckout = () => {
         // ── Enterprise Checkout: Session → Payment → Confirm ────────────────
         const qcLoc = quickLocation || (typeof getCustomerLocation === 'function' ? getCustomerLocation() : null);
         const customerLocation = isQuickCommerce
-          ? {
-              latitude: Number(qcLoc?.latitude) || 22.7196,
-              longitude: Number(qcLoc?.longitude) || 75.8577,
-            }
+          ? (Number.isFinite(Number(qcLoc?.latitude)) && Number.isFinite(Number(qcLoc?.longitude))
+              ? { latitude: Number(qcLoc.latitude), longitude: Number(qcLoc.longitude) }
+              : null)
           : null;
 
         // 1. Create CheckoutSession (idempotent, validates cart server-side)
@@ -715,6 +791,48 @@ const MobileCheckout = () => {
                       <FiTruck className="text-brand-primary" />
                       {t('Shipping Information')}
                     </h2>
+
+                    {isQuickCommerce && (
+                      <div className="mb-4 rounded-xl border border-brand-primary/30 bg-brand-primary/5 p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h3 className="text-sm font-bold text-content">Exact delivery location</h3>
+                            <p className="text-xs text-content-secondary">Required to calculate your Quick Commerce delivery fee and ETA.</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={handleCheckoutGps}
+                              disabled={isLocatingCheckout}
+                              className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-3 py-2 text-sm font-semibold text-black disabled:opacity-60"
+                            >
+                              <FiMapPin />
+                              {isLocatingCheckout ? "Getting location..." : "Use current location"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowCheckoutMap((current) => !current)}
+                              className="rounded-lg border border-brand-primary px-3 py-2 text-sm font-semibold text-content"
+                            >
+                              {showCheckoutMap ? "Hide map" : "Choose on map"}
+                            </button>
+                          </div>
+                        </div>
+                        {quickLocation?.latitude != null && quickLocation?.longitude != null && (
+                          <p className="mt-2 text-xs text-content-secondary">
+                            Pin: {Number(quickLocation.latitude).toFixed(5)}, {Number(quickLocation.longitude).toFixed(5)}
+                          </p>
+                        )}
+                        {showCheckoutMap && (
+                          <GoogleMapPicker
+                            className="mt-3"
+                            value={quickLocation}
+                            height={240}
+                            onChange={(point) => applyCheckoutLocation(point, "map")}
+                          />
+                        )}
+                      </div>
+                    )}
 
                     {/* Saved Addresses */}
                     {isAuthenticated && addresses.length > 0 && (
@@ -1336,6 +1454,16 @@ const MobileCheckout = () => {
             <AddressFormModal
               onSubmit={handleNewAddress}
               onCancel={() => setShowAddressForm(false)}
+              initialAddress={{
+                fullName: formData.name,
+                phone: formData.phone,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                zipCode: formData.zipCode,
+                country: formData.country,
+              }}
+              location={quickLocation}
             />
           )}
         </AnimatePresence>
@@ -1345,16 +1473,19 @@ const MobileCheckout = () => {
 };
 
 // Address Form Modal Component
-const AddressFormModal = ({ onSubmit, onCancel }) => {
+const AddressFormModal = ({ onSubmit, onCancel, initialAddress = {}, location = null }) => {
   const [formData, setFormData] = useState({
     name: "",
-    fullName: "",
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "",
+    fullName: initialAddress.fullName || "",
+    phone: initialAddress.phone || "",
+    address: initialAddress.address || "",
+    city: initialAddress.city || "",
+    state: initialAddress.state || "",
+    zipCode: initialAddress.zipCode || "",
+    country: initialAddress.country || "",
+    ...(Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude))
+      ? { latitude: Number(location.latitude), longitude: Number(location.longitude) }
+      : {}),
   });
 
   const handleChange = (e) => {
@@ -1495,6 +1626,11 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
             />
           </div>
+          {Number.isFinite(Number(formData.latitude)) && Number.isFinite(Number(formData.longitude)) && (
+            <p className="rounded-lg bg-status-successBg px-3 py-2 text-xs text-status-success">
+              The exact delivery pin will be saved with this address.
+            </p>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               type="submit"

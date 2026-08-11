@@ -2,6 +2,10 @@ import Joi from 'joi';
 
 const phoneSchema = Joi.string().pattern(/^[0-9]{10}$/).required();
 const zipSchema = Joi.string().trim().min(3).max(12).required();
+const locationFields = {
+    latitude: Joi.number().min(-90).max(90),
+    longitude: Joi.number().min(-180).max(180),
+};
 
 export const createAddressSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).required(),
@@ -13,7 +17,8 @@ export const createAddressSchema = Joi.object({
     zipCode: zipSchema,
     country: Joi.string().trim().min(2).max(80).required(),
     isDefault: Joi.boolean().optional(),
-});
+    ...locationFields,
+}).and('latitude', 'longitude');
 
 export const updateAddressSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).optional(),
@@ -25,4 +30,5 @@ export const updateAddressSchema = Joi.object({
     zipCode: Joi.string().trim().min(3).max(12).optional(),
     country: Joi.string().trim().min(2).max(80).optional(),
     isDefault: Joi.boolean().optional(),
-}).min(1);
+    ...locationFields,
+}).and('latitude', 'longitude').min(1);

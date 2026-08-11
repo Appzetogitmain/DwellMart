@@ -57,32 +57,12 @@ export const isQuickCommerce = () => getExperience() === EXPERIENCES.QUICK_COMME
  */
 export const getCustomerLocation = () => {
   const raw = safeRead(LOCATION_KEY);
-  if (!raw) {
-    return {
-      latitude: 22.7196,
-      longitude: 75.8577,
-      label: "Indore (Test Dark Store Location)",
-      source: "default",
-    };
-  }
+  if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") {
-      return {
-        latitude: 22.7196,
-        longitude: 75.8577,
-        label: "Indore (Test Dark Store Location)",
-        source: "default",
-      };
-    }
-    return parsed;
+    return parsed && typeof parsed === "object" ? parsed : null;
   } catch {
-    return {
-      latitude: 22.7196,
-      longitude: 75.8577,
-      label: "Indore (Test Dark Store Location)",
-      source: "default",
-    };
+    return null;
   }
 };
 
