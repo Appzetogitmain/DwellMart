@@ -151,7 +151,7 @@ export const addTicketMessage = asyncHandler(async (req, res) => {
     }
 
     ticket.messages.push({
-        senderId: req.user._id, // Assuming req.user is set by auth middleware
+        senderId: req.user.id, // Assuming req.user is set by auth middleware
         senderType: 'admin',
         message: trimmedMessage
     });

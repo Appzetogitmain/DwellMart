@@ -61,7 +61,7 @@ export const createCustomMessage = asyncHandler(async (req, res) => {
         actionUrl: actionUrl || '',
         image: image || '',
         metadata: metadata || {},
-        createdBy: req.user?._id || null,
+        createdBy: req.user?.id || null,
     });
 
     res.status(201).json(new ApiResponse(201, message, 'Custom message created.'));

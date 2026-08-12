@@ -201,6 +201,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Delivery Boys": "/admin/delivery/delivery-boys",
       "Cash Collection": "/admin/delivery/cash-collection",
       "Assign Delivery": "/admin/delivery/assign-delivery",
+      "Rider Payouts": "/admin/delivery/rider-payouts",
     },
     "/admin/offers": {
       "Home Sliders": "/admin/offers/home-sliders",

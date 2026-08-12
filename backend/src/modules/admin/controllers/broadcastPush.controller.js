@@ -176,7 +176,7 @@ export const broadcastPush = asyncHandler(async (req, res) => {
         type: normalizedType,
         priority: normalizedPriority,
         actionUrl,
-        metadata: { ...metadata, broadcastTarget: target, sentBy: String(req.user?._id || '') },
+        metadata: { ...metadata, broadcastTarget: target, sentBy: String(req.user?.id || '') },
         isRead: false,
         deliveredAt: new Date(),
     }));

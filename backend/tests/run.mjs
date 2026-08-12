@@ -16,6 +16,7 @@ const testSuites = [
     { name: 'P1-01: Expired Reservation Stock Recovery', file: 'tests/p1_01_expired_reservation.test.js' },
     { name: 'Experience Isolation (Marketplace / Express / B2B)', file: 'tests/verify_experience_isolation.js' },
     { name: 'Delivery COD Settlement & Cash Ledger', file: 'tests/verify_delivery_cod_settlement.js' },
+    { name: 'Rider Earnings Wallet & Payout Ledger', file: 'tests/rider_wallet_e2e.test.js' },
     { name: 'Sub-Admin RBAC & Permission Management', file: 'tests/subadmin_permissions.test.js' },
     { name: 'Support Chat & Ticket Lifecycle', file: 'tests/support.test.js' },
     { name: 'Bulk Product Upload & Catalog Export', file: 'tests/bulk_upload_comprehensive.test.js' },

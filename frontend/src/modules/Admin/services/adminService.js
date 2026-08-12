@@ -437,3 +437,59 @@ export const resetSubAdminPassword = (id, data) => api.post(`/admin/subadmins/${
 export const deleteSubAdmin = (id) => api.delete(`/admin/subadmins/${id}`);
 export const getSubAdminLogs = (params = {}) => api.get('/admin/subadmins/logs', { params });
 
+
+// ─── Rider Earnings Wallet & Payouts ─────────────────────────────────────────
+
+export const getRiderWithdrawals = (params) =>
+    api.get('/admin/rider-withdrawals', { params });
+
+export const approveRiderWithdrawal = (id, notes = '') =>
+    api.post(`/admin/rider-withdrawals/${id}/approve`, { notes });
+
+export const rejectRiderWithdrawal = (id, reason) =>
+    api.post(`/admin/rider-withdrawals/${id}/reject`, { reason });
+
+export const markRiderWithdrawalPaid = (id, payload) =>
+    api.post(`/admin/rider-withdrawals/${id}/mark-paid`, payload);
+
+export const markRiderWithdrawalFailed = (id, reason) =>
+    api.post(`/admin/rider-withdrawals/${id}/mark-failed`, { reason });
+
+export const getRiderWallets = (params) =>
+    api.get('/admin/rider-wallets', { params });
+
+export const getRiderWalletDetail = (deliveryBoyId) =>
+    api.get(`/admin/rider-wallets/${deliveryBoyId}`);
+
+export const adjustRiderWallet = (deliveryBoyId, payload) =>
+    api.post(`/admin/rider-wallets/${deliveryBoyId}/adjust`, payload);
+
+export const toggleRiderPayoutBlock = (deliveryBoyId, payload) =>
+    api.post(`/admin/rider-wallets/${deliveryBoyId}/block`, payload);
+
+export const rebuildRiderWallet = (deliveryBoyId) =>
+    api.post(`/admin/rider-wallets/${deliveryBoyId}/rebuild`);
+
+export const verifyRiderPayoutDetails = (deliveryBoyId) =>
+    api.post(`/admin/rider-wallets/${deliveryBoyId}/verify-payout-details`);
+
+export const adjustRiderCash = (deliveryBoyId, payload) =>
+    api.post(`/admin/rider-wallets/${deliveryBoyId}/adjust-cash`, payload);
+
+export const reverseRiderEarning = (orderId, reason) =>
+    api.post(`/admin/rider-earnings/${orderId}/reverse`, { reason });
+
+export const getRiderWalletAnalytics = (params) =>
+    api.get('/admin/rider-wallets/analytics', { params });
+
+export const getRiderWalletDrift = (params) =>
+    api.get('/admin/rider-wallets/drift', { params });
+
+export const getRiderRateCards = (params) =>
+    api.get('/admin/rider-rate-cards', { params });
+
+export const createRiderRateCard = (payload) =>
+    api.post('/admin/rider-rate-cards', payload);
+
+export const deactivateRiderRateCard = (id) =>
+    api.post(`/admin/rider-rate-cards/${id}/deactivate`);

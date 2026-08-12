@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Notification from '../models/Notification.model.js';
 import { dispatchPushNotification } from './push.service.js';
 import { emitToRoom, emitToUserRoom } from '../socket.js';
@@ -99,6 +100,40 @@ export const createNotification = async ({
         console.error('[Notification Service Error]:', error.message);
         throw error;
     }
+};
+
+/**
+ * Raise a platform-level alert on the admin notification stream.
+ *
+ * Admin reads (`getUserNotifications`, `getUnreadCount`) filter on
+ * `recipientType: 'admin'` alone and ignore `recipientId`, but the schema still
+ * requires an ObjectId there. Callers that pass a role string, or omit the field
+ * entirely, therefore fail schema validation and — because every call site
+ * swallows the rejection — the alert is silently lost.
+ *
+ * This helper anchors the notification to a related entity id when the caller
+ * has one, and otherwise to a fresh ObjectId, matching the convention already
+ * used by the public feedback flow.
+ *
+ * @param {object} params
+ * @param {string} [params.anchorId] Related entity id, used as the recipient anchor.
+ */
+export const notifyAdmins = async ({ anchorId = null, title, message, type = 'system', category = 'SYSTEM', priority = 'HIGH', actionUrl = '', data = {} }) => {
+    const recipientId = anchorId && mongoose.isValidObjectId(anchorId)
+        ? anchorId
+        : new mongoose.Types.ObjectId();
+
+    return createNotification({
+        recipientId,
+        recipientType: 'admin',
+        title,
+        message,
+        type,
+        category,
+        priority,
+        actionUrl,
+        data,
+    });
 };
 
 /**

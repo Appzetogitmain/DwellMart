@@ -12,6 +12,7 @@ import {
   FiTruck,
   FiX,
   FiChevronRight,
+  FiTrendingUp,
 } from "react-icons/fi";
 import { useDeliveryAuthStore } from "../../store/deliveryStore";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
@@ -22,6 +23,7 @@ const menuItems = [
   { icon: FiHome, label: "Dashboard", path: "/delivery/dashboard" },
   { icon: FiPackage, label: "Orders", path: "/delivery/orders" },
   { icon: FiDollarSign, label: "Cash & Settlement", path: "/delivery/cash-settlements" },
+  { icon: FiTrendingUp, label: "Earnings & Wallet", path: "/delivery/wallet" },
   { icon: FiBell, label: "Notifications", path: "/delivery/notifications" },
   { icon: FiHelpCircle, label: "Support", path: "/delivery/support" },
   { icon: FiUser, label: "Profile", path: "/delivery/profile" },

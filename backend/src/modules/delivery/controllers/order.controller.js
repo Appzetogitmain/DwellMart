@@ -17,7 +17,8 @@ import { EXPERIENCES } from '../../../constants/experiences.js';
 import { getRiderAnalytics } from '../../../services/quickCommerceAnalytics.service.js';
 import { getOrComputeAnalyticsCache } from '../../../services/analyticsCache.service.js';
 import { ensureVendorCommissionsForOrder } from '../../../services/commission.service.js';
-import { recordCodCollection } from '../../../services/deliveryCash.service.js';
+import { recordCodCollectionDurable } from '../../../services/deliveryCash.service.js';
+import { accrueDeliveryEarningDurable, getRiderLedgerEarnings } from '../../../services/wallet/riderEarnings.service.js';
 
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
@@ -103,7 +104,11 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [statusStats, completedTodayCount, earningsStats, recentOrders] = await Promise.all([
+    // Earnings come from the rider wallet ledger, never from `order.shipping`.
+    // That field is the customer's shipping fee — vendor or platform revenue —
+    // and reporting it as rider earnings promised riders money the platform had
+    // no ledger to pay from.
+    const [statusStats, completedTodayCount, ledgerEarnings, recentOrders] = await Promise.all([
         Order.aggregate([
             { $match: { deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId), isDeleted: { $ne: true } } },
             {
@@ -123,21 +128,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
                 { deliveredAt: null, updatedAt: { $gte: todayStart } },
             ],
         }),
-        Order.aggregate([
-            {
-                $match: {
-                    deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId),
-                    isDeleted: { $ne: true },
-                    status: 'delivered',
-                },
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalDeliveryFees: { $sum: { $ifNull: ['$shipping', 0] } },
-                },
-            },
-        ]),
+        getRiderLedgerEarnings(deliveryBoyId),
         Order.find({ deliveryBoyId, isDeleted: { $ne: true } }).sort({ createdAt: -1 }).limit(3),
     ]);
 
@@ -156,7 +147,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
             Number(countByStatus.returned || 0),
         completedToday: Number(completedTodayCount || 0),
         openOrders: Number(countByStatus.pending || 0) + Number(countByStatus.processing || 0),
-        earnings: Number(earningsStats?.[0]?.totalDeliveryFees || 0),
+        earnings: Number(ledgerEarnings?.totalEarned || 0),
+        totalPaidOut: Number(ledgerEarnings?.totalPaidOut || 0),
         recentOrders,
     };
 
@@ -169,7 +161,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [deliveredStats, completedTodayCount] = await Promise.all([
+    const [deliveredStats, completedTodayCount, ledgerEarnings] = await Promise.all([
         Order.aggregate([
             {
                 $match: {
@@ -182,7 +174,6 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
                 $group: {
                     _id: null,
                     totalDeliveries: { $sum: 1 },
-                    earnings: { $sum: { $ifNull: ['$shipping', 0] } },
                 },
             },
         ]),
@@ -205,7 +196,10 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
             {
                 totalDeliveries: Number(row.totalDeliveries || 0),
                 completedToday: Number(completedTodayCount || 0),
-                earnings: Number(row.earnings || 0),
+                // Ledger-backed: what the platform has actually credited, net of
+                // reversals — not the customer's shipping fee.
+                earnings: Number(ledgerEarnings?.totalEarned || 0),
+                totalPaidOut: Number(ledgerEarnings?.totalPaidOut || 0),
             },
             'Profile summary fetched.'
         )
@@ -344,9 +338,8 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         ensureVendorCommissionsForOrder(order).catch((err) => {
             console.warn(`[Delivery Commission] Failed to ensure commission for order ${order.orderId || order._id}: ${err.message}`);
         });
-        recordCodCollection({ order, deliveryBoyId: req.user.id }).catch((err) => {
-            console.warn(`[Delivery COD Collection] Failed to record COD ledger entry for order ${order.orderId || order._id}: ${err.message}`);
-        });
+        recordCodCollectionDurable({ order, deliveryBoyId: req.user.id });
+        accrueDeliveryEarningDurable({ order, deliveryBoyId: req.user.id });
     }
     await order.save();
 
@@ -494,9 +487,8 @@ export const updateQuickCommerceStatus = asyncHandler(async (req, res) => {
     // Delivery frees the rider for the next order.
     if (status === QUICK_COMMERCE_ORDER_STATUS.DELIVERED) {
         await releaseRider(req.user.id, order._id, { incrementDeliveries: true });
-        recordCodCollection({ order, deliveryBoyId: req.user.id }).catch((err) => {
-            console.warn(`[Delivery COD Collection] Failed to record COD ledger entry for order ${order.orderId || order._id}: ${err.message}`);
-        });
+        recordCodCollectionDurable({ order, deliveryBoyId: req.user.id });
+        accrueDeliveryEarningDurable({ order, deliveryBoyId: req.user.id });
     }
 
     await publishQuickCommerceStatus(order, status);

@@ -23,7 +23,7 @@
  */
 
 import FailedJob from '../../models/FailedJob.model.js';
-import { createNotification } from '../notification.service.js';
+import { notifyAdmins } from '../notification.service.js';
 
 // ── Backoff table ─────────────────────────────────────────────────────────────
 
@@ -126,13 +126,18 @@ export const processDueJobs = async () => {
                 });
                 console.error(`[RetryQueue] Job dead: ${job.jobType} after ${nextAttempt} attempts.`);
 
-                // Notify admin of dead job (fire-and-forget)
-                createNotification({
-                    role:    'admin',
-                    type:    'system_alert',
-                    title:   `Dead job: ${job.jobType}`,
-                    message: `Job type "${job.jobType}" exhausted all ${job.maxAttempts} retry attempts. Manual intervention required.`,
-                    data:    { jobId: String(job._id), jobType: job.jobType, lastError: err?.message },
+                // Notify admin of dead job (fire-and-forget).
+                // Previously passed `role`/`type: 'system_alert'`, neither of
+                // which the Notification schema accepts, so every dead-job
+                // alert failed validation and was swallowed by the catch.
+                notifyAdmins({
+                    anchorId: job._id,
+                    type:     'system',
+                    category: 'ERROR',
+                    priority: 'CRITICAL',
+                    title:    `Dead job: ${job.jobType}`,
+                    message:  `Job type "${job.jobType}" exhausted all ${job.maxAttempts} retry attempts. Manual intervention required.`,
+                    data:     { jobId: String(job._id), jobType: job.jobType, lastError: String(err?.message || '') },
                 }).catch(() => null);
             } else {
                 await FailedJob.findByIdAndUpdate(job._id, {

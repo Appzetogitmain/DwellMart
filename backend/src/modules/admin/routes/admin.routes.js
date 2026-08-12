@@ -23,6 +23,7 @@ import * as settingsController from '../controllers/settings.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
 import * as feedbackController from '../controllers/feedback.controller.js';
+import * as riderWalletController from '../controllers/riderWallet.controller.js';
 import CheckoutSession from '../../../models/CheckoutSession.model.js';
 import { FulfillmentGroup } from '../../../models/FulfillmentGroup.model.js';
 import asyncHandler from '../../../utils/asyncHandler.js';
@@ -99,6 +100,26 @@ import {
     marketingIdParamSchema,
     campaignListQuerySchema,
 } from '../validators/marketing.validator.js';
+import {
+    withdrawalIdParamSchema as riderWithdrawalIdParamSchema,
+    riderIdParamSchema,
+    orderIdParamSchema as riderOrderIdParamSchema,
+    withdrawalListQuerySchema,
+    walletListQuerySchema,
+    approveWithdrawalSchema,
+    rejectWithdrawalSchema,
+    markPaidSchema,
+    markFailedSchema,
+    adjustWalletSchema,
+    adjustCashSchema,
+    togglePayoutBlockSchema,
+    reverseEarningSchema,
+    createRateCardSchema,
+    rateCardIdParamSchema,
+    rateCardListQuerySchema,
+    walletAnalyticsQuerySchema,
+    driftQuerySchema,
+} from '../validators/riderWallet.validator.js';
 
 const router = Router();
 const adminAuth = [authenticate, requireAdmin, enforceAccountStatus];
@@ -350,6 +371,39 @@ router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsCont
 // settings category — including feature flags and payment configuration.
 router.get('/settings/:category', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getSettingsByCategory);
 router.put('/settings/:category', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateSettingsByCategory);
+
+// ─── Rider Earnings Wallet & Payouts ─────────────────────────────────────────
+// Reuses the existing WALLET_VIEW / WALLET_EDIT tokens, which already map to
+// the finance sidebar module — no new permission surface.
+
+// Analytics & integrity
+router.get('/rider-wallets/analytics', ...perm(PERMISSIONS.WALLET_VIEW), validate(walletAnalyticsQuerySchema, 'query'), riderWalletController.getWalletAnalytics);
+router.get('/rider-wallets/drift', ...perm(PERMISSIONS.WALLET_VIEW), validate(driftQuerySchema, 'query'), riderWalletController.getDriftReport);
+
+// Rate cards — registered before '/rider-wallets/:deliveryBoyId' so the literal
+// segments are not swallowed by the param route.
+router.get('/rider-rate-cards', ...perm(PERMISSIONS.WALLET_VIEW), validate(rateCardListQuerySchema, 'query'), riderWalletController.listRateCards);
+router.post('/rider-rate-cards', ...perm(PERMISSIONS.WALLET_EDIT), validate(createRateCardSchema), riderWalletController.createRateCard);
+router.post('/rider-rate-cards/:id/deactivate', ...perm(PERMISSIONS.WALLET_EDIT), validate(rateCardIdParamSchema, 'params'), riderWalletController.deactivateRateCard);
+
+// Withdrawal queue
+router.get('/rider-withdrawals', ...perm(PERMISSIONS.WALLET_VIEW), validate(withdrawalListQuerySchema, 'query'), riderWalletController.listWithdrawals);
+router.post('/rider-withdrawals/:id/approve', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderWithdrawalIdParamSchema, 'params'), validate(approveWithdrawalSchema), riderWalletController.approveWithdrawal);
+router.post('/rider-withdrawals/:id/reject', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderWithdrawalIdParamSchema, 'params'), validate(rejectWithdrawalSchema), riderWalletController.rejectWithdrawal);
+router.post('/rider-withdrawals/:id/mark-paid', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderWithdrawalIdParamSchema, 'params'), validate(markPaidSchema), riderWalletController.markPaid);
+router.post('/rider-withdrawals/:id/mark-failed', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderWithdrawalIdParamSchema, 'params'), validate(markFailedSchema), riderWalletController.markFailed);
+
+// Wallets
+router.get('/rider-wallets', ...perm(PERMISSIONS.WALLET_VIEW), validate(walletListQuerySchema, 'query'), riderWalletController.listRiderWallets);
+router.get('/rider-wallets/:deliveryBoyId', ...perm(PERMISSIONS.WALLET_VIEW), validate(riderIdParamSchema, 'params'), riderWalletController.getRiderWalletDetail);
+router.post('/rider-wallets/:deliveryBoyId/adjust', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderIdParamSchema, 'params'), validate(adjustWalletSchema), riderWalletController.adjustWallet);
+router.post('/rider-wallets/:deliveryBoyId/block', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderIdParamSchema, 'params'), validate(togglePayoutBlockSchema), riderWalletController.togglePayoutBlock);
+router.post('/rider-wallets/:deliveryBoyId/rebuild', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderIdParamSchema, 'params'), riderWalletController.rebuildRiderWallet);
+router.post('/rider-wallets/:deliveryBoyId/verify-payout-details', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderIdParamSchema, 'params'), riderWalletController.verifyRiderPayoutDetails);
+// COD cash correction — the adjustment path the cash ledger previously lacked.
+router.post('/rider-wallets/:deliveryBoyId/adjust-cash', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(riderIdParamSchema, 'params'), validate(adjustCashSchema), riderWalletController.adjustRiderCash);
+// Earning reversal for a cancelled or refunded delivered order.
+router.post('/rider-earnings/:orderId/reverse', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderOrderIdParamSchema, 'params'), validate(reverseEarningSchema), riderWalletController.reverseEarning);
 
 // ─── Settlements ──────────────────────────────────────────────────────────────
 router.get('/settlements', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);

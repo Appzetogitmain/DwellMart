@@ -4,9 +4,10 @@ import * as orderController from '../controllers/order.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as locationController from '../controllers/location.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
+import * as walletController from '../controllers/wallet.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
-import { authLimiter } from '../../../middlewares/rateLimiter.js';
+import { authLimiter, withdrawalLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadDeliveryDocuments } from '../../../middlewares/upload.js';
 import {
@@ -22,6 +23,14 @@ import {
     riderLocationSchema,
     quickCommerceStatusSchema,
 } from '../validators/delivery.validator.js';
+import {
+    createWithdrawalSchema,
+    walletTransactionQuerySchema,
+    withdrawalQuerySchema,
+    statementQuerySchema,
+    updatePayoutDetailsSchema,
+    withdrawalIdParamSchema,
+} from '../validators/wallet.validator.js';
 
 const router = Router();
 const deliveryAuth = [authenticate, authorize('delivery'), enforceAccountStatus];
@@ -88,5 +97,19 @@ router.delete('/notifications/:id', ...deliveryAuth, notificationController.dele
 router.get('/cash-settlements/summary', ...deliveryAuth, settlementController.getCashSettlementSummary);
 router.post('/cash-settlements/request', ...deliveryAuth, settlementController.createCashSettlementRequest);
 router.get('/cash-settlements/history', ...deliveryAuth, settlementController.getCashSettlementHistory);
+
+// ── Earnings wallet ───────────────────────────────────────────────────────────
+// Separate from cash settlements above: that ledger is what the rider OWES the
+// platform, this one is what the platform OWES the rider.
+router.get('/wallet/summary', ...deliveryAuth, walletController.getWallet);
+router.get('/wallet/transactions', ...deliveryAuth, validate(walletTransactionQuerySchema, 'query'), walletController.getTransactions);
+router.get('/wallet/statement', ...deliveryAuth, validate(statementQuerySchema, 'query'), walletController.getStatement);
+router.get('/wallet/payout-details', ...deliveryAuth, walletController.getRiderPayoutDetails);
+router.put('/wallet/payout-details', ...deliveryAuth, validate(updatePayoutDetailsSchema), walletController.updateRiderPayoutDetails);
+// Registered before '/wallet/withdrawals/:id/cancel' so the literal path is not
+// swallowed by the param route.
+router.get('/wallet/withdrawals', ...deliveryAuth, validate(withdrawalQuerySchema, 'query'), walletController.getWithdrawals);
+router.post('/wallet/withdrawals', ...deliveryAuth, withdrawalLimiter, validate(createWithdrawalSchema), walletController.createWithdrawal);
+router.post('/wallet/withdrawals/:id/cancel', ...deliveryAuth, validate(withdrawalIdParamSchema, 'params'), walletController.cancelWithdrawal);
 
 export default router;

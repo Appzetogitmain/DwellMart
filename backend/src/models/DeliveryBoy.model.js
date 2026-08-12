@@ -82,10 +82,53 @@ const deliveryBoySchema = new mongoose.Schema(
         },
         totalDeliveries: { type: Number, default: 0 },
         rating: { type: Number, default: 0 },
+        /**
+         * Lifetime COD cash the rider has HANDED BACK to the platform, not
+         * money earned. Kept for backward compatibility with existing reads;
+         * `DeliveryCashLedger` is authoritative for cash in hand.
+         */
         cashCollected: { type: Number, default: 0 },
+
+        /**
+         * Where the rider's wallet payouts are sent.
+         *
+         * Mirrors `Vendor.bankDetails` in shape and, like it, is stripped from
+         * serialized output — a payout destination is not profile data and must
+         * never travel in a list response.
+         *
+         * Account-takeover followed by a redirected payout is the primary attack
+         * on this surface, so a change starts a cooling-off clock that the
+         * withdrawal path refuses to pay through.
+         */
+        payoutDetails: {
+            method: { type: String, enum: ['upi', 'bank_transfer', null], default: null },
+            upiId: { type: String, trim: true, default: '' },
+            accountName: { type: String, trim: true, default: '' },
+            accountNumber: { type: String, trim: true, default: '' },
+            ifscCode: { type: String, trim: true, uppercase: true, default: '' },
+            bankName: { type: String, trim: true, default: '' },
+            verifiedAt: { type: Date, default: null },
+            verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+            lastChangedAt: { type: Date, default: null },
+            coolingOffUntil: { type: Date, default: null },
+        },
     },
     { timestamps: true }
 );
+
+/**
+ * Never serialize payout destinations or credentials.
+ * Mirrors the same guard on the Vendor model.
+ */
+deliveryBoySchema.methods.toJSON = function toJSON() {
+    const obj = this.toObject();
+    delete obj.password;
+    delete obj.payoutDetails;
+    delete obj.resetOtp;
+    delete obj.resetOtpExpiry;
+    delete obj.refreshTokenHash;
+    return obj;
+};
 
 // Sparse so riders without a reported location are excluded, not defaulted.
 deliveryBoySchema.index({ location: '2dsphere' }, { sparse: true });

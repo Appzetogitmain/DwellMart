@@ -16,7 +16,7 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
     const filter = {
         $or: [
             { recipientType: 'admin' },
-            { recipientId: req.user._id, recipientType: 'admin' }
+            { recipientId: req.user.id, recipientType: 'admin' }
         ]
     };
 
@@ -66,7 +66,7 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
     const filter = {
         $or: [
             { recipientType: 'admin' },
-            { recipientId: req.user._id, recipientType: 'admin' }
+            { recipientId: req.user.id, recipientType: 'admin' }
         ],
         isRead: false
     };

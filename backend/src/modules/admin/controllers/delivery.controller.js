@@ -33,9 +33,12 @@ const buildDocUrl = (req, relativePath = '') => {
 
 import {
     calculateRiderCashInHand,
+    calculateRiderSettleableCash,
+    calculateRiderCashInHandBulk,
     completeCashSettlement,
     rejectCashSettlement,
     cancelCashSettlement,
+    postCashAdjustment,
     autoCleanupStalePendingRequests,
     getMaxCodCashLimit,
 } from '../../../services/deliveryCash.service.js';
@@ -72,7 +75,7 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
     }
 
     const deliveryBoys = await DeliveryBoy.find(filter)
-        .select('-password')
+        .select('-password -payoutDetails.accountNumber -payoutDetails.upiId')
         .sort({ createdAt: -1 })
         .skip((numericPage - 1) * numericLimit)
         .limit(numericLimit);
@@ -140,7 +143,7 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
  * @access  Private (Admin)
  */
 export const getDeliveryBoyById = asyncHandler(async (req, res) => {
-    const boy = await DeliveryBoy.findById(req.params.id).select('-password');
+    const boy = await DeliveryBoy.findById(req.params.id).select('-password -payoutDetails.accountNumber -payoutDetails.upiId');
 
     if (!boy) {
         throw new ApiError(404, 'Delivery boy not found');
@@ -155,15 +158,22 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                 $group: {
                     _id: null,
                     totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-                    totalEarnings: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
                 }
             }
         ]),
-        calculateRiderCashInHand(boy._id),
+        calculateRiderSettleableCash(boy._id),
         getMaxCodCashLimit(),
     ]);
 
-    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalEarnings: 0 };
+    // Rider earnings are what the wallet ledger says they are. The previous
+    // `SUM(order.shipping)` reported the customer's shipping fee, which belongs
+    // to the vendor or the platform and was never owed to the rider.
+    const { getRiderLedgerEarnings } = await import('../../../services/wallet/riderEarnings.service.js');
+    const ledgerEarnings = await getRiderLedgerEarnings(boy._id);
+
+    const boyStats = stats.length > 0
+        ? { ...stats[0], totalEarnings: ledgerEarnings.totalEarned }
+        : { totalDeliveries: 0, totalEarnings: ledgerEarnings.totalEarned };
 
     res.status(200).json(
         new ApiResponse(200, {
@@ -215,7 +225,7 @@ export const createDeliveryBoy = asyncHandler(async (req, res) => {
         applicationStatus: 'approved',
     });
 
-    const createdBoy = await DeliveryBoy.findById(boy._id).select('-password');
+    const createdBoy = await DeliveryBoy.findById(boy._id).select('-password -payoutDetails.accountNumber -payoutDetails.upiId');
 
     if (!createdBoy) {
         throw new ApiError(500, 'Something went wrong while creating the delivery boy');
@@ -241,7 +251,7 @@ export const updateDeliveryBoyStatus = asyncHandler(async (req, res) => {
         req.params.id,
         { isActive },
         { new: true }
-    ).select('-password');
+    ).select('-password -payoutDetails.accountNumber -payoutDetails.upiId');
 
     if (!boy) {
         throw new ApiError(404, 'Delivery boy not found');
@@ -313,7 +323,7 @@ export const updateDeliveryBoyApplicationStatus = asyncHandler(async (req, res) 
         },
     });
 
-    const refreshed = await DeliveryBoy.findById(boy._id).select('-password');
+    const refreshed = await DeliveryBoy.findById(boy._id).select('-password -payoutDetails.accountNumber -payoutDetails.upiId');
     res.status(200).json(
         new ApiResponse(200, refreshed, `Delivery registration ${applicationStatus} successfully`)
     );
@@ -349,7 +359,7 @@ export const updateDeliveryBoy = asyncHandler(async (req, res) => {
         req.params.id,
         payload,
         { new: true, runValidators: true }
-    ).select('-password');
+    ).select('-password -payoutDetails.accountNumber -payoutDetails.upiId');
 
     if (!boy) {
         throw new ApiError(404, 'Delivery boy not found');
@@ -404,7 +414,7 @@ export const settleCash = asyncHandler(async (req, res) => {
         settlementMethod,
         referenceNumber,
         notes,
-        adminId: req.user?._id,
+        adminId: req.user?.id,
     });
 
     res.status(200).json(
@@ -463,27 +473,32 @@ export const getDeliverySettlements = asyncHandler(async (req, res) => {
         DeliveryCashSettlement.countDocuments(filter),
     ]);
 
-    // Enrich settlements with live Cash In Hand and invalid/stale status flag
-    const settlements = await Promise.all(
-        rawSettlements.map(async (item) => {
-            const riderId = item.deliveryBoyId?._id || item.deliveryBoyId;
-            const currentCashInHand = riderId ? await calculateRiderCashInHand(riderId) : 0;
-            const isInvalid = item.status === 'pending' && item.amount > currentCashInHand;
+    // Enrich settlements with live Cash In Hand and invalid/stale status flag.
+    // Resolved in ONE grouped aggregation for the whole page rather than one
+    // aggregation per row, which made this endpoint scale with the fleet size.
+    const pageRiderIds = rawSettlements
+        .map((item) => item.deliveryBoyId?._id || item.deliveryBoyId)
+        .filter(Boolean);
+    const cashByRider = await calculateRiderCashInHandBulk(pageRiderIds);
 
-            if (item.deliveryBoyId && typeof item.deliveryBoyId === 'object') {
-                item.deliveryBoyId.cashInHand = currentCashInHand;
-            }
+    const settlements = rawSettlements.map((item) => {
+        const riderId = item.deliveryBoyId?._id || item.deliveryBoyId;
+        const currentCashInHand = Math.max(0, Number(cashByRider.get(String(riderId)) ?? 0));
+        const isInvalid = item.status === 'pending' && item.amount > currentCashInHand;
 
-            return {
-                ...item,
-                riderCashInHand: currentCashInHand,
-                isInvalid,
-                invalidReason: isInvalid
-                    ? `Requested amount (₹${item.amount}) exceeds rider's current available Cash In Hand (₹${currentCashInHand}).`
-                    : null,
-            };
-        })
-    );
+        if (item.deliveryBoyId && typeof item.deliveryBoyId === 'object') {
+            item.deliveryBoyId.cashInHand = currentCashInHand;
+        }
+
+        return {
+            ...item,
+            riderCashInHand: currentCashInHand,
+            isInvalid,
+            invalidReason: isInvalid
+                ? `Requested amount (₹${item.amount}) exceeds rider's current available Cash In Hand (₹${currentCashInHand}).`
+                : null,
+        };
+    });
 
     res.status(200).json(
         new ApiResponse(
@@ -512,7 +527,7 @@ export const rejectDeliveryCashSettlementHandler = asyncHandler(async (req, res)
     const settlement = await rejectCashSettlement({
         settlementId: req.params.id,
         reason,
-        adminId: req.user?._id,
+        adminId: req.user?.id,
     });
 
     res.status(200).json(
@@ -530,7 +545,7 @@ export const cancelDeliveryCashSettlementHandler = asyncHandler(async (req, res)
     const settlement = await cancelCashSettlement({
         settlementId: req.params.id,
         reason: reason || 'Cancelled by Admin: Stale request or insufficient rider cash in hand.',
-        adminId: req.user?._id,
+        adminId: req.user?.id,
     });
 
     res.status(200).json(

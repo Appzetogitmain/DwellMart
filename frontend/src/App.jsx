@@ -57,6 +57,7 @@ const CustomerDetailPage = lazy(() => import("./modules/Admin/pages/customers/Cu
 const DeliveryBoys = lazy(() => import("./modules/Admin/pages/delivery/DeliveryBoys"));
 const CashCollection = lazy(() => import("./modules/Admin/pages/delivery/CashCollection"));
 const AssignDelivery = lazy(() => import("./modules/Admin/pages/delivery/AssignDelivery"));
+const RiderPayouts = lazy(() => import("./modules/Admin/pages/delivery/RiderPayouts"));
 const QuickCommerceOperations = lazy(() => import("./modules/Admin/pages/QuickCommerceOperations"));
 const QuickCommerceSettings = lazy(() => import("./modules/Admin/pages/settings/QuickCommerceSettings"));
 // Vendors child pages
@@ -160,6 +161,7 @@ import DeliveryRegister from "./modules/Delivery/pages/Register";
 import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
 import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
 import DeliveryCashSettlements from "./modules/Delivery/pages/CashSettlements";
+import DeliveryWallet from "./modules/Delivery/pages/Wallet";
 import DeliveryPrivacyPolicy from "./modules/Delivery/pages/PrivacyPolicy";
 import DeliveryContactUs from "./modules/Delivery/pages/ContactUs";
 const DeliveryProtectedRoute = lazy(() => import("./modules/Delivery/components/DeliveryProtectedRoute"));
@@ -619,6 +621,7 @@ const AppRoutes = () => {
         <Route path="delivery/delivery-boys" element={<AdminRouteGuard permission="delivery.view"><DeliveryBoys /></AdminRouteGuard>} />
         <Route path="delivery/cash-collection" element={<AdminRouteGuard permission="delivery.edit"><CashCollection /></AdminRouteGuard>} />
         <Route path="delivery/assign-delivery" element={<AdminRouteGuard permission="delivery.approve"><AssignDelivery /></AdminRouteGuard>} />
+        <Route path="delivery/rider-payouts" element={<AdminRouteGuard permission="wallet.view"><RiderPayouts /></AdminRouteGuard>} />
         <Route path="vendors" element={<AdminRouteGuard permission="vendors.view"><Vendors /></AdminRouteGuard>} />
         <Route path="vendors/manage-vendors" element={<AdminRouteGuard permission="vendors.view"><ManageVendors /></AdminRouteGuard>} />
         <Route
@@ -726,6 +729,7 @@ const AppRoutes = () => {
         <Route index element={<Navigate to="/delivery/dashboard" replace />} />
         <Route path="dashboard" element={<DeliveryDashboard />} />
         <Route path="cash-settlements" element={<DeliveryCashSettlements />} />
+        <Route path="wallet" element={<DeliveryWallet />} />
         <Route path="orders" element={<DeliveryOrders />} />
         <Route path="orders/:id" element={<DeliveryOrderDetail />} />
         <Route path="notifications" element={<DeliveryNotifications />} />
