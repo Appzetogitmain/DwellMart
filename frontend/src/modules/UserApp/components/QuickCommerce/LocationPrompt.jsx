@@ -6,6 +6,19 @@ import { useExperienceStore } from "../../../../shared/store/experienceStore";
 import { useAddressStore } from "../../../../shared/store/addressStore";
 import { Button, Input, Card } from "../../../../shared/components/ui";
 import GoogleMapPicker from "../../../../shared/maps/GoogleMapPicker";
+import { reverseGeocode } from "../../../../shared/maps/googleMaps";
+
+// Browser geolocation supplies coordinates only. Resolve those coordinates when
+// possible, but never prevent a customer from using GPS/map delivery if Maps is
+// unavailable or cannot return an address.
+const resolveLocationLabel = async (location, fallback) => {
+  try {
+    const address = await reverseGeocode(location);
+    return address.formattedAddress || fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 /**
  * Quick Commerce location capture — Refactored to Design System
@@ -15,6 +28,7 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
   const { addresses } = useAddressStore();
   const [pincode, setPincode] = useState("");
   const [isLocating, setIsLocating] = useState(false);
+  const [isUsingMapLocation, setIsUsingMapLocation] = useState(false);
   const [mapPoint, setMapPoint] = useState(null);
 
   const savedWithCoordinates = (addresses || []).filter(
@@ -32,14 +46,20 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        setIsLocating(false);
-        await setLocation({
+        const location = {
           latitude: Number(position.coords.latitude.toFixed(6)),
           longitude: Number(position.coords.longitude.toFixed(6)),
-          label: "Current location",
           source: "gps",
-        });
-        onClose?.();
+        };
+        try {
+          await setLocation({
+            ...location,
+            label: await resolveLocationLabel(location, "Current location"),
+          });
+          onClose?.();
+        } finally {
+          setIsLocating(false);
+        }
       },
       () => {
         setIsLocating(false);
@@ -91,12 +111,17 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
       toast.error("Tap the map to place your delivery pin.");
       return;
     }
-    await setLocation({
-      ...mapPoint,
-      label: "Map-selected delivery location",
-      source: "map",
-    });
-    onClose?.();
+    setIsUsingMapLocation(true);
+    try {
+      await setLocation({
+        ...mapPoint,
+        label: await resolveLocationLabel(mapPoint, "Map-selected delivery location"),
+        source: "map",
+      });
+      onClose?.();
+    } finally {
+      setIsUsingMapLocation(false);
+    }
   };
 
   return (
@@ -139,7 +164,7 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
           <p className="text-xs font-bold text-textColor-muted uppercase tracking-wider mb-2">Or place an exact pin</p>
           <GoogleMapPicker value={mapPoint} onChange={setMapPoint} height={190} />
           {mapPoint && (
-            <Button fullWidth variant="secondary" onClick={handleUseMapPoint} isLoading={isCheckingServiceability} className="mt-2 font-extrabold">
+            <Button fullWidth variant="secondary" onClick={handleUseMapPoint} isLoading={isUsingMapLocation || isCheckingServiceability} className="mt-2 font-extrabold">
               Use this map location
             </Button>
           )}
