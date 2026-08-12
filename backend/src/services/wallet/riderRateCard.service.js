@@ -13,6 +13,30 @@ import RiderRateCard from '../../models/RiderRateCard.model.js';
 import { roundMoney } from '../PriceReconciliationService.js';
 import { EXPERIENCES } from '../../constants/experiences.js';
 
+export const ensureDefaultRateCard = async () => {
+    try {
+        let card = await RiderRateCard.findOne({ scope: 'global', isActive: true });
+        if (!card) {
+            card = await RiderRateCard.create({
+                name: 'Default Quick Commerce Rate Card',
+                scope: 'global',
+                baseFarePerDelivery: 30,
+                perKmRate: 6,
+                freeDistanceKm: 1,
+                minimumFare: 35,
+                effectiveFrom: new Date('2026-01-01'),
+                isActive: true,
+                notes: 'Default platform rate card for Quick Commerce deliveries',
+            });
+            console.log(`[RiderRateCard] Ensured default global rate card: ${card.name} (${card._id})`);
+        }
+        return card;
+    } catch (err) {
+        console.error(`[RiderRateCard] Error ensuring default rate card: ${err.message}`);
+        return null;
+    }
+};
+
 /**
  * Resolve the applicable rate card, most specific scope first.
  *

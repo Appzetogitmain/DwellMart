@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { FiSave, FiMapPin, FiCrosshair } from "react-icons/fi";
+import { FiSave, FiMapPin, FiCrosshair, FiCompass } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { updateVendorQuickCommerceSettings } from "../services/vendorService";
 import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
+import PlaceAutocompleteInput from "../../../shared/maps/PlaceAutocompleteInput";
+import { reverseGeocode } from "../../../shared/maps/googleMaps";
 
 const STORE_TYPES = [
   { value: "dark_store", label: "Dark Store" },
@@ -33,17 +35,15 @@ const emptyHours = () =>
 
 /**
  * Quick Commerce operating profile editor.
- *
- * Location is captured as latitude/longitude with a "use my current location"
- * helper rather than an embedded map — the app has no mapping dependency, and
- * adding one is out of scope for this phase.
+ * Location is managed as a single authoritative Google Maps point + address.
  */
 const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
   const [form, setForm] = useState({
     storeType: "dark_store",
     latitude: "",
     longitude: "",
-    serviceRadiusKm: 5,
+    locationAddress: "",
+    serviceRadiusKm: 3,
     preparationTimeMins: 10,
     availabilityStatus: "open",
     busyExtraMins: 10,
@@ -67,6 +67,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
       storeType: profile.storeType || "dark_store",
       latitude: Array.isArray(coordinates) ? coordinates[1] ?? "" : "",
       longitude: Array.isArray(coordinates) ? coordinates[0] ?? "" : "",
+      locationAddress: profile.locationAddress || "",
       serviceRadiusKm: profile.serviceRadiusKm ?? 5,
       preparationTimeMins: profile.preparationTimeMins ?? 10,
       availabilityStatus: profile.availabilityStatus || "open",
@@ -101,24 +102,87 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
       prev.map((entry) => (entry.day === day ? { ...entry, [field]: value } : entry))
     );
 
+  const handlePlaceSelect = (placeAddress) => {
+    if (placeAddress.location) {
+      setForm((prev) => ({
+        ...prev,
+        latitude: Number(placeAddress.location.latitude.toFixed(6)),
+        longitude: Number(placeAddress.location.longitude.toFixed(6)),
+        locationAddress: placeAddress.formattedAddress || placeAddress.address || prev.locationAddress,
+      }));
+      toast.success("Location updated from Google Maps search.");
+    }
+  };
+
+  const handleMapLocationChange = async ({ latitude, longitude }) => {
+    const lat = Number(latitude.toFixed(6));
+    const lng = Number(longitude.toFixed(6));
+    setForm((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+    }));
+    try {
+      const result = await reverseGeocode({ latitude: lat, longitude: lng });
+      if (result?.formattedAddress) {
+        setForm((prev) => ({
+          ...prev,
+          locationAddress: result.formattedAddress,
+        }));
+      }
+    } catch {
+      // Reverse geocoding optional fallback
+    }
+  };
+
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast.error("Your browser does not support location access.");
       return;
     }
     setIsLocating(true);
+
+    const applyPosition = async (position) => {
+      const lat = Number(position.coords.latitude.toFixed(6));
+      const lng = Number(position.coords.longitude.toFixed(6));
+      let fetchedAddress = `GPS Location (${lat}, ${lng})`;
+      try {
+        const result = await reverseGeocode({ latitude: lat, longitude: lng });
+        if (result?.formattedAddress) {
+          fetchedAddress = result.formattedAddress;
+        }
+      } catch {
+        // Fallback string
+      }
+      setForm((prev) => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        locationAddress: fetchedAddress,
+      }));
+      setIsLocating(false);
+      toast.success(`GPS Location captured: Lat ${lat}, Lng ${lng}`);
+    };
+
+    const tryLowAccuracy = () => {
+      navigator.geolocation.getCurrentPosition(
+        applyPosition,
+        (err) => {
+          setIsLocating(false);
+          if (err.code === err.PERMISSION_DENIED) {
+            toast.error("Location permission denied in browser settings. Please allow location access.");
+          } else {
+            toast.error("Could not read GPS location. Search your store address above.");
+          }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+      );
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setField("latitude", Number(position.coords.latitude.toFixed(6)));
-        setField("longitude", Number(position.coords.longitude.toFixed(6)));
-        setIsLocating(false);
-        toast.success("Location captured. Confirm it matches your store address.");
-      },
-      () => {
-        setIsLocating(false);
-        toast.error("Could not read your location. Enter coordinates manually.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      applyPosition,
+      tryLowAccuracy,
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
     );
   };
 
@@ -166,6 +230,7 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
         .map((code) => code.trim())
         .filter(Boolean),
       ...(hasLat ? { latitude: Number(form.latitude), longitude: Number(form.longitude) } : {}),
+      locationAddress: form.locationAddress || undefined,
     };
 
     setIsSaving(true);
@@ -252,58 +317,71 @@ const QuickCommerceSettingsForm = ({ vendor, onSaved }) => {
           />
         </div>
 
-        <div className="md:col-span-2">
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-semibold text-gray-700">
-              Store Location <span className="text-red-500">*</span>
-            </label>
+        {/* Unified Quick Commerce Location Section */}
+        <div className="md:col-span-2 bg-amber-50/40 p-4 rounded-xl border border-amber-200/70 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <FiCompass className="text-amber-600" />
+                Quick Commerce Fulfillment Location <span className="text-red-500">*</span>
+              </h4>
+              <p className="text-xs text-gray-600 mt-0.5">
+                This location is used to calculate delivery distance, serviceability, delivery charges and ETA.
+              </p>
+            </div>
             <button
               type="button"
               onClick={handleUseCurrentLocation}
               disabled={isLocating}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg hover:bg-amber-100 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-white border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-100 disabled:opacity-50 shadow-sm shrink-0"
             >
               <FiCrosshair />
-              {isLocating ? "Locating..." : "Use my current location"}
+              {isLocating ? "Locating..." : "Use current GPS location"}
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="relative">
-              <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="number"
-                step="any"
-                placeholder="Latitude (e.g. 12.9716)"
-                value={form.latitude}
-                onChange={(e) => setField("latitude", e.target.value)}
-                className={`${inputClass} pl-10`}
-              />
-            </div>
-            <div className="relative">
-              <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="number"
-                step="any"
-                placeholder="Longitude (e.g. 77.5946)"
-                value={form.longitude}
-                onChange={(e) => setField("longitude", e.target.value)}
-                className={`${inputClass} pl-10`}
-              />
-            </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Search Store Address on Google Maps
+            </label>
+            <PlaceAutocompleteInput
+              onSelect={handlePlaceSelect}
+              placeholder="Search store address or landmark..."
+            />
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Fulfillment Location Address</label>
+            <input
+              type="text"
+              value={form.locationAddress || ""}
+              onChange={(e) => setField("locationAddress", e.target.value)}
+              placeholder="Google Maps address string..."
+              className={inputClass}
+            />
+          </div>
+
+          {/* Read-only coordinates badge bar instead of raw editable boxes */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white border border-amber-200 rounded-lg text-xs">
+            <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+              <FiMapPin className="text-amber-600" />
+              Authoritative Coordinates:
+            </span>
+            {form.latitude !== "" && form.longitude !== "" ? (
+              <span className="font-mono bg-amber-50 text-amber-900 px-2.5 py-1 rounded-md border border-amber-300 font-bold">
+                Lat: {Number(form.latitude).toFixed(6)} | Lng: {Number(form.longitude).toFixed(6)}
+              </span>
+            ) : (
+              <span className="text-amber-700 font-semibold italic">No map location selected yet</span>
+            )}
+          </div>
+
           <GoogleMapPicker
-            className="mt-3"
+            className="mt-2"
             value={{ latitude: form.latitude, longitude: form.longitude }}
-            onChange={({ latitude, longitude }) => {
-              setField("latitude", Number(latitude.toFixed(6)));
-              setField("longitude", Number(longitude.toFixed(6)));
-            }}
+            onChange={handleMapLocationChange}
             height={220}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Customers within your delivery radius of this point can order from you.
-            Without a location your store cannot be found.
-          </p>
         </div>
 
         <div>

@@ -372,6 +372,17 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
             id: String(vendor._id),
             storeName: vendor.storeName,
         },
+        debug: {
+            vendorId: String(vendor._id),
+            vendorLocation: vendorPoint,
+            customerLocation: { latitude, longitude },
+            distanceKm: Number(distanceKm.toFixed(3)),
+            baseFee: effective.baseFee,
+            perKmFee: effective.perKmFee,
+            calculatedDeliveryFee: deliveryFee,
+            serviceRadiusKm: effective.maxDistanceKm,
+            serviceable: true,
+        },
     }, 'Quick Commerce checkout estimate calculated.'));
 }));
 

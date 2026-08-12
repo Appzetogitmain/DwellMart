@@ -119,6 +119,7 @@ export const CHILD_PERMISSION_MAP = {
   "Delivery Boys": "delivery.view",
   "Cash Collection": "delivery.edit",
   "Assign Delivery": "delivery.approve",
+  "Rider Payouts": "wallet.view",
 
   // Offers & Marketing
   "Home Sliders": "offers.view",

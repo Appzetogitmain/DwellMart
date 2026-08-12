@@ -92,7 +92,11 @@ export const accrueDeliveryEarning = async ({ order, deliveryBoyId = null }) => 
     }).lean();
     if (existing) return existing;
 
+    // Fulfillment separation: Only Quick Commerce orders use internal rider earnings.
+    // Retail & Wholesale use 3PL third-party logistics and must not trigger internal rider earnings.
     const experience = String(order.experience || EXPERIENCES.MARKETPLACE);
+    if (experience !== EXPERIENCES.QUICK_COMMERCE) return null;
+
     const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
 
     const card = await resolveRateCard({

@@ -77,6 +77,9 @@ router.post('/orders/:id/resend-delivery-otp', ...deliveryAuth, orderController.
 router.post('/orders/:id/customer-unreachable', ...deliveryAuth, orderController.markCustomerUnreachable);
 router.post('/orders/:id/schedule-retry', ...deliveryAuth, orderController.scheduleDeliveryRetry);
 router.post('/orders/:id/return-to-store', ...deliveryAuth, orderController.returnToStore);
+router.post('/orders/:id/reject', ...deliveryAuth, orderController.rejectAssignedOrder);
+router.post('/orders/:id/accept-offer', ...deliveryAuth, orderController.acceptOfferHandler);
+router.post('/orders/:id/reject-offer', ...deliveryAuth, orderController.rejectOfferHandler);
 
 // Live tracking — the rider reports position, the customer's order room receives it.
 router.patch(

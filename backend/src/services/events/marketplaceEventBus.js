@@ -280,7 +280,7 @@ export const registerMarketplaceEventHandlers = () => {
         await notifyVendorOfNewQuickCommerceOrder(order);
     });
 
-    marketplaceEventBus.on(MARKETPLACE_EVENTS.QC_ORDER_PLACED, async ({ order }) => {
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.QC_ORDER_READY, async ({ order }) => {
         const { assignRiderForQuickCommerceOrder } = await import('../riderAssignment.service.js');
         if (!order) return;
         await assignRiderForQuickCommerceOrder(order);

@@ -651,6 +651,8 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
     const {
         latitude,
         longitude,
+        locationAddress,
+        formattedAddress,
         serviceRadiusKm,
         ...rest
     } = req.body;
@@ -658,8 +660,13 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
     const profile = vendor.quickCommerceProfile?.toObject?.() ?? { ...(vendor.quickCommerceProfile || {}) };
     const next = { ...profile, ...rest };
 
+    const resolvedAddress = String(locationAddress || formattedAddress || rest.locationAddress || profile.locationAddress || '').trim();
+    if (resolvedAddress) {
+        next.locationAddress = resolvedAddress;
+    }
+
     // Coordinates arrive as lat/lng and are stored as a GeoJSON Point.
-    if (latitude !== undefined && longitude !== undefined) {
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
         try {
             next.location = buildLocationPoint({ latitude, longitude });
         } catch (err) {
@@ -687,10 +694,9 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
             200,
             {
                 quickCommerceProfile: vendor.quickCommerceProfile,
-                // Availability is derived server-side and returned so the UI
-                // never has to recompute it.
                 availability,
                 location: pointToLatLng(vendor.quickCommerceProfile?.location),
+                locationAddress: vendor.quickCommerceProfile?.locationAddress || null,
             },
             'Quick Commerce settings updated.'
         )

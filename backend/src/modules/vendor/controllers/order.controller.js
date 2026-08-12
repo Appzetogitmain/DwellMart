@@ -18,6 +18,7 @@ import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAler
 import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
 import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
 import { getVendorWithdrawableCommissions } from '../../../services/commission.service.js';
+import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
 import {
     baseQuickCommerceMatch,
     resolveDateRange,
@@ -110,7 +111,9 @@ export const getVendorOrderById = asyncHandler(async (req, res) => {
                 { 'vendorItems.vendorId': new mongoose.Types.ObjectId(vendorId) },
             ],
         }],
-    }).lean();
+    })
+        .populate('deliveryBoyId', 'name phone vehicleType vehicleNumber status')
+        .lean();
 
     if (!rawOrder) throw new ApiError(404, 'Order not found.');
 
@@ -232,13 +235,14 @@ export const updateQuickCommerceOrderStatus = asyncHandler(async (req, res) => {
     applyQuickCommerceStatus(order, status);
     await order.save();
 
-    // Accepting IS acknowledging — a store that has started work does not also
-    // need to dismiss an alert, and leaving it open would escalate an order
-    // that is already being prepared.
     if (status === QUICK_COMMERCE_ORDER_STATUS.ACCEPTED) {
         await acknowledgeVendorOrderAlert(order._id, req.user.id).catch((err) => {
             console.warn(`[QC Alert] Acknowledge failed for ${order.orderId}: ${err.message}`);
         });
+    }
+
+    if (status === QUICK_COMMERCE_ORDER_STATUS.READY) {
+        marketplaceEventBus.emit(MARKETPLACE_EVENTS.QC_ORDER_READY, { order });
     }
 
     await publishQuickCommerceStatus(order, status);

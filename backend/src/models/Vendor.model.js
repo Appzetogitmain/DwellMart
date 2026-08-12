@@ -60,6 +60,7 @@ const vendorSchema = new mongoose.Schema(
             state: String,
             zipCode: String,
             country: String,
+            formattedAddress: String,
         },
         bankDetails: {
             accountName: { type: String },
@@ -109,6 +110,7 @@ const vendorSchema = new mongoose.Schema(
                     type: [Number],
                 },
             },
+            locationAddress: { type: String, trim: true },
             serviceRadiusKm: { type: Number, min: 0.5, default: 5 },
             // Fallback serviceability when a customer denies location access.
             servicedPincodes: [{ type: String, trim: true }],

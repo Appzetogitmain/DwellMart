@@ -101,6 +101,8 @@ export const updateQuickCommerceSettingsSchema = Joi.object({
     // Supplied as human-readable lat/lng; converted to GeoJSON server-side.
     latitude: Joi.number().min(LATITUDE_BOUNDS.min).max(LATITUDE_BOUNDS.max).optional(),
     longitude: Joi.number().min(LONGITUDE_BOUNDS.min).max(LONGITUDE_BOUNDS.max).optional(),
+    locationAddress: Joi.string().trim().allow('', null).max(500).optional(),
+    formattedAddress: Joi.string().trim().allow('', null).max(500).optional(),
     serviceRadiusKm: Joi.number().min(0.5).max(MAX_SERVICE_RADIUS_KM).optional(),
     maxDeliveryDistanceKm: Joi.number().min(0.5).max(MAX_SERVICE_RADIUS_KM).optional(),
     servicedPincodes: Joi.array().items(Joi.string().trim().max(12)).max(200).optional(),

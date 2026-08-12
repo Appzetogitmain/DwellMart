@@ -161,6 +161,28 @@ export default function QuickCommerceOrderPanel({ order, vendorId, onStatusUpdat
           </div>
         )}
       </div>
+
+      {order?.deliveryBoyId && (
+        <div className="pt-3 border-t border-amber-200/80 text-xs flex items-center justify-between bg-white/80 p-3 rounded-lg border border-amber-200">
+          <div>
+            <p className="font-extrabold text-gray-900 text-sm">Delivery Partner</p>
+            <p className="font-medium text-gray-800 mt-0.5">
+              Name: <strong>{typeof order.deliveryBoyId === 'object' ? order.deliveryBoyId.name : 'Assigned Agent'}</strong>
+            </p>
+            {typeof order.deliveryBoyId === 'object' && order.deliveryBoyId.phone && (
+              <p className="text-gray-600">Phone: {order.deliveryBoyId.phone}</p>
+            )}
+            {typeof order.deliveryBoyId === 'object' && order.deliveryBoyId.vehicleNumber && (
+              <p className="text-gray-500 text-[11px]">
+                Vehicle: {order.deliveryBoyId.vehicleType || 'Bike'} ({order.deliveryBoyId.vehicleNumber})
+              </p>
+            )}
+          </div>
+          <Badge variant="info" size="md" className="font-bold uppercase tracking-wider">
+            {order.quickCommerce?.assignment?.status || 'ASSIGNED'}
+          </Badge>
+        </div>
+      )}
     </div>
   );
 }

@@ -73,6 +73,12 @@ export const updateRiderLocation = asyncHandler(async (req, res) => {
             longitude,
             at: now.toISOString(),
         });
+    } else {
+        setImmediate(() => {
+            import('../../../services/riderAssignment.service.js').then(({ recoverEscalatedOrdersForRider }) => {
+                recoverEscalatedOrdersForRider(req.user.id).catch(() => null);
+            });
+        });
     }
 
     res.status(200).json(

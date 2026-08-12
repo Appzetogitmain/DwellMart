@@ -705,11 +705,21 @@ const VendorDetail = () => {
                           ? `${vendor.quickCommerceProfile?.serviceRadiusKm ?? 5} km radius · ${vendor.quickCommerceProfile?.preparationTimeMins ?? 10} min prep`
                           : "Vendor cannot list Quick Commerce products."}
                       </p>
-                      {vendorQuickCommerceEnabled
-                        && !vendor.quickCommerceProfile?.location?.coordinates?.length && (
-                        <p className="text-xs text-orange-600 mt-1">
-                          No store location set — this vendor will not appear in any nearby search.
-                        </p>
+                      {vendorQuickCommerceEnabled && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                          <p className="text-xs font-semibold text-gray-700">
+                            Fulfillment Location: <span className="font-normal text-gray-800">{vendor.quickCommerceProfile?.locationAddress || "No text address set"}</span>
+                          </p>
+                          {vendor.quickCommerceProfile?.location?.coordinates?.length === 2 ? (
+                            <p className="text-xs font-mono text-emerald-700 bg-emerald-50 inline-block px-2 py-0.5 rounded border border-emerald-200">
+                              Pin: {vendor.quickCommerceProfile.location.coordinates[1]?.toFixed(6)}, {vendor.quickCommerceProfile.location.coordinates[0]?.toFixed(6)}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-orange-600 font-semibold mt-1">
+                              ⚠️ No store map pin set — this vendor will not appear in nearby searches.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                     <button

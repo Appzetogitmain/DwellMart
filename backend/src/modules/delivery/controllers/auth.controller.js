@@ -324,6 +324,15 @@ export const updateProfile = asyncHandler(async (req, res) => {
         update,
         { new: true, runValidators: true }
     );
+
+    if (deliveryBoy?.status === 'available' && !deliveryBoy.activeOrderId) {
+        setImmediate(() => {
+            import('../../../services/riderAssignment.service.js').then(({ recoverEscalatedOrdersForRider }) => {
+                recoverEscalatedOrdersForRider(deliveryBoy._id).catch(() => null);
+            });
+        });
+    }
+
     res.status(200).json(new ApiResponse(200, deliveryBoy, 'Profile updated.'));
 });
 

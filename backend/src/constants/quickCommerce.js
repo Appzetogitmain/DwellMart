@@ -37,7 +37,7 @@ export const LATITUDE_BOUNDS = { min: -90, max: 90 };
 export const LONGITUDE_BOUNDS = { min: -180, max: 180 };
 
 /** Platform ceiling for a vendor-configured delivery radius. */
-export const MAX_SERVICE_RADIUS_KM = 3;
+export const MAX_SERVICE_RADIUS_KM = 25;
 
 /** ETA + fee defaults. Overridable per-platform via the `quick_commerce` Settings key. */
 export const DEFAULT_AVERAGE_SPEED_KMPH = 25;
@@ -120,9 +120,10 @@ export const QUICK_COMMERCE_RIDER_STATUSES = ['picked_up', 'arriving', 'delivere
  * instead of sitting silently in `pending` forever.
  */
 export const QUICK_COMMERCE_ASSIGNMENT_STATUS = {
-    PENDING: 'pending',
-    ASSIGNED: 'assigned',
-    ESCALATED: 'escalated',
+    PENDING:       'pending',
+    OFFER_PENDING: 'offer_pending',  // rider has been offered the order but not yet accepted
+    ASSIGNED:      'assigned',
+    ESCALATED:     'escalated',
 };
 
 export const QUICK_COMMERCE_ASSIGNMENT_STATUS_VALUES = Object.values(QUICK_COMMERCE_ASSIGNMENT_STATUS);
@@ -157,6 +158,22 @@ export const VENDOR_ACK_TIMEOUT_SECS = 120;
 
 /** How often the escalation/SLA sweep runs. */
 export const QUICK_COMMERCE_SWEEP_INTERVAL_MS = 60 * 1000;
+
+/**
+ * How long a rider has to accept an offer before it is automatically
+ * expired and the next nearest eligible rider is tried.
+ *
+ * 45 seconds gives the rider enough time to react without holding an order
+ * for so long that the ETA promise becomes undeliverable.
+ */
+export const RIDER_OFFER_TIMEOUT_SECS = 45;
+
+/**
+ * Maximum number of consecutive rider offers for a single order before it is
+ * escalated to the admin queue.  Three attempts cover the typical "nearest
+ * rider is AFK or on another call" scenario without burning through the pool.
+ */
+export const RIDER_OFFER_MAX_ATTEMPTS = 3;
 
 /**
  * Statuses at which an order is still awaiting the store's response.

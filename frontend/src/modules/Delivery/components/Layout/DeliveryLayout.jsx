@@ -4,6 +4,10 @@ import DeliverySidebar from "./DeliverySidebar";
 import DeliveryHeader from "./DeliveryHeader";
 import DeliveryBottomNav from "./DeliveryBottomNav";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
+import { useDeliveryAuthStore } from "../../store/deliveryStore";
+import useDeliverySocket from "../../hooks/useDeliverySocket";
+import useRiderLocationTracking from "../../hooks/useRiderLocationTracking";
+import OrderOfferModal from "../OrderOfferModal";
 
 const DeliveryLayout = () => {
   const [isDesktopOpen, setIsDesktopOpen] = useState(() => {
@@ -13,6 +17,17 @@ const DeliveryLayout = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const { fetchNotifications } = useDeliveryNotificationStore();
+  const isAuthenticated = useDeliveryAuthStore((s) => s.isAuthenticated);
+  const deliveryBoy = useDeliveryAuthStore((s) => s.deliveryBoy);
+
+  // ── Real-time socket connection (always active while authenticated) ──────────
+  useDeliverySocket({ enabled: isAuthenticated });
+
+  // ── Stream rider location pings while online/available/busy ──────────────
+  const isTrackingEnabled =
+    isAuthenticated &&
+    (deliveryBoy?.status === 'available' || deliveryBoy?.status === 'busy');
+  useRiderLocationTracking(isTrackingEnabled, 25000);
 
   useEffect(() => {
     fetchNotifications(1);
@@ -66,8 +81,12 @@ const DeliveryLayout = () => {
 
       {/* Mobile Bottom Navigation */}
       <DeliveryBottomNav />
+
+      {/* ── Quick Commerce Order Offer Modal (global, overlays all screens) ── */}
+      <OrderOfferModal />
     </div>
   );
 };
 
 export default DeliveryLayout;
+

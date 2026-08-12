@@ -678,6 +678,28 @@ export const returnToStore = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, order, 'Order returned to store and marked delivery failed.'));
 });
 
+// POST /api/delivery/orders/:id/reject
+export const rejectAssignedOrder = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const query = {
+        deliveryBoyId: req.user.id,
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found or not assigned to you.');
+
+    const { rejectAssignment } = await import('../../../services/riderAssignment.service.js');
+    const outcome = await rejectAssignment(req.user.id, order._id, reason);
+
+    res.status(200).json(new ApiResponse(200, outcome, 'Order assignment rejected and reassignment initiated.'));
+});
+
+
 // GET /api/delivery/orders/analytics
 export const getRiderAnalyticsHandler = asyncHandler(async (req, res) => {
     const { startDate, endDate, days } = req.query;
@@ -689,3 +711,97 @@ export const getRiderAnalyticsHandler = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, analytics, 'Rider analytics fetched successfully.'));
 });
+
+/**
+ * POST /api/delivery/orders/:id/accept-offer
+ *
+ * The rider accepts the Quick Commerce order offer they received.
+ *
+ * This is the ONLY moment the rider transitions from AVAILABLE → BUSY.
+ * Before this call the rider's document is untouched — they remain
+ * status:'available', activeOrderId:null.
+ *
+ * The service performs two atomic guards:
+ *   1. claimRider — only succeeds if rider is still free.
+ *   2. Order update — only succeeds if offer is still OFFER_PENDING for this rider.
+ * A race between two concurrent accepts is therefore safely resolved.
+ */
+export const acceptOfferHandler = asyncHandler(async (req, res) => {
+    const query = {
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    // Validate the offer is addressed to this rider before delegating.
+    const assignment = order.quickCommerce?.assignment;
+    if (assignment?.status !== 'offer_pending') {
+        throw new ApiError(409, `Order is not in offer_pending state (current: ${assignment?.status || 'unknown'}).`);
+    }
+    if (String(assignment.offeredTo) !== String(req.user.id)) {
+        throw new ApiError(403, 'This offer was not issued to you.');
+    }
+
+    const { acceptOffer } = await import('../../../services/riderAssignment.service.js');
+    const result = await acceptOffer(req.user.id, order._id);
+
+    if (!result.accepted) {
+        const messages = {
+            OFFER_EXPIRED:             'The offer has expired. Please wait for a new assignment.',
+            RIDER_NO_LONGER_AVAILABLE: 'You are no longer available. Please mark yourself Available first.',
+            RACE_LOST:                 'Another update already processed this offer. Please refresh.',
+        };
+        const msg = messages[result.reason] || `Could not accept offer: ${result.reason}`;
+        throw new ApiError(409, msg);
+    }
+
+    res.status(200).json(new ApiResponse(200, result.order, 'Order accepted successfully.'));
+});
+
+/**
+ * POST /api/delivery/orders/:id/reject-offer
+ *
+ * The rider explicitly declines the offer.
+ *
+ * Because the rider was NEVER marked busy during the offer phase, there is no
+ * need to call releaseRider here. The service simply clears the offer fields,
+ * records this rider in offerRejectedBy, and immediately searches for the next
+ * eligible candidate to offer the order to.
+ */
+export const rejectOfferHandler = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const query = {
+        isDeleted: { $ne: true },
+        $or: [{ orderId: req.params.id }],
+    };
+    if (mongoose.isValidObjectId(req.params.id)) {
+        query.$or.push({ _id: req.params.id });
+    }
+
+    const order = await Order.findOne(query);
+    if (!order) throw new ApiError(404, 'Order not found.');
+
+    // Allow rejection only if this rider holds the current offer.
+    const assignment = order.quickCommerce?.assignment;
+    const riderId = String(req.user.id);
+    const offeredTo = String(assignment?.offeredTo || '');
+    const isAssignedRider = String(order.deliveryBoyId || '') === riderId;
+
+    if (assignment?.status !== 'offer_pending' && !isAssignedRider) {
+        throw new ApiError(409, 'No active offer or assignment found for you on this order.');
+    }
+    if (assignment?.status === 'offer_pending' && offeredTo !== riderId) {
+        throw new ApiError(403, 'This offer was not issued to you.');
+    }
+
+    const { rejectAssignment } = await import('../../../services/riderAssignment.service.js');
+    const outcome = await rejectAssignment(riderId, order._id, reason);
+
+    res.status(200).json(new ApiResponse(200, outcome, 'Offer rejected. Searching for next available rider.'));
+});
+

@@ -44,14 +44,20 @@ const StoreSettings = () => {
 
   useEffect(() => {
     if (vendor) {
+      const formatAddressString = (addr) => {
+        if (!addr) return "";
+        if (typeof addr === "string") return addr;
+        if (addr.formattedAddress) return addr.formattedAddress;
+        const parts = [addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean);
+        return parts.length > 0 ? parts.join(", ") : "";
+      };
+
       setFormData({
         storeName:        vendor.storeName || "",
         storeLogo:        vendor.storeLogo || "",
         storeDescription: vendor.storeDescription || "",
         phone:            vendor.phone || "",
-        address: vendor.address
-          ? `${vendor.address.street || ""}, ${vendor.address.city || ""}, ${vendor.address.state || ""} ${vendor.address.zipCode || ""}`
-          : "",
+        address:          formatAddressString(vendor.address),
       });
     }
   }, [vendor]);
@@ -95,17 +101,17 @@ const StoreSettings = () => {
     if (!vendor) return;
     try {
       let addressData = vendor.address || {};
-      if (formData.address) {
-        const parts = formData.address.split(",");
-        if (parts.length >= 3) {
-          addressData = {
-            street:  parts[0].trim(),
-            city:    parts[1].trim(),
-            state:   parts[2].trim().split(" ")[0],
-            zipCode: parts[2].trim().split(" ")[1] || "",
-            country: vendor.address?.country || "India",
-          };
-        }
+      if (formData.address !== undefined) {
+        const raw = String(formData.address || "").trim();
+        const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+        addressData = {
+          street: parts[0] || raw,
+          city: parts[1] || vendor.address?.city || "",
+          state: parts[2] ? parts[2].split(" ")[0] : (vendor.address?.state || ""),
+          zipCode: parts[2] && parts[2].split(" ")[1] ? parts[2].split(" ")[1] : (parts[3] || vendor.address?.zipCode || ""),
+          country: vendor.address?.country || "India",
+          formattedAddress: raw,
+        };
       }
       await updateProfile({
         storeName:        formData.storeName,

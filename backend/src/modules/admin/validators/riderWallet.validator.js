@@ -20,16 +20,16 @@ export const orderIdParamSchema = Joi.object({
 export const withdrawalListQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(20),
-    status: Joi.string().valid(...WITHDRAWAL_STATUSES, 'all').default('all'),
-    search: Joi.string().allow('').max(120).default(''),
+    status: Joi.string().valid(...WITHDRAWAL_STATUSES, 'all', '').allow('', null).default('all'),
+    search: Joi.string().allow('', null).max(120).default(''),
 });
 
 export const walletListQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(20),
-    search: Joi.string().allow('').max(120).default(''),
-    blocked: Joi.string().valid('true', 'false').optional(),
-    sort: Joi.string().valid('available', 'pending', 'earned', 'recent').default('available'),
+    search: Joi.string().allow('', null).max(120).default(''),
+    blocked: Joi.string().valid('true', 'false', '').allow('', null).optional(),
+    sort: Joi.string().valid('available', 'pending', 'earned', 'recent', '').allow('', null).default('available'),
 });
 
 export const approveWithdrawalSchema = Joi.object({
@@ -148,8 +148,8 @@ export const rateCardIdParamSchema = Joi.object({
 });
 
 export const rateCardListQuerySchema = Joi.object({
-    scope: Joi.string().valid(...RATE_CARD_SCOPES, 'all').optional(),
-    isActive: Joi.string().valid('true', 'false').optional(),
+    scope: Joi.string().valid(...RATE_CARD_SCOPES, 'all', '').allow('', null).optional(),
+    isActive: Joi.string().valid('true', 'false', '').allow('', null).optional(),
 });
 
 export const walletAnalyticsQuerySchema = Joi.object({

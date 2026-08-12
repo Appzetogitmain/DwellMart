@@ -11,6 +11,7 @@ import { registerMarketplaceEventHandlers } from "./services/events/marketplaceE
 import { RetryQueueService } from "./services/events/RetryQueueService.js";
 import { sweepExpiredReservations } from "./services/checkout/InventoryReservationService.js";
 import { startOrderRecoveryWorker } from "./services/checkout/OrderRecoveryWorker.js";
+import { startEscalatedOrderRecoveryWorker } from "./services/riderAssignment.service.js";
 import { COD_CAPTURE_JOB, handleCodCaptureRetry } from "./services/deliveryCash.service.js";
 import { RIDER_EARNING_JOB, handleRiderEarningRetry } from "./services/wallet/riderEarnings.service.js";
 import { startWalletMaturityWorker } from "./services/wallet/walletMaturity.worker.js";
@@ -54,6 +55,9 @@ const startServer = async () => {
     // ── Order recovery worker (5 min — resumes stuck paid sessions) ──────────
     startOrderRecoveryWorker(5 * 60_000);
 
+    // ── Escalated QC Order recovery worker (2 min — matches available riders to escalated QC orders) ──
+    startEscalatedOrderRecoveryWorker(2 * 60_000);
+
     // ── Rider wallet maturity sweep (5 min — PENDING → AVAILABLE earnings) ──
     startWalletMaturityWorker(5 * 60_000);
 
@@ -63,6 +67,7 @@ const startServer = async () => {
       console.log(`✅ InventoryReservation sweep: every 5 minutes`);
       console.log(`✅ RetryQueue worker:          every 60 seconds`);
       console.log(`✅ OrderRecovery worker:       every 5 minutes`);
+      console.log(`✅ EscalatedOrderRecovery:     every 2 minutes`);
       console.log(`✅ RiderWallet maturity:      every 5 minutes`);
     });
   } catch (error) {

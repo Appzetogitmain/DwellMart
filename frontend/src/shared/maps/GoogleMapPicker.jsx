@@ -21,6 +21,7 @@ const GoogleMapPicker = ({ value, onChange, height = 240, className = "" }) => {
 
   useEffect(() => {
     let cancelled = false;
+    let resizeObserver;
     loadGoogleMaps().then((maps) => {
       if (cancelled || !containerRef.current) return;
       const selected = toPoint(value) || INDIA_CENTER;
@@ -47,12 +48,26 @@ const GoogleMapPicker = ({ value, onChange, height = 240, className = "" }) => {
         setMarker({ lat: point.latitude, lng: point.longitude });
         onChangeRef.current?.(point);
       });
+
+      // Recalculate canvas tiles when container resizes or tab switches
+      if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          if (mapRef.current && window.google?.maps) {
+            window.google.maps.event.trigger(mapRef.current, "resize");
+            const curPoint = toPoint(value) || INDIA_CENTER;
+            mapRef.current.setCenter({ lat: curPoint.latitude, lng: curPoint.longitude });
+          }
+        });
+        resizeObserver.observe(containerRef.current);
+      }
+
       setStatus("ready");
     }).catch(() => !cancelled && setStatus("unavailable"));
 
     return () => {
       cancelled = true;
       listenerRef.current?.remove?.();
+      resizeObserver?.disconnect?.();
     };
     // The map is created once; the next effect updates its pin.
     // eslint-disable-next-line react-hooks/exhaustive-deps

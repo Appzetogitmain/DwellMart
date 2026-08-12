@@ -283,6 +283,29 @@ const orderSchema = new mongoose.Schema(
                 assignedAt: { type: Date },
                 escalatedAt: { type: Date },
                 searchRadiusKm: { type: Number },
+                /**
+                 * Offer-phase fields.
+                 *
+                 * offeredTo     — the rider who currently holds an open offer.
+                 *                 Null once accepted, rejected, or expired.
+                 * offerExpiresAt — absolute time when the open offer expires.
+                 *                  The background timer uses this to know whether
+                 *                  to proceed with expiry or bail (race guard).
+                 * offerRejectedBy — accumulating list of rider ids that have
+                 *                   rejected or timed out on this order; they are
+                 *                   excluded from every subsequent search so the
+                 *                   same rider is never offered the same order twice.
+                 */
+                offeredTo: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'DeliveryBoy',
+                    default: null,
+                },
+                offerExpiresAt: { type: Date, default: null },
+                offerRejectedBy: {
+                    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryBoy' }],
+                    default: [],
+                },
             },
         },
         totalSavings: { type: Number, default: 0 },

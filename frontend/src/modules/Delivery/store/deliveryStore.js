@@ -281,6 +281,23 @@ export const useDeliveryAuthStore = create(
             }),
             isUpdatingStatus: false,
           });
+
+          // Immediate location update when switching to available so assignment engine sees fresh pin
+          if (status === 'available' && typeof navigator !== 'undefined' && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                import('../services/riderTrackingService').then(({ updateRiderLocation }) => {
+                  updateRiderLocation({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                  }).catch(() => null);
+                });
+              },
+              () => null,
+              { timeout: 5000 }
+            );
+          }
+
           return true;
         } catch (error) {
           set({ isUpdatingStatus: false });
