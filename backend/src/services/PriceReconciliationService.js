@@ -35,6 +35,17 @@ export const assertPriceConsistency = ({
     paymentAmount = null,
     vendorGroups = [],
     context = 'CHECKOUT_RECONCILIATION',
+    /**
+     * 'observe' logs a mismatch and lets the transaction proceed.
+     * 'enforce' throws, halting checkout.
+     *
+     * Despite its name this function has only ever observed: it returned a
+     * result object that both call sites discarded, so a detected mismatch
+     * never stopped an order. Enforcement is opt-in and must only be switched
+     * on after a soak shows zero mismatches — turning it on while a mismatch
+     * still exists would fail every affected checkout.
+     */
+    mode = 'observe',
 } = {}) => {
     const roundedCheckout = checkoutTotal !== null ? roundMoney(checkoutTotal) : null;
     const roundedPayment = paymentAmount !== null ? roundMoney(paymentAmount) : null;
@@ -101,6 +112,17 @@ export const assertPriceConsistency = ({
             `[PRICE_MISMATCH] Mismatch detected during ${context}! Details:`,
             JSON.stringify(details, null, 2)
         );
+
+        if (mode === 'enforce') {
+            const err = new Error(
+                'Order total does not match the amount authorised for payment. '
+                + 'Please refresh your cart and try again.'
+            );
+            err.statusCode = 409;
+            err.code = 'PRICE_CONSISTENCY_FAILED';
+            err.details = details;
+            throw err;
+        }
     }
 
     return {

@@ -5,7 +5,7 @@ import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { getActivePlanById, serializePlan } from '../../../services/billing/plan.service.js';
 import {
-    activateInternalSubscription,
+    activateSubscription,
     getCurrentVendorSubscription,
     serializeSubscription,
 } from '../../../services/billing/subscriptionState.service.js';
@@ -94,7 +94,31 @@ export const changePlan = asyncHandler(async (req, res) => {
         );
     }
 
-    const subscription = await activateInternalSubscription({ vendor, plan, gateway: 'internal' });
+    // ── A priced plan is never activated here ────────────────────────────────
+    // `changePlan` previously activated any plan immediately with no payment,
+    // letting a vendor self-upgrade to the most expensive plan for free at any
+    // time. Payment now happens at the gateway; activation happens in the
+    // webhook / verify path.
+    const isFreePlan = Number(plan.price_inr || 0) === 0 && Number(plan.price_usd || 0) === 0;
+    if (!isFreePlan) {
+        return res.status(402).json(
+            new ApiResponse(
+                402,
+                {
+                    paymentRequired: true,
+                    planId: String(plan._id),
+                    plan: serializePlan(plan, vendor.country),
+                },
+                'This plan requires payment. Continue to checkout to complete the change.'
+            )
+        );
+    }
+
+    const subscription = await activateSubscription({
+        vendor,
+        plan,
+        activationSource: 'zero_price_plan',
+    });
 
     return res.status(200).json(
         new ApiResponse(

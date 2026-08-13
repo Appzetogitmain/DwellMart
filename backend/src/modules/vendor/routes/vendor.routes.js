@@ -13,6 +13,7 @@ import * as returnController from '../controllers/return.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as pickupLocationController from '../controllers/pickupLocation.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
 import { getTaxPricingRules } from '../../admin/controllers/catalog.controller.js';
 import {
@@ -199,6 +200,17 @@ router.get('/shipping/rates', ...vendorAuth, shippingController.getShippingRates
 router.post('/shipping/rates', ...vendorAuth, shippingController.createShippingRate);
 router.put('/shipping/rates/:id', ...vendorAuth, shippingController.updateShippingRate);
 router.delete('/shipping/rates/:id', ...vendorAuth, shippingController.deleteShippingRate);
+
+// Pickup locations
+// Uses vendorAuthOnly for reads so an expired-subscription vendor can still see
+// where they fulfil from; writes go through vendorAuth, matching every other
+// store-configuration surface.
+router.get('/pickup-locations', ...vendorAuthOnly, pickupLocationController.listPickupLocations);
+router.post('/pickup-locations', ...vendorAuth, pickupLocationController.createPickupLocation);
+router.post('/pickup-locations/import', ...vendorAuth, pickupLocationController.importPickupLocations);
+router.put('/pickup-locations/:id', ...vendorAuth, pickupLocationController.updatePickupLocation);
+router.patch('/pickup-locations/:id/default', ...vendorAuth, pickupLocationController.setDefaultPickupLocation);
+router.delete('/pickup-locations/:id', ...vendorAuth, pickupLocationController.deletePickupLocation);
 
 // Uploads (Cloudinary via temp local multer upload)
 router.post('/uploads/image', ...vendorAuth, uploadSingle('image'), uploadController.uploadImage);

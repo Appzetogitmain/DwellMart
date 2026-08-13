@@ -94,6 +94,40 @@ export const SETTINGS_CATEGORY_SCHEMAS = {
     quick_commerce: quickCommerceSchema,
     reviews: reviewsSchema,
     delivery: Joi.object({ maxCodCashLimit: Joi.number().min(0) }).unknown(true),
+    /**
+     * Checkout safety switches.
+     *
+     * `enforcePriceConsistency` decides whether a mismatch between the amount
+     * authorised for payment and the sum of the orders created halts checkout
+     * or is only recorded. Kept here, not in code, so it can be flipped during
+     * an incident without a deploy.
+     */
+    checkout: Joi.object({ enforcePriceConsistency: Joi.boolean() }).unknown(true),
+    /** Vendor payout policy: escrow period, payout floor, default commission. */
+    vendor_finance: Joi.object({
+        escrowDays: Joi.number().integer().min(0).max(365),
+        minimumPayout: Joi.number().min(0),
+        defaultCommissionRate: Joi.number().min(0).max(100),
+    }).unknown(true),
+    /**
+     * Refund execution policy.
+     *
+     * `executionEnabled` defaults to false so the whole refund pipeline — queue,
+     * ledger, reversals, UI — can ship and be observed before any money moves.
+     * `maxRefundAmount` bounds the damage of a defect while the pipeline is
+     * still being trusted. A refund sent to the gateway cannot be recalled, so
+     * both of these are ceilings, not suggestions.
+     */
+    refunds: Joi.object({
+        executionEnabled: Joi.boolean(),
+        maxRefundAmount: Joi.number().min(0).max(1000000),
+    }).unknown(true),
+    /** Customer-facing fulfilment commitments: return windows, delivery estimate. */
+    fulfilment: Joi.object({
+        quickCommerceReturnWindowHours: Joi.number().integer().min(0).max(8760),
+        marketplaceReturnWindowHours: Joi.number().integer().min(0).max(8760),
+        estimatedDeliveryDays: Joi.number().integer().min(0).max(90),
+    }).unknown(true),
     shipping: Joi.object().unknown(true),
     seo: Joi.object().unknown(true),
     notifications: Joi.object().unknown(true),

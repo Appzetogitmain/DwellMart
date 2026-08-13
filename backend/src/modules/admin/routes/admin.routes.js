@@ -24,6 +24,7 @@ import * as subadminController from '../controllers/subadmin.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
 import * as feedbackController from '../controllers/feedback.controller.js';
 import * as riderWalletController from '../controllers/riderWallet.controller.js';
+import * as refundController from '../controllers/refund.controller.js';
 import CheckoutSession from '../../../models/CheckoutSession.model.js';
 import { FulfillmentGroup } from '../../../models/FulfillmentGroup.model.js';
 import asyncHandler from '../../../utils/asyncHandler.js';
@@ -43,7 +44,7 @@ import {
 
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { enforceAccountStatus } from '../../../middlewares/authorize.js';
-import { requireAdmin, requireSuperAdmin, checkPermission, checkAnyPermission } from '../../../middlewares/permission.middleware.js';
+import { requireAdmin, requireSuperAdmin, checkPermission, checkAnyPermission, checkSettingsCategoryPermission } from '../../../middlewares/permission.middleware.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
@@ -152,22 +153,23 @@ router.get('/analytics/top-products', ...perm(PERMISSIONS.DASHBOARD_VIEW), analy
 router.get('/analytics/customer-growth', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getCustomerGrowth);
 router.get('/analytics/recent-orders', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getRecentOrders);
 router.get('/analytics/sales', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getSalesData);
+router.get('/analytics/pl-summary', ...permAny(PERMISSIONS.REPORTS_VIEW, PERMISSIONS.WALLET_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getPlSummary);
 router.get('/analytics/finance-summary', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.WALLET_VIEW), analyticsController.getFinancialSummary);
 router.get('/analytics/inventory-stats', ...permAny(PERMISSIONS.DASHBOARD_VIEW, PERMISSIONS.PRODUCTS_VIEW), analyticsController.getInventoryStats);
 router.get('/analytics/wholesale', ...permAny(PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getWholesaleStats);
 router.get('/analytics/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_ANALYTICS_VIEW, PERMISSIONS.DASHBOARD_VIEW), analyticsController.getQuickCommerceStats);
 router.get('/analytics/global-experience', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.getGlobalExperienceAnalytics);
-router.get('/analytics/export', ...perm(PERMISSIONS.DASHBOARD_VIEW), analyticsController.exportAnalyticsData);
+router.get('/analytics/export', ...permAny(PERMISSIONS.REPORTS_EXPORT, PERMISSIONS.DASHBOARD_VIEW), analyticsController.exportAnalyticsData);
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get('/orders', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getAllOrders);
 // Registered before '/orders/:id' — otherwise the param route swallows the path.
-router.get('/orders/quick-commerce/unassigned', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getUnassignedQuickCommerceOrders);
+router.get('/orders/quick-commerce/unassigned', ...permAny(PERMISSIONS.QUICKCOMMERCE_ORDERS_MANAGE, PERMISSIONS.ORDERS_VIEW), orderController.getUnassignedQuickCommerceOrders);
 router.get('/orders/:id', ...perm(PERMISSIONS.ORDERS_VIEW), orderController.getOrderById);
 router.patch('/orders/:id/status', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.updateOrderStatus);
 router.patch('/orders/:id/assign-delivery', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.assignDeliveryBoy);
-router.post('/orders/:id/retry-assignment', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.retryQuickCommerceAssignment);
-router.post('/orders/:id/delivery-override', ...perm(PERMISSIONS.ORDERS_UPDATE), orderController.deliveryOverride);
+router.post('/orders/:id/retry-assignment', ...permAny(PERMISSIONS.QUICKCOMMERCE_ORDERS_MANAGE, PERMISSIONS.ORDERS_UPDATE), orderController.retryQuickCommerceAssignment);
+router.post('/orders/:id/delivery-override', ...permAny(PERMISSIONS.QUICKCOMMERCE_ORDERS_MANAGE, PERMISSIONS.ORDERS_UPDATE), orderController.deliveryOverride);
 router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
 // ─── Checkout Sessions (Enterprise Marketplace) ───────────────────────────────
@@ -222,7 +224,7 @@ router.post('/products/bulk-upload/process', ...perm(PERMISSIONS.PRODUCTS_ADD), 
 router.get('/products/bulk-upload/job/:jobId', ...perm(PERMISSIONS.PRODUCTS_VIEW), checkJobStatus);
 router.post('/products/bulk-upload/job/:jobId/cancel', ...perm(PERMISSIONS.PRODUCTS_ADD), cancelJobHandler);
 router.get('/products/bulk-upload/history', ...perm(PERMISSIONS.PRODUCTS_VIEW), getImportHistory);
-router.get('/products/export', ...perm(PERMISSIONS.PRODUCTS_VIEW), exportProducts);
+router.get('/products/export', ...permAny(PERMISSIONS.REPORTS_EXPORT, PERMISSIONS.PRODUCTS_VIEW), exportProducts);
 router.get('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getTaxPricingRules);
 router.get('/products/:id', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getProductById);
 router.post('/products', ...perm(PERMISSIONS.PRODUCTS_ADD), validate(createProductSchema), catalogController.createProduct);
@@ -277,7 +279,7 @@ router.delete('/delivery-boys/:id', ...perm(PERMISSIONS.DELIVERY_EDIT), validate
 router.patch('/delivery-boys/:id/status', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryStatusSchema), deliveryController.updateDeliveryBoyStatus);
 router.patch('/delivery-boys/:id/application-status', ...perm(PERMISSIONS.DELIVERY_APPROVE), validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryApplicationStatusSchema), deliveryController.updateDeliveryBoyApplicationStatus);
 router.post('/delivery-boys/:id/settle-cash', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
-router.get('/delivery-settlements', ...perm(PERMISSIONS.DELIVERY_VIEW), deliveryController.getDeliverySettlements);
+router.get('/delivery-settlements', ...permAny(PERMISSIONS.SETTLEMENTS_VIEW, PERMISSIONS.DELIVERY_VIEW), deliveryController.getDeliverySettlements);
 router.post('/delivery-settlements/:id/reject', ...perm(PERMISSIONS.DELIVERY_EDIT), deliveryController.rejectDeliveryCashSettlementHandler);
 router.post('/delivery-settlements/:id/cancel', ...perm(PERMISSIONS.DELIVERY_EDIT), deliveryController.cancelDeliveryCashSettlementHandler);
 router.put('/delivery-boys/bulk-experiences', ...perm(PERMISSIONS.DELIVERY_EDIT), validate(bulkUpdateDeliveryBoyExperiencesSchema), deliveryController.bulkUpdateDeliveryBoyExperiences);
@@ -314,11 +316,11 @@ router.post('/marketing/coupons', ...perm(PERMISSIONS.PROMOCODES_EDIT), marketin
 router.put('/marketing/coupons/:id', ...perm(PERMISSIONS.PROMOCODES_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateCoupon);
 router.delete('/marketing/coupons/:id', ...perm(PERMISSIONS.PROMOCODES_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteCoupon);
 
-router.get('/marketing/banners', ...perm(PERMISSIONS.BANNERS_VIEW), marketingController.getAllBanners);
-router.post('/marketing/banners', ...perm(PERMISSIONS.BANNERS_EDIT), marketingController.createBanner);
-router.patch('/marketing/banners/reorder', ...perm(PERMISSIONS.BANNERS_EDIT), marketingController.reorderBanners);
-router.put('/marketing/banners/:id', ...perm(PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateBanner);
-router.delete('/marketing/banners/:id', ...perm(PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteBanner);
+router.get('/marketing/banners', ...permAny(PERMISSIONS.SLIDERS_VIEW, PERMISSIONS.BANNERS_VIEW), marketingController.getAllBanners);
+router.post('/marketing/banners', ...permAny(PERMISSIONS.SLIDERS_EDIT, PERMISSIONS.BANNERS_EDIT), marketingController.createBanner);
+router.patch('/marketing/banners/reorder', ...permAny(PERMISSIONS.SLIDERS_EDIT, PERMISSIONS.BANNERS_EDIT), marketingController.reorderBanners);
+router.put('/marketing/banners/:id', ...permAny(PERMISSIONS.SLIDERS_EDIT, PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateBanner);
+router.delete('/marketing/banners/:id', ...permAny(PERMISSIONS.SLIDERS_EDIT, PERMISSIONS.BANNERS_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.deleteBanner);
 
 router.get('/marketing/testimonials', ...perm(PERMISSIONS.OFFERS_VIEW), marketingController.getAllTestimonials);
 router.post('/marketing/testimonials', ...perm(PERMISSIONS.OFFERS_EDIT), marketingController.createTestimonial);
@@ -369,8 +371,24 @@ router.put('/settings/general', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsCont
 // Permission-gated, matching '/settings/general' above. These were bound to
 // adminAuth alone, which let any authenticated subadmin read and rewrite every
 // settings category — including feature flags and payment configuration.
-router.get('/settings/:category', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getSettingsByCategory);
-router.put('/settings/:category', ...perm(PERMISSIONS.SETTINGS_EDIT), settingsController.updateSettingsByCategory);
+// Category-aware: `quickcommerce.settings.manage` now genuinely grants access
+// to the quick_commerce category, which the frontend already assumed. Holders
+// of the generic settings tokens are unaffected.
+const SETTINGS_CATEGORY_TOKENS = {
+    quick_commerce: PERMISSIONS.QUICKCOMMERCE_SETTINGS_MANAGE,
+};
+router.get(
+    '/settings/:category',
+    ...adminAuth,
+    checkSettingsCategoryPermission(SETTINGS_CATEGORY_TOKENS, PERMISSIONS.SETTINGS_VIEW),
+    settingsController.getSettingsByCategory
+);
+router.put(
+    '/settings/:category',
+    ...adminAuth,
+    checkSettingsCategoryPermission(SETTINGS_CATEGORY_TOKENS, PERMISSIONS.SETTINGS_EDIT),
+    settingsController.updateSettingsByCategory
+);
 
 // ─── Rider Earnings Wallet & Payouts ─────────────────────────────────────────
 // Reuses the existing WALLET_VIEW / WALLET_EDIT tokens, which already map to
@@ -405,9 +423,33 @@ router.post('/rider-wallets/:deliveryBoyId/adjust-cash', ...perm(PERMISSIONS.DEL
 // Earning reversal for a cancelled or refunded delivered order.
 router.post('/rider-earnings/:orderId/reverse', ...perm(PERMISSIONS.WALLET_EDIT), validate(riderOrderIdParamSchema, 'params'), validate(reverseEarningSchema), riderWalletController.reverseEarning);
 
+// ─── Financial integrity ──────────────────────────────────────────────────────
+// On-demand run of the invariants the remediation established. Read-only —
+// reports inconsistencies, never corrects them.
+router.get('/integrity-checks', ...adminAuth, requireSuperAdmin, asyncHandler(async (req, res) => {
+    const { runIntegrityChecks } = await import('../../../services/integrityMonitor.service.js');
+    const results = await runIntegrityChecks({ alert: false });
+    res.status(200).json(new ApiResponse(200, results, 'Integrity checks complete.'));
+}));
+
+// ─── Refunds ──────────────────────────────────────────────────────────────────
+// REFUNDS_VIEW gates reading the queue; money-moving actions require WALLET_EDIT,
+// which is the existing edit-level finance token. A refund is not something a
+// read-only finance viewer may issue.
+router.get('/refunds', ...perm(PERMISSIONS.REFUNDS_VIEW), refundController.listRefunds);
+router.get('/refunds/:id', ...perm(PERMISSIONS.REFUNDS_VIEW), refundController.getRefundById);
+router.post('/refunds', ...perm(PERMISSIONS.WALLET_EDIT), refundController.createRefund);
+router.post('/refunds/:id/execute', ...perm(PERMISSIONS.WALLET_EDIT), refundController.executeRefundHandler);
+router.post('/refunds/:id/retry', ...perm(PERMISSIONS.WALLET_EDIT), refundController.retryRefund);
+router.post('/refunds/:id/mark-manual-settled', ...adminAuth, requireSuperAdmin, refundController.markManualSettled);
+router.post('/refunds/:id/resume-reversals', ...perm(PERMISSIONS.WALLET_EDIT), refundController.resumeReversals);
+
 // ─── Settlements ──────────────────────────────────────────────────────────────
-router.get('/settlements', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);
-router.put('/settlements/:id/approve', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.approveSettlement);
-router.put('/settlements/:id/reject', ...perm(PERMISSIONS.WALLET_VIEW), settlementController.rejectSettlement);
+router.get('/settlements', ...permAny(PERMISSIONS.SETTLEMENTS_VIEW, PERMISSIONS.WALLET_VIEW), settlementController.getSettlements);
+// Approving or rejecting a settlement moves money to a vendor. Both were gated
+// on WALLET_VIEW — a read permission — so a finance viewer could authorise a
+// payout. Raised to the edit-level token, matching every other money action.
+router.put('/settlements/:id/approve', ...perm(PERMISSIONS.WALLET_EDIT), settlementController.approveSettlement);
+router.put('/settlements/:id/reject', ...perm(PERMISSIONS.WALLET_EDIT), settlementController.rejectSettlement);
 
 export default router;

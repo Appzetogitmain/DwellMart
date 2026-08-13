@@ -40,7 +40,9 @@ export const enforceAccountStatus = async (req, res, next) => {
         }
 
         if (role === 'vendor') {
-            const vendor = await Vendor.findById(req.user.id).select('status isVerified isActive').lean();
+            const vendor = await Vendor.findById(req.user.id)
+                .select('status isVerified isActive vendorType sellingChannels')
+                .lean();
             if (!vendor) return next(new ApiError(401, 'Account not found.'));
             if (vendor.isActive === false) {
                 return next(new ApiError(403, 'Vendor account is deactivated. Contact support.'));
@@ -49,6 +51,12 @@ export const enforceAccountStatus = async (req, res, next) => {
             if (vendor.status !== 'approved') {
                 return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
             }
+
+            // Attach the vendor that was already loaded. `productCapabilityGuard`
+            // reads `req.vendor` and nothing in the codebase ever assigned it, so
+            // the guard returned on its first line and enforced nothing — the
+            // PRODUCT_FIELD_STRICT setting it documents had no effect either.
+            req.vendor = vendor;
 
             return next();
         }

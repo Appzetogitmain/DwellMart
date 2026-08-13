@@ -6,10 +6,12 @@
  * for the authenticated vendor's type.
  *
  * Behaviour:
- *   STRICT_MODE=true  (production default) → 400 Bad Request for prohibited fields
- *   STRICT_MODE=false (development)        → silently strips prohibited fields
+ *   PRODUCT_FIELD_STRICT=true  → 400 Bad Request for prohibited fields
+ *   unset (default)            → observe-only: logs what would be rejected
  *
- * Set PRODUCT_FIELD_STRICT=false in .env to enable sanitize-only mode.
+ * Observe-only is the default because this guard was inert since it was written
+ * (it read an unset `req.vendor`), so no payload has ever been validated against
+ * it. Enforcing immediately would reject writes that have always been accepted.
  */
 
 import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
@@ -33,20 +35,31 @@ export const productCapabilityGuard = (req, res, next) => {
         const caps = getVendorCapabilities(vendorType);
         const allowedFields = caps.allowedProductFields ?? [];
 
-        const strictMode = process.env.PRODUCT_FIELD_STRICT !== 'false';
+        // This guard never ran: it reads `req.vendor`, which nothing assigned,
+        // so it returned on its first line for every request since it was
+        // written. Now that `enforceAccountStatus` populates the vendor, the
+        // guard is live — and switching it straight to rejection would start
+        // failing product writes that have been accepted all along.
+        //
+        // Default is therefore observe-only: log what WOULD be rejected without
+        // changing behaviour. Set PRODUCT_FIELD_STRICT=true to enforce, once the
+        // logs show what real payloads actually contain.
+        const strictMode = process.env.PRODUCT_FIELD_STRICT === 'true';
 
         const prohibited = [];
 
         for (const field of Object.keys(req.body)) {
             if (SYSTEM_FIELDS.has(field)) continue;
             if (allowedFields.includes(field)) continue;
+            prohibited.push(field);
+        }
 
-            if (strictMode) {
-                prohibited.push(field);
-            } else {
-                // Dev mode: sanitize — remove the disallowed field silently
-                delete req.body[field];
-            }
+        if (prohibited.length > 0 && !strictMode) {
+            console.warn(
+                `[ProductCapabilityGuard] observe-only: vendorType=${vendorType} `
+                + `would reject fields=[${prohibited.join(', ')}] on ${req.method} ${req.originalUrl}`
+            );
+            return next();
         }
 
         if (prohibited.length > 0) {

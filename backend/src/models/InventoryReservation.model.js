@@ -29,6 +29,18 @@ const inventoryReservationSchema = new mongoose.Schema(
         productId:   { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Product', index: true },
         vendorId:    { type: mongoose.Schema.Types.ObjectId, required: false, ref: 'Vendor' },
 
+        /**
+         * Which variant this hold is against, e.g. `size=m|color=red`.
+         *
+         * Empty string for a product with no variant axes — NOT null, because
+         * MongoDB's unique index treats missing and null differently across
+         * documents and an empty string gives one stable value to collide on.
+         *
+         * Without this the reservation system tracked only product-level stock,
+         * so a vendor selling S/M/L could oversell one size indefinitely.
+         */
+        variantKey:  { type: String, default: '', trim: true },
+
         quantity:        { type: Number, required: true, min: 1 },
         fulfillmentType: {
             type: String,
@@ -58,8 +70,17 @@ const inventoryReservationSchema = new mongoose.Schema(
     }
 );
 
-// Compound index for efficient session lookups and duplicate prevention
-inventoryReservationSchema.index({ sessionId: 1, productId: 1 }, { unique: true });
+/**
+ * One hold per (session, product, variant).
+ *
+ * The previous index was `{ sessionId, productId }`, which made a perfectly
+ * ordinary cart — size S and size M of the same shirt — collide on a duplicate
+ * key. The collision was swallowed as "already reserved", but the stock
+ * increment had already been applied, so that reserved quantity could never be
+ * released. Including the variant is what makes such a cart representable at
+ * all.
+ */
+inventoryReservationSchema.index({ sessionId: 1, productId: 1, variantKey: 1 }, { unique: true });
 inventoryReservationSchema.index({ status: 1, expiresAt: 1 }); // for sweep query
 
 // MongoDB TTL index — auto-purge documents 1 hour after expiresAt

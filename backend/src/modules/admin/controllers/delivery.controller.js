@@ -11,10 +11,17 @@ const DOC_TOKEN_TTL_MS = 10 * 60 * 1000;
 const DOC_TOKEN_QUERY_KEY = 'docToken';
 
 const buildDocToken = (relativePath) => {
+    // No literal fallback: the verifier in app.js denies when JWT_SECRET is
+    // absent, so signing with a guessable default would only mint tokens that
+    // are rejected — while making the signing key public.
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new ApiError(500, 'Delivery document access is unavailable: signing key is not configured.');
+    }
     const exp = Date.now() + DOC_TOKEN_TTL_MS;
     const payload = `${relativePath}|${exp}`;
     const signature = crypto
-        .createHmac('sha256', process.env.JWT_SECRET || 'delivery-doc-secret')
+        .createHmac('sha256', secret)
         .update(payload)
         .digest('hex');
     return `${exp}.${signature}`;

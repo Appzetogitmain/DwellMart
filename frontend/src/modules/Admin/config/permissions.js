@@ -14,9 +14,7 @@ export const PERMISSIONS = {
   // Vendors
   VENDORS_VIEW: 'vendors.view',
   VENDORS_APPROVE: 'vendors.approve',
-  VENDORS_EDIT: 'vendors.edit',
-  VENDORS_DELETE: 'vendors.delete',
-
+  VENDORS_EDIT: 'vendors.edit',
   // Delivery
   DELIVERY_VIEW: 'delivery.view',
   DELIVERY_APPROVE: 'delivery.approve',
@@ -64,10 +62,7 @@ export const PERMISSIONS = {
   PROMOCODES_VIEW: 'promocodes.view',
   PROMOCODES_EDIT: 'promocodes.edit',
 
-  // Wholesale Marketplace
-  WHOLESALE_VENDORS_MANAGE: 'wholesale.vendors.manage',
-  WHOLESALE_PRODUCTS_MANAGE: 'wholesale.products.manage',
-  WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
+  // Wholesale Marketplace  WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
 
   // Quick Commerce
   QUICKCOMMERCE_VENDORS_MANAGE: 'quickcommerce.vendors.manage',
@@ -79,12 +74,7 @@ export const PERMISSIONS = {
   SETTINGS_VIEW: 'settings.view',
   SETTINGS_EDIT: 'settings.edit',
 
-  // Admin Management
-  SUBADMIN_VIEW: 'subadmin.view',
-  SUBADMIN_CREATE: 'subadmin.create',
-  SUBADMIN_EDIT: 'subadmin.edit',
-  SUBADMIN_DELETE: 'subadmin.delete',
-};
+  // Admin Management};
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 
@@ -92,9 +82,7 @@ export const PERMISSION_DEPENDENCIES = {
   'users.edit': 'users.view',
   'users.delete': 'users.view',
   'vendors.approve': 'vendors.view',
-  'vendors.edit': 'vendors.view',
-  'vendors.delete': 'vendors.view',
-  'delivery.approve': 'delivery.view',
+  'vendors.edit': 'vendors.view',  'delivery.approve': 'delivery.view',
   'delivery.edit': 'delivery.view',
   'products.add': 'products.view',
   'products.edit': 'products.view',
@@ -112,10 +100,7 @@ export const PERMISSION_DEPENDENCIES = {
   'banners.edit': 'banners.view',
   'sliders.edit': 'sliders.view',
   'promocodes.edit': 'promocodes.view',
-  'settings.edit': 'settings.view',
-  'wholesale.vendors.manage': 'vendors.view',
-  'wholesale.products.manage': 'products.view',
-  'wholesale.analytics.view': 'dashboard.view',
+  'settings.edit': 'settings.view',  'wholesale.analytics.view': 'dashboard.view',
   'quickcommerce.vendors.manage': 'vendors.view',
   'quickcommerce.orders.manage': 'orders.view',
   'quickcommerce.analytics.view': 'dashboard.view',
@@ -254,9 +239,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: PERMISSIONS.VENDORS_VIEW, label: 'View Vendors' },
       { key: PERMISSIONS.VENDORS_APPROVE, label: 'Approve / Reject Vendors' },
-      { key: PERMISSIONS.VENDORS_EDIT, label: 'Edit Commissions & Details' },
-      { key: PERMISSIONS.VENDORS_DELETE, label: 'Delete Vendors' },
-    ],
+      { key: PERMISSIONS.VENDORS_EDIT, label: 'Edit Commissions & Details' },    ],
   },
   {
     id: 'users',
@@ -325,10 +308,7 @@ export const PERMISSION_GROUPS = [
     id: 'wholesale',
     name: 'Wholesale Marketplace',
     description: 'Wholesale vendors, bulk pricing products, and wholesale analytics',
-    permissions: [
-      { key: PERMISSIONS.WHOLESALE_VENDORS_MANAGE, label: 'Manage Wholesale Vendors' },
-      { key: PERMISSIONS.WHOLESALE_PRODUCTS_MANAGE, label: 'Manage Bulk Pricing Products' },
-      { key: PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, label: 'View Wholesale Analytics' },
+    permissions: [      { key: PERMISSIONS.WHOLESALE_ANALYTICS_VIEW, label: 'View Wholesale Analytics' },
     ],
   },
   {

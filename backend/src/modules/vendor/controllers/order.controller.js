@@ -6,7 +6,7 @@ import Commission from '../../../models/Commission.model.js';
 import Settlement from '../../../models/Settlement.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import mongoose from 'mongoose';
-import { createNotification } from '../../../services/notification.service.js';
+import { createNotification, notifyAdmins } from '../../../services/notification.service.js';
 import {
     assertQuickCommerceTransition,
     applyQuickCommerceStatus,
@@ -17,7 +17,7 @@ import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js
 import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
 import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
 import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
-import { getVendorWithdrawableCommissions } from '../../../services/commission.service.js';
+import { getVendorWithdrawableCommissions, getMinimumPayout } from '../../../services/commission.service.js';
 import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
 import {
     baseQuickCommerceMatch,
@@ -507,10 +507,33 @@ export const getEarnings = asyncHandler(async (req, res) => {
 
 // POST /api/vendor/earnings/request-payout
 export const requestPayout = asyncHandler(async (req, res) => {
-    const { withdrawableAmount, eligibleCommissionIds } = await getVendorWithdrawableCommissions(req.user.id);
+    const vendorId = req.user.id;
+    const idempotencyKey = String(req.get('x-idempotency-key') || '').trim() || null;
 
-    // Minimum payout threshold check (₹500)
-    const MINIMUM_PAYOUT = 500;
+    // Replay guard before any state is touched.
+    if (idempotencyKey) {
+        const replay = await Settlement.findOne({ idempotencyKey }).lean();
+        if (replay) {
+            return res.status(200).json(
+                new ApiResponse(200, replay, 'Duplicate payout request ignored. Returning existing request.')
+            );
+        }
+    }
+
+    // An open request already covers this vendor's eligible commissions.
+    // Reported explicitly rather than letting the unique index surface as a
+    // generic duplicate-key error.
+    const openSettlement = await Settlement.findOne({ vendorId, status: 'pending' }).lean();
+    if (openSettlement) {
+        throw new ApiError(
+            409,
+            'You already have a payout request awaiting review. It must be settled before requesting another.'
+        );
+    }
+
+    const { withdrawableAmount, eligibleCommissionIds } = await getVendorWithdrawableCommissions(vendorId);
+
+    const MINIMUM_PAYOUT = await getMinimumPayout();
     if (withdrawableAmount < MINIMUM_PAYOUT) {
         throw new ApiError(
             400,
@@ -522,30 +545,68 @@ export const requestPayout = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'No eligible commissions available for payout.');
     }
 
-    // 4. Create Settlement request
-    const settlement = await Settlement.create({
-        vendorId: req.user.id,
-        commissionIds: eligibleCommissionIds,
-        amount: withdrawableAmount,
-        status: 'pending',
-        paymentMethod: req.body.paymentMethod || 'bank_transfer',
-        notes: 'Requested by vendor'
-    });
+    // ── Settlement creation and commission claim in ONE transaction ──────────
+    // Previously two independent writes: `Settlement.create` then
+    // `Commission.updateMany`. Two concurrent requests both read the same
+    // eligible set and both created a settlement over it — paying the vendor
+    // twice for the same commissions.
+    //
+    // The commission update is now conditional on the commissions still being
+    // `pending`, so a racing request claims zero and aborts rather than
+    // double-claiming.
+    let settlement = null;
+    const session = await mongoose.startSession();
+    try {
+        await session.withTransaction(async () => {
+            const [created] = await Settlement.create([{
+                vendorId,
+                commissionIds: eligibleCommissionIds,
+                amount: withdrawableAmount,
+                status: 'pending',
+                paymentMethod: req.body.paymentMethod || 'bank_transfer',
+                notes: 'Requested by vendor',
+                ...(idempotencyKey ? { idempotencyKey } : {}),
+            }], { session });
 
-    // 5. Mark commissions as requested
-    await Commission.updateMany(
-        { _id: { $in: eligibleCommissionIds } },
-        { $set: { status: 'requested', settlementId: settlement._id } }
-    );
+            const claim = await Commission.updateMany(
+                { _id: { $in: eligibleCommissionIds }, status: 'pending' },
+                { $set: { status: 'requested', settlementId: created._id } },
+                { session }
+            );
 
-    // 6. Notify the admin (non-blocking)
-    createNotification({
-        recipientId: req.user.id,
-        recipientType: 'admin',
+            // If another request claimed them first, this settlement covers
+            // nothing and must not exist.
+            if (claim.modifiedCount !== eligibleCommissionIds.length) {
+                throw new ApiError(
+                    409,
+                    'Your eligible earnings changed while the request was being processed. Please try again.'
+                );
+            }
+
+            settlement = created;
+        });
+    } catch (err) {
+        if (err?.code === 11000) {
+            throw new ApiError(409, 'A payout request is already in progress for your account.');
+        }
+        throw err;
+    } finally {
+        await session.endSession();
+    }
+
+    // Notify admins (non-blocking).
+    // Routed through `notifyAdmins`, which anchors the notification correctly.
+    // This previously passed the VENDOR's id as `recipientId` with
+    // `recipientType: 'admin'` — a misattribution that only went unnoticed
+    // because the admin feed ignores `recipientId` entirely.
+    notifyAdmins({
+        anchorId: settlement._id,
         title: 'New Payout Request',
         message: `Vendor ${req.user.name || req.user.storeName || 'Vendor'} has requested a payout of ₹${withdrawableAmount}.`,
-        type: 'system',
-        actionUrl: '/admin/vendors/payout-requests'
+        type: 'settlement',
+        category: 'SETTLEMENT',
+        actionUrl: '/admin/vendors/payout-requests',
+        data: { settlementId: String(settlement._id), vendorId: String(vendorId) },
     }).catch((err) => {
         console.warn(`[Payout Notification Warning]: ${err.message}`);
     });

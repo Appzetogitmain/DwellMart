@@ -9,6 +9,7 @@ import Category from '../models/Category.model.js';
 import Brand from '../models/Brand.model.js';
 import Vendor from '../models/Vendor.model.js';
 import BulkImportHistory from '../models/BulkImportHistory.model.js';
+import { resolveCatalogScope, catalogScopeFilter } from '../utils/catalogScope.js';
 import {
     parsePriceTiersCell,
     serializePriceTiers,
@@ -289,12 +290,14 @@ export const validateBulkUpload = async ({
         if (v.email) vendorMap.set(v.email.toLowerCase().trim(), v);
     });
 
-    // Default vendor resolution
+    // Default vendor resolution. Scope resolution rejects any role that is
+    // neither vendor nor admin, so a customer can no longer start an import
+    // attributing products to an arbitrary vendor via `targetVendorId`.
+    const scope = resolveCatalogScope(user, targetVendorId);
     let defaultVendor = null;
-    if (user.role === 'vendor') {
-        defaultVendor = vendorMap.get(String(user.id)) || await Vendor.findById(user.id).lean();
-    } else if (targetVendorId) {
-        defaultVendor = vendorMap.get(String(targetVendorId));
+    if (scope.vendorId) {
+        defaultVendor = vendorMap.get(String(scope.vendorId))
+            || await Vendor.findById(scope.vendorId).lean();
     }
 
     // P1-11 FIX: Don't load ALL products from DB — this crashes on large catalogs.
@@ -601,9 +604,10 @@ export const startBulkUploadJob = async ({
     const startTime = Date.now();
 
     // Create history DB record
+    const jobScope = resolveCatalogScope(user, targetVendorId);
     const historyDoc = await BulkImportHistory.create({
         jobId,
-        vendorId: user.role === 'vendor' ? user.id : targetVendorId,
+        vendorId: jobScope.vendorId,
         uploadedBy: {
             id: user.id,
             name: user.name || 'User',
@@ -994,12 +998,11 @@ export const cancelJob = async (jobId) => {
  * Export product catalog into Excel or CSV template format
  */
 export const exportProductsCatalog = async ({ user, targetVendorId = null, format = 'xlsx' }) => {
-    const query = {};
-    if (user.role === 'vendor') {
-        query.vendorId = user.id;
-    } else if (targetVendorId) {
-        query.vendorId = targetVendorId;
-    }
+    // Fails closed. The previous `else if` fell through to `{}` for any
+    // non-vendor role, exporting the entire platform catalogue — including every
+    // vendor's email and cost price — to any authenticated user.
+    const scope = resolveCatalogScope(user, targetVendorId);
+    const query = catalogScopeFilter(scope);
 
     const products = await Product.find(query)
         .populate('categoryId', 'name')

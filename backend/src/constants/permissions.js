@@ -15,7 +15,7 @@ export const PERMISSIONS = {
     VENDORS_VIEW: 'vendors.view',
     VENDORS_APPROVE: 'vendors.approve',
     VENDORS_EDIT: 'vendors.edit',
-    VENDORS_DELETE: 'vendors.delete',
+    // `vendors.delete` removed — see RETIRED_PERMISSIONS below.
 
     // Delivery Partners
     DELIVERY_VIEW: 'delivery.view',
@@ -65,8 +65,13 @@ export const PERMISSIONS = {
     PROMOCODES_EDIT: 'promocodes.edit',
 
     // Wholesale Marketplace
-    WHOLESALE_VENDORS_MANAGE: 'wholesale.vendors.manage',
-    WHOLESALE_PRODUCTS_MANAGE: 'wholesale.products.manage',
+    //
+    // `wholesale.vendors.manage` and `wholesale.products.manage` were REMOVED.
+    // No wholesale-specific admin route exists or is planned: wholesale is a
+    // flag on the ordinary product and vendor records, managed through the
+    // ordinary product and vendor routes. Keeping the tokens advertised a
+    // boundary the system could not enforce — an operator granting them
+    // believed they had restricted wholesale management, and had not.
     WHOLESALE_ANALYTICS_VIEW: 'wholesale.analytics.view',
 
     // Quick Commerce
@@ -79,14 +84,34 @@ export const PERMISSIONS = {
     SETTINGS_VIEW: 'settings.view',
     SETTINGS_EDIT: 'settings.edit',
 
-    // Admin Management (Super Admin Only)
-    SUBADMIN_VIEW: 'subadmin.view',
-    SUBADMIN_CREATE: 'subadmin.create',
-    SUBADMIN_EDIT: 'subadmin.edit',
-    SUBADMIN_DELETE: 'subadmin.delete',
+    // Admin Management
+    //
+    // `subadmin.view/create/edit/delete` were REMOVED. Sub-admin management is
+    // guarded by `requireSuperAdmin`, which is a stronger and deliberately
+    // non-delegable control — a sub-admin able to grant sub-admin permissions
+    // is a privilege-escalation path. The tokens were assignable and honoured
+    // by nothing, which made the restriction look delegable when it is not.
+    //
+    // `vendors.delete` was also REMOVED: no vendor deletion route exists. If
+    // one is added, the token is added in the same change as the route that
+    // enforces it.
 };
 
 export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
+
+/**
+ * Tokens that were removed, retained so historical Admin records can be
+ * cleaned up and so a stale UI grant is recognised rather than silently kept.
+ */
+export const RETIRED_PERMISSIONS = [
+    'wholesale.vendors.manage',
+    'wholesale.products.manage',
+    'vendors.delete',
+    'subadmin.view',
+    'subadmin.create',
+    'subadmin.edit',
+    'subadmin.delete',
+];
 
 /**
  * Permission Dependencies
@@ -97,7 +122,6 @@ export const PERMISSION_DEPENDENCIES = {
     'users.delete': 'users.view',
     'vendors.approve': 'vendors.view',
     'vendors.edit': 'vendors.view',
-    'vendors.delete': 'vendors.view',
     'delivery.approve': 'delivery.view',
     'delivery.edit': 'delivery.view',
     'products.add': 'products.view',
@@ -117,8 +141,6 @@ export const PERMISSION_DEPENDENCIES = {
     'sliders.edit': 'sliders.view',
     'promocodes.edit': 'promocodes.view',
     'settings.edit': 'settings.view',
-    'wholesale.vendors.manage': 'vendors.view',
-    'wholesale.products.manage': 'products.view',
     'wholesale.analytics.view': 'dashboard.view',
     'quickcommerce.vendors.manage': 'vendors.view',
     'quickcommerce.orders.manage': 'orders.view',
@@ -225,7 +247,7 @@ export const MODULE_TO_PERMISSION_MAP = {
     finance: PERMISSIONS.WALLET_VIEW,
     settings: PERMISSIONS.SETTINGS_VIEW,
     policies: PERMISSIONS.SETTINGS_VIEW,
-    subadmins: PERMISSIONS.SUBADMIN_VIEW,
+    // subadmins deliberately absent: guarded by requireSuperAdmin, not a token.
 };
 
 /**

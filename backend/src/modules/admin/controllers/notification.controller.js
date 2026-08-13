@@ -47,8 +47,11 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
 export const markAsRead = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const notification = await Notification.findByIdAndUpdate(
-        id,
+    // Scoped to admin notifications. Previously `findByIdAndUpdate(id, ...)`
+    // with no filter, so an admin — or a sub-admin holding only dashboard.view —
+    // could mark any customer's, vendor's or rider's notification as read.
+    const notification = await Notification.findOneAndUpdate(
+        { _id: id, recipientType: 'admin' },
         { isRead: true },
         { new: true }
     );

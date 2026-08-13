@@ -54,7 +54,19 @@ export const createCashfreeOrder = async ({
         throw new ApiError(400, 'Payment gateway cannot process a ₹0 order. Use the free-order or COD checkout path for fully-discounted orders.');
     }
 
-    const sanitizedPhone = String(customer.phone || '9999999999').replace(/\D/g, '').slice(-10) || '9999999999';
+    // Reject rather than substitute. Sending '9999999999' and a placeholder
+    // email put fabricated contact details on real transactions — it broke
+    // reconciliation, defeated the gateway's own fraud scoring, and meant the
+    // customer could not be contacted about their own payment.
+    const sanitizedPhone = String(customer.phone || '').replace(/\D/g, '').slice(-10);
+    if (sanitizedPhone.length !== 10) {
+        throw new ApiError(400, 'A valid 10-digit contact phone number is required to take a payment.');
+    }
+    const sanitizedEmail = String(customer.email || '').trim();
+    if (!sanitizedEmail || !sanitizedEmail.includes('@')) {
+        throw new ApiError(400, 'A valid contact email address is required to take a payment.');
+    }
+
     const payload = {
         order_id: String(orderId),
         order_amount: Math.round(numericAmount * 100) / 100, // round to 2 decimal places
@@ -62,7 +74,7 @@ export const createCashfreeOrder = async ({
         customer_details: {
             customer_id: String(customer.id || customer._id || `cust_${Date.now()}`),
             customer_name: String(customer.name || 'Customer').trim(),
-            customer_email: String(customer.email || 'customer@dwellmart.com').trim(),
+            customer_email: sanitizedEmail,
             customer_phone: sanitizedPhone,
         },
         order_meta: {
@@ -161,6 +173,95 @@ export const fetchCashfreeOrderPayments = async (orderId) => {
     }
 
     return Array.isArray(data) ? data : [];
+};
+
+/**
+ * Create a refund against a Cashfree order.
+ *
+ * `refundId` is OUR idempotency key: Cashfree rejects a duplicate refund_id for
+ * the same order, which makes a re-submitted request safe. Never generate it
+ * randomly per attempt — a retry must reuse the same value or it becomes a
+ * second refund.
+ *
+ * @param {{ orderId: string, refundId: string, amount: number, note?: string }} params
+ */
+export const createCashfreeRefund = async ({ orderId, refundId, amount, note = '' }) => {
+    if (_mockHandler?.createRefund) return _mockHandler.createRefund({ orderId, refundId, amount, note });
+
+    const creds = await getCashfreeCredentials();
+    if (!creds.appId || !creds.secretKey) {
+        throw new ApiError(400, 'Cashfree API credentials are not configured.');
+    }
+
+    const numericAmount = Math.round(Number(amount || 0) * 100) / 100;
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        throw new ApiError(400, 'Refund amount must be greater than zero.');
+    }
+
+    const response = await fetch(`${creds.baseUrl}/orders/${encodeURIComponent(orderId)}/refunds`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-version': '2023-08-01',
+            'x-client-id': creds.appId,
+            'x-client-secret': creds.secretKey,
+        },
+        body: JSON.stringify({
+            refund_amount: numericAmount,
+            refund_id: String(refundId),
+            refund_note: String(note || '').slice(0, 100),
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        const err = new ApiError(
+            response.status,
+            data?.message || data?.error?.message || 'Failed to create Cashfree refund.'
+        );
+        // Surface the gateway's own classification so the caller can decide
+        // whether a retry is meaningful (e.g. insufficient settlement balance
+        // is retryable later; an invalid order is not).
+        err.gatewayCode = data?.code || data?.type || null;
+        err.gatewayPayload = data;
+        throw err;
+    }
+
+    return {
+        cfRefundId: data.cf_refund_id,
+        refundId: data.refund_id,
+        status: data.refund_status,   // PENDING | SUCCESS | CANCELLED | ONHOLD
+        amount: data.refund_amount,
+        processedAt: data.processed_at || null,
+        raw: data,
+    };
+};
+
+/** Fetch a refund's current gateway status. */
+export const fetchCashfreeRefund = async (orderId, refundId) => {
+    if (_mockHandler?.fetchRefund) return _mockHandler.fetchRefund(orderId, refundId);
+
+    const creds = await getCashfreeCredentials();
+    if (!creds.appId || !creds.secretKey) {
+        throw new ApiError(400, 'Cashfree API credentials are not configured.');
+    }
+
+    const response = await fetch(
+        `${creds.baseUrl}/orders/${encodeURIComponent(orderId)}/refunds/${encodeURIComponent(refundId)}`,
+        {
+            method: 'GET',
+            headers: {
+                'x-api-version': '2023-08-01',
+                'x-client-id': creds.appId,
+                'x-client-secret': creds.secretKey,
+            },
+        }
+    );
+
+    const data = await response.json();
+    if (!response.ok) return null;
+    return data;
 };
 
 export const verifyCashfreeSignature = async (rawBody, timestamp, signature) => {

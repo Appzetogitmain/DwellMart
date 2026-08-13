@@ -54,6 +54,9 @@ const resolveQuickCommerceVendorIds = async (query) => {
 };
 import { serializePlan } from '../services/billing/plan.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
+import { couponValidateLimiter, publicWriteLimiter } from '../middlewares/rateLimiter.js';
+import { optionalAuth } from '../middlewares/authenticate.js';
+import { evaluateCouponEligibility, computeCouponDiscount } from '../services/coupon.service.js';
 import { sendEmail } from '../services/email.service.js';
 
 import { getPublicGeneralSettings, getPublicSettingsByCategory } from '../modules/admin/controllers/settings.controller.js';
@@ -70,7 +73,11 @@ router.get('/settings/:category', getPublicSettingsByCategory);
 const detailCache = cacheResponse({ ttlSeconds: 60, maxEntries: 1000 });
 const catalogCache = cacheResponse({ ttlSeconds: 300, maxEntries: 200 });
 const marketingCache = cacheResponse({ ttlSeconds: 30, maxEntries: 300 });
-const PRODUCT_LIST_SELECT = '-faqs -relatedProducts -__v';
+// `costPrice` is the vendor's buying price and must never reach a storefront
+// response — it is newly persisted (it was silently dropped before) so every
+// public projection has to exclude it explicitly.
+const PRODUCT_LIST_SELECT = '-faqs -relatedProducts -__v -costPrice';
+const PRODUCT_DETAIL_SELECT = '-__v -costPrice';
 const EXCLUSIVE_SALE_CAMPAIGN_TYPES = ['flash_sale', 'daily_deal', 'special_offer', 'festival'];
 
 const toPublicVendor = (vendorDoc) => {
@@ -502,6 +509,7 @@ router.get('/similar/:id', detailCache, asyncHandler(async (req, res) => {
 
 const getProductDetail = asyncHandler(async (req, res) => {
     const product = await Product.findById(req.params.id)
+        .select(PRODUCT_DETAIL_SELECT)
         .populate('categoryId', 'name')
         .populate('brandId', 'name')
         .populate('vendorId', 'storeName storeLogo rating')
@@ -886,7 +894,7 @@ router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => 
 }));
 
 // POST /api/coupons/validate
-router.post('/coupons/validate', asyncHandler(async (req, res) => {
+router.post('/coupons/validate', couponValidateLimiter, optionalAuth, asyncHandler(async (req, res) => {
     const rawCode = String(req.body?.code || '').trim();
     const cartTotal = Number(req.body?.cartTotal);
 
@@ -898,19 +906,17 @@ router.post('/coupons/validate', asyncHandler(async (req, res) => {
     }
 
     const coupon = await Coupon.findOne({ code: rawCode.toUpperCase(), isActive: true }).lean();
-    if (!coupon) throw new ApiError(400, 'Invalid coupon code.');
-    if (coupon.startsAt && coupon.startsAt > Date.now()) throw new ApiError(400, 'Coupon is not active yet.');
-    if (coupon.expiresAt && coupon.expiresAt < Date.now()) throw new ApiError(400, 'Coupon has expired.');
-    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new ApiError(400, 'Coupon usage limit reached.');
-    if (cartTotal < coupon.minOrderValue) throw new ApiError(400, `Minimum order value for this coupon is Rs.${coupon.minOrderValue}.`);
 
-    let discount = 0;
-    if (coupon.type === 'percentage') {
-        discount = (cartTotal * coupon.value) / 100;
-        if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
-    } else if (coupon.type === 'fixed') {
-        discount = coupon.value;
-    }
+    // Shared evaluator — the same rules the checkout applies. These conditions
+    // were previously duplicated here with a slightly different rule set, so a
+    // coupon could validate on this endpoint and then be rejected at checkout.
+    const verdict = await evaluateCouponEligibility(coupon, {
+        cartTotal,
+        userId: req.user?.id || null,
+    });
+    if (!verdict.ok) throw new ApiError(400, verdict.reason);
+
+    const discount = computeCouponDiscount(coupon, cartTotal);
 
     res.status(200).json(new ApiResponse(200, { coupon: { code: coupon.code, type: coupon.type, value: coupon.value }, discount }, 'Coupon is valid.'));
 }));
@@ -1152,7 +1158,7 @@ router.get('/pages/:slug', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/contact (public — process Contact Us form and send inquiry email)
-router.post('/contact', asyncHandler(async (req, res) => {
+router.post('/contact', publicWriteLimiter, asyncHandler(async (req, res) => {
     const { name, email, phone, subject, message } = req.body || {};
 
     if (!name || !String(name).trim()) {
@@ -1234,7 +1240,7 @@ Sent from DwellMart Store Contact Form.
 
 
 // POST /api/feedback (public — process Feedback form and send email)
-router.post('/feedback', asyncHandler(async (req, res) => {
+router.post('/feedback', publicWriteLimiter, asyncHandler(async (req, res) => {
     const { name, email, rating, category, message, userId } = req.body || {};
 
     if (!name || !String(name).trim()) {

@@ -86,15 +86,43 @@ export const partnerAuth = (requiredScopes = []) => async (req, res, next) => {
             }
 
             const expectedHash = String(partner.apiKeyHash || '');
+
+            // A stored value that is not a SHA-256 digest is plaintext or
+            // corrupt. Refuse rather than compare: the old code's third branch
+            // (`safeCompare(apiKey, expectedHash)`) accepted exactly this case,
+            // which meant a plaintext key was honoured indefinitely and the
+            // stored hash itself worked as a credential — anyone who could read
+            // the collection could authenticate as the partner.
+            if (!SHA256_HEX.test(expectedHash)) {
+                console.error(
+                    `[Integration Auth] clientId=${clientId} has a malformed apiKeyHash `
+                    + '(not a SHA-256 digest). Refusing authentication. Run migration 0006 and rotate this key.'
+                );
+                throw new ApiError(401, 'Invalid integration credentials.');
+            }
+
             const candidateHash = hashApiKey(apiKey);
             const legacyHash = hashApiKeyWithoutPepper(apiKey);
-            const isValidKey =
-                safeCompare(candidateHash, expectedHash) ||
-                safeCompare(legacyHash, expectedHash) ||
-                safeCompare(apiKey, expectedHash);
-            if (!isValidKey) {
+
+            const matchedPeppered = safeCompare(candidateHash, expectedHash);
+            const matchedLegacy = !matchedPeppered && safeCompare(legacyHash, expectedHash);
+
+            if (!matchedPeppered && !matchedLegacy) {
                 console.warn(`[Integration Auth] Invalid API key for clientId=${clientId}`);
                 throw new ApiError(401, 'Invalid integration credentials.');
+            }
+
+            // Rehash-on-use: a partner still stored under the pre-pepper scheme
+            // is transparently upgraded on a successful authentication. Without
+            // this, the weaker unpeppered form would persist forever because
+            // nothing else ever rewrites the value.
+            if (matchedLegacy && partner._id && String(process.env.INTEGRATION_API_KEY_PEPPER || '').trim()) {
+                IntegrationPartner.updateOne(
+                    { _id: partner._id },
+                    { $set: { apiKeyHash: candidateHash } }
+                ).catch((err) => {
+                    console.warn(`[Integration Auth] Key rehash failed for clientId=${clientId}: ${err.message}`);
+                });
             }
         }
 

@@ -140,25 +140,32 @@ export const initSocket = (server) => {
             }
         });
 
-        // Realtime typing indicators
+        // Realtime typing indicators.
+        //
+        // `socket.to(room).emit()` delivers to everyone in the room regardless of
+        // whether the SENDER belongs to it, so authorising `join_conversation`
+        // was not sufficient — any authenticated socket could inject typing
+        // events, with an arbitrary display name, into any conversation by
+        // guessing its id. Membership is now required on the emit side too.
+        const isInConversation = (conversationId) =>
+            Boolean(conversationId) && socket.rooms.has(`conversation_${conversationId}`);
+
         socket.on('typing_start', ({ conversationId, name }) => {
-            if (conversationId) {
-                socket.to(`conversation_${conversationId}`).emit('typing_start', {
-                    conversationId,
-                    userId: id,
-                    userRole: roleKey,
-                    name: name || 'User',
-                });
-            }
+            if (!isInConversation(conversationId)) return;
+            socket.to(`conversation_${conversationId}`).emit('typing_start', {
+                conversationId,
+                userId: id,
+                userRole: roleKey,
+                name: name || 'User',
+            });
         });
 
         socket.on('typing_stop', ({ conversationId }) => {
-            if (conversationId) {
-                socket.to(`conversation_${conversationId}`).emit('typing_stop', {
-                    conversationId,
-                    userId: id,
-                });
-            }
+            if (!isInConversation(conversationId)) return;
+            socket.to(`conversation_${conversationId}`).emit('typing_stop', {
+                conversationId,
+                userId: id,
+            });
         });
 
         /**

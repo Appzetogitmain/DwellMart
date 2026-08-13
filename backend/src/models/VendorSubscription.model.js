@@ -58,6 +58,43 @@ const vendorSubscriptionSchema = new mongoose.Schema(
             trim: true,
             default: '',
         },
+        /**
+         * How this subscription came to be active.
+         *
+         * Recorded because "active" alone cannot distinguish a paid subscription
+         * from one activated without payment — a distinction the platform had no
+         * way to make previously. `legacy_internal` marks documents that predate
+         * this field and whose payment status cannot be established from the
+         * record alone.
+         */
+        activationSource: {
+            type: String,
+            enum: [
+                'gateway_verified',   // synchronous verify against the gateway
+                'gateway_webhook',    // gateway-confirmed webhook
+                'zero_price_plan',    // plan costs nothing in the vendor's currency
+                'admin_grant',        // deliberate, audited give-away
+                'legacy_internal',    // pre-dates this field; payment unverified
+            ],
+            index: true,
+        },
+        /** Gateway payment reference proving money moved. Required for gateway sources. */
+        gatewayPaymentRef: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+        /** Set only for admin_grant. */
+        grantedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin',
+            default: null,
+        },
+        grantReason: {
+            type: String,
+            trim: true,
+            default: '',
+        },
         metadata: {
             type: mongoose.Schema.Types.Mixed,
             default: {},

@@ -1,5 +1,68 @@
 import Commission from '../models/Commission.model.js';
 import Vendor from '../models/Vendor.model.js';
+import Settings from '../models/Settings.model.js';
+
+/**
+ * Vendor financial policy, read from settings rather than compiled in.
+ *
+ * The escrow period, minimum payout and default commission rate are commercial
+ * decisions. Each was previously a literal — the commission rate in three
+ * separate places, free to drift — so changing any of them required a deploy.
+ * Defaults reproduce the previous hardcoded values exactly, so behaviour is
+ * unchanged until an operator deliberately changes them.
+ */
+const VENDOR_FINANCE_DEFAULTS = {
+    escrowDays: 7,
+    minimumPayout: 500,
+    defaultCommissionRate: 10,
+};
+
+const readVendorFinanceSetting = async (key) => {
+    try {
+        const doc = await Settings.findOne({ key: 'vendor_finance' }).lean();
+        const value = Number(doc?.value?.[key]);
+        return Number.isFinite(value) && value >= 0 ? value : VENDOR_FINANCE_DEFAULTS[key];
+    } catch {
+        return VENDOR_FINANCE_DEFAULTS[key];
+    }
+};
+
+export const getVendorEscrowDays = () => readVendorFinanceSetting('escrowDays');
+export const getMinimumPayout = () => readVendorFinanceSetting('minimumPayout');
+export const getDefaultCommissionRate = () => readVendorFinanceSetting('defaultCommissionRate');
+
+/**
+ * Order fulfilment policy — return windows and the delivery estimate.
+ *
+ * These are customer-facing commitments and, for returns, a consumer-protection
+ * position. They were literals inside the order controller, so changing a
+ * returns policy required a code deploy. Defaults reproduce the previous values
+ * exactly.
+ */
+const FULFILMENT_DEFAULTS = {
+    quickCommerceReturnWindowHours: 24,
+    marketplaceReturnWindowHours: 168, // 7 days
+    estimatedDeliveryDays: 5,
+};
+
+const readFulfilmentSetting = async (key) => {
+    try {
+        const doc = await Settings.findOne({ key: 'fulfilment' }).lean();
+        const value = Number(doc?.value?.[key]);
+        return Number.isFinite(value) && value >= 0 ? value : FULFILMENT_DEFAULTS[key];
+    } catch {
+        return FULFILMENT_DEFAULTS[key];
+    }
+};
+
+export const getReturnWindowHours = async (experience) =>
+    readFulfilmentSetting(
+        experience === 'quick_commerce'
+            ? 'quickCommerceReturnWindowHours'
+            : 'marketplaceReturnWindowHours'
+    );
+
+export const getEstimatedDeliveryDays = () => readFulfilmentSetting('estimatedDeliveryDays');
 
 /**
  * Calculate commission for a vendor order item group
@@ -120,8 +183,9 @@ export const getVendorWithdrawableCommissions = async (vendorId) => {
         .populate('orderId', 'orderId status deliveredAt createdAt')
         .lean();
 
+    const escrowDays = await getVendorEscrowDays();
     const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - escrowDays);
 
     let withdrawableAmount = 0;
     const eligibleCommissions = [];

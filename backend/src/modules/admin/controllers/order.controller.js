@@ -7,6 +7,7 @@ import User from '../../../models/User.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
 import {
     claimRider,
     releaseRider,
@@ -536,15 +537,40 @@ export const deliveryOverride = asyncHandler(async (req, res) => {
         timestamp: new Date(),
     };
 
+    let refundRecord = null;
+
     if (action === 'retry') {
         order.status = 'processing';
         if (order.quickCommerce) order.quickCommerce.status = 'retry_scheduled';
+        await order.save();
     } else if (action === 'refund' || action === 'return_to_store') {
         order.status = 'returned';
         if (order.quickCommerce) order.quickCommerce.status = 'delivery_failed';
-        order.paymentStatus = 'refunded';
+        // `order.paymentStatus` is NOT set here any more. It is derived from
+        // settled Refund records — setting it directly is what previously told
+        // the customer they had been refunded while no money moved.
+        await order.save();
+
+        if (order.paymentStatus !== 'pending') {
+            refundRecord = await requestAndTryExecute({
+                orderId: order._id,
+                amount: order.total,
+                reason: String(reason || `Admin override: ${action}`).trim(),
+                refundType: 'full',
+                initiatedBy: req.user.id,
+            });
+        }
+    } else {
+        await order.save();
     }
 
-    await order.save();
-    res.status(200).json(new ApiResponse(200, order, `Admin override '${action}' applied successfully.`));
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            { order, refund: refundRecord },
+            refundRecord
+                ? `Admin override '${action}' applied. Refund ${refundRecord.refundNumber} is ${refundRecord.status}.`
+                : `Admin override '${action}' applied successfully.`
+        )
+    );
 });

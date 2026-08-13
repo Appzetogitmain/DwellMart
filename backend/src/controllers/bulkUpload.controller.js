@@ -1,4 +1,5 @@
 import asyncHandler from '../utils/asyncHandler.js';
+import { resolveCatalogScope, catalogScopeFilter, assertJobAccess } from '../utils/catalogScope.js';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
 import multer from 'multer';
@@ -128,6 +129,11 @@ export const processUpload = asyncHandler(async (req, res) => {
  */
 export const checkJobStatus = asyncHandler(async (req, res) => {
     const { jobId } = req.params;
+    // Ownership was not checked at all: any authenticated user could read any
+    // vendor's import progress by guessing or observing a job id.
+    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy').lean();
+    assertJobAccess(req.user, jobRecord);
+
     const progress = await getJobProgress(jobId);
     res.status(200).json(new ApiResponse(200, progress, 'Job progress details.'));
 });
@@ -137,6 +143,11 @@ export const checkJobStatus = asyncHandler(async (req, res) => {
  */
 export const cancelJobHandler = asyncHandler(async (req, res) => {
     const { jobId } = req.params;
+    // Same gap as checkJobStatus, but destructive: any authenticated user could
+    // cancel another vendor's running import.
+    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy').lean();
+    assertJobAccess(req.user, jobRecord);
+
     const result = await cancelJob(jobId);
     res.status(200).json(new ApiResponse(200, result, 'Job cancellation requested.'));
 });
@@ -145,12 +156,11 @@ export const cancelJobHandler = asyncHandler(async (req, res) => {
  * GET /api/products/bulk-upload/history
  */
 export const getImportHistory = asyncHandler(async (req, res) => {
-    const query = {};
-    if (req.user.role === 'vendor') {
-        query.vendorId = req.user.id;
-    } else if (req.query.vendorId) {
-        query.vendorId = req.query.vendorId;
-    }
+    // Fails closed for any role that is neither vendor nor admin. Previously a
+    // customer or rider fell through to an unfiltered query and received every
+    // vendor's import history with populated email addresses.
+    const scope = resolveCatalogScope(req.user, req.query.vendorId);
+    const query = catalogScopeFilter(scope);
 
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;

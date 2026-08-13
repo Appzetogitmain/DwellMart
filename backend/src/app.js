@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
@@ -23,6 +24,10 @@ import paymentRouter from './routes/payment.routes.js';
 import notificationRoutes from './modules/notifications/routes/notification.routes.js';
 import deviceTokenRoutes from './modules/notifications/routes/deviceToken.routes.js';
 
+// Config imports
+import { getTransactionSupport } from './config/db.js';
+import { collectEnvViolations } from './config/env.js';
+
 // Middleware imports
 import requestIdMiddleware from './middlewares/requestId.js';
 import { apiLimiter } from './middlewares/rateLimiter.js';
@@ -44,9 +49,18 @@ const isValidDeliveryDocToken = (relativePath, rawToken) => {
     const exp = Number(expRaw);
     if (!Number.isFinite(exp) || exp <= Date.now() || !providedSignature) return false;
 
+    // Read the secret lazily and with no literal fallback. A hardcoded default
+    // here would be a known key for signing access to rider Aadhaar and licence
+    // documents. Absent secret => deny, never a guessable signature.
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        console.error('CONFIG_VIOLATION key=JWT_SECRET reason="required to verify delivery document tokens"');
+        return false;
+    }
+
     const payload = `${relativePath}|${exp}`;
     const expectedSignature = crypto
-        .createHmac('sha256', process.env.JWT_SECRET || 'delivery-doc-secret')
+        .createHmac('sha256', secret)
         .update(payload)
         .digest('hex');
 
@@ -57,14 +71,26 @@ const isValidDeliveryDocToken = (relativePath, rawToken) => {
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
 app.use(mongoSanitize());
+/**
+ * CORS allowlist.
+ *
+ * Driven by `CORS_ALLOWED_ORIGINS` (comma-separated) so an environment can be
+ * changed without a deploy. The previous list hardcoded a Vercel preview
+ * domain, which stayed trusted in production indefinitely.
+ *
+ * Localhost origins are only trusted outside production.
+ */
+const IS_PRODUCTION_ENV = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+
 const allowedOrigins = [
     process.env.CLIENT_URL,
-    'https://dwell-mart-3u11.vercel.app',
-    'https://dwellmart.in',
-    'https://www.dwellmart.in',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:3001'
+    ...String(process.env.CORS_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ...(IS_PRODUCTION_ENV
+        ? []
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001']),
 ].filter(Boolean);
 
 app.use(cors({
@@ -109,6 +135,43 @@ app.get('/health', (req, res) => {
     });
 });
 
+/**
+ * Readiness probe — distinct from liveness above.
+ *
+ * `/health` answers "is the process up". `/ready` answers "can this instance
+ * serve traffic correctly", which additionally requires a live database and a
+ * topology that supports transactions. A load balancer should drain on this,
+ * not on `/health`.
+ *
+ * Deliberately reports no connection strings, secrets or violation details —
+ * only counts and states — because it is reachable without authentication.
+ */
+app.get('/ready', async (req, res) => {
+    const dbState = mongoose.connection?.readyState;
+    const dbConnected = dbState === 1;
+
+    let transactions = 'unknown';
+    if (dbConnected) {
+        try {
+            const support = await getTransactionSupport();
+            transactions = support.supportsTransactions ? 'supported' : 'unsupported';
+        } catch {
+            transactions = 'unknown';
+        }
+    }
+
+    const configViolations = collectEnvViolations().length;
+    const ready = dbConnected && transactions === 'supported' && configViolations === 0;
+
+    res.status(ready ? 200 : 503).json({
+        success: ready,
+        db: dbConnected ? 'connected' : 'disconnected',
+        transactions,
+        configViolations,
+        timestamp: new Date().toISOString(),
+    });
+});
+
 // ─── API Routes ──────────────────────────────────────────────────────────────
 app.use(
     '/uploads/delivery-docs',
@@ -123,15 +186,35 @@ app.use(
     express.static(deliveryDocsRoot, { fallthrough: false })
 );
 
+/**
+ * Directories under /uploads that are NEVER publicly served.
+ *
+ *   delivery-docs — rider Aadhaar and driving licences. Reachable only through
+ *                   the signed, expiring token route registered above.
+ *   tmp           — the staging area for files on their way to Cloudinary.
+ *                   Serving it turned an uploaded file into a live URL on this
+ *                   origin, which is the payload half of the stored-XSS chain
+ *                   (the other half was the client-controlled file extension,
+ *                   now fixed in middlewares/upload.js).
+ */
+const PRIVATE_UPLOAD_DIRS = ['/delivery-docs/', '/tmp/'];
+
 app.use(
     '/uploads',
     (req, res, next) => {
-        if (req.path.startsWith('/delivery-docs/')) {
+        if (PRIVATE_UPLOAD_DIRS.some((dir) => req.path.startsWith(dir))) {
             return res.status(403).json({ success: false, message: 'Access denied.' });
         }
         next();
     },
-    express.static(uploadsRoot)
+    express.static(uploadsRoot, {
+        // Never let a stored file be interpreted as a script or document by the
+        // browser. Defence in depth behind the extension and content checks.
+        setHeaders: (res) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+        },
+    })
 );
 app.use('/api/payments', paymentRouter);
 app.use('/api/products', bulkUploadRoutes);

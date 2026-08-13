@@ -2,8 +2,9 @@ import "dotenv/config";
 import dns from "node:dns";
 import http from "node:http";
 import app from "./app.js";
-import connectDB from "./config/db.js";
+import connectDB, { assertTransactionSupport } from "./config/db.js";
 import { validateEnv } from "./config/env.js";
+import { assertNoPendingMigrations } from "./migrations/runner.js";
 import { initSocket } from "./socket.js";
 import { startQuickCommerceSweep } from "./services/quickCommerceAlerts.service.js";
 import { QUICK_COMMERCE_SWEEP_INTERVAL_MS } from "./constants/quickCommerce.js";
@@ -15,6 +16,7 @@ import { startEscalatedOrderRecoveryWorker } from "./services/riderAssignment.se
 import { COD_CAPTURE_JOB, handleCodCaptureRetry } from "./services/deliveryCash.service.js";
 import { RIDER_EARNING_JOB, handleRiderEarningRetry } from "./services/wallet/riderEarnings.service.js";
 import { startWalletMaturityWorker } from "./services/wallet/walletMaturity.worker.js";
+import { startIntegrityMonitor } from "./services/integrityMonitor.service.js";
 
 dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
 
@@ -24,6 +26,16 @@ const startServer = async () => {
   try {
     validateEnv();
     await connectDB();
+
+    // Transactions are required by checkout, order cancellation and rider
+    // withdrawals. Detect an unsupported topology once, at boot, instead of
+    // once per failed order.
+    await assertTransactionSupport();
+
+    // Refuse to serve traffic when the code expects a schema the database has
+    // not been migrated to. Migrations are applied by an explicit deploy step
+    // (`npm run migrate`), never as a side effect of a restart.
+    await assertNoPendingMigrations();
 
     const server = http.createServer(app);
     initSocket(server);
@@ -60,6 +72,12 @@ const startServer = async () => {
 
     // ── Rider wallet maturity sweep (5 min — PENDING → AVAILABLE earnings) ──
     startWalletMaturityWorker(5 * 60_000);
+
+    // ── Financial integrity monitor (6h) ────────────────────────────────────
+    // Watches the invariants the remediation phases established: session vs
+    // order totals, reserved-stock drift, missing commissions, refund
+    // consistency and duplicate open settlements.
+    startIntegrityMonitor(6 * 60 * 60 * 1000);
 
     server.listen(PORT, () => {
       console.log(`Server & WebSocket running on http://localhost:${PORT}`);

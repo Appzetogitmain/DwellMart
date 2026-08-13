@@ -46,6 +46,22 @@ import { roundMoney, assertPriceConsistency } from '../PriceReconciliationServic
 import { calculateVendorShippingForGroups } from '../vendorShipping.service.js';
 import { ensureVendorCommissionsForOrder } from '../commission.service.js';
 
+/**
+ * Whether a price mismatch should halt checkout or merely be recorded.
+ *
+ * Settings-backed rather than NODE_ENV-derived so it can be flipped at runtime
+ * during an incident without a deploy. Defaults to 'observe': enabling
+ * enforcement before a soak proves zero mismatches would fail live checkouts.
+ */
+const getPriceConsistencyMode = async () => {
+    try {
+        const doc = await Settings.findOne({ key: 'checkout' }).lean();
+        return doc?.value?.enforcePriceConsistency === true ? 'enforce' : 'observe';
+    } catch {
+        return 'observe';
+    }
+};
+
 // ── ID helpers ──────────────────────────────────────────────────────────────
 
 const today = () => {
@@ -458,6 +474,10 @@ export const splitAndCreateOrders = async ({
                         shipping:      pricing.shipping,
                         tax:           pricing.tax,
                         packagingFee:  pricing.packagingFee || 0,
+                        // This order's own discount. Previously omitted entirely,
+                        // so every splitter-created order recorded discount: 0
+                        // while finance reports summed exactly this field.
+                        discount:      pricing.discount,
                         total:         pricing.total,
                         totalSavings:  pricing.savings,
                         orderType:     deriveOrderType(pricingTypes),
@@ -468,8 +488,12 @@ export const splitAndCreateOrders = async ({
                         fulfillmentType:    fgDoc.fulfillmentType,
                         // Fulfillment-type-specific fields
                         experience: ft === 'quick_commerce' ? 'quick_commerce' : 'marketplace',
-                        couponCode:     coupon?.code     || null,
-                        couponDiscount: coupon?.discount || 0,
+                        couponCode:     coupon?.code || null,
+                        // This group's proportional share, NOT the cart-wide
+                        // figure. Writing `coupon.discount` here recorded the
+                        // full discount on every sub-order, so an N-vendor split
+                        // reported N times the discount actually given.
+                        couponDiscount: fgCouponDiscount,
                     };
 
                     if (ft === 'quick_commerce' && qcDelivery) {
@@ -538,14 +562,25 @@ export const splitAndCreateOrders = async ({
                 { session: dbSession }
             );
 
+            // ── 5b. Price consistency, BEFORE commit ─────────────────────────
+            // Compare the amount the customer was authorised/charged for
+            // (`session.summary.grandTotal`) against the sum of the orders being
+            // created. This previously ran AFTER commit and compared `grandTotal`
+            // against the order totals it was itself derived from — two views of
+            // the same number, so it could never detect a mismatch and could not
+            // have stopped one anyway.
+            const authorisedTotal = Number(session.summary?.grandTotal);
+            if (Number.isFinite(authorisedTotal) && authorisedTotal > 0) {
+                assertPriceConsistency({
+                    checkoutTotal: authorisedTotal,
+                    orderTotals: createdOrders.map((o) => o.total),
+                    context: `OrderSplitterEngine:${sessionId}`,
+                    mode: await getPriceConsistencyMode(),
+                });
+            }
+
             await dbSession.commitTransaction();
             await dbSession.endSession();
-
-            assertPriceConsistency({
-                checkoutTotal: grandTotal,
-                orderTotals: createdOrders.map((o) => o.total),
-                context: `OrderSplitterEngine:${sessionId}`,
-            });
 
         // ── 6. Emit events (after commit — never inside transaction) ──────────
         for (const order of createdOrders) {
@@ -651,8 +686,15 @@ export const calculateCheckoutSessionSummary = async ({
 
     const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
     const settings = settingsDoc?.value || {};
-    const wholesaleSettingsDoc = await Settings.findOne({ key: 'wholesale' }).lean();
-    const wholesaleEnabled = wholesaleSettingsDoc?.value?.enabled !== false;
+
+    // The wholesale flag MUST come from the same source `splitAndCreateOrders`
+    // uses. This previously read Settings{key:'wholesale'} — a key with no
+    // writer anywhere and no entry in SETTINGS_CATEGORY_SCHEMAS, so the document
+    // could never exist and `value?.enabled !== false` resolved to true forever.
+    // The result: the summary sent to the payment gateway applied wholesale tier
+    // pricing while the orders created from it did not, so the customer was
+    // charged an amount that did not match the order ledger.
+    const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
 
     let totalSubtotal = 0;
     let totalShipping = 0;

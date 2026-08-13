@@ -184,19 +184,40 @@ const MobileOrderDetail = () => {
     navigate('/checkout');
   };
 
+  // Mirrors CUSTOMER_CANCELLABLE_STATUSES on the server. 'confirmed' is what a
+  // PAID order carries, so omitting it made every paid order uncancellable.
+  const CANCELLABLE_STATUSES = ['pending', 'processing', 'approved', 'confirmed'];
+  const isCancellable = CANCELLABLE_STATUSES.includes(order?.status);
+
   const handleCancel = async () => {
-     if (window.confirm(t('Are you sure you want to cancel this order?'))) {
-      if (['pending', 'processing'].includes(order.status)) {
-        try {
-          await cancelOrder(order.id);
-          toast.success(t('Order cancelled successfully'));
-          navigate('/orders');
-        } catch (error) {
-          toast.error(t(error?.message || 'Failed to cancel order'));
-        }
-      } else {
-        toast.error(t('This order cannot be cancelled'));
-      }
+    // Includes 'confirmed' — that is the status a PAID order carries. The
+    // previous list allowed only pending/processing, so every paid order was
+    // uncancellable and needed a support ticket.
+    if (!isCancellable) {
+      toast.error(t('This order cannot be cancelled'));
+      return;
+    }
+
+    // A paid order sets an expectation about money coming back; say so before
+    // the customer commits, not after.
+    const willRefund = ['paid', 'partially_refunded'].includes(order.paymentStatus);
+    const prompt = willRefund
+      ? t('Cancel this order? A refund will be initiated and may take 5–7 business days to reach your account.')
+      : t('Are you sure you want to cancel this order?');
+
+    if (!window.confirm(prompt)) return;
+
+    try {
+      const result = await cancelOrder(order.id);
+      // Never claim the money has arrived — the gateway settles over days.
+      toast.success(
+        result?.refund
+          ? t('Order cancelled. Your refund has been initiated and is being processed.')
+          : t('Order cancelled successfully')
+      );
+      navigate('/orders');
+    } catch (error) {
+      toast.error(t(error?.message || 'Failed to cancel order'));
     }
   };
 
@@ -515,7 +536,7 @@ const MobileOrderDetail = () => {
 
               {/* Actions */}
               <div className="space-y-2">
-                {['pending', 'processing'].includes(order.status) && (
+                {isCancellable && (
                   <button
                     onClick={handleCancel}
                     className="w-full py-3 bg-status-errorBg text-status-error border border-status-error/30 rounded-xl font-semibold hover:opacity-90 transition-colors"

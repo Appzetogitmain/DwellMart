@@ -149,3 +149,10 @@ dist
 /scratch
 
 # End of https://www.toptal.com/developers/gitignore/api/node
+# ─── Uploaded files (may contain PII) ────────────────────────────────────────
+# Vendor trade licences, rider Aadhaar/driving licences and support attachments
+# are uploaded here. Eight such files — including a real person's résumé — were
+# previously committed. Nothing under an upload directory may be tracked.
+/public/uploads/
+/uploads/
+!/uploads/.gitkeep

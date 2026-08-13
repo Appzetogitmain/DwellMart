@@ -15,9 +15,10 @@ import {
     getCashfreeCredentials,
     verifyCashfreeSignature,
 } from '../../../services/billing/cashfree.service.js';
-import { activateInternalSubscription } from '../../../services/billing/subscriptionState.service.js';
+import { activateSubscription } from '../../../services/billing/subscriptionState.service.js';
 import { roundMoney } from '../../../services/PriceReconciliationService.js';
 import { incrementCouponUsage } from '../../../services/coupon.service.js';
+import { settleRefundFromGateway } from '../../../services/refund/RefundOrchestrator.service.js';
 
 const checkSessionOwnership = (session, reqUser) => {
     if (session.userId) {
@@ -88,8 +89,8 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
 
         const customerId    = req.user?._id || session.userId || `cust_${session.sessionId}`;
         const customerName  = session.shippingAddress?.name || session.guestInfo?.name || req.user?.name || 'Customer';
-        const customerEmail = session.shippingAddress?.email || session.guestInfo?.email || req.user?.email || email || 'customer@dwellmart.com';
-        const customerPhone = session.shippingAddress?.phone || session.guestInfo?.phone || req.user?.phone || '9999999999';
+        const customerEmail = session.shippingAddress?.email || session.guestInfo?.email || req.user?.email || email || null;
+        const customerPhone = session.shippingAddress?.phone || session.guestInfo?.phone || req.user?.phone || null;
 
         const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
         const notifyUrl = process.env.CASHFREE_NOTIFY_URL || undefined;
@@ -146,8 +147,8 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
             customer: {
                 id: req.user?._id || order.userId || `cust_${order.orderId}`,
                 name: order.shippingAddress?.name || req.user?.name || 'Customer',
-                email: req.user?.email || email || 'customer@dwellmart.com',
-                phone: order.shippingAddress?.phone || '9999999999',
+                email: req.user?.email || email || null,
+                phone: order.shippingAddress?.phone || null,
             },
             returnUrl: `${clientUrl}/order-confirmation/${order.orderId}?order_id={order_id}`,
         });
@@ -177,8 +178,17 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
         const cfOrderId = `sub_${vendor._id}_${plan._id}_${Date.now()}`;
         const amount = Number(plan.price_inr || 0);
 
-        if (amount === 0) {
-            const subscription = await activateInternalSubscription({ vendor, plan, gateway: 'internal' });
+        // Free means free in BOTH currencies. Testing price_inr alone would let
+        // a ₹0/$49 plan take the no-payment branch, which the activation service
+        // now refuses — routing it to real checkout instead of a 402.
+        const isFreePlan = Number(plan.price_inr || 0) === 0 && Number(plan.price_usd || 0) === 0;
+
+        if (isFreePlan) {
+            const subscription = await activateSubscription({
+                vendor,
+                plan,
+                activationSource: 'zero_price_plan',
+            });
             return res.status(200).json(
                 new ApiResponse(200, { isFree: true, subscription }, 'Free plan activated successfully.')
             );
@@ -193,7 +203,7 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
                 id: vendor._id,
                 name: vendor.name || vendor.storeName || 'Vendor Owner',
                 email: vendor.email,
-                phone: vendor.phone || '9999999999',
+                phone: vendor.phone || null,
             },
             returnUrl: `${clientUrl}/vendor/register?cf_order_id=${cfOrderId}`,
         });
@@ -232,7 +242,31 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             const plan   = await SubscriptionPlan.findById(planId);
 
             if (vendor && plan) {
-                const subscription = await activateInternalSubscription({ vendor, plan, gateway: 'cashfree' });
+                // Verify the amount actually paid matches the plan's price, the
+                // same guard the CheckoutSession branch applies. Without it the
+                // gateway's "PAID" is trusted for an unknown amount.
+                //
+                // Compared against price_inr because `createPaymentSession`
+                // charges subscriptions in INR for every vendor regardless of
+                // country — comparing against a country-resolved price here
+                // would reject every legitimate non-India payment.
+                const expectedAmount = roundMoney(plan.price_inr);
+                const gatewayAmount = roundMoney(cfOrder?.order_amount ?? 0);
+
+                if (Math.abs(gatewayAmount - expectedAmount) > 0.01) {
+                    console.error(
+                        `[Security Alert] Subscription amount mismatch for vendor ${vendorId}, plan ${planId}: `
+                        + `expected ${expectedAmount}, gateway paid ${gatewayAmount}`
+                    );
+                    throw new ApiError(400, 'Subscription payment verification failed due to amount mismatch.');
+                }
+
+                const subscription = await activateSubscription({
+                    vendor,
+                    plan,
+                    activationSource: 'gateway_verified',
+                    gatewayPaymentRef: String(cfOrder?.cf_order_id || targetId),
+                });
                 return res.status(200).json(
                     new ApiResponse(200, { verified: true, isPaid: true, subscription }, 'Vendor subscription payment verified.')
                 );
@@ -319,7 +353,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 
                 // P1-04 FIX: Increment coupon usage after successful order creation (online payment path)
                 if (coupon?.code) {
-                    incrementCouponUsage(coupon.code).catch((err) =>
+                    incrementCouponUsage(coupon.code, { userId: checkoutSession.userId, orderId: orders[0]?._id, checkoutSessionId: checkoutSession.sessionId, amount: coupon.discount }).catch((err) =>
                         console.error('[VerifyPayment] Failed to increment coupon usage:', err?.message)
                     );
                 }
@@ -379,6 +413,23 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     // ── 3. Legacy Order check ──────────────────────────────────────────────────
     const order = await Order.findOne({ orderId: targetId });
     if (order) {
+        // This route is `optionalAuth` so guest checkout can verify its own
+        // payment. That is fine — returning the raw order document was not:
+        // any unauthenticated caller supplying an order id received the
+        // customer's name, phone, email, full shipping address and line items.
+        const callerUserId = req.user?._id || req.user?.id;
+        const isOwner = Boolean(
+            callerUserId && order.userId && String(order.userId) === String(callerUserId)
+        );
+
+        // An order that belongs to a registered customer may only be inspected
+        // by that customer. Guest orders (no userId) remain reachable by order
+        // id, which is how guest payment return works, but only ever in the
+        // sanitised shape below.
+        if (order.userId && !isOwner) {
+            throw new ApiError(403, 'Access denied. You do not own this order.');
+        }
+
         const cfOrder = await fetchCashfreeOrder(targetId);
         const isPaid  = cfOrder.order_status === 'PAID';
         if (isPaid) {
@@ -388,8 +439,21 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             }
             await order.save();
         }
+
+        // Allowlisted projection — never the raw document.
+        const safeOrder = isOwner
+            ? order
+            : {
+                orderId: order.orderId,
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                total: order.total,
+                itemCount: order.items?.length || 0,
+                createdAt: order.createdAt,
+            };
+
         return res.status(200).json(
-            new ApiResponse(200, { verified: true, isPaid, order }, 'Order payment verified.')
+            new ApiResponse(200, { verified: true, isPaid, order: safeOrder }, 'Order payment verified.')
         );
     }
 
@@ -430,6 +494,20 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     // ── 3. Process asynchronously after response sent (sync in test mode) ───────
     const processAsync = async () => {
         try {
+            // ── 3z. Refund lifecycle ────────────────────────────────────────
+            // A refund settles asynchronously over days; this is the only event
+            // that may mark one `succeeded` and trigger its reversals.
+            const refundData = payload.data?.refund;
+            if (refundData || String(eventType || '').includes('REFUND')) {
+                await settleRefundFromGateway({
+                    gatewayRefundId: refundData?.cf_refund_id,
+                    refundIdKey: refundData?.refund_id,
+                    status: refundData?.refund_status,
+                    raw: refundData || payload.data || {},
+                });
+                return;
+            }
+
             if (!cfOrderId) return;
 
             // ── 3a. Vendor subscription payment ────────────────────────────────
@@ -442,7 +520,29 @@ export const handleWebhook = asyncHandler(async (req, res) => {
                         const vendor = await Vendor.findById(vendorId);
                         const plan   = await SubscriptionPlan.findById(planId);
                         if (vendor && plan) {
-                            await activateInternalSubscription({ vendor, plan, gateway: 'cashfree' });
+                            // Same amount guard as the verify path: a webhook
+                            // asserting PAID for the wrong amount must not
+                            // activate the plan. Compared against price_inr for
+                            // the same reason — subscriptions are charged in INR.
+                            const expectedAmount = roundMoney(plan.price_inr);
+                            const webhookAmount = roundMoney(
+                                orderData.order_amount ?? paymentData.payment_amount ?? 0
+                            );
+
+                            if (webhookAmount > 0 && Math.abs(webhookAmount - expectedAmount) > 0.01) {
+                                console.error(
+                                    `[Webhook Security Alert] Subscription amount mismatch for vendor ${vendorId}, `
+                                    + `plan ${planId}: expected ${expectedAmount}, gateway paid ${webhookAmount}. Activation refused.`
+                                );
+                                return;
+                            }
+
+                            await activateSubscription({
+                                vendor,
+                                plan,
+                                activationSource: 'gateway_webhook',
+                                gatewayPaymentRef: String(paymentData.cf_payment_id || cfOrderId),
+                            });
                         }
                     }
                 }
@@ -511,7 +611,7 @@ export const handleWebhook = asyncHandler(async (req, res) => {
 
                         // P1-04 FIX: Increment coupon usage after successful order creation (webhook path)
                         if (coupon?.code) {
-                            incrementCouponUsage(coupon.code).catch(() => null);
+                            incrementCouponUsage(coupon.code, { userId: session.userId, orderId: orders[0]?._id, checkoutSessionId: session.sessionId, amount: coupon.discount }).catch(() => null);
                         }
 
                         console.log(`[Webhook] CheckoutSession ${session.sessionId} completed — ${orders.length} orders created.`);

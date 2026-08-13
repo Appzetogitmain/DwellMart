@@ -41,3 +41,40 @@ export const otpLimiter = rateLimit({
     message: { success: false, message: 'Too many OTP requests, please wait a minute.' },
 });
 
+/**
+ * Translation limiter.
+ *
+ * `/api/v1/translate` is public and unauthenticated by design — the storefront
+ * translates before a visitor logs in — but it is backed by a metered Google
+ * Cloud Translate key, so the only thing standing between an anonymous caller
+ * and an unbounded bill is this limit.
+ */
+export const translationLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 60 : 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many translation requests, please slow down.' },
+});
+
+/**
+ * Coupon validation limiter — bounds code brute-forcing against a public
+ * endpoint that reveals whether a code is valid.
+ */
+export const couponValidateLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 30 : 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many coupon attempts. Please try again later.' },
+});
+
+/** Public write endpoints (contact, feedback) — bounds spam row creation. */
+export const publicWriteLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 10 : 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many submissions. Please try again later.' },
+});
+

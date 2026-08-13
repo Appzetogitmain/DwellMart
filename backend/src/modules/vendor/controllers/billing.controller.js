@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiError from '../../../utils/ApiError.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import Admin from '../../../models/Admin.model.js';
+import EmailVerification from '../../../models/EmailVerification.model.js';
 import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -9,10 +10,44 @@ import { sendVendorOnboardingSuccessEmail } from '../../../services/email.servic
 import { createPlanSelection, resolvePlanSelection } from '../../../services/billing/planSelection.service.js';
 import { serializePlan } from '../../../services/billing/plan.service.js';
 import {
-    activateInternalSubscription,
+    activateSubscription,
     getCurrentVendorSubscription,
     serializeSubscription,
 } from '../../../services/billing/subscriptionState.service.js';
+
+/** A plan is free only when it costs nothing in both currencies. */
+const isFreePlan = (plan) =>
+    Number(plan?.price_inr || 0) === 0 && Number(plan?.price_usd || 0) === 0;
+
+/**
+ * Establish that the caller may act on this vendor's onboarding.
+ *
+ * The onboarding routes carry no session by design — a vendor completing
+ * registration has not logged in yet. Two proofs are accepted:
+ *
+ *   1. An authenticated vendor acting on their own account (renewal case).
+ *   2. A verified `EmailVerification` record for that address, which is created
+ *      by the registration OTP flow and expires with it.
+ *
+ * Without one of these, supplying any known vendor email was enough to act on
+ * that vendor's account.
+ */
+const assertOnboardingAuthority = async (req, vendor) => {
+    const callerId = req.user?.id || req.user?._id;
+    if (callerId && String(callerId) === String(vendor._id)) return;
+
+    const verification = await EmailVerification.findOne({
+        email: String(vendor.email || '').trim().toLowerCase(),
+        isVerified: true,
+    }).lean();
+
+    if (verification) return;
+
+    throw new ApiError(
+        403,
+        'Verify your email address before continuing with onboarding.'
+    );
+};
 
 const rememberSubscribedVendor = async (vendor, planId) => {
     if (!vendor) return;
@@ -104,6 +139,12 @@ export const initiateOnboardingSubscription = asyncHandler(async (req, res) => {
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
 
+    // Prove the caller controls this mailbox before acting on the account.
+    // This route has no session (a vendor mid-onboarding has not logged in yet),
+    // so email control is the available proof — an authenticated vendor may
+    // alternatively act on their own account.
+    await assertOnboardingAuthority(req, vendor);
+
     const { plan } = await resolvePlanSelection({
         selectionToken,
         selectedPlanId: selectedPlanId || vendor.selectedPlan,
@@ -124,19 +165,41 @@ export const initiateOnboardingSubscription = asyncHandler(async (req, res) => {
         );
     }
 
-    const internalSubscription = await activateInternalSubscription({ vendor, plan, gateway: 'internal' });
-    
+    // ── A priced plan is never activated here ────────────────────────────────
+    // This endpoint previously activated any plan, including the most expensive,
+    // with no payment and no authentication. Payment now happens at the gateway
+    // and activation happens in the webhook / verify path.
+    if (!isFreePlan(plan)) {
+        return res.status(402).json(
+            new ApiResponse(
+                402,
+                {
+                    paymentRequired: true,
+                    planId: String(plan._id),
+                    plan: serializePlan(plan, vendor.country),
+                },
+                'This plan requires payment. Continue to checkout to activate your subscription.'
+            )
+        );
+    }
+
+    const subscription = await activateSubscription({
+        vendor,
+        plan,
+        activationSource: 'zero_price_plan',
+    });
+
     // Notify admins for subscription activation during onboarding
     await rememberSubscribedVendor(vendor, plan._id);
 
     // Send onboarding completion email
     await notifyVendorOfOnboardingCompletion(vendor, plan, {
-        amount: Number(plan.price_inr || plan.price_usd || 0),
+        amount: 0,
         currency: vendor.country === 'IN' ? 'INR' : 'USD',
         gateway: 'internal',
         status: 'paid',
         transactionId: `INT_${Date.now()}`,
-        invoiceId: `${internalSubscription.gateway_subscription_id}_invoice`,
+        invoiceId: `${subscription.gateway_subscription_id}_invoice`,
         createdAt: new Date(),
     });
 
@@ -145,7 +208,7 @@ export const initiateOnboardingSubscription = asyncHandler(async (req, res) => {
             200,
             {
                 gateway: 'internal',
-                subscription: await serializeSubscription(internalSubscription),
+                subscription: await serializeSubscription(subscription),
                 status: 'active',
             },
             'Subscription activated successfully.'
@@ -158,7 +221,20 @@ export const confirmOnboardingPayment = asyncHandler(async (req, res) => {
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const vendor = await Vendor.findOne({ email: normalizedEmail });
 
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    // Neutral response for an unknown vendor: a 404 here turned this endpoint
+    // into a vendor-existence oracle for any email address.
+    if (!vendor) {
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                { gateway: 'internal', confirmed: false, subscription: null },
+                'Subscription status unavailable.'
+            )
+        );
+    }
+
+    await assertOnboardingAuthority(req, vendor);
+
     const currentSubscription = await getCurrentVendorSubscription(vendor._id);
 
     return res.status(200).json(

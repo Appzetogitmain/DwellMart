@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Review from '../../../models/Review.model.js';
+import ReviewHelpfulVote from '../../../models/ReviewHelpfulVote.model.js';
 import Product from '../../../models/Product.model.js';
 import Order from '../../../models/Order.model.js';
 
@@ -45,7 +46,41 @@ export const addReview = asyncHandler(async (req, res) => {
 
 // POST /api/user/reviews/:id/helpful
 export const voteHelpful = asyncHandler(async (req, res) => {
-    const review = await Review.findByIdAndUpdate(req.params.id, { $inc: { helpfulCount: 1 } }, { new: true });
+    const reviewId = req.params.id;
+    const userId = req.user.id;
+
+    const review = await Review.findById(reviewId).select('_id');
     if (!review) throw new ApiError(404, 'Review not found.');
-    res.status(200).json(new ApiResponse(200, review, 'Vote recorded.'));
+
+    // The unique (reviewId, userId) index makes this idempotent: a repeated
+    // vote is absorbed rather than incrementing the counter again.
+    try {
+        await ReviewHelpfulVote.create({ reviewId, userId });
+    } catch (err) {
+        if (err?.code === 11000) {
+            const current = await Review.findById(reviewId).select('helpfulCount').lean();
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    { _id: reviewId, helpfulCount: current?.helpfulCount || 0, alreadyVoted: true },
+                    'You have already marked this review as helpful.'
+                )
+            );
+        }
+        throw err;
+    }
+
+    const updated = await Review.findByIdAndUpdate(
+        reviewId,
+        { $inc: { helpfulCount: 1 } },
+        { new: true }
+    );
+
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            { _id: reviewId, helpfulCount: updated?.helpfulCount || 0, alreadyVoted: false },
+            'Vote recorded.'
+        )
+    );
 });

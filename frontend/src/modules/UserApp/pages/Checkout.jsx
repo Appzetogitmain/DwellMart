@@ -703,7 +703,14 @@ const MobileCheckout = () => {
           shippingOption,
         });
 
-        const { sessionId, summary: sessionSummary } = sessionResult;
+        const { sessionId, summary: sessionSummary, couponRejectionReason } = sessionResult;
+
+        // The server may decline a coupon the cart had already shown as applied
+        // (per-user limit, minimum order value, expiry). It used to drop it
+        // silently, so the customer saw a higher total with no explanation.
+        if (couponRejectionReason) {
+          toast.error(couponRejectionReason);
+        }
         if (sessionSummary && typeof sessionSummary === 'object') {
           if (isQuickCommerce && sessionSummary.deliveryFee !== undefined) {
             setQuickEstimate((prev) => ({

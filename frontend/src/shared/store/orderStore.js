@@ -320,8 +320,10 @@ export const useOrderStore = create(
         const order = get().getOrder(orderId);
         const targetId = order?.orderId || orderId;
 
+        let result = null;
         try {
-          await api.patch(`/user/orders/${targetId}/cancel`, { reason });
+          const response = await api.patch(`/user/orders/${targetId}/cancel`, { reason });
+          result = response?.data ?? response ?? null;
         } catch (error) {
           throw error;
         }
@@ -329,12 +331,21 @@ export const useOrderStore = create(
         set((state) => ({
           orders: state.orders.map((o) =>
             String(o.id) === String(orderId) || String(o.orderId) === String(orderId) || String(o._id) === String(orderId)
-              ? { ...o, status: 'cancelled', cancelledAt: new Date().toISOString() }
+              ? {
+                ...o,
+                status: 'cancelled',
+                cancelledAt: new Date().toISOString(),
+                // Reflect the refund the server initiated, so the UI can show
+                // its status without a refetch.
+                ...(result?.refund ? { refund: result.refund } : {}),
+              }
               : o
           ),
         }));
 
-        return true;
+        // Returns the payload (including `refund`) rather than a bare `true`,
+        // so the caller can tell the customer a refund was initiated.
+        return result;
       },
 
       requestReturn: async (orderId, payload = {}) => {

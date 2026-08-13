@@ -13,10 +13,12 @@ import DataTable from "../../Admin/components/DataTable";
 import ConfirmModal from "../../Admin/components/ConfirmModal";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import toast from "react-hot-toast";
+import api from "../../../shared/utils/api";
 
 const PickupLocations = () => {
   const { vendor } = useVendorAuthStore();
   const [locations, setLocations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [locationModal, setLocationModal] = useState({
     isOpen: false,
@@ -31,48 +33,52 @@ const PickupLocations = () => {
 
   useEffect(() => {
     if (!vendorId) return;
+    let cancelled = false;
 
-    // Load locations from localStorage
-    const savedLocations = localStorage.getItem(
-      `vendor-${vendorId}-pickup-locations`
-    );
-    if (savedLocations) {
-      setLocations(JSON.parse(savedLocations));
-    } else {
-      // Initialize with default location if vendor has address
-      if (vendor.address) {
-        const defaultLocation = {
-          id: 1,
-          name: "Main Store",
-          address: {
-            street: vendor.address.street || "",
-            city: vendor.address.city || "",
-            state: vendor.address.state || "",
-            zipCode: vendor.address.zipCode || "",
-            country: vendor.address.country || "USA",
-          },
-          phone: vendor.phone || "",
-          email: vendor.email || "",
-          isActive: true,
-          isDefault: true,
-          operatingHours: {
-            monday: { open: "09:00", close: "18:00", closed: false },
-            tuesday: { open: "09:00", close: "18:00", closed: false },
-            wednesday: { open: "09:00", close: "18:00", closed: false },
-            thursday: { open: "09:00", close: "18:00", closed: false },
-            friday: { open: "09:00", close: "18:00", closed: false },
-            saturday: { open: "10:00", close: "16:00", closed: false },
-            sunday: { open: "10:00", close: "16:00", closed: true },
-          },
-        };
-        setLocations([defaultLocation]);
-        localStorage.setItem(
-          `vendor-${vendorId}-pickup-locations`,
-          JSON.stringify([defaultLocation])
-        );
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get('/vendor/pickup-locations');
+        const serverLocations = res?.data?.locations || [];
+        if (cancelled) return;
+
+        // One-time migration: locations created while this screen was
+        // localStorage-only would otherwise be silently discarded.
+        const legacyKey = `vendor-${vendorId}-pickup-locations`;
+        const legacyRaw = localStorage.getItem(legacyKey);
+        if (serverLocations.length === 0 && legacyRaw) {
+          try {
+            const legacy = JSON.parse(legacyRaw);
+            if (Array.isArray(legacy) && legacy.length > 0) {
+              await api.post('/vendor/pickup-locations/import', { locations: legacy });
+              localStorage.removeItem(legacyKey);
+              const after = await api.get('/vendor/pickup-locations');
+              if (!cancelled) setLocations(after?.data?.locations || []);
+              toast.success('Your saved pickup locations have been migrated to your account.');
+              return;
+            }
+          } catch {
+            // A malformed legacy blob must not block the screen.
+          }
+        }
+
+        setLocations(serverLocations);
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(
+            error?.response?.data?.message || 'Could not load pickup locations.'
+          );
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    }
-  }, [vendorId, vendor]);
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [vendorId]);
 
   const filteredLocations = locations.filter(
     (loc) =>
@@ -82,63 +88,58 @@ const PickupLocations = () => {
       loc.address.city.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // All mutations now go to the server. These previously wrote to
+  // `localStorage`, so a vendor's pickup locations existed only in one browser
+  // profile and were lost on a cache clear — with a PickupLocation model on the
+  // backend that no code imported.
+  const refresh = async () => {
+    const res = await api.get('/vendor/pickup-locations');
+    setLocations(res?.data?.locations || []);
+  };
+
+  const withError = async (fn, successMessage) => {
+    try {
+      await fn();
+      await refresh();
+      if (successMessage) toast.success(successMessage);
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || error?.message || 'Something went wrong.'
+      );
+    }
+  };
+
   const handleSave = (locationData) => {
-    const updatedLocations = locationModal.location?.id
-      ? locations.map((l) =>
-        l.id === locationModal.location.id
-          ? { ...locationData, id: locationModal.location.id }
-          : l
-      )
-      : [...locations, { ...locationData, id: Date.now() }];
-
-    setLocations(updatedLocations);
-    localStorage.setItem(
-      `vendor-${vendorId}-pickup-locations`,
-      JSON.stringify(updatedLocations)
-    );
-    setLocationModal({ isOpen: false, location: null });
-    toast.success(
-      locationModal.location?.id ? "Location updated" : "Location added"
-    );
+    const editingId = locationModal.location?._id || locationModal.location?.id;
+    return withError(async () => {
+      if (editingId) {
+        await api.put(`/vendor/pickup-locations/${editingId}`, locationData);
+      } else {
+        await api.post('/vendor/pickup-locations', locationData);
+      }
+      setLocationModal({ isOpen: false, location: null });
+    }, editingId ? 'Location updated' : 'Location added');
   };
 
-  const handleDelete = () => {
-    const updatedLocations = locations.filter(
-      (l) => l.id !== deleteModal.locationId
-    );
-    setLocations(updatedLocations);
-    localStorage.setItem(
-      `vendor-${vendorId}-pickup-locations`,
-      JSON.stringify(updatedLocations)
-    );
-    setDeleteModal({ isOpen: false, locationId: null });
-    toast.success("Location deleted");
-  };
+  const handleDelete = () =>
+    withError(async () => {
+      await api.delete(`/vendor/pickup-locations/${deleteModal.locationId}`);
+      setDeleteModal({ isOpen: false, locationId: null });
+    }, 'Location deleted');
 
   const toggleActive = (locationId) => {
-    const updatedLocations = locations.map((l) =>
-      l.id === locationId ? { ...l, isActive: !l.isActive } : l
+    const current = locations.find((l) => (l._id || l.id) === locationId);
+    return withError(
+      () => api.put(`/vendor/pickup-locations/${locationId}`, { isActive: !current?.isActive }),
+      'Location status updated'
     );
-    setLocations(updatedLocations);
-    localStorage.setItem(
-      `vendor-${vendorId}-pickup-locations`,
-      JSON.stringify(updatedLocations)
-    );
-    toast.success("Location status updated");
   };
 
-  const setDefault = (locationId) => {
-    const updatedLocations = locations.map((l) => ({
-      ...l,
-      isDefault: l.id === locationId,
-    }));
-    setLocations(updatedLocations);
-    localStorage.setItem(
-      `vendor-${vendorId}-pickup-locations`,
-      JSON.stringify(updatedLocations)
+  const setDefault = (locationId) =>
+    withError(
+      () => api.patch(`/vendor/pickup-locations/${locationId}/default`),
+      'Default location updated'
     );
-    toast.success("Default location updated");
-  };
 
   const columns = [
     {
@@ -207,7 +208,7 @@ const PickupLocations = () => {
             <FiEdit />
           </button>
           <button
-            onClick={() => setDeleteModal({ isOpen: true, locationId: row.id })}
+            onClick={() => setDeleteModal({ isOpen: true, locationId: row._id || row.id })}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <FiTrash2 />
           </button>

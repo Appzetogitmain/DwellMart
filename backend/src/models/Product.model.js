@@ -5,8 +5,33 @@ const productSchema = new mongoose.Schema(
         name: { type: String, required: true, trim: true, index: true },
         slug: { type: String, required: true, unique: true },
         description: { type: String },
+        /**
+         * Stock keeping unit.
+         *
+         * The bulk importer has always read and written this field, and the
+         * third-party inventory integration resolves products by it — but it
+         * was never defined on the schema, so Mongoose strict mode silently
+         * discarded every write and every `find({ sku })` matched nothing.
+         * Duplicate detection on import was therefore permanently inert and
+         * each re-import recreated the whole catalogue.
+         */
+        sku: { type: String, trim: true, index: true, sparse: true, default: null },
         price: { type: Number, required: true, min: 0 },
         originalPrice: { type: Number },
+        /**
+         * Vendor's cost price. Written by the bulk importer and emitted in the
+         * catalogue export, but likewise never defined and so always dropped.
+         * Commercially sensitive — must never appear in a public projection.
+         */
+        costPrice: { type: Number, min: 0, default: null },
+        /**
+         * Soft-delete marker.
+         *
+         * Several queries already filter on `isDeleted: { $ne: true }` and an
+         * index referenced it, but the field did not exist — so those filters
+         * matched every document and the index matched none.
+         */
+        isDeleted: { type: Boolean, default: false, index: true },
         unit: { type: String, default: 'Piece' },
         images: [{ type: String }],
         image: { type: String }, // primary image
@@ -36,6 +61,16 @@ const productSchema = new mongoose.Schema(
             }],
             prices: { type: Map, of: Number },
             stockMap: { type: Map, of: Number },
+            /**
+             * Per-variant reserved quantity, mirroring the product-level
+             * `reservedQuantity`. Available for a variant is
+             * `stockMap[key] - reservedMap[key]`.
+             *
+             * Without this the reservation system could only hold stock at
+             * product level, so two customers could each reserve the last unit
+             * of the same size.
+             */
+            reservedMap: { type: Map, of: Number },
             imageMap: { type: Map, of: String },
             defaultVariant: {
                 size: String,
@@ -114,6 +149,20 @@ productSchema.index({ name: 'text', description: 'text', tags: 'text' });
 productSchema.index({ vendorId: 1, wholesaleEnabled: 1 });
 productSchema.index({ isActive: 1, wholesaleEnabled: 1 });
 productSchema.index({ wholesaleEnabled: 1, isActive: 1, isDeleted: 1 });
+/**
+ * SKU is unique per vendor, not globally: two independent sellers legitimately
+ * stock the same manufacturer SKU.
+ *
+ * PARTIAL, not sparse. A sparse *compound* index only skips documents missing
+ * every indexed field, and `vendorId` is always present — so under `sparse` two
+ * of a vendor's SKU-less products would both index as (vendorId, null) and
+ * collide. The partial filter indexes only documents where `sku` is actually a
+ * string, leaving the existing SKU-less catalogue unconstrained.
+ */
+productSchema.index(
+    { vendorId: 1, sku: 1 },
+    { unique: true, partialFilterExpression: { sku: { $type: 'string' } } }
+);
 productSchema.index({ isActive: 1, quickCommerceEnabled: 1 });
 productSchema.index({ vendorId: 1, quickCommerceEnabled: 1 });
 productSchema.index({ quickCommerceCategoryId: 1, isActive: 1 });

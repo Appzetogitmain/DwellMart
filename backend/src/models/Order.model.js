@@ -156,8 +156,24 @@ const orderSchema = new mongoose.Schema(
         subtotal: { type: Number, default: 0 },
         shipping: { type: Number, default: 0 },
         tax: { type: Number, default: 0 },
+        /**
+         * Quick Commerce packaging fee, at order level.
+         *
+         * The splitter has always included this in `total` and written it to
+         * `vendorItems[].packagingFee`, but there was no top-level field — so
+         * Mongoose strict mode silently discarded the value the payload carried,
+         * and no report could account for it.
+         */
+        packagingFee: { type: Number, default: 0 },
         discount: { type: Number, default: 0 },
         total: { type: Number, default: 0 },
+        /**
+         * Money actually returned to the customer, summed from settled Refund
+         * records. `paymentStatus` is derived from this rather than set directly
+         * — assigning `paymentStatus = 'refunded'` by hand is exactly what let
+         * the platform claim refunds that never happened.
+         */
+        refundedAmount: { type: Number, default: 0, min: 0 },
         // ── Enterprise Marketplace linkage ───────────────────────────────────
         // Populated when created via the new CheckoutSession / OrderSplitter path.
         // Absent on legacy orders (no migration required — queries use $exists filter).

@@ -8,6 +8,7 @@ import Commission from '../../../models/Commission.model.js';
 import User from '../../../models/User.model.js';
 import Admin from '../../../models/Admin.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
 
 const enrichReturnItems = (request) => {
     const orderItems = Array.isArray(request?.orderId?.items) ? request.orderId.items : [];
@@ -274,8 +275,26 @@ export const updateVendorReturnRequestStatus = asyncHandler(async (req, res) => 
                         if (order.status !== 'cancelled') {
                             order.status = 'returned';
                         }
-                        order.paymentStatus = 'refunded';
                         await order.save();
+                    }
+
+                    // Issue the money. `order.paymentStatus` is no longer set
+                    // here — it is derived from settled Refund records, so it
+                    // can no longer claim a refund that never happened.
+                    // Scoped to this vendor's share of the order.
+                    const refundAmount = Number(request.refundAmount || 0);
+                    if (refundAmount > 0 && order.paymentStatus !== 'pending') {
+                        await requestAndTryExecute({
+                            orderId: order._id,
+                            amount: refundAmount,
+                            reason: `Return completed for order ${order.orderId}`,
+                            returnRequestId: request._id,
+                            refundType: isSingleVendorOrder ? 'full' : 'partial',
+                        }).catch((err) => {
+                            // A refund failure must not roll back a completed
+                            // return; it lands in the admin refund queue.
+                            console.error(`[Return] Refund request failed for ${order.orderId}: ${err?.message}`);
+                        });
                     }
                 }
             }

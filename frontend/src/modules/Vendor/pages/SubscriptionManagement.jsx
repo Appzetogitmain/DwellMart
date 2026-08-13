@@ -203,7 +203,17 @@ const SubscriptionManagement = () => {
       toast.success(data.message || 'Subscription updated successfully.');
       await loadSubscriptionData({ quiet: true });
     } catch (error) {
-      toast.error(error.message || 'Could not update subscription.');
+      // A paid plan is only activated once the gateway confirms payment. When
+      // checkout is cancelled or fails, the server declines the change rather
+      // than upgrading for free — surface that as a payment prompt, not a
+      // generic failure.
+      const status = error?.response?.status;
+      const body = error?.response?.data;
+      if (status === 402 || body?.data?.paymentRequired) {
+        toast.error('Payment was not completed. Your plan has not been changed.');
+      } else {
+        toast.error(body?.message || error.message || 'Could not update subscription.');
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -12,7 +12,7 @@ import Settings from '../../../models/Settings.model.js';
 import { generateOrderId } from '../../../utils/generateOrderId.js';
 import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js';
 import mongoose from 'mongoose';
-import { createNotification } from '../../../services/notification.service.js';
+import { createNotification, notifyAdmins } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
 import { resolvePriceForQuantity, deriveOrderType, resolveVariantSelection } from '../../../services/pricingEngine.service.js';
 import { getRequestExperience, EXPERIENCES } from '../../../constants/experiences.js';
@@ -36,6 +36,9 @@ import {
     releaseRider,
 } from '../../../services/riderAssignment.service.js';
 import { roundMoney, assertPriceConsistency } from '../../../services/PriceReconciliationService.js';
+import { getReturnWindowHours, getEstimatedDeliveryDays } from '../../../services/commission.service.js';
+import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
+import logger from '../../../utils/logger.js';
 import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
@@ -292,10 +295,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }]);
             }
 
-            const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
+            // A store with no geo-point cannot have its delivery distance, fee
+            // or ETA computed. Substituting a fixed city coordinate (this line
+            // previously fell back to Delhi) fabricates all three, so the
+            // absence is surfaced instead.
+            const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
+            if (!vendorPoint) {
+                throw new ApiError(409, `${vendor.storeName} is not set up for Quick Commerce delivery yet.`, [{
+                    code: 'VENDOR_LOCATION_MISSING',
+                    vendorId: String(vendor._id),
+                }]);
+            }
 
-            const isDevMode = process.env.NODE_ENV !== 'production' || process.env.DISABLE_GEO_FENCING === 'true';
-            const radiusKm = isDevMode ? 10000 : (Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25);
+            // The distance calculation itself was missing: `distanceKm` was read
+            // on the next line but never assigned, so every Quick Commerce order
+            // through this endpoint threw ReferenceError under ES module strict
+            // mode. Restored using the same helper the estimate endpoint uses.
+            const distanceKm = haversineDistanceKm(vendorPoint, {
+                latitude: quickCommerceContext.latitude,
+                longitude: quickCommerceContext.longitude,
+            });
+
+            const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25;
             if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
                 throw new ApiError(409, `${vendor.storeName} does not deliver to your location.`, [{
                     code: 'OUT_OF_DELIVERY_RANGE',
@@ -547,6 +568,14 @@ export const placeOrder = asyncHandler(async (req, res) => {
         }
         : undefined;
 
+    // Fulfilment commitments, resolved BEFORE the transaction opens.
+    // Reading settings inside a transaction would add an un-sessioned query to
+    // every retry of the write-conflict loop.
+    const [configuredReturnWindowHours, configuredDeliveryDays] = await Promise.all([
+        getReturnWindowHours(experience),
+        getEstimatedDeliveryDays(),
+    ]);
+
     // 6-9. Transactional order creation to avoid partial writes.
     let order = null;
     let idempotentReplay = false;
@@ -582,7 +611,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 experience,
                 returnPolicy: {
                     type: experience === EXPERIENCES.QUICK_COMMERCE ? 'quick_commerce' : 'marketplace',
-                    windowHours: experience === EXPERIENCES.QUICK_COMMERCE ? 24 : 168,
+                    windowHours: configuredReturnWindowHours,
                     eligible: true,
                     refundOnly: false,
                     allowedReasons: ['damaged', 'wrong_item', 'expired', 'missing_item'],
@@ -592,7 +621,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 couponCode: couponCode?.toUpperCase(),
                 couponDiscount,
                 trackingNumber: generateTrackingNumber(),
-                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // +5 days
+                estimatedDelivery: new Date(Date.now() + configuredDeliveryDays * 24 * 60 * 60 * 1000),
                 idempotencyKey: idempotencyKey || undefined,
                 idempotencyScope: idempotencyKey ? idempotencyScope : undefined,
             }], { session });
@@ -774,8 +803,19 @@ export const placeOrder = asyncHandler(async (req, res) => {
 export const getUserOrders = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
-    const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
-    const total = await Order.countDocuments({ userId: req.user.id });
+    // `.lean()` — this list returned full hydrated Mongoose documents including
+    // every line item and vendor group. The only virtual on Order is
+    // `deliveryAttempts`, which no customer-facing screen reads (the admin
+    // detail page that does already uses `.lean()` and falls back to
+    // `retryHistory.length`).
+    const [orders, total] = await Promise.all([
+        Order.find({ userId: req.user.id })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(Number(limit))
+            .lean(),
+        Order.countDocuments({ userId: req.user.id }),
+    ]);
     res.status(200).json(new ApiResponse(200, { orders, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Orders fetched.'));
 });
 
@@ -801,15 +841,50 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
 });
 
 // PATCH /api/user/orders/:id/cancel
+/**
+ * Statuses a customer may cancel from.
+ *
+ * `confirmed` is included because that is what a PAID order is set to
+ * (`OrderSplitterEngine` sets `confirmed` once payment lands). The previous
+ * list allowed only `pending` and `processing`, so every successfully-paid
+ * order was uncancellable by the customer who placed it — each one needed a
+ * support ticket.
+ *
+ * Cancellation stops at `shipped`: once goods are with a courier the return
+ * flow is the correct path, not cancellation.
+ */
+const CUSTOMER_CANCELLABLE_STATUSES = ['pending', 'processing', 'approved', 'confirmed'];
+
+/**
+ * Whether this order still owes the customer money if cancelled.
+ * `pending` payment means nothing was ever taken.
+ */
+const requiresRefundOnCancel = (order) =>
+    ['paid', 'partially_refunded'].includes(String(order?.paymentStatus || ''));
+
 export const cancelOrder = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
     let cancelledBulkGroups = [];
     let cancelledOrderRef = null;
+    let refundContext = null;
     try {
         await session.withTransaction(async () => {
             const order = await Order.findOne(buildOrderLookupQuery(req.params.id, req.user.id)).session(session);
             if (!order) throw new ApiError(404, 'Order not found.');
-            if (!['pending', 'processing'].includes(order.status)) throw new ApiError(400, 'Order cannot be cancelled at this stage.');
+            if (!CUSTOMER_CANCELLABLE_STATUSES.includes(order.status)) {
+                throw new ApiError(
+                    400,
+                    order.status === 'shipped' || order.status === 'out_for_delivery'
+                        ? 'This order has already been dispatched. Please request a return once it is delivered.'
+                        : `An order that is ${order.status} cannot be cancelled.`
+                );
+            }
+
+            // A Quick Commerce order that the store has already prepared cannot
+            // simply be withdrawn — the goods exist and someone absorbs their
+            // cost. That distinction is recorded below via
+            // `cancelledAfterPreparation`; blocking it outright would leave the
+            // customer with no route at all.
 
             // Capture bulk vendor groups before mutation so affected vendors can
             // be notified once the cancellation is committed.
@@ -819,6 +894,16 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 experience: order.experience,
                 deliveryBoyId: order.deliveryBoyId,
             };
+
+            // Captured inside the transaction, acted on after it commits: a
+            // refund must never be issued for a cancellation that rolled back.
+            if (requiresRefundOnCancel(order)) {
+                refundContext = {
+                    orderId: order._id,
+                    orderNumber: order.orderId,
+                    amount: Number(order.total || 0) - Number(order.refundedAmount || 0),
+                };
+            }
             cancelledBulkGroups = (order.vendorItems || [])
                 .filter((group) => group.orderType === 'wholesale' || group.orderType === 'mixed')
                 .map((group) => ({
@@ -901,6 +986,39 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         await session.endSession();
     }
 
+    // ── Refund a cancelled PAID order ────────────────────────────────────────
+    // Runs after the transaction commits, so a rolled-back cancellation can
+    // never issue money. Never throws into the response: the order IS
+    // cancelled, and a refund problem belongs in the admin refund queue rather
+    // than presenting the customer with a failure for something that succeeded.
+    let cancellationRefund = null;
+    if (refundContext && refundContext.amount > 0) {
+        try {
+            cancellationRefund = await requestAndTryExecute({
+                orderId: refundContext.orderId,
+                amount: refundContext.amount,
+                reason: `Order ${refundContext.orderNumber} cancelled by customer`,
+                refundType: 'full',
+            });
+        } catch (err) {
+            logger.error('Cancellation refund could not be recorded', {
+                orderId: refundContext.orderNumber,
+                error: err?.message,
+            });
+            await notifyAdmins({
+                title: 'Cancellation refund not recorded',
+                message:
+                    `Order ${refundContext.orderNumber} was cancelled by the customer but its refund `
+                    + `of ₹${refundContext.amount} could not be recorded: ${err?.message}. `
+                    + 'The customer is owed money that the system has not queued.',
+                type: 'refund',
+                category: 'ERROR',
+                priority: 'CRITICAL',
+                actionUrl: '/admin/finance/refunds',
+            }).catch(() => null);
+        }
+    }
+
     // A cancelled Quick Commerce order must hand its rider back to the pool,
     // otherwise that rider is stuck holding an order that no longer exists.
     if (cancelledOrderRef?.experience === EXPERIENCES.QUICK_COMMERCE && cancelledOrderRef?.deliveryBoyId) {
@@ -932,7 +1050,28 @@ export const cancelOrder = asyncHandler(async (req, res) => {
         )
     );
 
-    res.status(200).json(new ApiResponse(200, null, 'Order cancelled successfully.'));
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                cancelled: true,
+                // Deliberately reports the refund as INITIATED, never settled.
+                // Gateway settlement takes days, and the previous flows in this
+                // codebase claimed completion the moment a flag was set.
+                refund: cancellationRefund
+                    ? {
+                        refundNumber: cancellationRefund.refundNumber,
+                        amount: cancellationRefund.amount,
+                        status: cancellationRefund.status,
+                        method: cancellationRefund.method,
+                    }
+                    : null,
+            },
+            cancellationRefund
+                ? `Order cancelled. A refund of ₹${Number(cancellationRefund.amount).toFixed(2)} has been initiated and is being processed.`
+                : 'Order cancelled successfully.'
+        )
+    );
 });
 
 const normalizeReturnRequest = (requestDoc) => {
@@ -957,7 +1096,8 @@ export const createReturnRequest = asyncHandler(async (req, res) => {
     }
 
     // Experience-aware return policy validation
-    const windowHours = order.returnPolicy?.windowHours ?? (order.experience === EXPERIENCES.QUICK_COMMERCE ? 24 : 168);
+    // Snapshot on the order wins — the policy in force when it was placed.
+    const windowHours = order.returnPolicy?.windowHours ?? (await getReturnWindowHours(order.experience));
     const orderTime = order.deliveredAt ? new Date(order.deliveredAt).getTime() : new Date(order.createdAt).getTime();
     const elapsedHours = (Date.now() - orderTime) / (1000 * 60 * 60);
 

@@ -67,7 +67,10 @@ router.delete('/wishlist/:productId', ...customerAuth, wishlistController.remove
 // Review routes
 router.get('/reviews/product/:productId', reviewController.getProductReviews);
 router.post('/reviews', ...customerAuth, reviewController.addReview);
-router.post('/reviews/:id/helpful', reviewController.voteHelpful);
+// Authenticated: the vote is recorded per user so it cannot be repeated.
+// Previously unauthenticated with an unbounded $inc, so the counter could be
+// inflated arbitrarily by anyone.
+router.post('/reviews/:id/helpful', ...customerAuth, reviewController.voteHelpful);
 
 // Order routes
 router.post('/orders', ...customerAuth, validate(placeOrderSchema), orderController.placeOrder);

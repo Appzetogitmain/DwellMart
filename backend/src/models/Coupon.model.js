@@ -8,8 +8,17 @@ const couponSchema = new mongoose.Schema(
         value: { type: Number, required: true, min: 0 },
         minOrderValue: { type: Number, default: 0 },
         maxDiscount: { type: Number }, // cap for percentage coupons
-        usageLimit: { type: Number }, // null = unlimited
+        usageLimit: { type: Number }, // null = unlimited (platform-wide)
         usedCount: { type: Number, default: 0 },
+        /**
+         * How many times ONE customer may use this code. 0 / null = unlimited.
+         *
+         * Only a platform-wide cap existed, so a single customer could consume
+         * an entire promotional budget on their own orders.
+         */
+        perUserLimit: { type: Number, default: 0, min: 0 },
+        /** Restrict to a customer's first non-cancelled order. */
+        firstOrderOnly: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true },
         startsAt: { type: Date },
         expiresAt: { type: Date },

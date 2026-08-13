@@ -18,6 +18,7 @@
  */
 
 import EventEmitter from 'events';
+import { DEFAULT_LOW_STOCK_THRESHOLD } from '../../constants/inventory.js';
 
 class MarketplaceEventBus extends EventEmitter {
     constructor() {
@@ -290,7 +291,7 @@ export const registerMarketplaceEventHandlers = () => {
         const { default: Product } = await import('../../models/Product.model.js');
         const product = await Product.findById(productId).select('stockQuantity lowStockThreshold name').lean();
         if (!product) return;
-        const threshold = Number(product.lowStockThreshold) || 5;
+        const threshold = Number(product.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD);
         if (Number(product.stockQuantity) <= threshold) {
             marketplaceEventBus.emit(MARKETPLACE_EVENTS.LOW_STOCK_ALERT, {
                 productId,

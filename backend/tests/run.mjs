@@ -9,6 +9,32 @@
 
 import { execSync } from 'child_process';
 
+/**
+ * Production-database guard.
+ *
+ * Every suite below connects using `MONGO_URI`, and sibling scripts in this
+ * directory mutate real data — `advance_escrow_period.js` back-dates financial
+ * records. In this repository `MONGO_URI` has pointed at a live Atlas cluster,
+ * which is why the suite was unsafe to run and therefore never run.
+ *
+ * Refuse rather than risk it. Set `ALLOW_TESTS_AGAINST_THIS_DB=yes` to override
+ * deliberately, and prefer `npm run test:unit`, which needs no database at all.
+ */
+const mongoUri = String(process.env.MONGO_URI || '');
+const looksLikeProduction =
+    /mongodb\+srv:\/\//i.test(mongoUri) ||
+    /(prod|production|live)/i.test(mongoUri);
+const isLocal = /(localhost|127\.0\.0\.1|mongodb:\/\/mongo)/i.test(mongoUri);
+
+if (mongoUri && looksLikeProduction && !isLocal
+    && process.env.ALLOW_TESTS_AGAINST_THIS_DB !== 'yes') {
+    console.error('\n✗ Refusing to run integration tests against a remote/production-looking database.');
+    console.error('  MONGO_URI points at a hosted cluster. These suites write and delete real records.');
+    console.error('  Use a local database, or set ALLOW_TESTS_AGAINST_THIS_DB=yes if you are certain.\n');
+    console.error('  For safe, database-free checks: npm run test:unit\n');
+    process.exit(1);
+}
+
 const testSuites = [
     { name: 'P0-01: Server-Side Price Authority', file: 'tests/p0_01_price_tampering_security.test.js' },
     { name: 'P0-04: Payment & Webhook Concurrency Race', file: 'tests/p0_04_payment_order_race.test.js' },

@@ -12,6 +12,7 @@
 import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
+import logger from '../../../utils/logger.js';
 
 const randomId = () => Math.random().toString(36).substring(2, 14).toUpperCase();
 
@@ -21,7 +22,7 @@ import { validateCart } from '../../../services/checkout/CartValidationPipeline.
 import { reserveStock, releaseReservation } from '../../../services/checkout/InventoryReservationService.js';
 import Settings from '../../../models/Settings.model.js';
 import Coupon from '../../../models/Coupon.model.js';
-import { incrementCouponUsage } from '../../../services/coupon.service.js';
+import { incrementCouponUsage, evaluateCouponEligibility } from '../../../services/coupon.service.js';
 
 // ── POST /api/checkout/validate ───────────────────────────────────────────────
 /**
@@ -86,26 +87,39 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
             ?.filter(Boolean)[0]
             || validation.globalErrors?.[0]
             || 'Cart validation failed. Please resolve the issues before checking out.';
-        console.warn('[CheckoutSession Validation Failed]', JSON.stringify(validation, null, 2));
+        // Log the SHAPE of the failure, not the cart. The previous
+        // `JSON.stringify(validation)` wrote the customer's full item list into
+        // log aggregation on every failed checkout.
+        logger.forRequest(req).warn('CheckoutSession validation failed', {
+            itemCount: items.length,
+            failedItemCount: validation.items?.filter((i) => i.errors?.length).length || 0,
+            globalErrorCount: validation.globalErrors?.length || 0,
+            firstError,
+        });
         return res.status(422).json(new ApiResponse(422, validation, firstError));
     }
 
     // 3. Resolve coupon (optional)
     let resolvedCoupon = null;
+    // Why a requested coupon was not applied, so the customer is told rather
+    // than silently charged a higher total than the cart previewed.
+    let couponRejectionReason = null;
     if (couponCode) {
         const couponDoc = await Coupon.findOne({
             code: String(couponCode).toUpperCase().trim(),
             isActive: true,
         }).lean();
         if (couponDoc) {
-            const now = new Date();
-            // P1-03 FIX: validate all coupon constraints here just like the public validator does
-            const couponError = (() => {
-                if (couponDoc.startsAt && new Date(couponDoc.startsAt) > now) return 'Coupon is not active yet.';
-                if (couponDoc.expiresAt && new Date(couponDoc.expiresAt) < now) return 'Coupon has expired.';
-                if (couponDoc.usageLimit && (couponDoc.usedCount || 0) >= couponDoc.usageLimit) return 'Coupon usage limit has been reached.';
-                return null;
-            })();
+            // Rules come from the shared evaluator so this agrees with the
+            // public validator — including the per-user cap, which did not
+            // exist anywhere before. The min-order check runs below because the
+            // cart total is not yet known at this point.
+            const preVerdict = await evaluateCouponEligibility(couponDoc, {
+                cartTotal: Number.MAX_SAFE_INTEGER,
+                userId,
+            });
+            const couponError = preVerdict.ok ? null : preVerdict.reason;
+            if (couponError) couponRejectionReason = couponError;
 
             if (!couponError) {
                 const Product = (await import('../../../models/Product.model.js')).default;
@@ -121,7 +135,10 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
                 }, 0);
 
                 if (cartTotal < (couponDoc.minOrderValue || 0)) {
-                    // Silently skip — UI should have already validated, but we don't hard-fail session creation
+                    // Not applied — but the customer is told why. Dropping it
+                    // silently meant they saw a total higher than the cart
+                    // previewed with no explanation.
+                    couponRejectionReason = `Minimum order value for this coupon is ₹${couponDoc.minOrderValue}.`;
                     console.warn(`[Checkout] Coupon ${couponDoc.code} minOrderValue not met (cart=${cartTotal}, min=${couponDoc.minOrderValue})`);
                 } else {
                     // P1-03 FIX: Use correct schema fields: type='percentage'/'fixed'/'freeship', value=amount
@@ -210,6 +227,9 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
             sessionId:        session.sessionId,
             paymentMethod:    normalized,
             coupon:           resolvedCoupon,
+            // Present when a coupon was requested but not applied. The customer
+            // was previously charged the higher total with no explanation.
+            couponRejectionReason,
             summary:          session.summary,
             validationResult: validation,
         }, 'Checkout session created. Inventory reserved.')
@@ -279,7 +299,7 @@ export const confirmCheckout = asyncHandler(async (req, res) => {
 
     // P1-04 FIX: Increment coupon usage count after successful order creation
     if (coupon?.code) {
-        incrementCouponUsage(coupon.code).catch((err) =>
+        incrementCouponUsage(coupon.code, { userId, orderId: orders[0]?._id, checkoutSessionId: sessionId, amount: coupon.discount }).catch((err) =>
             console.error('[Checkout] Failed to increment coupon usage:', err?.message)
         );
     }

@@ -143,25 +143,54 @@ export const processPartialFulfilment = async ({
     order.tax = newTax;
     order.total = newTotal;
 
-    // Snapshot fulfilmentOutcome
+    // Snapshot fulfilmentOutcome.
+    // `refundStatus` starts at 'pending', not 'processed': this code computes a
+    // refund breakdown, it does not move money. Claiming 'processed' here — and
+    // telling the customer a refund had been initiated — was true of neither.
     order.fulfilmentOutcome = {
         status: orderItems.length > 0 ? 'partially_fulfilled' : 'unfulfilled',
         unavailableItems: processedUnavailable,
         fulfilledItems: orderItems,
         refundAmount: totalRefundAmount,
-        refundStatus: 'processed',
+        refundStatus: 'pending',
         notes: notes || `Partial fulfilment processed for ${processedUnavailable.length} item(s).`,
     };
 
     await order.save();
 
-    // Trigger notification to customer
+    // Actually enqueue the refund. Never throws into the fulfilment flow: a
+    // refund problem must not undo a recorded partial fulfilment, it belongs in
+    // the admin refund queue.
+    let refundRecord = null;
+    if (totalRefundAmount > 0 && order.paymentStatus !== 'pending') {
+        try {
+            const { requestAndTryExecute } = await import('./refund/RefundOrchestrator.service.js');
+            refundRecord = await requestAndTryExecute({
+                orderId: order._id,
+                amount: totalRefundAmount,
+                reason: `Items unavailable on order ${order.orderId}`,
+                refundType: 'partial',
+            });
+            await Order.updateOne(
+                { _id: order._id },
+                { $set: { 'fulfilmentOutcome.refundStatus': refundRecord?.status === 'succeeded' ? 'processed' : 'pending' } }
+            );
+        } catch (err) {
+            console.error(`[Partial Fulfilment] Refund request failed for ${order.orderId}: ${err?.message}`);
+        }
+    }
+
+    // Trigger notification to customer.
+    // The wording no longer asserts money has moved unless a refund record
+    // actually exists.
     if (order.userId) {
         createNotification({
             recipientId: order.userId,
             recipientType: 'user',
-            title: 'Item Unavailable — Refund Initiated',
-            message: `One or more items in your order #${order.orderId} were unavailable. A partial refund of Rs.${totalRefundAmount.toFixed(2)} has been initiated.`,
+            title: refundRecord ? 'Item Unavailable — Refund Initiated' : 'Item Unavailable',
+            message: refundRecord
+                ? `One or more items in your order #${order.orderId} were unavailable. A partial refund of Rs.${totalRefundAmount.toFixed(2)} has been initiated and is being processed.`
+                : `One or more items in your order #${order.orderId} were unavailable. Our team is reviewing the adjustment of Rs.${totalRefundAmount.toFixed(2)}.`,
             type: 'order',
             data: {
                 orderId: String(order.orderId || order._id),

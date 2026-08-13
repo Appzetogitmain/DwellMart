@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import ProfitLossChart from "../../components/Analytics/ProfitLossChart";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from '../../../../shared/utils/helpers';
+import api from '../../../../shared/utils/api';
 import { useAnalyticsStore } from "../../../../shared/store/analyticsStore";
 
 const getRangeForPeriod = (period) => {
@@ -29,7 +30,25 @@ const getRangeForPeriod = (period) => {
 const ProfitLoss = () => {
   const [period, setPeriod] = useState("month");
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [plSummary, setPlSummary] = useState(null);
   const { financialSummary, fetchFinancialSummary } = useAnalyticsStore();
+
+  // Commission-based platform economics, computed server-side.
+  useEffect(() => {
+    let mounted = true;
+    const range = getRangeForPeriod(period);
+    api
+      .get('/admin/analytics/pl-summary', { params: range })
+      .then((res) => {
+        if (mounted) setPlSummary(res?.data || null);
+      })
+      .catch(() => {
+        if (mounted) setPlSummary(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [period]);
 
   useEffect(() => {
     const periodMap = {
@@ -62,26 +81,27 @@ const ProfitLoss = () => {
     }));
   }, [financialSummary]);
 
+  /**
+   * Composition of GMV — presentational only.
+   *
+   * These are the parts that MAKE UP `Order.total`, not deductions from it.
+   * The previous version computed
+   *   netProfit = revenue − (tax + shipping + discount)
+   * which double-counts every term: `Order.total` already includes tax and
+   * shipping and is already net of discount. It also contained no commission,
+   * no vendor payout and no COGS, so the number it labelled "Net Profit" was
+   * not a profit under any definition.
+   *
+   * Actual platform economics now come from `/analytics/pl-summary`, which is
+   * commission-based — see `plSummary` below.
+   */
   const financials = useMemo(() => {
-    const revenue = financialSummary.reduce((sum, item) => sum + item.revenue, 0);
+    const gmv = financialSummary.reduce((sum, item) => sum + (item.revenue || 0), 0);
     const totalTax = financialSummary.reduce((sum, item) => sum + (item.tax || 0), 0);
     const totalDelivery = financialSummary.reduce((sum, item) => sum + (item.delivery || 0), 0);
     const totalDiscount = financialSummary.reduce((sum, item) => sum + (item.discount || 0), 0);
-    const grossProfit = revenue - totalDiscount;
-    const totalExpenses = totalTax + totalDelivery + totalDiscount;
-    const netProfit = revenue - totalExpenses;
-    const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
-    return {
-      revenue,
-      totalTax,
-      totalDelivery,
-      totalDiscount,
-      totalExpenses,
-      grossProfit,
-      netProfit,
-      profitMargin,
-    };
+    return { gmv, totalTax, totalDelivery, totalDiscount };
   }, [financialSummary]);
 
   if (isPageLoading && financialSummary.length === 0) {
@@ -119,80 +139,86 @@ const ProfitLoss = () => {
         />
       </div>
 
+      {/* Platform economics — commission-based, computed server-side. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Commission Revenue</p>
+            <FiTrendingUp className="text-green-600" />
+          </div>
+          <p className="text-2xl font-bold text-green-600">
+            {plSummary ? formatPrice(plSummary.commissionRevenue) : '—'}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">What the platform actually earns</p>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Refunds Issued</p>
+            <FiTrendingDown className="text-red-600" />
+          </div>
+          <p className="text-2xl font-bold text-red-600">
+            {plSummary ? formatPrice(plSummary.refunded) : '—'}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Settled refunds only</p>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Net Platform Revenue</p>
+            <FiDollarSign className="text-blue-600" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">
+            {plSummary ? formatPrice(plSummary.netPlatformRevenue) : '—'}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Commission less refunds</p>
+        </div>
+      </div>
+
+      {/* GMV composition. These are the PARTS of order totals, not deductions
+          from them — labelled as such so nobody subtracts them again. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Income</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Total Revenue</span>
-              <span className="font-bold text-green-600">
-                {formatPrice(financials.revenue)}
-              </span>
-            </div>
+          <h3 className="text-lg font-bold text-gray-800 mb-1">Gross Merchandise Value</h3>
+          <p className="text-xs text-gray-500 mb-4">Total transacted through the platform (paid orders)</p>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">GMV</span>
+            <span className="font-bold text-gray-800">
+              {plSummary ? formatPrice(plSummary.gmv) : formatPrice(financials.gmv)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-gray-600">Owed to vendors</span>
+            <span className="font-bold text-gray-800">
+              {plSummary ? formatPrice(plSummary.vendorEarnings) : '—'}
+            </span>
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Deductions</h3>
-          <div className="space-y-4">
+          <h3 className="text-lg font-bold text-gray-800 mb-1">GMV Composition</h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Components already included in GMV — not deductions from it
+          </p>
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Discount</span>
-              <span className="font-bold text-red-600">
-                {formatPrice(financials.totalDiscount)}
-              </span>
+              <span className="text-gray-600">Tax collected</span>
+              <span className="font-semibold text-gray-700">{formatPrice(financials.totalTax)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Tax</span>
-              <span className="font-bold text-red-600">
-                {formatPrice(financials.totalTax)}
-              </span>
+              <span className="text-gray-600">Shipping collected</span>
+              <span className="font-semibold text-gray-700">{formatPrice(financials.totalDelivery)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Shipping</span>
-              <span className="font-bold text-red-600">
-                {formatPrice(financials.totalDelivery)}
-              </span>
-            </div>
-            <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
-              <span className="font-semibold text-gray-800">
-                Total Deductions
-              </span>
-              <span className="font-bold text-red-600">
-                {formatPrice(financials.totalExpenses)}
-              </span>
+              <span className="text-gray-600">Discounts given</span>
+              <span className="font-semibold text-gray-700">{formatPrice(financials.totalDiscount)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Gross Profit</p>
-            <FiTrendingUp className="text-green-600" />
-          </div>
-          <p className="text-2xl font-bold text-green-600">
-            {formatPrice(financials.grossProfit)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Net Profit</p>
-            <FiDollarSign className="text-blue-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">
-            {formatPrice(financials.netProfit)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">Profit Margin</p>
-            <FiTrendingDown className="text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">
-            {financials.profitMargin.toFixed(2)}%
-          </p>
-        </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+        <strong>Basis:</strong> platform revenue is commission earned, not gross merchandise value.
+        Operating costs and cost of goods are not held in this system, so a true net profit
+        cannot be computed here.
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">

@@ -1,9 +1,15 @@
-import {
-  products as staticProducts,
-  getRecommendedProducts as getStaticRecommendedProducts,
-} from "../../../data/products";
-import { vendors as staticVendors } from "../../../data/vendors";
-import { brands as staticBrands } from "../../../data/brands";
+/**
+ * Storefront catalogue cache.
+ *
+ * This module previously fell back to a bundled demo catalogue — invented
+ * products with invented prices and ratings — whenever the localStorage cache
+ * was empty. That happened on a first visit, after a cache clear, and whenever
+ * the sync hit the storage quota, so real customers were shown fabricated
+ * products and fabricated prices.
+ *
+ * The fallback is now an EMPTY list. Callers render a loading or empty state
+ * instead, which is the honest answer when the catalogue has not loaded.
+ */
 import { getImageUrl } from "../../../shared/utils/helpers";
 
 const PRODUCTS_CACHE_KEY = "user-catalog-products-cache";
@@ -118,19 +124,19 @@ const normalizeBrand = (raw) => {
 
 export const getCatalogProducts = () => {
   const cached = parseCache(PRODUCTS_CACHE_KEY);
-  const source = (Array.isArray(cached) && cached.length > 0) ? cached : staticProducts;
+  const source = Array.isArray(cached) ? cached : [];
   return source.map(normalizeProduct).filter((p) => p.id);
 };
 
 export const getCatalogVendors = () => {
   const cached = parseCache(VENDORS_CACHE_KEY);
-  const source = (Array.isArray(cached) && cached.length > 0) ? cached : staticVendors;
+  const source = Array.isArray(cached) ? cached : [];
   return source.map(normalizeVendor).filter((v) => v.id);
 };
 
 export const getCatalogBrands = () => {
   const cached = parseCache(BRANDS_CACHE_KEY);
-  const source = (Array.isArray(cached) && cached.length > 0) ? cached : staticBrands;
+  const source = Array.isArray(cached) ? cached : [];
   return source.map(normalizeBrand).filter((b) => b.id);
 };
 
@@ -213,7 +219,8 @@ export const getSimilarProducts = (currentProductId, limit = 6) => {
 
 export const getRecommendedProducts = (limit = 6) => {
   const products = getCatalogProducts();
-  if (!products.length) return getStaticRecommendedProducts(limit);
+  // Empty rather than a bundled demo list — recommending invented products is
+  // worse than recommending nothing.
   return [...products].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, limit);
 };
 

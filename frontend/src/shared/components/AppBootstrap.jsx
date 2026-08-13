@@ -7,6 +7,12 @@ const PRODUCTS_CACHE_KEY = "user-catalog-products-cache";
 const VENDORS_CACHE_KEY = "user-catalog-vendors-cache";
 const BRANDS_CACHE_KEY = "user-catalog-brands-cache";
 
+// Sized to stay well inside the ~5MB localStorage budget. 500 products of full
+// documents regularly exceeded it, and the resulting QuotaExceededError took
+// the entire sync down with it.
+const PRODUCT_CACHE_LIMIT = 100;
+const VENDOR_CACHE_LIMIT = 60;
+
 const normalizeProduct = (raw) => {
   const vendorObj =
     raw?.vendorId && typeof raw.vendorId === "object" ? raw.vendorId : null;
@@ -64,11 +70,36 @@ const AppBootstrap = () => {
   useEffect(() => {
     let cancelled = false;
 
+    /**
+     * Write one cache entry without letting a storage failure abort the others.
+     *
+     * Previously all three writes sat in a single try block, so a
+     * QuotaExceededError on the products write skipped the vendor and brand
+     * writes too — and the whole storefront then fell through to the bundled
+     * demo catalogue.
+     */
+    const writeCache = (key, list) => {
+      if (!Array.isArray(list) || list.length === 0) return false;
+      try {
+        localStorage.setItem(key, JSON.stringify(list));
+        return true;
+      } catch (err) {
+        // Over quota: drop this entry rather than the whole sync. Surfaces the
+        // catalogue as "not loaded", which callers render as an empty state.
+        console.warn(`[AppBootstrap] Could not cache ${key}:`, err?.name || err);
+        try { localStorage.removeItem(key); } catch { /* nothing further to do */ }
+        return false;
+      }
+    };
+
     const syncCatalog = async () => {
       try {
         const [productsRes, vendorsRes, brandsRes] = await Promise.allSettled([
-          api.get("/products", { params: { page: 1, limit: 500 } }),
-          api.get("/vendors/all", { params: { status: "approved", page: 1, limit: 200 } }),
+          // Trimmed from 500. This payload is downloaded on every app load, and
+          // the storefront pages fetch their own paginated data anyway — this
+          // cache exists to make the first paint fast, not to hold the catalogue.
+          api.get("/products", { params: { page: 1, limit: PRODUCT_CACHE_LIMIT } }),
+          api.get("/vendors/all", { params: { status: "approved", page: 1, limit: VENDOR_CACHE_LIMIT } }),
           api.get("/brands/all"),
         ]);
 
@@ -79,10 +110,7 @@ const AppBootstrap = () => {
           const list = Array.isArray(payload?.products)
             ? payload.products.map(normalizeProduct)
             : [];
-          if (list.length) {
-            localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(list));
-            updated = true;
-          }
+          updated = writeCache(PRODUCTS_CACHE_KEY, list) || updated;
         }
 
         if (vendorsRes.status === "fulfilled" && !cancelled) {
@@ -90,26 +118,20 @@ const AppBootstrap = () => {
           const list = Array.isArray(payload?.vendors)
             ? payload.vendors.map(normalizeVendor)
             : [];
-          if (list.length) {
-            localStorage.setItem(VENDORS_CACHE_KEY, JSON.stringify(list));
-            updated = true;
-          }
+          updated = writeCache(VENDORS_CACHE_KEY, list) || updated;
         }
 
         if (brandsRes.status === "fulfilled" && !cancelled) {
           const payload = brandsRes.value?.data;
           const list = Array.isArray(payload) ? payload.map(normalizeBrand) : [];
-          if (list.length) {
-            localStorage.setItem(BRANDS_CACHE_KEY, JSON.stringify(list));
-            updated = true;
-          }
+          updated = writeCache(BRANDS_CACHE_KEY, list) || updated;
         }
 
         if (updated && !cancelled) {
           window.dispatchEvent(new Event("catalog-cache-updated"));
         }
       } catch {
-        // Keep static fallback silently.
+        // Network failure — callers render an empty/loading state.
       }
     };
 

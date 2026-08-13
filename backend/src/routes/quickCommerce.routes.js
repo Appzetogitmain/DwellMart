@@ -323,10 +323,20 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
         return notAvailable('VENDOR_NOT_ORDERABLE', `${vendor.storeName} is not accepting orders right now.`);
     }
 
-    const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location) || { latitude: 28.6139, longitude: 77.2090 };
+    // No hardcoded city fallback: a vendor without a geo-point yields an
+    // explicit unavailable reason rather than a distance, fee and ETA computed
+    // from someone else's coordinates. This now matches `placeOrder` and
+    // `buildQcDelivery`, which both refuse in the same situation — previously
+    // the estimate quoted a price the order path would not honour.
+    const vendorPoint = pointToLatLng(vendor.quickCommerceProfile?.location);
+    if (!vendorPoint) {
+        return notAvailable('VENDOR_LOCATION_MISSING', `${vendor.storeName} is not set up for Quick Commerce delivery yet.`);
+    }
     const distanceKm = haversineDistanceKm(vendorPoint, { latitude, longitude }) || 0;
-    const isDevMode = process.env.NODE_ENV !== 'production' || process.env.DISABLE_GEO_FENCING === 'true';
-    const radiusKm = isDevMode ? 10000 : (Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25);
+    // Radius is a real business constraint, not a development convenience. It
+    // was previously widened to 10,000 km whenever NODE_ENV !== 'production',
+    // which disabled the geo-fence in every non-production deployment.
+    const radiusKm = Number(vendor.quickCommerceProfile?.serviceRadiusKm) || 25;
     if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) {
         return notAvailable('OUT_OF_DELIVERY_RANGE', `${vendor.storeName} does not deliver to your location.`);
     }

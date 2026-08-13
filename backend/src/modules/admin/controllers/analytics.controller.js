@@ -4,6 +4,8 @@ import Order from '../../../models/Order.model.js';
 import User from '../../../models/User.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Product from '../../../models/Product.model.js';
+import Commission from '../../../models/Commission.model.js';
+import Refund from '../../../models/Refund.model.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
 import {
     baseQuickCommerceMatch,
@@ -73,7 +75,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 export const getRevenueData = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
-    const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
+    const match = paidOrderMatch(req);
     if (startDate || endDate) {
         match.createdAt = {};
         if (startDate) match.createdAt.$gte = new Date(startDate);
@@ -162,7 +164,7 @@ export const getRecentOrders = asyncHandler(async (req, res) => {
 export const getSalesData = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
-    const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
+    const match = paidOrderMatch(req);
     if (startDate || endDate) {
         match.createdAt = {};
         if (startDate) match.createdAt.$gte = new Date(startDate);
@@ -183,11 +185,118 @@ export const getSalesData = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, sales, 'Sales data fetched.'));
 });
 
+/**
+ * Orders that represent real money.
+ *
+ * Every analytics aggregation matched only on `status != cancelled` and never
+ * on `paymentStatus`, so an abandoned card order left in `pending` and a COD
+ * order that was never delivered both counted as revenue.
+ *
+ * `includeUnpaid=true` restores the previous behaviour for anyone who needs the
+ * old numbers for comparison.
+ */
+const paidOrderMatch = (req) => {
+    const includeUnpaid = String(req?.query?.includeUnpaid || '') === 'true';
+    const base = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
+    if (includeUnpaid) return base;
+    return { ...base, paymentStatus: { $in: ['paid', 'partially_refunded', 'refunded'] } };
+};
+
+/**
+ * GET /api/admin/analytics/pl-summary
+ *
+ * A marketplace P&L.
+ *
+ * The previous Profit & Loss screen computed
+ *   netProfit = Σ Order.total − (tax + shipping + discount)
+ * which double-counts every term: `Order.total` already INCLUDES tax and
+ * shipping and is already NET of discount. It also contained no commission, no
+ * payout and no COGS — so for a marketplace, whose income is the commission
+ * rather than the gross merchandise value, the figure it labelled "Net Profit"
+ * was not a profit under any definition.
+ *
+ * This reports what the platform can actually substantiate:
+ *   GMV                  — gross merchandise value transacted
+ *   commissionRevenue    — the platform's actual income
+ *   vendorEarnings       — owed to / paid to vendors
+ *   refunds              — money returned to customers
+ *   netPlatformRevenue   — commissionRevenue − refunded commission
+ *
+ * It deliberately does NOT report "net profit": operating costs and COGS are
+ * not in this system, and inventing them would repeat the original mistake.
+ */
+export const getPlSummary = asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
+    const match = paidOrderMatch(req);
+    if (startDate || endDate) {
+        match.createdAt = {};
+        if (startDate) match.createdAt.$gte = new Date(startDate);
+        if (endDate) match.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+    }
+
+    const [orderAgg, commissionAgg, refundAgg] = await Promise.all([
+        Order.aggregate([
+            { $match: match },
+            {
+                $group: {
+                    _id: null,
+                    gmv: { $sum: '$total' },
+                    subtotal: { $sum: '$subtotal' },
+                    tax: { $sum: '$tax' },
+                    shipping: { $sum: '$shipping' },
+                    packagingFee: { $sum: { $ifNull: ['$packagingFee', 0] } },
+                    discount: { $sum: '$discount' },
+                    orders: { $sum: 1 },
+                },
+            },
+        ]),
+        Commission.aggregate([
+            { $match: { status: { $ne: 'cancelled' } } },
+            {
+                $group: {
+                    _id: null,
+                    commissionRevenue: { $sum: '$commission' },
+                    vendorEarnings: { $sum: '$vendorEarnings' },
+                },
+            },
+        ]),
+        Refund.aggregate([
+            { $match: { status: { $in: ['succeeded', 'manual_settled'] } } },
+            { $group: { _id: null, refunded: { $sum: '$amount' } } },
+        ]),
+    ]);
+
+    const o = orderAgg[0] || {};
+    const c = commissionAgg[0] || {};
+    const r = refundAgg[0] || {};
+
+    const commissionRevenue = Number(c.commissionRevenue || 0);
+    const refunded = Number(r.refunded || 0);
+
+    res.status(200).json(new ApiResponse(200, {
+        basis: 'commission',
+        includesUnpaidOrders: String(req.query.includeUnpaid || '') === 'true',
+        gmv: Number(o.gmv || 0),
+        orders: Number(o.orders || 0),
+        breakdown: {
+            subtotal: Number(o.subtotal || 0),
+            tax: Number(o.tax || 0),
+            shipping: Number(o.shipping || 0),
+            packagingFee: Number(o.packagingFee || 0),
+            discount: Number(o.discount || 0),
+        },
+        commissionRevenue,
+        vendorEarnings: Number(c.vendorEarnings || 0),
+        refunded,
+        netPlatformRevenue: Number((commissionRevenue - refunded).toFixed(2)),
+    }, 'Platform P&L summary fetched.'));
+});
+
 // GET /api/admin/analytics/finance-summary
 export const getFinancialSummary = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
-    const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
+    const match = paidOrderMatch(req);
     if (startDate || endDate) {
         match.createdAt = {};
         if (startDate) match.createdAt.$gte = new Date(startDate);
