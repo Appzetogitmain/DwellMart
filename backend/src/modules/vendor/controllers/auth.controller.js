@@ -749,9 +749,6 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
         }
 
         const mergedProfile = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...(wholesaleProfile || {}) };
-        if (!hasCompleteWholesaleProfile(mergedProfile)) {
-            throw new ApiError(400, 'Please provide your GST number, business name, wholesale contact, and bulk order support email to enable Wholesale Marketplace.');
-        }
         vendor.wholesaleProfile = mergedProfile;
     } else if (wholesaleProfile) {
         vendor.wholesaleProfile = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...wholesaleProfile };
@@ -838,9 +835,8 @@ export const applyForChannel = asyncHandler(async (req, res) => {
         throw new ApiError(409, `Channel is already ${current}.`);
     }
     if (channel === 'wholesale') {
-        const merged = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...(req.body.wholesaleProfile || {}) };
+        const merged = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...(req.body?.wholesaleProfile || {}) };
         if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is not currently available.');
-        if (!hasCompleteWholesaleProfile(merged)) throw new ApiError(400, 'Complete the wholesale business profile before applying.');
         vendor.wholesaleProfile = merged;
     }
     if (channel === 'quick_commerce' && !(await isQuickCommerceEnabled())) {
