@@ -15,6 +15,7 @@ import {
   FiLogOut,
   FiGrid,
   FiBell,
+  FiMapPin,
 } from "react-icons/fi";
 import { HiOutlineUserCircle } from "react-icons/hi";
 import { useState, useRef, useEffect } from "react";
@@ -219,6 +220,13 @@ const DesktopHeader = ({ hideSellButton = false }) => {
                       className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-lg transition-colors text-left w-full">
                       <FiShoppingBag className="text-gray-400" />
                       <span className="text-gray-200 text-sm">{t("Orders")}</span>
+                    </Link>
+                    <Link
+                      to="/addresses"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800 rounded-lg transition-colors text-left w-full">
+                      <FiMapPin className="text-gray-400" />
+                      <span className="text-gray-200 text-sm">{t("My Addresses")}</span>
                     </Link>
                     <Link
                       to="/support"

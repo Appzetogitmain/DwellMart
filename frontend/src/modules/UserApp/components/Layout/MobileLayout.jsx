@@ -24,13 +24,14 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
 
   // Respect the showBottomNav prop and hide on auth pages
   const shouldShowBottomNav = showBottomNav && !isAuthPage;
-  // Hide header on categories, search, wishlist, profile, and auth pages
+  // Hide header on categories, search, wishlist, profile, orders, addresses, and auth pages
   const shouldShowHeader = !isAuthPage &&
     location.pathname !== '/categories' &&
     location.pathname !== '/search' &&
     location.pathname !== '/wishlist' &&
     location.pathname !== '/profile' &&
     location.pathname !== '/orders' &&
+    location.pathname !== '/addresses' &&
     !isCheckoutPage;
 
   // Ensure body scroll is restored and dark background is set on auth pages

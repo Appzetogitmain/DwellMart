@@ -12,6 +12,7 @@ import {
     FiTruck,
     FiShoppingBag,
     FiCheckCircle,
+    FiArrowLeft,
 } from 'react-icons/fi';
 import { useNotificationStore } from '../../../shared/store/useNotificationStore';
 import DesktopHeader from '../components/Layout/DesktopHeader';
@@ -88,6 +89,21 @@ const NotificationsPage = () => {
                 <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2.5">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (window.history.length > 2) {
+                                        navigate(-1);
+                                    } else {
+                                        navigate('/');
+                                    }
+                                }}
+                                className="p-2 -ml-1 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer"
+                                title="Go Back"
+                                aria-label="Go Back"
+                            >
+                                <FiArrowLeft className="w-5 h-5" />
+                            </button>
                             <div className="p-2 bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400 rounded-xl">
                                 <FiBell className="w-6 h-6" />
                             </div>

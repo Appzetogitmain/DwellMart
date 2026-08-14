@@ -281,6 +281,13 @@ const MobileProfile = () => {
                       <FiLock className="text-lg" />
                       {t('Password')}
                     </button>
+                    <Link
+                      to="/addresses"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium text-content-secondary hover:bg-surface-muted hover:text-brand-primary"
+                    >
+                      <FiMapPin className="text-lg" />
+                      {t('My Addresses')}
+                    </Link>
                   </div>
                 </div>
               </div>
