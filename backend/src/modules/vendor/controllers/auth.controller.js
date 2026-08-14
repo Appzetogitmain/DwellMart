@@ -205,9 +205,6 @@ export const register = asyncHandler(async (req, res) => {
         if (!wholesaleMarketplaceEnabled) {
             throw new ApiError(403, 'Wholesale Marketplace is not currently available on this platform.');
         }
-        if (!hasCompleteWholesaleProfile(wholesaleProfile)) {
-            throw new ApiError(400, 'Please provide your GST number, business name, business address, wholesale contact, and bulk order support email to enable Wholesale Marketplace.');
-        }
     }
 
     const quickCommerceRequested = sellingChannels?.quickCommerce?.enabled === true;

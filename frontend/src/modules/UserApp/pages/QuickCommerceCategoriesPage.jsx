@@ -32,14 +32,14 @@ const QuickCommerceCategoriesPage = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav showCartBar>
-        <div className="w-full min-h-screen pb-24 lg:pb-12 max-w-7xl mx-auto bg-surface-muted">
+        <div className="w-full max-w-7xl mx-auto bg-surface-muted pb-2">
           {/* Header */}
           <header className="sticky top-0 z-30 bg-surface border-b border-border p-3 sm:p-4 shadow-xs">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate("/quick")}
-                className="p-2 rounded-full hover:bg-surface-muted transition-colors"
+                className="p-2 rounded-full hover:bg-surface-muted transition-colors cursor-pointer"
                 aria-label="Back to Express Home"
               >
                 <FiArrowLeft className="text-xl text-content-secondary" />
@@ -60,14 +60,14 @@ const QuickCommerceCategoriesPage = () => {
             </div>
           </header>
 
-          {/* Dedicated Category Explorer — Embedded ExpressCategoryBrowser with sticky sidebar */}
-          <main className="pt-2">
+          {/* Dedicated Category Explorer — Embedded ExpressCategoryBrowser */}
+          <div className="pt-1">
             <ExpressCategoryBrowser
               categories={categories}
               isLoadingCategories={isLoading}
               initialCategoryId={initialCategoryParam}
             />
-          </main>
+          </div>
         </div>
       </MobileLayout>
     </PageTransition>

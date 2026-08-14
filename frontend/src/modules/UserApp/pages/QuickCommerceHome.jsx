@@ -1,23 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiZap, FiSearch, FiShoppingCart, FiHeart, FiX, FiChevronRight, FiClock } from "react-icons/fi";
+import { FiArrowLeft, FiZap, FiSearch, FiShoppingCart, FiHeart, FiX, FiChevronRight } from "react-icons/fi";
 import { motion } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from "../../../shared/components/PageTransition";
 import LocationPrompt from "../components/QuickCommerce/LocationPrompt";
-import LazyImage from "../../../shared/components/LazyImage";
 import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useAuthStore } from "../../../shared/store/authStore";
 import { useCartStore, useUIStore } from "../../../shared/store/useStore";
 import { getLocationQueryParams } from "../../../shared/utils/experience";
-import { getNearbyQuickCommerceVendors } from "../../../shared/services/quickCommerceService";
 import { getPublicCategories } from "../../Admin/services/adminService";
-import { getPlaceholderImage } from "../../../shared/utils/helpers";
 import CategoryImage from "../../../shared/components/CategoryImage";
 import QuickCommerceHeroBanner from "../components/QuickCommerce/QuickCommerceHeroBanner";
 import ExpressProductCard from "../components/QuickCommerce/ExpressProductCard";
-import { Button, Badge, Card, Input } from "../../../shared/components/ui";
+import { Button, Card, Input } from "../../../shared/components/ui";
 import api from "../../../shared/utils/api";
 
 const SEARCH_PLACEHOLDERS = [
@@ -30,14 +27,14 @@ const SEARCH_PLACEHOLDERS = [
   'Search "Butter"',
 ];
 
-/** Fetches 8 QC products with a given sort key */
+/** Fetches QC products with a given sort key */
 const fetchExpressProducts = async (sort, extra = {}) => {
   try {
     const response = await api.get("/products", {
       params: {
         experience: "quick_commerce",
         page: 1,
-        limit: 5,
+        limit: 10,
         sort,
         ...extra,
       },
@@ -49,39 +46,42 @@ const fetchExpressProducts = async (sort, extra = {}) => {
   }
 };
 
-/** Horizontal product shelf with title and See All link using Design Tokens */
+/** Horizontal product shelf with title and See All link — exactly 2 cards per row on mobile with smooth swipe */
 const ProductShelf = ({ title, products, isLoading, onSeeAll }) => {
   if (!isLoading && products.length === 0) return null;
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 mb-2">
+    <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 mb-4">
       {/* Shelf Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-2.5">
         <h2 className="text-sm sm:text-base font-black text-textColor-primary tracking-tight">{title}</h2>
         {onSeeAll && (
           <button
             type="button"
             onClick={onSeeAll}
-            className="text-xs font-bold text-textColor-brand hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-textColor-brand hover:underline flex items-center gap-0.5 cursor-pointer"
           >
             See All <FiChevronRight className="text-xs" />
           </button>
         )}
       </div>
 
-      {/* Shelf Product Row */}
+      {/* Shelf Product Row - Exactly 2 cards per view on mobile screens, swipeable */}
       {isLoading ? (
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="w-44 h-60 rounded-card bg-surface-card animate-pulse border border-borderToken-default shrink-0" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-[calc(50%-6px)] sm:w-48 h-56 sm:h-64 rounded-card bg-surface-card animate-pulse border border-borderToken-default shrink-0"
+            />
           ))}
         </div>
       ) : (
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {products.slice(0, 5).map((product) => (
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-1 snap-x snap-mandatory">
+          {products.map((product) => (
             <div
               key={product._id || product.id}
-              className="w-52 sm:w-auto shrink-0 sm:shrink"
+              className="w-[calc(50%-6px)] sm:w-48 md:w-52 shrink-0 snap-start"
             >
               <ExpressProductCard product={product} />
             </div>
@@ -104,7 +104,6 @@ const QuickCommerceHome = () => {
   const toggleCart = useUIStore((state) => state.toggleCart);
 
   const [categories, setCategories] = useState([]);
-  const [vendors, setVendors] = useState([]);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [globalSearchText, setGlobalSearchText] = useState("");
@@ -145,17 +144,6 @@ const QuickCommerceHome = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // Load nearby vendors (non-blocking)
-  useEffect(() => {
-    if (!hasLocation) return;
-    getNearbyQuickCommerceVendors({ ...locationParams, limit: 6 })
-      .then((res) => {
-        const data = res?.data ?? res;
-        setVendors(Array.isArray(data?.vendors) ? data.vendors : []);
-      })
-      .catch(() => setVendors([]));
-  }, [hasLocation]);
-
   // Fetch all product shelves in parallel
   useEffect(() => {
     setIsLoadingFeatured(true);
@@ -176,6 +164,14 @@ const QuickCommerceHome = () => {
       .then((p) => setRecentlyAdded(p)).finally(() => setIsLoadingRecent(false));
   }, []);
 
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate("/home");
+    }
+  };
+
   const handleGlobalSearchSubmit = (e) => {
     e.preventDefault();
     if (globalSearchText.trim()) {
@@ -195,7 +191,18 @@ const QuickCommerceHome = () => {
 
           {/* ── Sticky Header ── */}
           <header className="p-3 sm:p-4 bg-surface-card border-b border-borderToken-default sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center justify-between gap-3 mb-2.5 max-w-7xl mx-auto">
+            <div className="flex items-center justify-between gap-2.5 mb-2.5 max-w-7xl mx-auto">
+              {/* Back Button */}
+              <button
+                type="button"
+                onClick={handleBack}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-surface-background hover:bg-borderToken-light active:scale-95 transition-all border border-borderToken-default text-textColor-secondary hover:text-textColor-primary flex items-center justify-center shrink-0 cursor-pointer"
+                aria-label="Back"
+                title="Go Back"
+              >
+                <FiArrowLeft className="text-lg" />
+              </button>
+
               {/* Location / Delivery Badge */}
               <button
                 type="button"
@@ -210,7 +217,7 @@ const QuickCommerceHome = () => {
                     <span className="text-xs font-black tracking-tight text-textColor-primary">Delivery in 10–15 mins</span>
                     <FiChevronRight className="text-textColor-muted text-xs shrink-0" />
                   </div>
-                  <p className="text-[11px] font-semibold text-textColor-secondary truncate max-w-[200px] sm:max-w-md">
+                  <p className="text-[11px] font-semibold text-textColor-secondary truncate max-w-[170px] sm:max-w-md">
                     {location?.label || "Set your delivery location..."}
                   </p>
                 </div>
@@ -403,50 +410,6 @@ const QuickCommerceHome = () => {
               View All Express Categories
             </Button>
           </div>
-
-          {/* ── Nearby Stores ── */}
-          {vendors.length > 0 && (
-            <div className="p-4 sm:p-6 pt-2 max-w-7xl mx-auto">
-              <h3 className="text-xs font-black text-textColor-muted mb-3 uppercase tracking-wider">
-                Stores near you
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {vendors.map((vendor) => (
-                  <button
-                    key={vendor.id || vendor._id}
-                    type="button"
-                    onClick={() => navigate(`/seller/${vendor.id || vendor._id}`)}
-                    className="w-full bg-surface-card rounded-card border border-borderToken-default p-3 flex items-center gap-3 text-left hover:border-brand-primary/50 hover:shadow-card transition-all cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-background flex-shrink-0">
-                      <LazyImage
-                        src={vendor.storeLogo || getPlaceholderImage(48, 48, vendor.storeName?.charAt(0) || "S")}
-                        alt={vendor.storeName}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-textColor-primary truncate">{vendor.storeName}</p>
-                      <div className="flex items-center gap-2 text-[11px] text-textColor-secondary">
-                        {Number.isFinite(vendor.distanceKm) && <span>{vendor.distanceKm} km away</span>}
-                        {Number.isFinite(vendor.preparationTimeMins) && (
-                          <span className="flex items-center gap-1">
-                            <FiClock className="text-[10px]" />
-                            {vendor.preparationTimeMins} min prep
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {!vendor.availability?.isOrderable && (
-                      <Badge variant="error" size="sm">
-                        Closed
-                      </Badge>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
       </MobileLayout>

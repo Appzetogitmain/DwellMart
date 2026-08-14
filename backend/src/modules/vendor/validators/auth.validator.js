@@ -53,11 +53,7 @@ export const registerSchema = Joi.object({
         wholesale: Joi.object({ enabled: Joi.boolean().optional() }).optional(),
         quickCommerce: Joi.object({ enabled: Joi.boolean().optional() }).optional(),
     }).optional(),
-    wholesaleProfile: Joi.when('sellingChannels.wholesale.enabled', {
-        is: true,
-        then: wholesaleProfileSchema.required(),
-        otherwise: Joi.object().optional(),
-    }),
+    wholesaleProfile: Joi.object().optional(),
 }).or('selectionToken', 'selectedPlanId').custom((value, helpers) => {
     const retail = value.sellingChannels?.retail?.enabled;
     const wholesale = value.sellingChannels?.wholesale?.enabled;

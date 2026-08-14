@@ -128,25 +128,10 @@ const SubscriptionOnboardingWizard = ({
     password: '',
     confirmPassword: '',
     storeName: '',
-    storeDescription: '',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: '',
-    },
     sellingChannels: {
       retail: true,
       wholesale: false,
       quickCommerce: false,
-    },
-    wholesaleProfile: {
-      gstNumber: '',
-      businessName: '',
-      wholesaleContactName: '',
-      wholesaleContactPhone: '',
-      bulkOrderSupportEmail: '',
     },
   });
 
@@ -318,22 +303,6 @@ const SubscriptionOnboardingWizard = ({
   const handleChange = (event) => {
     const { name, value } = event.target;
     if (name === 'email' && isEmailVerified) return;
-    if (name.startsWith('address.')) {
-      const field = name.split('.')[1];
-      setFormData((prev) => ({
-        ...prev,
-        address: { ...prev.address, [field]: value },
-      }));
-      return;
-    }
-    if (name.startsWith('wholesaleProfile.')) {
-      const field = name.split('.')[1];
-      setFormData((prev) => ({
-        ...prev,
-        wholesaleProfile: { ...prev.wholesaleProfile, [field]: value },
-      }));
-      return;
-    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -378,7 +347,7 @@ const SubscriptionOnboardingWizard = ({
   const handleSelectPlan = async (plan) => {
     setIsLoading(true);
     try {
-      const response = await selectVendorSubscriptionPlan(plan._id, formData.address.country);
+      const response = await selectVendorSubscriptionPlan(plan._id);
       const token = response?.data?.selectionToken || '';
       setSelectedPlan(plan);
       setSelectionToken(token);
@@ -405,14 +374,6 @@ const SubscriptionOnboardingWizard = ({
       return;
     }
 
-    if (wholesaleRequested) {
-      const { gstNumber, businessName, wholesaleContactName, wholesaleContactPhone, bulkOrderSupportEmail } = formData.wholesaleProfile;
-      if (!gstNumber?.trim() || !businessName?.trim() || !wholesaleContactName?.trim() || !wholesaleContactPhone?.trim() || !bulkOrderSupportEmail?.trim()) {
-        toast.error(t('Please provide your GST number, business name, wholesale contact, and support email.'));
-        return;
-      }
-    }
-
     if (!documentFile) {
       toast.error(`${t('Please upload your')} ${documentType === 'gst' ? t('GST') : t('Trade Licence')} ${t('document.')}`);
       return;
@@ -434,11 +395,9 @@ const SubscriptionOnboardingWizard = ({
       payload.append('password', formData.password);
       payload.append('phone', formData.phone.trim());
       payload.append('storeName', formData.storeName.trim());
-      payload.append('storeDescription', formData.storeDescription.trim());
       payload.append('selectionToken', selectionToken);
       payload.append('selectedPlanId', selectedPlan._id);
       payload.append('documentType', documentType);
-      payload.append('address', JSON.stringify(formData.address));
       payload.append('agreedToTerms', true);
       payload.append('document', documentFile);
 
@@ -447,10 +406,6 @@ const SubscriptionOnboardingWizard = ({
         wholesale: { enabled: wholesaleRequested },
         quickCommerce: { enabled: quickCommerceRequested },
       }));
-
-      if (wholesaleRequested) {
-        payload.append('wholesaleProfile', JSON.stringify(formData.wholesaleProfile));
-      }
 
       const response = await api.post('/vendor/auth/register', payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -534,35 +489,41 @@ const SubscriptionOnboardingWizard = ({
 
   return (
     <>
-      <div className="mx-auto w-full max-w-5xl">
-        <div className="mb-8 text-center text-slate-900">
-          <h2 className="text-3xl font-extrabold text-slate-900 md:text-4xl">{title}</h2>
-          <p className="mt-2 mx-auto max-w-3xl text-sm text-slate-600 md:text-base">{subtitle}</p>
+      <div className="mx-auto w-full max-w-5xl px-2 sm:px-4">
+        <div className="mb-6 sm:mb-8 text-center text-slate-900 px-2">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 md:text-4xl leading-tight">{title}</h2>
+          <p className="mt-2 mx-auto max-w-2xl text-xs sm:text-sm text-slate-600 md:text-base">{subtitle}</p>
         </div>
 
         {/* Wizard Step Progress Bar */}
-        <div className="mb-12 flex items-center justify-center">
-          {STEPS.map((label, index) => (
-            <div key={label} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold shadow-md transition-colors ${
-                    index < step
-                      ? 'bg-emerald-600 text-white'
-                      : index === step
-                      ? 'bg-[#ffc101] text-black ring-4 ring-[#ffc101]/30 font-extrabold'
-                      : 'bg-slate-200 text-slate-500'
-                  }`}
-                >
-                  {index < step ? <FiCheck className="stroke-[3]" /> : index + 1}
+        <div className="mb-8 sm:mb-12 w-full max-w-xl mx-auto px-1 sm:px-4">
+          <div className="flex items-center justify-between">
+            {STEPS.map((label, index) => (
+              <div key={label} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center shrink-0">
+                  <div
+                    className={`flex h-8 w-8 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full text-xs sm:text-sm font-bold shadow-sm sm:shadow-md transition-all ${
+                      index < step
+                        ? 'bg-emerald-600 text-white'
+                        : index === step
+                        ? 'bg-[#ffc101] text-black ring-2 sm:ring-4 ring-[#ffc101]/30 font-extrabold'
+                        : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {index < step ? <FiCheck className="stroke-[3] text-xs sm:text-sm" /> : index + 1}
+                  </div>
+                  <span className={`mt-1.5 text-[10px] sm:text-xs font-bold text-center whitespace-nowrap ${index <= step ? 'text-slate-900' : 'text-slate-400'}`}>
+                    {label}
+                  </span>
                 </div>
-                <span className={`mt-2 text-xs font-bold ${index <= step ? 'text-slate-900' : 'text-slate-400'}`}>{label}</span>
+                {index < STEPS.length - 1 ? (
+                  <div className="flex-1 mx-1 sm:mx-2 md:mx-3 -mt-4 sm:-mt-5">
+                    <div className={`h-0.5 sm:h-1 w-full rounded-full transition-colors ${index < step ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  </div>
+                ) : null}
               </div>
-              {index < STEPS.length - 1 ? (
-                <div className={`mx-3 h-1 w-12 rounded-full md:w-20 ${index < step ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-              ) : null}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -570,13 +531,13 @@ const SubscriptionOnboardingWizard = ({
           {step === 0 ? (
             <motion.div key="plans" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <div className="mb-8 text-center">
-                <h3 className="text-2xl font-extrabold text-slate-900">{t('Choose Your Membership Plan')}</h3>
-                <p className="mt-2 text-sm text-slate-600">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">{t('Choose Your Membership Plan')}</h3>
+                <p className="mt-2 text-xs sm:text-sm text-slate-600">
                   {t('Paid plans open the payment options first, then continue to registration.')}
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+              <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch">
                 {(() => {
                   const popularPlan = translatedPlans.find((p) => p.isMostPopular) || translatedPlans.find((p) => p.name?.toLowerCase().includes('yearly')) || translatedPlans[1];
                   const popularPlanId = popularPlan?._id;
@@ -586,7 +547,7 @@ const SubscriptionOnboardingWizard = ({
                     return (
                       <div
                         key={plan._id}
-                        className={`relative flex flex-col justify-between rounded-3xl border-2 p-8 text-slate-900 shadow-xl backdrop-blur transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl h-full ${
+                        className={`relative flex flex-col justify-between rounded-2xl sm:rounded-3xl border-2 p-5 sm:p-8 text-slate-900 shadow-xl backdrop-blur transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl h-full ${
                           selectedPlan?._id === plan._id || isPopular
                             ? 'border-[#D4AF37] bg-white ring-4 ring-[#ffc101]/20 shadow-amber-500/10'
                             : 'border-slate-200 bg-white hover:border-amber-400'
@@ -649,8 +610,8 @@ const SubscriptionOnboardingWizard = ({
                 {selectedPlan ? <span className="rounded-full bg-amber-100 px-4 py-1.5 text-xs font-extrabold text-amber-800 border border-amber-300">{selectedPlan.name}</span> : null}
               </div>
 
-              <form onSubmit={handleRegister} className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-2xl md:p-10 text-slate-900">
-                <h3 className="text-xl font-bold text-slate-900 mb-6 border-b border-slate-100 pb-3">
+              <form onSubmit={handleRegister} className="rounded-2xl sm:rounded-3xl md:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 md:p-10 shadow-2xl text-slate-900">
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-6 border-b border-slate-100 pb-3">
                   Store Owner & Business Details
                 </h3>
 
@@ -737,19 +698,6 @@ const SubscriptionOnboardingWizard = ({
                     </div>
                   </label>
 
-                  <div className="md:col-span-2">
-                    <span className="text-xs font-bold text-slate-700 mb-1 block">Store Description</span>
-                    <textarea name="storeDescription" value={formData.storeDescription} onChange={handleChange} rows={2} placeholder={t('Store description')} className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white transition-colors" />
-                  </div>
-
-                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <input name="address.street" value={formData.address.street} onChange={handleChange} placeholder={t('Street Address')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white" />
-                    <input name="address.city" value={formData.address.city} onChange={handleChange} placeholder={t('City')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white" />
-                    <input name="address.state" value={formData.address.state} onChange={handleChange} placeholder={t('State')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white" />
-                    <input name="address.zipCode" value={formData.address.zipCode} onChange={handleChange} placeholder={t('Zip code')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white" />
-                    <input name="address.country" value={formData.address.country} onChange={handleChange} placeholder={t('Country')} className="sm:col-span-2 rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white" />
-                  </div>
-                  
                   {/* Selling Channels */}
                   {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
                     <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -788,77 +736,6 @@ const SubscriptionOnboardingWizard = ({
                         )}
                       </div>
                       <p className="mt-2 text-[11px] text-slate-500">{t('At least one selling channel must stay enabled.')}</p>
-
-                      {formData.sellingChannels.wholesale && (
-                        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 border-t border-slate-200 pt-3">
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-slate-700">
-                              {t('GST Number')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              name="wholesaleProfile.gstNumber"
-                              value={formData.wholesaleProfile.gstNumber}
-                              onChange={handleChange}
-                              required={formData.sellingChannels.wholesale}
-                              placeholder="22AAAAA0000A1Z5"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#ffc101]"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-slate-700">
-                              {t('Business Name')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              name="wholesaleProfile.businessName"
-                              value={formData.wholesaleProfile.businessName}
-                              onChange={handleChange}
-                              required={formData.sellingChannels.wholesale}
-                              placeholder={t('Registered business name')}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#ffc101]"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-slate-700">
-                              {t('Wholesale Contact Name')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              name="wholesaleProfile.wholesaleContactName"
-                              value={formData.wholesaleProfile.wholesaleContactName}
-                              onChange={handleChange}
-                              required={formData.sellingChannels.wholesale}
-                              placeholder={t('Contact person for bulk orders')}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#ffc101]"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-slate-700">
-                              {t('Wholesale Contact Phone')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              name="wholesaleProfile.wholesaleContactPhone"
-                              value={formData.wholesaleProfile.wholesaleContactPhone}
-                              onChange={handleChange}
-                              required={formData.sellingChannels.wholesale}
-                              placeholder="+1234567890"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#ffc101]"
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="mb-1 block text-xs font-bold text-slate-700">
-                              {t('Bulk Order Support Email')} <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="email"
-                              name="wholesaleProfile.bulkOrderSupportEmail"
-                              value={formData.wholesaleProfile.bulkOrderSupportEmail}
-                              onChange={handleChange}
-                              required={formData.sellingChannels.wholesale}
-                              placeholder="bulkorders@yourstore.com"
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 outline-none focus:border-[#ffc101]"
-                            />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -916,21 +793,21 @@ const SubscriptionOnboardingWizard = ({
           {/* STEP 2: Subscription Checkout */}
           {step === 2 ? (
             <motion.div key="payment" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mx-auto max-w-xl">
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-2xl text-slate-900 text-center">
+              <div className="rounded-2xl sm:rounded-3xl md:rounded-[32px] border border-slate-200 bg-white p-5 sm:p-8 shadow-2xl text-slate-900 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
                   {selectedPlan?.isFree ? <FiStar size={28} /> : <FiCreditCard size={28} />}
                 </div>
 
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                   {selectedPlan?.isFree ? t('Activate your free trial') : t('Complete your subscription')}
                 </h2>
 
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-xs sm:text-sm text-slate-600">
                   {selectedPlan?.isFree ? t('Start your free trial without any payment required.') : t('Billing becomes active only after gateway payment confirmation.')}
                 </p>
 
                 {selectedPlan ? (
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-slate-900 font-bold text-sm">
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5 text-center text-slate-900 font-bold text-xs sm:text-sm">
                     {selectedPlan.name} | {formatPrice(selectedPlan, t)} | {t('per')} {getIntervalLabel(selectedPlan, t)}
                   </div>
                 ) : null}
@@ -940,7 +817,7 @@ const SubscriptionOnboardingWizard = ({
                 {paymentState === 'failed' ? <div className="mt-4 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs font-bold text-rose-800">{t('Billing could not be confirmed. Please retry the payment step.')}</div> : null}
 
                 <div className="mt-6 flex flex-col gap-3">
-                  <button type="button" onClick={handlePayment} disabled={isLoading || paymentState === 'processing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-4 font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-60 shadow-lg shadow-amber-500/20">
+                  <button type="button" onClick={handlePayment} disabled={isLoading || paymentState === 'processing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 sm:py-4 font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-60 shadow-lg shadow-amber-500/20 text-sm sm:text-base">
                     {isLoading ? <FiLoader className="animate-spin text-lg" /> : (selectedPlan?.isFree ? <FiCheck /> : <FiCreditCard />)}
                     {isLoading ? (selectedPlan?.isFree ? t('Activating...') : t('Preparing checkout...')) : paymentState === 'processing' ? t('Checking payment status...') : paymentState === 'checkout_open' ? t('Payment window open') : (selectedPlan?.isFree ? t('Activate free plan') : t('Start secure payment'))}
                   </button>
@@ -954,11 +831,11 @@ const SubscriptionOnboardingWizard = ({
           {/* STEP 3: Completion Celebration */}
           {step === 3 ? (
             <motion.div key="done" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="mx-auto max-w-lg">
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-2xl text-slate-900">
+              <div className="rounded-2xl sm:rounded-3xl md:rounded-[32px] border border-slate-200 bg-white p-5 sm:p-8 text-center shadow-2xl text-slate-900">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><FiCheck size={32} className="stroke-[3]" /></div>
-                <h2 className="text-2xl font-extrabold text-slate-900">{t('Subscription submitted successfully')}</h2>
-                <p className="mt-3 text-sm text-slate-600">{t('Your billing is synced from the gateway and your vendor account is now awaiting admin approval.')}</p>
-                <button type="button" onClick={() => navigate('/vendor/login')} className="mt-6 w-full rounded-2xl bg-[#ffc101] px-4 py-3.5 font-extrabold text-black transition hover:bg-[#ffd042] shadow-lg shadow-amber-500/20">{t('Go to vendor login')}</button>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">{t('Subscription submitted successfully')}</h2>
+                <p className="mt-3 text-xs sm:text-sm text-slate-600">{t('Your billing is synced from the gateway and your vendor account is now awaiting admin approval.')}</p>
+                <button type="button" onClick={() => navigate('/vendor/login')} className="mt-6 w-full rounded-2xl bg-[#ffc101] px-4 py-3.5 font-extrabold text-black transition hover:bg-[#ffd042] shadow-lg shadow-amber-500/20 text-sm sm:text-base">{t('Go to vendor login')}</button>
               </div>
             </motion.div>
           ) : null}

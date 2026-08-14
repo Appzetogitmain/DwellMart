@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FiSearch, FiX, FiZap } from "react-icons/fi";
+import { FiZap } from "react-icons/fi";
 import CategoryImage from "../../../../shared/components/CategoryImage";
 import ExpressProductCard from "./ExpressProductCard";
-import { Badge, Input, EmptyState } from "../../../../shared/components/ui";
+import { Badge, EmptyState } from "../../../../shared/components/ui";
 import api from "../../../../shared/utils/api";
 
 const normalizeId = (val) => String(val ?? "").trim();
@@ -15,7 +15,6 @@ const normalizeId = (val) => String(val ?? "").trim();
 const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, initialCategoryId = null }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId);
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
@@ -100,50 +99,12 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
     };
   }, [selectedCategoryId, selectedSubcategoryId]);
 
-  // Filter products by search query
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
-    return products.filter((p) =>
-      p?.name?.toLowerCase().includes(searchQuery.toLowerCase().trim())
-    );
-  }, [products, searchQuery]);
-
   return (
-    <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 py-2">
-      {/* Mobile-Only Horizontal Category Chips Row */}
-      <div className="lg:hidden mb-3 overflow-x-auto scrollbar-hide px-1">
-        <div className="flex items-center gap-2 py-1">
-          {rootCategories.map((cat) => {
-            const catId = cat._id || cat.id;
-            const isActive = normalizeId(catId) === normalizeId(selectedCategoryId);
-            return (
-              <button
-                key={catId}
-                type="button"
-                onClick={() => setSelectedCategoryId(catId)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border flex items-center gap-2 ${
-                  isActive
-                    ? "bg-brand-primary text-slate-950 border-brand-primaryHover shadow-sm scale-102 font-black"
-                    : "bg-surface-card text-textColor-secondary border-borderToken-default hover:bg-surface-background"
-                }`}
-              >
-                <CategoryImage
-                  src={cat.image || cat.icon}
-                  alt={cat.name}
-                  name={cat.name}
-                  containerClassName="w-5 h-5 rounded-full overflow-hidden shrink-0 border border-white/40"
-                />
-                <span>{cat.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main Split Layout — Sticky Sidebar (Desktop/Tablet) + Products Grid */}
-      <div className="flex gap-2 sm:gap-4 items-start min-h-[600px]">
+    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-6 py-1">
+      {/* Main Split Layout — Sticky Sidebar + Products Grid */}
+      <div className="flex gap-2 sm:gap-4 items-start">
         {/* Left Vertical Sticky Sidebar */}
-        <aside className="w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 bg-surface-background border-r border-borderToken-default rounded-card p-1 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide shadow-xs">
+        <aside className="w-20 sm:w-24 md:w-28 lg:w-32 shrink-0 bg-surface-background border-r border-borderToken-default rounded-card p-1 sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-hide shadow-xs">
           <div className="space-y-1 py-1">
             {rootCategories.map((category) => {
               const catId = category._id || category.id;
@@ -155,7 +116,7 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                   whileTap={{ scale: 0.95 }}
                   type="button"
                   onClick={() => setSelectedCategoryId(catId)}
-                  className={`w-full py-2.5 px-1.5 text-left transition-all duration-200 relative flex flex-col items-center gap-1.5 rounded-xl ${
+                  className={`w-full py-2 px-1 text-left transition-all duration-200 relative flex flex-col items-center gap-1 rounded-xl ${
                     isActive ? "bg-surface-card shadow-sm" : "hover:bg-surface-card/60"
                   }`}
                 >
@@ -169,7 +130,7 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                     src={category.image || category.icon}
                     alt={category.name}
                     name={category.name}
-                    containerClassName={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-surface-background shrink-0 transition-all duration-200 shadow-xs border ${
+                    containerClassName={`w-11 h-11 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-surface-background shrink-0 transition-all duration-200 shadow-xs border ${
                       isActive
                         ? "ring-2 ring-brand-primary ring-offset-2 scale-105 border-brand-primary shadow-md"
                         : "border-borderToken-default hover:border-brand-primary/50"
@@ -178,7 +139,7 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
 
                   {/* Title & Count */}
                   <span
-                    className={`text-[11px] sm:text-xs font-semibold text-center leading-snug transition-colors line-clamp-2 px-0.5 ${
+                    className={`text-[10px] sm:text-xs font-semibold text-center leading-tight transition-colors line-clamp-2 px-0.5 ${
                       isActive ? "text-textColor-brand font-black" : "text-textColor-secondary"
                     }`}
                   >
@@ -190,10 +151,10 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
           </div>
         </aside>
 
-        {/* Right Content Area — Subcategories + Search + Products Grid */}
-        <main className="flex-1 min-w-0 bg-surface-card rounded-card border border-borderToken-default p-2 sm:p-4 shadow-xs min-h-[500px]">
+        {/* Right Content Area — Subcategories + Products Grid */}
+        <main className="flex-1 min-w-0 bg-surface-card rounded-card border border-borderToken-default p-2 sm:p-4 shadow-xs">
           {/* Header Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-borderToken-default mb-3">
+          <div className="flex items-center justify-between gap-3 pb-3 border-b border-borderToken-default mb-3">
             <div className="flex items-center gap-2.5">
               <CategoryImage
                 src={activeCategory?.image || activeCategory?.icon}
@@ -212,30 +173,9 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                   </Badge>
                 </div>
                 <p className="text-xs text-textColor-muted font-semibold mt-0.5">
-                  {filteredProducts.length} items available in this category
+                  {products.length} items available in this category
                 </p>
               </div>
-            </div>
-
-            {/* In-Category Search Box using Shared Input */}
-            <div className="w-full sm:w-64">
-              <Input
-                leftIcon={<FiSearch className="text-textColor-muted text-xs" />}
-                placeholder={`Search in ${activeCategory?.name || 'category'}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                rightIcon={
-                  searchQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="text-textColor-muted hover:text-textColor-primary p-1 cursor-pointer"
-                    >
-                      <FiX className="text-xs" />
-                    </button>
-                  ) : null
-                }
-              />
             </div>
           </div>
 
@@ -294,21 +234,17 @@ const ExpressCategoryBrowser = ({ categories = [], isLoadingCategories = false, 
                 />
               ))}
             </div>
-          ) : filteredProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="py-12">
               <EmptyState
                 variant="no-results"
                 title="No Express Items Found"
-                description={
-                  searchQuery
-                    ? `No items match "${searchQuery}". Try a different search query.`
-                    : "Items for this category are currently being updated. Please check back shortly."
-                }
+                description="Items for this category are currently being updated. Please check back shortly."
               />
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <ExpressProductCard
                   key={product._id || product.id}
                   product={product}

@@ -56,9 +56,9 @@ const ExpressProductCard = ({ product }) => {
 
   const price = Number(product?.price) || 0;
   const originalPrice = Number(product?.originalPrice);
-  const hasDiscount = originalPrice && originalPrice > price;
+  const hasDiscount = Boolean(Number.isFinite(originalPrice) && originalPrice > price);
   const discountPercent = hasDiscount
-    ? Math.round(calculateDiscount(originalPrice, price))
+    ? Math.round(calculateDiscount(originalPrice, price)) || 0
     : 0;
 
   const unitText = product?.unit || product?.weight || product?.packSize || "1 unit";
@@ -68,26 +68,26 @@ const ExpressProductCard = ({ product }) => {
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
       onClick={handleCardClick}
-      className="group relative bg-surface-card rounded-card border border-borderToken-default p-2.5 sm:p-3 flex flex-col justify-between hover:border-brand-primary/60 hover:shadow-card transition-all duration-200 cursor-pointer overflow-hidden"
+      className="group relative bg-surface-card rounded-card border border-borderToken-default p-2 sm:p-3 flex flex-col justify-between hover:border-brand-primary/60 hover:shadow-card transition-all duration-200 cursor-pointer overflow-hidden h-full"
     >
       {/* Top badges bar using Shared Badge Primitives */}
-      <div className="flex items-center justify-between gap-1 mb-2 z-10">
+      <div className="flex items-center justify-between gap-1 mb-1.5 z-10">
         {/* Speed tag */}
-        <Badge variant="gold" size="sm" className="!normal-case tracking-tight gap-1">
-          <FiZap className="text-[11px] fill-amber-500 text-amber-500" />
+        <Badge variant="gold" size="sm" className="!normal-case tracking-tight gap-0.5 !px-1.5 !py-0.5 text-[10px] sm:text-xs">
+          <FiZap className="text-[10px] sm:text-[11px] fill-amber-500 text-amber-500" />
           <span>10-15m</span>
         </Badge>
 
         {/* Discount tag */}
         {discountPercent > 0 && (
-          <Badge variant="success" size="sm" className="!normal-case font-black">
+          <Badge variant="success" size="sm" className="!normal-case font-black !px-1.5 !py-0.5 text-[10px] sm:text-xs">
             {discountPercent}% OFF
           </Badge>
         )}
       </div>
 
       {/* Product Image */}
-      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-background mb-2 flex items-center justify-center p-2 group-hover:scale-105 transition-transform duration-300">
+      <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-background mb-1.5 flex items-center justify-center p-1.5 sm:p-2 group-hover:scale-105 transition-transform duration-300">
         <LazyImage
           src={product?.image || product?.images?.[0]}
           alt={product?.name}
@@ -102,64 +102,64 @@ const ExpressProductCard = ({ product }) => {
       <div className="flex-1 flex flex-col justify-between">
         <div>
           {/* Unit / Pack weight */}
-          <p className="text-[11px] font-semibold text-textColor-muted mb-0.5 line-clamp-1">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-textColor-muted mb-0.5 line-clamp-1">
             {unitText}
           </p>
 
           {/* Product Title */}
-          <h4 className="text-xs sm:text-sm font-bold text-textColor-primary leading-tight line-clamp-2 mb-2 group-hover:text-textColor-brand transition-colors">
+          <h4 className="text-xs sm:text-sm font-bold text-textColor-primary leading-tight line-clamp-2 mb-1 sm:mb-2 min-h-[28px] sm:min-h-[36px] group-hover:text-textColor-brand transition-colors">
             {product?.name}
           </h4>
         </div>
 
         {/* Bottom Bar: Price + Add Button */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-borderToken-light mt-1">
+        <div className="flex items-center justify-between gap-1.5 pt-1 sm:pt-1.5 border-t border-borderToken-light mt-1 sm:mt-1.5">
           {/* Price Container */}
-          <div className="min-w-0">
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-xs sm:text-sm font-extrabold text-textColor-primary tracking-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
+              <span className="text-xs sm:text-sm font-black text-textColor-primary tracking-tight">
                 ₹{price.toLocaleString('en-IN')}
               </span>
-              {hasDiscount && (
+              {hasDiscount ? (
                 <span className="text-[10px] font-medium text-textColor-muted line-through">
                   ₹{originalPrice.toLocaleString('en-IN')}
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
 
           {/* Add / Stepper Button */}
-          <div onClick={(e) => e.stopPropagation()}>
+          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
             {quantity === 0 ? (
               <Button
                 size="sm"
                 variant="primary"
                 onClick={handleAdd}
                 rightIcon={<FiPlus className="text-xs" />}
-                className="!py-1.5 !px-3 !min-h-[32px] text-xs font-black"
+                className="!py-1 !px-2 sm:!py-1.5 sm:!px-3 !min-h-[28px] sm:!min-h-[32px] text-[11px] sm:text-xs font-black"
               >
                 ADD
               </Button>
             ) : (
-              <div className="flex items-center bg-brand-primary text-slate-950 rounded-button shadow-sm overflow-hidden font-extrabold text-xs border border-brand-primaryHover">
+              <div className="flex items-center bg-brand-primary text-slate-950 rounded-button shadow-sm overflow-hidden font-extrabold text-[11px] sm:text-xs border border-brand-primaryHover">
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   type="button"
                   onClick={handleDecrement}
-                  className="px-2 py-1.5 hover:bg-brand-primaryHover transition-colors"
+                  className="px-1.5 py-1 sm:px-2 sm:py-1.5 hover:bg-brand-primaryHover transition-colors"
                 >
-                  <FiMinus className="text-xs font-bold" />
+                  <FiMinus className="text-[10px] sm:text-xs font-bold" />
                 </motion.button>
-                <span className="px-2 py-1.5 text-xs font-black text-center min-w-[20px]">
+                <span className="px-1.5 py-1 sm:px-2 sm:py-1.5 text-[11px] sm:text-xs font-black text-center min-w-[16px] sm:min-w-[20px]">
                   {quantity}
                 </span>
                 <motion.button
                   whileTap={{ scale: 0.85 }}
                   type="button"
                   onClick={handleIncrement}
-                  className="px-2 py-1.5 hover:bg-brand-primaryHover transition-colors"
+                  className="px-1.5 py-1 sm:px-2 sm:py-1.5 hover:bg-brand-primaryHover transition-colors"
                 >
-                  <FiPlus className="text-xs font-bold" />
+                  <FiPlus className="text-[10px] sm:text-xs font-bold" />
                 </motion.button>
               </div>
             )}

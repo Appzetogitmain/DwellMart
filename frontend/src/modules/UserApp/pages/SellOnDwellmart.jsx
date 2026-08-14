@@ -415,8 +415,8 @@ const SellOnDwellmart = () => {
       </section>
 
       {/* ── PHASE 5 & ONBOARDING WIZARD ── */}
-      <section id="onboarding-wizard-section" className="py-24 bg-slate-100/70">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section id="onboarding-wizard-section" className="py-12 sm:py-16 md:py-24 bg-slate-100/70 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
           <SubscriptionOnboardingWizard
             emailStorageKey="vendor-onboarding-email:/sell-on-dwellmart"
             returnTo="/sell-on-dwellmart"

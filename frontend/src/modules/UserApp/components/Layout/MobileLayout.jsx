@@ -53,13 +53,13 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
       {!isAuthPage && !isCheckoutPage && <DesktopHeader />}
       {shouldShowHeader && <MobileHeader />}
       <main
-        className={`min-h-screen w-full ${
+        className={`w-full ${
           isAuthPage
-            ? 'max-w-full px-0 bg-[#0B0F17]'
-            : location.pathname === '/categories'
+            ? 'min-h-screen max-w-full px-0 bg-[#0B0F17]'
+            : location.pathname === '/categories' || location.pathname === '/quick/categories'
             ? 'max-w-[1920px] mx-auto px-0'
-            : 'max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'
-        } overflow-x-hidden ${shouldShowBottomNav ? 'pb-20' : ''} ${showCartBar ? 'pb-24' : ''}`}
+            : 'min-h-screen max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'
+        } overflow-x-hidden ${shouldShowBottomNav ? 'pb-16 sm:pb-20' : ''}`}
         style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : '0px' }}
       >
         {children}
