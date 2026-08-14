@@ -95,7 +95,7 @@ const getVendorOnboardingState = async (vendorDoc) => {
 
 const uploadVendorDocument = async ({ file, documentType }) => {
     if (!file) {
-        throw new ApiError(400, 'Please upload either your Trade Licence or GST document.');
+        throw new ApiError(400, 'Please upload your business verification document (Trade License, GST, MSME, or Enrolment ID/UIN).');
     }
 
     let documentUrl = '';
@@ -107,7 +107,7 @@ const uploadVendorDocument = async ({ file, documentType }) => {
             const uploaded = await uploadLocalFileToCloudinaryAndCleanup(file.path, 'vendor_documents');
             documentUrl = uploaded.url;
         } catch {
-            throw new ApiError(500, `Failed to upload ${documentType === 'gst' ? 'GST' : 'trade licence'} image.`);
+            throw new ApiError(500, 'Failed to upload document image.');
         }
     } else {
         documentFileType = file.mimetype === 'application/pdf' ? 'pdf' : 'word';
@@ -123,6 +123,12 @@ const uploadVendorDocument = async ({ file, documentType }) => {
 
     if (documentType === 'gst') {
         return { gst: documentUrl };
+    }
+    if (documentType === 'msme') {
+        return { msme: documentUrl };
+    }
+    if (documentType === 'uin' || documentType === 'enrolmentId') {
+        return { uin: documentUrl, enrolmentId: documentUrl };
     }
 
     return {

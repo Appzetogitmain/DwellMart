@@ -33,9 +33,9 @@ export const registerSchema = Joi.object({
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
     selectionToken: Joi.string().trim().optional(),
     selectedPlanId: Joi.string().trim().optional(),
-    documentType: Joi.string().valid('tradeLicense', 'gst').required().messages({
-        'any.only': 'Please choose Trade License or GST.',
-        'any.required': 'Please choose Trade License or GST.',
+    documentType: Joi.string().valid('tradeLicense', 'gst', 'msme', 'uin', 'enrolmentId').required().messages({
+        'any.only': 'Please choose Trade License, GST, MSME, or Enrolment ID/UIN.',
+        'any.required': 'Please choose a business document type.',
     }),
     address: Joi.object({
         street: Joi.string().allow('').optional(),

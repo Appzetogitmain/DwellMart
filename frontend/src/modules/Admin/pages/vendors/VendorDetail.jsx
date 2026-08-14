@@ -163,8 +163,20 @@ const VendorDetail = () => {
       }
     : vendor?.documents?.gst
     ? {
-        label: "GST Document",
+        label: "GST",
         url: getFullUrl(vendor.documents.gst),
+        fileType: "document",
+      }
+    : vendor?.documents?.msme
+    ? {
+        label: "MSME",
+        url: getFullUrl(vendor.documents.msme),
+        fileType: "document",
+      }
+    : (vendor?.documents?.uin || vendor?.documents?.enrolmentId)
+    ? {
+        label: "Enrolment ID/UIN",
+        url: getFullUrl(vendor.documents.uin || vendor.documents.enrolmentId),
         fileType: "document",
       }
     : null;
