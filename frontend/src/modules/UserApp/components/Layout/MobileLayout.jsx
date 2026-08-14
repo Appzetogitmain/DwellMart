@@ -54,7 +54,11 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
       {shouldShowHeader && <MobileHeader />}
       <main
         className={`min-h-screen w-full ${
-          isAuthPage ? 'max-w-full px-0 bg-[#0B0F17]' : 'max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'
+          isAuthPage
+            ? 'max-w-full px-0 bg-[#0B0F17]'
+            : location.pathname === '/categories'
+            ? 'max-w-[1920px] mx-auto px-0'
+            : 'max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10'
         } overflow-x-hidden ${shouldShowBottomNav ? 'pb-20' : ''} ${showCartBar ? 'pb-24' : ''}`}
         style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : '0px' }}
       >

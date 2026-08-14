@@ -464,7 +464,7 @@ const MobileCategories = () => {
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div
-          className="w-full flex flex-col"
+          className="w-full max-w-full flex flex-col overflow-x-hidden"
           style={{ minHeight: contentHeight }}>
           {/* Category Header - Fixed at top */}
           {selectedCategory && (
@@ -668,14 +668,14 @@ const MobileCategories = () => {
 
           {/* Main Content Area - Sidebar and Products */}
           <div
-            className="flex flex-1"
+            className="flex flex-1 w-full max-w-full min-w-0 overflow-hidden"
             style={{
               minHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
             }}>
             {/* Left Panel - Vertical Category Sidebar */}
             <div
               ref={categoryListRef}
-              className="w-20 sm:w-24 md:w-28 lg:w-32 bg-surface-muted border-r border-border overflow-y-auto scrollbar-hide flex-shrink-0"
+              className="w-20 sm:w-24 md:w-28 lg:w-32 bg-surface-muted border-r border-border overflow-y-auto scrollbar-hide shrink-0 select-none touch-pan-y overscroll-contain"
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
@@ -726,15 +726,15 @@ const MobileCategories = () => {
 
             {/* Right Panel - Products Grid */}
             <div
-              className="flex-1 overflow-y-auto bg-surface flex-shrink-0"
+              className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-surface overscroll-contain"
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
               }}>
-              <div className="p-2 md:p-4">
+              <div className="p-2 md:p-4 w-full max-w-full overflow-hidden">
                 {/* Level 2 Department Tabs (Only when 3-tier category like Fashion & Lifestyle) */}
                 {is3TierCategory && departments.length > 0 && (
-                  <div className="mb-3 pb-2 border-b border-border">
-                    <div className="overflow-x-auto scrollbar-hide px-1">
+                  <div className="mb-3 pb-2 border-b border-border w-full max-w-full overflow-hidden">
+                    <div className="overflow-x-auto scrollbar-hide px-1 w-full max-w-full touch-pan-x" style={{ WebkitOverflowScrolling: "touch" }}>
                       <div className="flex items-center gap-2 py-1">
                         {departments.map((dept) => {
                           const deptId = dept.id || dept._id;
@@ -771,9 +771,9 @@ const MobileCategories = () => {
 
                 {/* Level 3 or Level 2 Subcategory Pills Selector */}
                 {translatedSubcategories.length > 0 && (
-                  <div className="mb-4 pb-3 border-b border-border">
+                  <div className="mb-4 pb-3 border-b border-border w-full max-w-full overflow-hidden">
                     <div
-                      className="overflow-x-auto scrollbar-hide px-1 pt-1 md:pt-0"
+                      className="overflow-x-auto scrollbar-hide px-1 pt-1 md:pt-0 w-full max-w-full touch-pan-x"
                       style={{
                         scrollBehavior: "smooth",
                         WebkitOverflowScrolling: "touch",
