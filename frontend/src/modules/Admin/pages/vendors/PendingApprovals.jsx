@@ -54,8 +54,22 @@ const PendingApprovals = () => {
 
     if (vendor?.documents?.gst) {
       return {
-        label: "GST Document",
+        label: "GST",
         url: vendor.documents.gst,
+      };
+    }
+
+    if (vendor?.documents?.msme) {
+      return {
+        label: "MSME",
+        url: vendor.documents.msme,
+      };
+    }
+
+    if (vendor?.documents?.uin || vendor?.documents?.enrolmentId) {
+      return {
+        label: "Enrolment ID/UIN",
+        url: vendor.documents.uin || vendor.documents.enrolmentId,
       };
     }
 

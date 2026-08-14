@@ -700,12 +700,14 @@ const VendorRegister = () => {
                       >
                         <option value="tradeLicense">Trade Licence</option>
                         <option value="gst">GST</option>
+                        <option value="msme">MSME</option>
+                        <option value="uin">Enrolment ID/UIN</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        {documentType === 'gst' ? 'GST Document' : 'Trade Licence Document'} <span className="text-red-500">*</span>
+                        {documentType === 'gst' ? 'GST Document' : documentType === 'msme' ? 'MSME Document' : documentType === 'uin' ? 'Enrolment ID/UIN Document' : 'Trade Licence Document'} <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="file"

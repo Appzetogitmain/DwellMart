@@ -88,6 +88,9 @@ const vendorSchema = new mongoose.Schema(
             pan: String,
             aadhar: String,
             businessLicense: String,
+            msme: String,
+            uin: String,
+            enrolmentId: String,
             tradeLicense: {
                 url: { type: String },
                 fileType: { type: String, enum: ['image', 'pdf', 'word'] },

@@ -63,7 +63,7 @@ const SubscriptionOnboardingWizard = ({
     'Free', 'Popular', 'per', 'Selected', 'Choose Plan',
     'Back to plans', 'Full name', 'Store name', 'Email', 'Phone',
     'Store description', 'Street', 'City', 'State', 'Zip code', 'Country',
-    'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST',
+    'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST', 'MSME', 'Enrolment ID/UIN',
     'I agree to the', 'Terms & Conditions', 'Register and verify email',
     'Complete your subscription', 'Activate your free trial', 'Start your free trial without any payment required.',
     'Billing becomes active only after webhook confirmation updates MongoDB.',
@@ -764,7 +764,9 @@ const SubscriptionOnboardingWizard = ({
                     <div className="flex flex-col sm:flex-row gap-3 items-center">
                       <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="rounded-xl border border-slate-300 bg-white text-slate-900 px-3.5 py-2.5 text-xs font-bold outline-none focus:border-[#ffc101]">
                         <option value="tradeLicense">{t('Trade Licence')}</option>
-                        <option value="gst">{t('GST Certificate')}</option>
+                        <option value="gst">{t('GST')}</option>
+                        <option value="msme">{t('MSME')}</option>
+                        <option value="uin">{t('Enrolment ID/UIN')}</option>
                       </select>
                       <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={(event) => setDocumentFile(event.target.files?.[0] || null)} className="flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white" />
                     </div>
