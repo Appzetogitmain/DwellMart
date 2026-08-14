@@ -158,12 +158,7 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         const selected = approvedChannels?.length ? approvedChannels : [vendorType];
         approvedChannelList = selected;
         if (selected.includes('wholesale')) {
-            const profile = vendor.wholesaleProfile;
             if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
-            if (!profile?.gstNumber || !profile?.businessName || !profile?.wholesaleContactName
-                || !profile?.wholesaleContactPhone || !profile?.bulkOrderSupportEmail) {
-                throw new ApiError(400, 'Wholesale business profile is incomplete.');
-            }
         }
         if (selected.includes('quick_commerce')) {
             if (!(await isQuickCommerceEnabled())) {
@@ -291,13 +286,8 @@ export const updateVendorChannelStatus = asyncHandler(async (req, res) => {
         throw new ApiError(409, 'Approve the vendor account before activating a channel.');
     }
     if (status === 'active' && channel === 'wholesale') {
-        const profile = vendor.wholesaleProfile;
         if (!(await isWholesaleMarketplaceEnabled())) {
             throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
-        }
-        if (!profile?.gstNumber || !profile?.businessName || !profile?.wholesaleContactName
-            || !profile?.wholesaleContactPhone || !profile?.bulkOrderSupportEmail) {
-            throw new ApiError(400, 'Wholesale business profile is incomplete.');
         }
     }
     if (status === 'active' && channel === 'quick_commerce') {

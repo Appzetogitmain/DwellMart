@@ -59,6 +59,11 @@ const VendorDetail = () => {
 
   useEffect(() => {
     const fetchVendorData = async () => {
+      if (!id || id === "undefined" || id === "null" || !/^[a-fA-F0-9]{24}$/.test(String(id).trim())) {
+        navigate("/admin/vendors/pending-approvals?type=channels");
+        return;
+      }
+
       // 1. Fetch Vendor Details
       const data = await getVendor(id);
       if (data) {
@@ -91,7 +96,6 @@ const VendorDetail = () => {
           setVendorOrders(normalizedOrders);
         } catch (error) {
           console.error("Failed to fetch vendor orders:", error);
-          toast.error("Failed to load vendor orders");
         }
 
         // 3. Fetch vendor commissions for commissions tab + earnings summary
@@ -124,8 +128,7 @@ const VendorDetail = () => {
           setAdditionalDocuments([]);
         }
       } else {
-        toast.error("Vendor not found");
-        navigate("/admin/vendors");
+        navigate("/admin/vendors/pending-approvals?type=channels");
       }
     };
     fetchVendorData();

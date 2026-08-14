@@ -37,17 +37,27 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
   // 1. Direct URL / Action Link
   const directUrl = notification.actionUrl || notification.url || notification.link || data.actionUrl || data.url || data.link;
   if (directUrl && typeof directUrl === 'string') {
-    // Relative routes or full URLs
-    if (directUrl.startsWith('/')) {
-      navigate(directUrl);
-      return;
-    }
-    try {
-      const parsedUrl = new URL(directUrl);
-      navigate(parsedUrl.pathname + parsedUrl.search);
-      return;
-    } catch {
-      // Fallthrough if invalid URL
+    // Sanitize and check if directUrl contains invalid placeholders
+    const isMalformed =
+      directUrl.includes('/undefined') ||
+      directUrl.includes('/null') ||
+      directUrl.includes('[object') ||
+      directUrl === '/admin/vendors/' ||
+      directUrl.startsWith('/admin/vendors/?') ||
+      directUrl.startsWith('/admin/vendors#');
+
+    if (!isMalformed) {
+      if (directUrl.startsWith('/')) {
+        navigate(directUrl);
+        return;
+      }
+      try {
+        const parsedUrl = new URL(directUrl);
+        navigate(parsedUrl.pathname + parsedUrl.search);
+        return;
+      } catch {
+        // Fallthrough if invalid URL
+      }
     }
   }
 
@@ -62,16 +72,42 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     message.includes('selling channel');
 
   if (isVendorNotification && activeRole === 'admin') {
-    const vendorId = data.vendorId || notification.vendorId;
-    if (vendorId) {
-      const isChannel = Boolean(data.channel) || type.includes('channel') || title.includes('channel') || message.includes('channel');
+    const rawVendorId = data.vendorId || notification.vendorId;
+    const vendorId =
+      rawVendorId &&
+      typeof rawVendorId === 'string' &&
+      rawVendorId.trim() !== 'undefined' &&
+      rawVendorId.trim() !== 'null'
+        ? rawVendorId.trim()
+        : null;
+
+    const isChannel =
+      Boolean(data.channel) ||
+      Boolean(data.channels) ||
+      type.includes('channel') ||
+      title.includes('channel') ||
+      message.includes('channel application') ||
+      message.includes('selling channel');
+
+    // If we have a valid 24-character hex vendor ID, navigate directly to vendor details
+    if (vendorId && /^[a-fA-F0-9]{24}$/.test(vendorId)) {
       navigate(`/admin/vendors/${vendorId}${isChannel ? '?tab=channels' : ''}`);
       return;
     }
-    if (title.includes('registration') || message.includes('registered')) {
-      navigate('/admin/vendors/pending-approvals');
+
+    // Otherwise, route smoothly to the dedicated Pending Approvals channel or accounts tab
+    if (isChannel) {
+      navigate('/admin/vendors/pending-approvals?type=channels');
       return;
     }
+
+    if (title.includes('registration') || message.includes('registered') || type.includes('registration')) {
+      navigate('/admin/vendors/pending-approvals?type=accounts');
+      return;
+    }
+
+    navigate('/admin/vendors/pending-approvals?type=channels');
+    return;
   }
 
   // 3. COD SETTLEMENT & EARNINGS NOTIFICATIONS
