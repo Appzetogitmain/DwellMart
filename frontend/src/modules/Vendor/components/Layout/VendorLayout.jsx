@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiClock } from 'react-icons/fi';
 import VendorSidebar from './VendorSidebar';
 import VendorHeader from './VendorHeader';
@@ -9,6 +9,8 @@ import QuickCommerceOrderAlert from '../QuickCommerceOrderAlert';
 import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 import api from '../../../../shared/utils/api';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
+import { useVendorWorkspace, withWorkspace } from '../../hooks/useVendorWorkspace';
+import { VENDOR_MULTI_CHANNEL_ENABLED } from '../../../../shared/config/vendorChannels';
 
 const VendorLayout = () => {
   const { refreshProfile } = useVendorAuthStore();
@@ -26,14 +28,58 @@ const VendorLayout = () => {
   const profileRefreshed = useRef(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const { workspace, activeWorkspaces, readableWorkspaces } = useVendorWorkspace();
   const headerHeight = useAdminHeaderHeight();
 
-  // Refresh profile only ONCE on mount (not on every render)
+  useEffect(() => {
+    if (!VENDOR_MULTI_CHANNEL_ENABLED) return;
+    const workspaceOptional = [
+      '/vendor/workspaces', '/vendor/business-overview', '/vendor/channels', '/vendor/no-active-channel',
+    ].includes(location.pathname);
+    if (workspaceOptional) return;
+    if (workspace && readableWorkspaces.includes(workspace)) {
+      sessionStorage.setItem('vendor-last-workspace', workspace);
+      return;
+    }
+    const lastWorkspace = sessionStorage.getItem('vendor-last-workspace');
+    if (lastWorkspace && readableWorkspaces.includes(lastWorkspace)) {
+      navigate(withWorkspace(location.pathname, lastWorkspace), { replace: true });
+      return;
+    }
+    // An approved vendor with nothing readable gets an explanation, not a
+    // workspace picker showing an empty grid followed by 403 toasts.
+    if (readableWorkspaces.length === 0) {
+      navigate('/vendor/no-active-channel', { replace: true });
+      return;
+    }
+    if (activeWorkspaces.length === 1) {
+      navigate(withWorkspace(location.pathname, activeWorkspaces[0]), { replace: true });
+    } else {
+      navigate('/vendor/workspaces', { replace: true });
+    }
+  }, [workspace, activeWorkspaces, readableWorkspaces, location.pathname, navigate]);
+
+  // Channel state is server-authoritative and can change while the vendor is
+  // logged in (an admin pauses, disables or approves a channel). Refreshing
+  // only once per mount left the picker, switcher and sidebar showing
+  // workspaces the server would immediately refuse. Refresh on mount, when the
+  // tab regains focus, and on a slow interval as a backstop.
   useEffect(() => {
     if (!profileRefreshed.current) {
       profileRefreshed.current = true;
       refreshProfile();
     }
+    const onFocus = () => refreshProfile();
+    const onVisibility = () => { if (document.visibilityState === 'visible') refreshProfile(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    const interval = setInterval(refreshProfile, 5 * 60 * 1000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(interval);
+    };
   }, [refreshProfile]);
 
   const toggleSidebar = () => {

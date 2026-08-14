@@ -132,26 +132,21 @@ export const useCartStore = create(
           return false;
         }
 
-        // Include vendor information from product
+        // Derive fulfillment type from product channel flags (authoritative after migration).
+        // Prefer explicit fulfillmentType or experience from caller, then product flags.
+        // vendorType and name heuristics removed — they are unreliable post-migration
+        // and the backend re-validates at checkout regardless.
         const fulfillmentType = (() => {
+          // 1. Explicit caller-supplied type takes priority
           const ft = String(item?.fulfillmentType || item?.experience || '').toLowerCase();
           if (ft === 'quick_commerce') return 'quick_commerce';
           if (ft === 'wholesale') return 'wholesale';
+          if (ft === 'retail') return 'retail';
 
-          if (item?.quickCommerceEnabled === true || item?.quickCommerce?.enabled === true) return 'quick_commerce';
-          if (item?.wholesaleEnabled === true || item?.wholesale?.minOrderQuantity > 1) return 'wholesale';
-
-          const name = String(item?.name || item?.title || '').toLowerCase();
-          if (name.includes('bread') || name.includes('milk') || name.includes('express') || name.includes('artisanal')) {
-            return 'quick_commerce';
-          }
-          if (name.includes('cookware') || name.includes('trade lot') || name.includes('bulk') || name.includes('wholesale')) {
-            return 'wholesale';
-          }
-
-          const vType = String(item?.vendor?.vendorType || item?.vendorType || '').toLowerCase();
-          if (vType === 'quick_commerce') return 'quick_commerce';
-          if (vType === 'wholesale') return 'wholesale';
+          // 2. Product-level channel flags (canonical source of truth)
+          if (item?.quickCommerceEnabled === true) return 'quick_commerce';
+          // Wholesale-only product (retailEnabled: false means it is not available on retail)
+          if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
 
           return 'retail';
         })();

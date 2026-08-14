@@ -13,10 +13,14 @@ import { useNotificationStore } from "../../../shared/store/useNotificationStore
 
 /**
  * Derive capabilities object from a vendor object.
- * Falls back to RETAIL if vendorType is unknown or not yet set.
+ * Falls back to RETAIL when no approved workspace is selected yet.
  */
-const deriveCapabilities = (vendor) =>
-  getVendorCapabilities(vendor?.vendorType ?? VendorTypes.RETAIL);
+const deriveCapabilities = (vendor) => {
+  const urlWorkspace = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('workspace')
+    : null;
+  return getVendorCapabilities(urlWorkspace || vendor?.activeWorkspaces?.[0] || VendorTypes.RETAIL);
+};
 
 export const useVendorAuthStore = create(
   persist(
@@ -29,8 +33,7 @@ export const useVendorAuthStore = create(
 
       // ─── Derived capabilities (computed on every set) ──────────────────────
       /**
-       * vendorType — read-only for vendors; managed exclusively by Super Admin.
-       * Drives all sidebar, form, settings, and route logic.
+       * Legacy business classification, retained for compatibility only.
        */
       get vendorType() { return get().vendor?.vendorType ?? VendorTypes.RETAIL; },
 
@@ -78,6 +81,7 @@ export const useVendorAuthStore = create(
           // Store token for vendor API requests
           localStorage.setItem("vendor-token", accessToken);
           localStorage.setItem("vendor-refresh-token", refreshToken);
+          sessionStorage.removeItem("vendor-last-workspace");
 
           try {
             useNotificationStore.getState().registerDeviceToken();
@@ -170,6 +174,7 @@ export const useVendorAuthStore = create(
         });
         localStorage.removeItem("vendor-token");
         localStorage.removeItem("vendor-refresh-token");
+        sessionStorage.removeItem("vendor-last-workspace");
       },
 
       // Delete vendor account action
@@ -189,6 +194,7 @@ export const useVendorAuthStore = create(
           });
           localStorage.removeItem("vendor-token");
           localStorage.removeItem("vendor-refresh-token");
+          sessionStorage.removeItem("vendor-last-workspace");
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -219,7 +225,7 @@ export const useVendorAuthStore = create(
         }
       },
 
-      // Refresh vendor profile from server (e.g. after admin changes vendorType)
+      // Refresh canonical channel states and account profile from the server.
       refreshProfile: async () => {
         try {
           const response = await api.get("/vendor/auth/profile");
@@ -232,11 +238,11 @@ export const useVendorAuthStore = create(
       },
 
       // Update vendor selling channels — REMOVED from vendor-facing UI.
-      // sellingChannels are now auto-synced internally from vendorType.
+      // Channel requests now use the Selling Channels page and canonical APIs.
       // This method is kept as a no-op stub so no existing call sites break
       // during the migration period. Remove stub once all callers are cleaned up.
       updateSellingChannels: async () => {
-        console.warn('[VendorAuthStore] updateSellingChannels is deprecated. sellingChannels are managed internally by vendorType.');
+        console.warn('[VendorAuthStore] updateSellingChannels is deprecated. Use the canonical channel request APIs.');
         return { success: false, deprecated: true };
       },
 

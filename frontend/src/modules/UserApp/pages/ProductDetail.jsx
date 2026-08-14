@@ -471,10 +471,14 @@ const MobileProductDetail = () => {
     }
 
     const resolvedFulfillmentType = (() => {
+      // Prefer explicit fields from the API response
       if (product.fulfillmentType) return product.fulfillmentType;
       if (product.experience) return product.experience;
-      if (product.quickCommerceEnabled || product.vendor?.vendorType === 'quick_commerce' || vendor?.vendorType === 'quick_commerce') return 'quick_commerce';
-      if (product.wholesaleEnabled || product.vendor?.vendorType === 'wholesale' || vendor?.vendorType === 'wholesale') return 'wholesale';
+      // Product channel flags (canonical source of truth post-migration)
+      if (product.quickCommerceEnabled) return 'quick_commerce';
+      // Wholesale-only product (not available on retail)
+      if (product.wholesaleEnabled && product.retailEnabled === false) return 'wholesale';
+      // Backend checkout will re-validate; default to retail
       return 'retail';
     })();
 

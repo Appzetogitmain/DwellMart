@@ -1,62 +1,35 @@
 /**
- * RequireVendorType
- *
- * Route guard that prevents vendors from accessing routes
- * not permitted for their vendorType.
- *
- * Usage:
- *   <RequireVendorType allow={['quick_commerce', 'retail']}>
- *     <SomePage />
- *   </RequireVendorType>
- *
- * If no `allow` prop is given, the route is accessible to all vendor types.
+ * Legacy component name retained to avoid breaking imports. Route access is
+ * based on server-approved channel workspaces, never on vendorType.
  */
 import { Navigate, useLocation } from 'react-router-dom';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
-import { VendorTypes, getVendorCapabilities } from '../../../../shared/config/vendorCapabilities';
+import { useVendorWorkspace, withWorkspace } from '../hooks/useVendorWorkspace';
 
 const RequireVendorType = ({ children, allow }) => {
-    const { vendor, isAuthenticated } = useVendorAuthStore();
-    const location = useLocation();
+  const { vendor, isAuthenticated } = useVendorAuthStore();
+  const location = useLocation();
+  const { workspace, readableWorkspaces } = useVendorWorkspace();
 
-    // Not logged in — let VendorProtectedRoute handle that
-    if (!isAuthenticated || !vendor) return null;
+  // VendorProtectedRoute owns unauthenticated handling.
+  if (!isAuthenticated || !vendor) return null;
 
-    const vendorType = vendor.vendorType ?? VendorTypes.RETAIL;
-    const caps = getVendorCapabilities(vendorType);
-
-    // Check explicit allow list
-    if (allow && allow.length > 0) {
-        if (!allow.includes(vendorType)) {
-            // Redirect to dashboard with a state flag so Dashboard can show a message
-            return (
-                <Navigate
-                    to="/vendor/dashboard"
-                    state={{ accessDenied: true, from: location.pathname }}
-                    replace
-                />
-            );
-        }
-    }
-
-    // Check against the vendorType's allowed routes
-    const allowedRoutes = caps?.routes ?? [];
-    const currentPath = location.pathname;
-    const isAllowed = allowedRoutes.some((r) =>
-        currentPath === r || currentPath.startsWith(r + '/')
+  // `allow` is now an approved workspace allow-list. This frontend guard is a
+  // UX boundary only; every protected API independently enforces the channel.
+  if (allow?.length > 0
+      && (!workspace || !readableWorkspaces.includes(workspace) || !allow.includes(workspace))) {
+    return (
+      <Navigate
+        to={readableWorkspaces.length === 1
+          ? withWorkspace('/vendor/dashboard', readableWorkspaces[0])
+          : '/vendor/workspaces'}
+        state={{ accessDenied: true, from: location.pathname }}
+        replace
+      />
     );
+  }
 
-    if (allowedRoutes.length > 0 && !isAllowed) {
-        return (
-            <Navigate
-                to="/vendor/dashboard"
-                state={{ accessDenied: true, from: location.pathname }}
-                replace
-            />
-        );
-    }
-
-    return children;
+  return children;
 };
 
 export default RequireVendorType;

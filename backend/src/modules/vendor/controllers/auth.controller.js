@@ -32,6 +32,9 @@ import {
     resolveVendorAvailability,
 } from '../../../services/quickCommerce.service.js';
 import { buildDeletedEmail, FINAL_ORDER_STATUSES } from '../../../utils/accountDeletion.js';
+import { requestedChannelsFromSellingChannels, channelSummary } from '../../../services/vendorChannel.service.js';
+import { applyChannelTransition } from '../../../services/vendorChannelTransition.service.js';
+import { getVendorChannelState, normalizeVendorChannel, vendorChannelPath } from '../../../constants/vendorChannels.js';
 
 const hasCompleteWholesaleProfile = (profile) => Boolean(
     profile?.gstNumber
@@ -251,6 +254,12 @@ export const register = asyncHandler(async (req, res) => {
             wholesale: { enabled: wholesaleRequested },
             quickCommerce: { enabled: quickCommerceRequested },
         },
+        channels: requestedChannelsFromSellingChannels({
+            retail: { enabled: retailRequested },
+            wholesale: { enabled: wholesaleRequested },
+            quickCommerce: { enabled: quickCommerceRequested },
+        }),
+        channelsRevision: 1,
         wholesaleProfile: wholesaleRequested ? wholesaleProfile : undefined,
     });
 
@@ -532,6 +541,7 @@ export const login = asyncHandler(async (req, res) => {
                     storeLogo: vendor.storeLogo,
                     commissionRate: vendor.commissionRate,
                     vendorType: vendor.vendorType,
+                    ...channelSummary(vendor),
                 },
             },
             'Login successful.'
@@ -597,6 +607,7 @@ export const getProfile = asyncHandler(async (req, res) => {
             200,
             {
                 ...vendor.toObject({ virtuals: true }),
+                ...channelSummary(vendor),
                 selectedPlan: vendor.selectedPlan ? serializePlan(vendor.selectedPlan, vendor.country) : null,
                 subscription: await serializeSubscription(currentSubscription),
             },
@@ -639,7 +650,7 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findById(req.user.id);
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    if (vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+    if (!['active', 'paused'].includes(vendor.channels?.quickCommerce?.status)) {
         throw new ApiError(403, 'Enable the Quick Commerce selling channel before configuring its settings.');
     }
 
@@ -713,7 +724,7 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
     // already stored so older clients cannot silently disable the channel.
     const quickCommerceRequested = Object.prototype.hasOwnProperty.call(sellingChannels, 'quickCommerce')
         ? sellingChannels.quickCommerce.enabled === true
-        : vendor.sellingChannels?.quickCommerce?.enabled === true;
+        : ['active', 'paused', 'requested'].includes(vendor.channels?.quickCommerce?.status);
 
     // Validated here rather than in Joi because the effective value depends on
     // stored state that the validator cannot see.
@@ -721,7 +732,7 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must remain enabled.');
     }
 
-    if (quickCommerceRequested && vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+    if (quickCommerceRequested && !['active', 'paused', 'requested'].includes(vendor.channels?.quickCommerce?.status)) {
         const quickCommerceEnabled = await isQuickCommerceEnabled();
         if (!quickCommerceEnabled) {
             throw new ApiError(403, 'Quick Commerce is not currently available on this platform.');
@@ -743,15 +754,150 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
         vendor.wholesaleProfile = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...wholesaleProfile };
     }
 
-    vendor.sellingChannels = {
-        retail: { enabled: sellingChannels.retail.enabled },
-        wholesale: { enabled: sellingChannels.wholesale.enabled },
-        quickCommerce: { enabled: quickCommerceRequested },
+    const requested = {
+        retail: sellingChannels.retail.enabled,
+        wholesale: sellingChannels.wholesale.enabled,
+        quick_commerce: quickCommerceRequested,
     };
+    // This deprecated endpoint writes the same canonical state as
+    // apply/withdraw, so it must use the same state machine. It previously
+    // wrote statuses directly, giving a second, unvalidated path into channel
+    // authorization.
+    const newlyRequestedChannels = [];
+    for (const [channel, enabled] of Object.entries(requested)) {
+        const path = vendorChannelPath(channel);
+        const current = vendor.channels?.[path]?.status;
+        if (enabled && !['active', 'paused', 'requested'].includes(current)) {
+            applyChannelTransition(vendor, channel, 'requested', { actor: 'vendor' });
+            newlyRequestedChannels.push(channel);
+        } else if (!enabled && ['requested'].includes(current)) {
+            applyChannelTransition(vendor, channel, 'disabled', {
+                actor: 'vendor',
+                reason: 'Request withdrawn by vendor',
+            });
+        }
+    }
 
     await vendor.save();
 
+    if (newlyRequestedChannels.length > 0) {
+        try {
+            const channelLabels = newlyRequestedChannels
+                .map((ch) => ({
+                    retail: 'Retail Marketplace',
+                    wholesale: 'Wholesale Marketplace',
+                    quick_commerce: 'Quick Commerce',
+                }[ch] || ch))
+                .join(', ');
+
+            const admins = await Admin.find({ isActive: true }).select('_id').lean();
+            const actionUrl = `/admin/vendors/${vendor._id}?tab=channels`;
+            await Promise.all(
+                admins.map((admin) =>
+                    createNotification({
+                        recipientId: admin._id,
+                        recipientType: 'admin',
+                        title: 'New Channel Application',
+                        message: `${vendor.storeName || vendor.name} has applied for selling channels: ${channelLabels}.`,
+                        type: 'system',
+                        category: 'SYSTEM',
+                        actionUrl,
+                        data: {
+                            vendorId: String(vendor._id),
+                            channels: newlyRequestedChannels,
+                            storeName: vendor.storeName || vendor.name,
+                            actionUrl,
+                        },
+                    })
+                )
+            );
+        } catch (notificationErr) {
+            console.warn(`[Selling Channels Notification] Failed: ${notificationErr.message}`);
+        }
+    }
+
     res.status(200).json(new ApiResponse(200, vendor, 'Selling channels updated.'));
+});
+
+export const getChannels = asyncHandler(async (req, res) => {
+    const vendor = await Vendor.findById(req.user.id).select('channels channelsRevision vendorType sellingChannels').lean();
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    res.status(200).json(new ApiResponse(200, channelSummary(vendor), 'Vendor channels fetched.'));
+});
+
+export const applyForChannel = asyncHandler(async (req, res) => {
+    const channel = normalizeVendorChannel(req.params.channel);
+    if (!channel) throw new ApiError(400, 'Invalid vendor channel.');
+    const vendor = await Vendor.findById(req.user.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    const current = getVendorChannelState(vendor, channel)?.status;
+    if (['active', 'paused', 'requested'].includes(current)) {
+        throw new ApiError(409, `Channel is already ${current}.`);
+    }
+    if (channel === 'wholesale') {
+        const merged = { ...(vendor.wholesaleProfile?.toObject?.() || {}), ...(req.body.wholesaleProfile || {}) };
+        if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is not currently available.');
+        if (!hasCompleteWholesaleProfile(merged)) throw new ApiError(400, 'Complete the wholesale business profile before applying.');
+        vendor.wholesaleProfile = merged;
+    }
+    if (channel === 'quick_commerce' && !(await isQuickCommerceEnabled())) {
+        throw new ApiError(403, 'Quick Commerce is not currently available.');
+    }
+    // Routed through the single state machine: a vendor may only ever reach
+    // `requested`, and reopening a disabled/rejected channel is an explicit,
+    // validated transition rather than an unchecked write.
+    applyChannelTransition(vendor, channel, 'requested', { actor: 'vendor' });
+    await vendor.save();
+
+    // Notify all active admins of the new channel request
+    try {
+        const channelLabel = {
+            retail: 'Retail Marketplace',
+            wholesale: 'Wholesale Marketplace',
+            quick_commerce: 'Quick Commerce',
+        }[channel] || channel;
+
+        const admins = await Admin.find({ isActive: true }).select('_id').lean();
+        const actionUrl = `/admin/vendors/${vendor._id}?tab=channels`;
+        await Promise.all(
+            admins.map((admin) =>
+                createNotification({
+                    recipientId: admin._id,
+                    recipientType: 'admin',
+                    title: 'New Channel Application',
+                    message: `${vendor.storeName || vendor.name} has applied for the ${channelLabel} channel and is awaiting approval.`,
+                    type: 'system',
+                    category: 'SYSTEM',
+                    actionUrl,
+                    data: {
+                        vendorId: String(vendor._id),
+                        channel,
+                        storeName: vendor.storeName || vendor.name,
+                        actionUrl,
+                    },
+                })
+            )
+        );
+    } catch (notificationErr) {
+        console.warn(`[Channel Application Notification] Failed: ${notificationErr.message}`);
+    }
+
+    res.status(202).json(new ApiResponse(202, channelSummary(vendor), 'Channel application submitted.'));
+});
+
+export const withdrawChannelRequest = asyncHandler(async (req, res) => {
+    const channel = normalizeVendorChannel(req.params.channel);
+    if (!channel) throw new ApiError(400, 'Invalid vendor channel.');
+    const vendor = await Vendor.findById(req.user.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    const path = vendorChannelPath(channel);
+    if (vendor.channels?.[path]?.status !== 'requested') throw new ApiError(409, 'Only a requested channel can be withdrawn.');
+    applyChannelTransition(vendor, channel, 'disabled', {
+        actor: 'vendor',
+        reason: 'Request withdrawn by vendor',
+    });
+    await vendor.save();
+    res.status(200).json(new ApiResponse(200, channelSummary(vendor), 'Channel application withdrawn.'));
 });
 
 export const changePassword = asyncHandler(async (req, res) => {

@@ -69,7 +69,7 @@ export const isWithinBusinessHours = (businessHours, now = new Date()) => {
  */
 export const resolveVendorAvailability = (vendor, now = new Date()) => {
     const profile = vendor?.quickCommerceProfile;
-    const channelEnabled = vendor?.sellingChannels?.quickCommerce?.enabled === true;
+    const channelEnabled = vendor?.channels?.quickCommerce?.status === 'active';
 
     if (!channelEnabled) {
         return {
@@ -223,13 +223,13 @@ export const calculateEta = ({
         + Math.max(0, Number(extraPrepMins) || 0);
 
     const speed = Number(averageSpeedKmph) > 0 ? Number(averageSpeedKmph) : DEFAULT_AVERAGE_SPEED_KMPH;
-    // Cap travel distance to express delivery radius (max 10km) so QC ETA stays in 15–25 min window
-    const distance = Math.min(10, Math.max(0, Number(distanceKm) || 0));
-    const travelMins = distance > 0 ? Math.ceil((distance / speed) * 60) : 8;
-
-    const rawEta = Math.round(prepMins + travelMins);
+    // Serviceability enforces radius before this calculation; ETA reflects the
+    // actual accepted distance and remains identical to the client preview.
+    const rawDistance = Number(distanceKm);
+    const distance = Number.isFinite(rawDistance) && rawDistance > 0 ? rawDistance : 0;
+    const travelMins = distance > 0 ? Math.ceil((distance / speed) * 60) : 0;
     return {
-        etaMinutes: Math.max(15, Math.min(25, rawEta)),
+        etaMinutes: Math.max(1, Math.round(prepMins + travelMins)),
         prepMins: Math.round(prepMins),
         travelMins,
     };
@@ -353,7 +353,10 @@ export const calculateDeliveryFee = ({
     }
     
     // Cap distance for calculation according to maximum service radius
-    const capKm = Number.isFinite(Number(maxDistanceKm)) ? Number(maxDistanceKm) : MAX_SERVICE_RADIUS_KM;
+    const parsedMaxDistance = Number(maxDistanceKm);
+    const capKm = Number.isFinite(parsedMaxDistance) && parsedMaxDistance > 0
+        ? parsedMaxDistance
+        : MAX_SERVICE_RADIUS_KM;
     const distance = Math.min(capKm, Math.max(0, Number(distanceKm) || 0));
     const fee = Number(baseFee) + distance * Number(perKmFee);
     return Number(Math.max(0, fee).toFixed(2));
@@ -385,7 +388,7 @@ export const findNearbyVendors = async ({
                 query: {
                     status: 'approved',
                     isActive: { $ne: false },
-                    'sellingChannels.quickCommerce.enabled': true,
+                    'channels.quickCommerce.status': 'active',
                 },
             },
         },
@@ -435,7 +438,7 @@ export const findVendorsByPincode = async ({ pincode, limit = 50, orderableOnly 
     const vendors = await Vendor.find({
         status: 'approved',
         isActive: { $ne: false },
-        'sellingChannels.quickCommerce.enabled': true,
+        'channels.quickCommerce.status': 'active',
         'quickCommerceProfile.servicedPincodes': normalized,
     })
         .limit(Math.max(1, Math.min(Number(limit) || 50, 100)))

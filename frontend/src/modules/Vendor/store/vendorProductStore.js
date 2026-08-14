@@ -9,6 +9,14 @@ import {
 } from '../services/vendorService';
 import { toastService } from '../../../shared/utils/toastService';
 
+// Defect 11: Resolve the current workspace from the URL at fetch time.
+// This allows the store to detect workspace switches and immediately clear
+// stale products, preventing cross-workspace product bleed on rapid switches.
+const resolveCurrentWorkspace = () => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('workspace') || null;
+};
+
 export const useVendorProductStore = create((set, get) => ({
     products: [],
     total: 0,
@@ -16,14 +24,23 @@ export const useVendorProductStore = create((set, get) => ({
     pages: 1,
     isLoading: false,
     isSaving: false,
+    /** Workspace key for which the cached products are valid. */
+    cachedWorkspace: null,
 
     // ─── READ ────────────────────────────────────────────────────────────────────
 
     /**
      * Fetch vendor's products from the API with optional filters.
+     * Clears stale products when the active workspace has changed since last fetch.
      * @param {{ page?, limit?, search?, stock? }} params
      */
     fetchProducts: async (params = {}) => {
+        const requestWorkspace = resolveCurrentWorkspace();
+        // Defect 11: If the workspace has changed since last fetch, clear stale
+        // products immediately to prevent cross-workspace product bleed.
+        if (requestWorkspace !== get().cachedWorkspace) {
+            set({ products: [], total: 0, page: 1, pages: 1, cachedWorkspace: requestWorkspace });
+        }
         set({ isLoading: true });
         try {
             const { fetchAll = false, ...queryParams } = params || {};
@@ -57,6 +74,7 @@ export const useVendorProductStore = create((set, get) => ({
                 page: fetchAll ? 1 : (latestPagination.page ?? 1),
                 pages: fetchAll ? (latestPagination.pages ?? 1) : (latestPagination.pages ?? 1),
                 isLoading: false,
+                cachedWorkspace: requestWorkspace,
             });
         } catch {
             set({ isLoading: false });
@@ -131,7 +149,7 @@ export const useVendorProductStore = create((set, get) => ({
             const updated = res.data ?? res;
             set((state) => ({
                 products: state.products.map((p) =>
-                    (p._id ?? p.id) === id ? updated : p
+                    String(p._id ?? p.id) === String(id) ? updated : p
                 ),
                 isSaving: false,
             }));
@@ -201,6 +219,6 @@ export const useVendorProductStore = create((set, get) => ({
         return get().products.find((p) => (p._id ?? p.id) === id || (p._id ?? p.id) === String(id));
     },
 
-    /** Clear local product list (e.g. on logout) */
-    reset: () => set({ products: [], total: 0, page: 1, pages: 1 }),
+    /** Clear local product list (e.g. on logout or workspace switch) */
+    reset: () => set({ products: [], total: 0, page: 1, pages: 1, cachedWorkspace: null }),
 }));

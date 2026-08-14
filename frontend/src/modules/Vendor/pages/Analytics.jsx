@@ -19,6 +19,7 @@ import { filterByDateRange, getDateRange } from "../../Admin/utils/adminHelpers"
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { getVendorAnalyticsOverview } from "../services/vendorService";
 import { getVendorCapabilities } from "../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../hooks/useVendorWorkspace';
 
 const Analytics = () => {
   const { vendor } = useVendorAuthStore();
@@ -35,7 +36,8 @@ const Analytics = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const vendorId = vendor?.id || vendor?._id;
-  const caps = getVendorCapabilities(vendor?.vendorType ?? 'retail');
+  const { workspace } = useVendorWorkspace();
+  const caps = getVendorCapabilities(workspace ?? vendor?.activeWorkspaces?.[0] ?? 'retail');
   // Wholesale analytics section only visible for vendors with bulk pricing capability.
   const showWholesale = caps.features.bulkPricing === true;
 
@@ -84,7 +86,7 @@ const Analytics = () => {
     };
 
     fetchData();
-  }, [vendorId, period]);
+  }, [vendorId, workspace, period]);
 
   const exportData = useMemo(() => {
     const range = getDateRange(period);

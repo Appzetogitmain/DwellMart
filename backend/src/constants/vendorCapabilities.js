@@ -10,6 +10,8 @@
  * only adding a new entry here — no other code changes needed.
  */
 
+import { allowedProductFieldsForChannel } from './productFieldOwnership.js';
+
 export const CAPABILITIES_VERSION = 1;
 
 export const VendorTypes = {
@@ -58,20 +60,13 @@ export const VendorCapabilities = {
         },
 
         /**
-         * allowedProductFields — backend middleware reads this to reject
-         * or sanitize fields not permitted for this vendor type.
-         * Frontend uses allowedFormSections (mirror in vendorCapabilities.js).
+         * allowedProductFields — shared product core plus the fields this
+         * channel owns. Derived from constants/productFieldOwnership.js so the
+         * three channel lists cannot drift out of sync with the Product schema
+         * or with each other. `productCapabilityGuard` classifies against the
+         * same model.
          */
-        allowedProductFields: [
-            'name', 'unit', 'categoryId', 'quickCommerceCategoryId',
-            'price', 'originalPrice', 'stockQuantity', 'stock', 'lowStockThreshold',
-            'image', 'images', 'description', 'tags',
-            'flashSale', 'isNewArrival', 'isFeatured', 'isVisible',
-            'codAllowed', 'returnable', 'cancelable',
-            'taxRate', 'taxIncluded', 'isActive',
-            'quickCommerceEnabled', 'quickCommerce',
-            'faqs', 'seoTitle', 'seoDescription',
-        ],
+        allowedProductFields: allowedProductFieldsForChannel('quick_commerce'),
 
         requiredFields: ['name', 'price', 'stockQuantity', 'categoryId'],
 
@@ -108,18 +103,7 @@ export const VendorCapabilities = {
             subscriptions: true,
         },
 
-        allowedProductFields: [
-            'name', 'unit', 'categoryId', 'subcategoryId', 'brandId',
-            'price', 'originalPrice', 'stockQuantity', 'stock', 'lowStockThreshold',
-            'minimumOrderQuantity', 'totalAllowedQuantity',
-            'image', 'images', 'description', 'tags',
-            'warrantyPeriod', 'guaranteePeriod', 'hsnCode',
-            'returnable', 'cancelable', 'codAllowed',
-            'taxRate', 'taxIncluded',
-            'flashSale', 'isNewArrival', 'isFeatured', 'isVisible',
-            'variants', 'faqs', 'relatedProducts',
-            'seoTitle', 'seoDescription', 'isActive',
-        ],
+        allowedProductFields: allowedProductFieldsForChannel('retail'),
 
         requiredFields: ['name', 'price', 'stockQuantity', 'categoryId'],
 
@@ -155,17 +139,7 @@ export const VendorCapabilities = {
             subscriptions: true,
         },
 
-        allowedProductFields: [
-            'name', 'unit', 'categoryId', 'subcategoryId', 'brandId',
-            'price', 'stockQuantity', 'stock', 'lowStockThreshold',
-            'minimumOrderQuantity',
-            'image', 'images', 'description', 'tags',
-            'hsnCode', 'taxRate', 'taxIncluded',
-            'flashSale', 'isFeatured', 'isVisible', 'isActive',
-            'wholesale', 'wholesaleEnabled',
-            'variants', 'faqs',
-            'seoTitle', 'seoDescription',
-        ],
+        allowedProductFields: allowedProductFieldsForChannel('wholesale'),
 
         requiredFields: ['name', 'price', 'stockQuantity', 'categoryId'],
 

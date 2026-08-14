@@ -40,6 +40,7 @@ import { getReturnWindowHours, getEstimatedDeliveryDays } from '../../../service
 import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
 import logger from '../../../utils/logger.js';
 import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
+import { channelAuthorityMode, legacyChannelsForVendor } from '../../../services/vendorChannel.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -214,7 +215,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } }).select(
         '_id storeName commissionRate shippingEnabled defaultShippingRate ' +
-        'freeShippingThreshold sellingChannels quickCommerceProfile'
+        'freeShippingThreshold status isActive channels quickCommerceProfile'
     ).lean();
 
     const fetchedVendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
@@ -273,6 +274,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }]
             );
         }
+        if (vendor.isActive === false || vendor.status !== 'approved') {
+            throw new ApiError(409, `${vendor.storeName} is not accepting orders.`);
+        }
         // Stock is re-validated here on every order, and decremented atomically
         // inside the transaction below. Carts never reserve stock, so this is
         // the guarantee against overselling across both experiences.
@@ -282,7 +286,12 @@ export const placeOrder = asyncHandler(async (req, res) => {
         if (isQuickCommerceOrder) {
             // Re-validate the store, not just the product: it may have closed,
             // gone offline, or dropped the channel since the cart was filled.
-            if (vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+            // Defect 6: Honor authority mode for QC vendor channel check.
+            const qcAuthorityMode = channelAuthorityMode();
+            const qcVendorActive = qcAuthorityMode === 'legacy'
+                ? legacyChannelsForVendor(vendor).includes('quick_commerce')
+                : vendor.channels?.quickCommerce?.status === 'active';
+            if (!qcVendorActive) {
                 throw new ApiError(409, `${vendor.storeName} is no longer available on Quick Commerce.`);
             }
 
@@ -341,10 +350,26 @@ export const placeOrder = asyncHandler(async (req, res) => {
         // Apply wholesale bulk pricing on top of the variant-resolved base price.
         // The pricing engine is authoritative; client-sent pricing is never trusted.
         // If wholesale marketplace feature flag is OFF, wholesale pricing is disabled.
+        // Defect 6: Honor authority mode when checking wholesale availability.
+        const orderAuthorityMode = channelAuthorityMode();
+        const vendorWholesaleActive = orderAuthorityMode === 'legacy'
+            ? legacyChannelsForVendor(vendor).includes('wholesale')
+            : vendor?.channels?.wholesale?.status === 'active';
         const pricing = resolvePriceForQuantity(product, variantResolvedPrice, item.quantity, {
-            vendorWholesaleEnabled: isWholesaleEnabled && vendor?.sellingChannels?.wholesale?.enabled === true,
+            vendorWholesaleEnabled: isWholesaleEnabled && vendorWholesaleActive,
         });
 
+        const orderChannel = isQuickCommerceOrder
+            ? 'quickCommerce'
+            : (pricing.pricingType !== 'retail' || product.retailEnabled === false ? 'wholesale' : 'retail');
+        // Defect 6: Use authority mode for channel check at order placement.
+        const orderChannelKey = orderChannel === 'quickCommerce' ? 'quick_commerce' : orderChannel;
+        const orderChannelActive = orderAuthorityMode === 'legacy'
+            ? legacyChannelsForVendor(vendor).includes(orderChannelKey)
+            : vendor?.channels?.[orderChannel]?.status === 'active';
+        if (!orderChannelActive) {
+            throw new ApiError(409, `${vendor.storeName} is not accepting new ${orderChannel === 'quickCommerce' ? 'Quick Commerce' : orderChannel} orders.`);
+        }
         if (!pricing.eligible) {
             throw new ApiError(
                 422,

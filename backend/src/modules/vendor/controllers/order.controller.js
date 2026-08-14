@@ -16,7 +16,6 @@ import { EXPERIENCES } from '../../../constants/experiences.js';
 import { QUICK_COMMERCE_ORDER_STATUS } from '../../../constants/quickCommerce.js';
 import { acknowledgeVendorOrderAlert } from '../../../services/quickCommerceAlerts.service.js';
 import { processPartialFulfilment } from '../../../services/quickCommerceFulfilment.service.js';
-import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
 import { getVendorWithdrawableCommissions, getMinimumPayout } from '../../../services/commission.service.js';
 import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
 import {
@@ -34,6 +33,8 @@ import {
 } from '../../../services/quickCommerceAnalytics.service.js';
 import { applyRetailTransition }    from '../../../services/orders/RetailOrderService.js';
 import { applyWholesaleTransition } from '../../../services/orders/WholesaleOrderService.js';
+import { channelToOrderType } from '../../../constants/vendorChannels.js';
+import { orderChannelFilter, resolveOrderChannel } from '../../../services/orderChannel.service.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -54,7 +55,7 @@ const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
 // GET /api/vendor/orders
 export const getVendorOrders = asyncHandler(async (req, res) => {
     const { status, orderType, type, fulfillmentType, page = 1, limit = 20 } = req.query;
-    const targetOrderType = orderType || type;
+    const targetOrderType = channelToOrderType(req.vendorWorkspace) || orderType || type;
     const numericPage = Math.max(1, Number(page) || 1);
     const numericLimit = Math.max(1, Number(limit) || 20);
     const skip = (numericPage - 1) * numericLimit;
@@ -70,8 +71,11 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
     };
 
     if (status) filter.status = status;
-    if (targetOrderType) filter.orderType = targetOrderType;
-    if (fulfillmentType) filter.fulfillmentType = fulfillmentType;
+    if (targetOrderType) {
+        // Same predicate the status-update path uses, so an order can never be
+        // listed in a workspace that then refuses to action it.
+        filter.$and = [orderChannelFilter(targetOrderType)];
+    } else if (fulfillmentType) filter.fulfillmentType = fulfillmentType;
 
     const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit).lean();
     const total = await Order.countDocuments(filter);
@@ -110,7 +114,7 @@ export const getVendorOrderById = asyncHandler(async (req, res) => {
                 { vendorId: new mongoose.Types.ObjectId(vendorId) },
                 { 'vendorItems.vendorId': new mongoose.Types.ObjectId(vendorId) },
             ],
-        }],
+        }, orderChannelFilter(req.vendorWorkspace)],
     })
         .populate('deliveryBoyId', 'name phone vehicleType vehicleNumber status')
         .lean();
@@ -158,15 +162,20 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     });
     if (!order) throw new ApiError(404, 'Order not found.');
 
-    // Determine order type from order document — not from vendor type
-    const orderType = String(order.orderType || order.experience || 'retail').toLowerCase();
+    // Channel comes from the authoritative resolver — fulfillmentType first,
+    // orderType only as a legacy fallback — so the state machine applied here
+    // always matches the workspace the order was listed under.
+    const orderChannel = resolveOrderChannel(order, req.user.id);
+    if (orderChannel !== req.vendorWorkspace) {
+        throw new ApiError(403, 'This order belongs to a different workspace.');
+    }
 
-    if (orderType === EXPERIENCES.QUICK_COMMERCE || orderType === 'quick_commerce') {
+    if (orderChannel === 'quick_commerce') {
         throw new ApiError(400, 'Quick Commerce orders must use the /quick-status endpoint.');
     }
 
     // Delegate to the appropriate order service strategy
-    if (orderType === 'wholesale') {
+    if (orderChannel === 'wholesale') {
         applyWholesaleTransition(order, status, req.user.id);
     } else {
         // Default to Retail strategy for 'retail' or legacy 'marketplace' orders
@@ -339,10 +348,8 @@ export const getQuickCommerceVendorDashboard = asyncHandler(async (req, res) => 
         vendorId
     );
 
-    const vendor = await Vendor.findById(vendorId).select('vendorType sellingChannels quickCommerceProfile.availabilityStatus').lean();
-    const vendorCaps = getVendorCapabilities(vendor?.vendorType);
-    const isQCVendor = vendorCaps.orderFlow === 'quick_commerce'
-        || vendor?.sellingChannels?.quickCommerce?.enabled === true;
+    const vendor = await Vendor.findById(vendorId).select('channels quickCommerceProfile.availabilityStatus').lean();
+    const isQCVendor = ['active', 'paused'].includes(vendor?.channels?.quickCommerce?.status);
     if (!isQCVendor) {
         throw new ApiError(403, 'Quick Commerce channel is not enabled for this store.');
     }

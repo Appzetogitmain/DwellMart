@@ -599,6 +599,7 @@ export const startBulkUploadJob = async ({
     autoCreateBrands = false,
     fileName = 'products_import.xlsx',
     fileSize = 0,
+    workspace = null,
 }) => {
     const jobId = `job-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const startTime = Date.now();
@@ -640,6 +641,7 @@ export const startBulkUploadJob = async ({
         progressPercent: 0,
         errors: [],
         validRowsSaved: [],
+        workspace,
     };
 
     activeJobs.set(jobId, jobState);
@@ -701,6 +703,16 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                         priceTiers: Array.isArray(row.wholesalePriceTiers) ? row.wholesalePriceTiers : [],
                     },
                 };
+                const updateChannelFields = jobState.workspace === 'retail'
+                    ? { retailEnabled: true }
+                    : jobState.workspace === 'wholesale'
+                        ? { wholesaleEnabled: true, wholesale: wholesaleFields.wholesale }
+                        : wholesaleFields;
+                const insertChannelFields = jobState.workspace === 'retail'
+                    ? { retailEnabled: true, wholesaleEnabled: false, quickCommerceEnabled: false }
+                    : jobState.workspace === 'wholesale'
+                        ? { retailEnabled: false, wholesaleEnabled: true, quickCommerceEnabled: false, wholesale: wholesaleFields.wholesale }
+                        : wholesaleFields;
 
                 // Auto create brand if requested
                 let finalBrandId = row.brandId;
@@ -720,7 +732,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                 }
 
                 // Check existing product in DB
-                const existingProduct = await Product.findOne({ sku: row.sku.toLowerCase() }).lean();
+                const existingProduct = await Product.findOne({ vendorId: row.vendorId, sku: row.sku.toLowerCase() }).lean();
 
                 if (existingProduct) {
                     if (duplicateMode === 'skip') {
@@ -748,7 +760,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                         tags: row.tags.length > 0 ? row.tags : existingProduct.tags,
                                         images: row.images.length > 0 ? row.images : existingProduct.images,
                                         image: row.image || existingProduct.image,
-                                        ...wholesaleFields,
+                                        ...updateChannelFields,
                                     },
                                 },
                             },
@@ -781,7 +793,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                     tags: row.tags,
                                     images: row.images,
                                     image: row.image,
-                                    ...wholesaleFields,
+                                    ...insertChannelFields,
                                 },
                             },
                         });
@@ -813,6 +825,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 tags: row.tags,
                                 images: row.images,
                                 image: row.image,
+                                ...insertChannelFields,
                             },
                         },
                     });

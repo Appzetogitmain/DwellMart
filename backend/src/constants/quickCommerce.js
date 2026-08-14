@@ -40,10 +40,10 @@ export const LONGITUDE_BOUNDS = { min: -180, max: 180 };
 export const MAX_SERVICE_RADIUS_KM = 25;
 
 /** ETA + fee defaults. Overridable per-platform via the `quick_commerce` Settings key. */
-export const DEFAULT_AVERAGE_SPEED_KMPH = 25;
+export const DEFAULT_AVERAGE_SPEED_KMPH = 20;
 export const DEFAULT_PREPARATION_MINS = 10;
-export const DEFAULT_BASE_DELIVERY_FEE = 30;
-export const DEFAULT_PER_KM_FEE = 9;
+export const DEFAULT_BASE_DELIVERY_FEE = 25;
+export const DEFAULT_PER_KM_FEE = 8;
 export const DEFAULT_FREE_DELIVERY_ABOVE = 590;
 
 /**

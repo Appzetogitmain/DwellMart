@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { FiZap, FiX } from "react-icons/fi";
 import { connectSocket } from "../../../shared/services/socketService";
 import api from "../../../shared/utils/api";
+import { useVendorAuthStore } from '../store/vendorAuthStore';
+import { withWorkspace } from '../hooks/useVendorWorkspace';
 
 /**
  * Persistent, audible alert for a new Quick Commerce order.
@@ -55,13 +57,15 @@ const playAlertTone = (audioContextRef) => {
 const QuickCommerceOrderAlert = () => {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState([]);
+  const vendor = useVendorAuthStore((state) => state.vendor);
   const audioContextRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
+    if (!vendor?.readableWorkspaces?.includes('quick_commerce')) return undefined;
     const fetchUnacknowledged = async () => {
       try {
-        const res = await api.get('/vendor/quick-commerce/unacknowledged-alerts');
+        const res = await api.get('/vendor/quick-commerce/unacknowledged-alerts', { headers: { 'X-Vendor-Workspace': 'quick_commerce' } });
         if (!isMounted) return;
         const unack = res?.data || [];
         if (Array.isArray(unack) && unack.length > 0) {
@@ -105,7 +109,7 @@ const QuickCommerceOrderAlert = () => {
       isMounted = false;
       socket.off("quick_commerce_order_alert", handleAlert);
     };
-  }, []);
+  }, [vendor?.readableWorkspaces]);
 
   const dismiss = useCallback((orderRefId) => {
     setAlerts((prev) => prev.filter((alert) => alert.orderRefId !== orderRefId));
@@ -114,14 +118,14 @@ const QuickCommerceOrderAlert = () => {
   const acknowledge = useCallback(
     async (alert, { open = false } = {}) => {
       try {
-        await api.post(`/vendor/quick-commerce/orders/${alert.orderRefId}/acknowledge`);
+        await api.post(`/vendor/quick-commerce/orders/${alert.orderRefId}/acknowledge`, {}, { headers: { 'X-Vendor-Workspace': 'quick_commerce' } });
       } catch {
         // The alert still clears — the order is visible in the orders list
         // either way, and a failed acknowledge only means the escalation
         // clock keeps running, which is the safe direction.
       }
       dismiss(alert.orderRefId);
-      if (open) navigate(`/vendor/orders/${alert.orderRefId}`);
+      if (open) navigate(withWorkspace(`/vendor/orders/${alert.orderRefId}`, 'quick_commerce'));
     },
     [dismiss, navigate]
   );

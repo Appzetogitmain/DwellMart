@@ -26,6 +26,12 @@ import { getRequestExperience, normalizeExperience, EXPERIENCES } from '../const
 import { buildCatalogFilter } from '../services/catalogQuery.service.js';
 import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
 import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../services/featureFlags.service.js';
+import {
+    buildPublicCatalogGuard,
+    isProductPubliclyVisible,
+    eligibleVendorIds,
+    andCondition,
+} from '../services/catalogEligibility.service.js';
 
 /**
  * Resolve which vendors can serve this customer, for Quick Commerce listings.
@@ -130,8 +136,9 @@ const toPublicVendor = (vendorDoc) => {
         status: vendor.status || 'approved',
         totalProducts: vendor.totalProducts || 0,
         sellingChannels: {
-            retail: { enabled: vendor?.sellingChannels?.retail?.enabled !== false },
-            wholesale: { enabled: vendor?.sellingChannels?.wholesale?.enabled === true },
+            retail: { enabled: vendor?.channels?.retail?.status === 'active' },
+            wholesale: { enabled: vendor?.channels?.wholesale?.status === 'active' },
+            quickCommerce: { enabled: vendor?.channels?.quickCommerce?.status === 'active' },
         },
     };
 };
@@ -243,9 +250,26 @@ const listProducts = asyncHandler(async (req, res) => {
         // When location hint is missing or unserviceable fallback to active verified vendors
         // so customers can still browse Express items catalog cleanly.
         if (serviceableVendorIds === undefined || (Array.isArray(serviceableVendorIds) && serviceableVendorIds.length === 0)) {
-            const allQcVendors = await Vendor.find({ isVerified: true }).select('_id').lean();
+            const allQcVendors = await Vendor.find({
+                isVerified: true,
+                isActive: { $ne: false },
+                status: 'approved',
+                'channels.quickCommerce.status': 'active',
+            }).select('_id').lean();
             serviceableVendorIds = allQcVendors.map((v) => String(v._id));
         }
+    }
+
+    if (requestExperience !== EXPERIENCES.QUICK_COMMERCE) {
+        const channelPath = requestExperience === EXPERIENCES.WHOLESALE || sellingChannel === 'wholesale'
+            ? 'wholesale'
+            : 'retail';
+        const eligibleVendors = await Vendor.find({
+            status: 'approved',
+            isActive: { $ne: false },
+            [`channels.${channelPath}.status`]: 'active',
+        }).select('_id').lean();
+        serviceableVendorIds = eligibleVendors.map((vendor) => String(vendor._id));
     }
 
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
@@ -321,15 +345,18 @@ const listProducts = asyncHandler(async (req, res) => {
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
         const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [
-            { name: safeRegex },
-            { tags: safeRegex }
-        ];
+        // Must AND with the existing filter: on Quick Commerce `buildCatalogFilter`
+        // already owns `$or` for the category tree, and assigning here erased it —
+        // a category listing with a search term returned products from every
+        // other category.
+        andCondition(filter, { $or: [{ name: safeRegex }, { tags: safeRegex }] });
     }
 
     const activeSaleProductIds = await getActiveSaleProductIds();
     if (activeSaleProductIds.length) {
-        filter._id = { $nin: activeSaleProductIds };
+        // AND, not assign: assigning cancelled the `_id: { $in: [] }` kill
+        // switch set when the wholesale feature flag is off.
+        andCondition(filter, { _id: { $nin: activeSaleProductIds } });
     }
 
     const sortMap = { newest: { createdAt: -1 }, oldest: { createdAt: 1 }, 'price-asc': { price: 1 }, 'price-desc': { price: -1 }, popular: { reviewCount: -1 }, rating: { rating: -1 } };
@@ -358,24 +385,30 @@ router.get('/products', listCache, listProducts);
 // GET /api/products/flash-sale
 router.get('/flash-sale', marketingCache, asyncHandler(async (req, res) => {
     const flashSaleProductIds = await getActiveSaleProductIds('flash_sale');
-    
-    const filter = {
-        isActive: true,
+
+    // Channel eligibility (vendor account + vendor channel + feature flag) is
+    // enforced here exactly as it is on the main listing. This endpoint used to
+    // filter on `isActive` alone and leaked Quick Commerce and wholesale-only
+    // products from paused and disabled vendor channels onto the storefront.
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+
+    const filter = { ...guard.filter };
+    andCondition(filter, {
         $or: [
-            { flashSale: true }
-        ]
-    };
-    
-    if (flashSaleProductIds.length > 0) {
-        filter.$or.push({ _id: { $in: flashSaleProductIds } });
-    }
+            { flashSale: true },
+            ...(flashSaleProductIds.length > 0 ? [{ _id: { $in: flashSaleProductIds } }] : []),
+        ],
+    });
 
     const products = await Product.find(filter)
         .select(PRODUCT_LIST_SELECT)
         .sort({ createdAt: -1 })
         .limit(20)
         .lean();
-        
+
     res.status(200).json(new ApiResponse(200, products, 'Flash sale products.'));
 }));
 
@@ -396,14 +429,19 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
     const numericLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
     const skip = (numericPage - 1) * numericLimit;
 
-    const filter = { isActive: true, isNewArrival: true };
+    // Same four-condition guard as the main listing; this endpoint previously
+    // filtered on `isActive` alone.
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+
+    const filter = { ...guard.filter, isNewArrival: true };
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
         const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        filter.$or = [
-            { name: safeRegex },
-            { tags: safeRegex }
-        ];
+        // $and, not assignment: the guard may already own $or/$and.
+        andCondition(filter, { $or: [{ name: safeRegex }, { tags: safeRegex }] });
     }
     if (minPrice || maxPrice) {
         filter.price = {
@@ -417,7 +455,7 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
 
     const activeSaleProductIds = await getActiveSaleProductIds();
     if (activeSaleProductIds.length) {
-        filter._id = { $nin: activeSaleProductIds };
+        andCondition(filter, { _id: { $nin: activeSaleProductIds } });
     }
 
     const sortMap = {
@@ -442,15 +480,16 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
         Product.countDocuments(filter),
     ]);
 
-    // If explicit isNewArrival count is low, backfill with recent active products
+    // If explicit isNewArrival count is low, backfill with recent products.
+    // The backfill must reuse the SAME eligibility guard — it previously
+    // dropped to a bare `{ isActive: true }` filter, which is how 60 of 100
+    // results came from vendors with no active retail channel.
     if (products.length < numericLimit && numericPage === 1) {
         const existingIds = new Set(products.map((p) => String(p._id)));
-        const fallbackFilter = { isActive: true };
-        if (activeSaleProductIds.length) {
-            fallbackFilter._id = { $nin: [...activeSaleProductIds, ...Array.from(existingIds)] };
-        } else {
-            fallbackFilter._id = { $nin: Array.from(existingIds) };
-        }
+        const fallbackFilter = { ...guard.filter };
+        andCondition(fallbackFilter, {
+            _id: { $nin: [...activeSaleProductIds, ...Array.from(existingIds)] },
+        });
         const needed = numericLimit - products.length;
         const fallbackProducts = await Product.find(fallbackFilter)
             .select(PRODUCT_LIST_SELECT)
@@ -462,7 +501,7 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
             .lean();
 
         products = [...products, ...fallbackProducts];
-        const totalActive = await Product.countDocuments({ isActive: true });
+        const totalActive = await Product.countDocuments(guard.filter);
         total = Math.max(total, totalActive);
     }
 
@@ -477,9 +516,13 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
 // GET /api/products/popular
 router.get('/popular', marketingCache, asyncHandler(async (req, res) => {
     const activeSaleProductIds = await getActiveSaleProductIds();
-    const filter = { isActive: true };
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+    const filter = { ...guard.filter };
     if (activeSaleProductIds.length) {
-        filter._id = { $nin: activeSaleProductIds };
+        andCondition(filter, { _id: { $nin: activeSaleProductIds } });
     }
 
     const products = await Product.find(filter)
@@ -491,14 +534,26 @@ router.get('/popular', marketingCache, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/products/similar/:id
-router.get('/similar/:id', detailCache, asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id).select('_id categoryId').lean();
+router.get('/similar/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id).select('_id categoryId vendorId quickCommerceEnabled wholesaleEnabled retailEnabled').lean();
     if (!product) throw new ApiError(404, 'Product not found.');
     const activeSaleProductIds = await getActiveSaleProductIds();
-    const similarFilter = { isActive: true, _id: { $ne: product._id }, categoryId: product.categoryId };
-    if (activeSaleProductIds.length) {
-        similarFilter._id = { $nin: [String(product._id), ...activeSaleProductIds] };
-    }
+
+    // Channel comes from the experience the customer is browsing, not from
+    // flag priority on the product: a retail+QC product is a marketplace
+    // product on the marketplace and a QC product on Quick Commerce.
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+
+    const similarFilter = {
+        ...guard.filter,
+        categoryId: product.categoryId,
+    };
+    andCondition(similarFilter, {
+        _id: { $nin: [String(product._id), ...activeSaleProductIds.map(String)] },
+    });
     const similar = await Product.find(similarFilter)
         .select(PRODUCT_LIST_SELECT)
         .sort({ createdAt: -1 })
@@ -516,6 +571,17 @@ const getProductDetail = asyncHandler(async (req, res) => {
         .lean();
     if (!product) throw new ApiError(404, 'Product not found.');
 
+    // Channel eligibility for a direct-id request. Resolved from the REQUESTED
+    // experience, not from flag priority on the product — resolving
+    // "quickCommerceEnabled first" made every retail+QC product 404 on the
+    // marketplace while still appearing in marketplace listings.
+    const visibility = await isProductPubliclyVisible(product, {
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+        includePaused: true,
+    });
+    if (!visibility.visible) throw new ApiError(404, 'Product not found.');
+
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
     if (!wholesaleEnabled) {
         if (product.retailEnabled === false && product.wholesaleEnabled === true) {
@@ -528,7 +594,10 @@ const getProductDetail = asyncHandler(async (req, res) => {
 });
 
 // GET /api/products/:id
-router.get('/products/:id', detailCache, getProductDetail);
+// Constrain :id to an ObjectId. Without this, a request for a sibling path
+// such as /api/products/flash-sale fell through to product-detail and threw a
+// Mongoose CastError (logged with a full stack) instead of a clean 404.
+router.get('/products/:id([a-fA-F0-9]{24})', detailCache, getProductDetail);
 
 
 /**
@@ -662,17 +731,54 @@ const getVendorProductCountsMap = async (vendorIds = []) => {
     return map;
 };
 
-const PUBLIC_TEST_VENDOR_REGEX = /test|sptest|qwerty|qa\s|audit|seeded|demo|dummy|sample|free\s*vendor|^sk\s*store|^sagar\s*store/i;
+/**
+ * Test-vendor suppression on public listings.
+ *
+ * This was a hardcoded store-name regex applied unconditionally in production:
+ *   /test|sptest|qwerty|qa\s|audit|seeded|demo|dummy|sample|free\s*vendor|^sk\s*store|^sagar\s*store/i
+ *
+ * Classifying vendors by name is wrong in production — a legitimate seller
+ * called "Demo Electronics" or "Sample Kitchenware" was silently invisible on
+ * the storefront with no diagnostic, and two entries named what look like real
+ * stores. Vendors carry an explicit `isTestAccount` flag instead (see
+ * Vendor.model.js), which is the condition applied below.
+ *
+ * The legacy name pattern remains available ONLY as an opt-in transitional aid
+ * for non-production environments, so existing seeded data stays hidden while
+ * `isTestAccount` is backfilled. It is never applied when NODE_ENV=production.
+ */
+const LEGACY_TEST_VENDOR_NAME_REGEX = /test|sptest|qwerty|qa\s|audit|seeded|demo|dummy|sample|free\s*vendor|^sk\s*store|^sagar\s*store/i;
+
+const useLegacyNameSuppression = () =>
+    process.env.NODE_ENV !== 'production'
+    && String(process.env.SUPPRESS_TEST_VENDORS_BY_NAME || 'true').toLowerCase() !== 'false';
+
+/** Conditions excluding test accounts from a public vendor listing. */
+const publicVendorSuppression = () => (
+    useLegacyNameSuppression()
+        ? {
+            isTestAccount: { $ne: true },
+            storeName: { $not: LEGACY_TEST_VENDOR_NAME_REGEX },
+            name: { $not: LEGACY_TEST_VENDOR_NAME_REGEX },
+        }
+        : { isTestAccount: { $ne: true } }
+);
 
 // GET /api/vendors/best-sellers (public - top 8 cached home endpoint)
 router.get('/vendors/best-sellers', marketingCache, asyncHandler(async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
     const filter = {
+        // Vendor soft-delete is `isActive: false`; the Vendor schema has no
+        // `isDeleted` field, so the condition that used to sit here matched
+        // every document and filtered nothing.
         status: 'approved',
         isActive: { $ne: false },
-        isDeleted: { $ne: true },
-        storeName: { $not: PUBLIC_TEST_VENDOR_REGEX },
-        name: { $not: PUBLIC_TEST_VENDOR_REGEX },
+        $or: [
+            { 'channels.retail.status': 'active' },
+            { 'channels.wholesale.status': 'active' },
+            { 'channels.quickCommerce.status': 'active' },
+        ],
+        ...publicVendorSuppression(),
     };
 
     const vendors = await Vendor.find(filter)
@@ -721,13 +827,16 @@ const handleGetVendors = asyncHandler(async (req, res) => {
     const filter = {
         status: status && status !== 'all' ? status : 'approved',
         isActive: { $ne: false },
-        isDeleted: { $ne: true }
+        $and: [{ $or: [
+            { 'channels.retail.status': 'active' },
+            { 'channels.wholesale.status': 'active' },
+            { 'channels.quickCommerce.status': 'active' },
+        ] }],
     };
 
-    if (!search) {
-        filter.storeName = { $not: PUBLIC_TEST_VENDOR_REGEX };
-        filter.name = { $not: PUBLIC_TEST_VENDOR_REGEX };
-    }
+    // Test accounts are excluded whether or not a search term is present —
+    // the previous `if (!search)` guard meant any search revealed them.
+    Object.assign(filter, publicVendorSuppression());
 
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch) {
@@ -824,18 +933,26 @@ router.get('/vendors', handleGetVendors);
 router.get('/vendors/all', handleGetVendors);
 
 // GET /api/vendors/:id (public)
-router.get('/vendors/:id', detailCache, asyncHandler(async (req, res) => {
+router.get('/vendors/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req, res) => {
+    // A storefront is public only while the vendor holds at least one channel
+    // customers can actually reach. Without this, a vendor whose every channel
+    // was disabled or rejected kept a live public store page.
     const vendor = await Vendor.findOne({
         _id: req.params.id,
         status: 'approved',
         isActive: { $ne: false },
+        $or: [
+            { 'channels.retail.status': { $in: ['active', 'paused'] } },
+            { 'channels.wholesale.status': { $in: ['active', 'paused'] } },
+            { 'channels.quickCommerce.status': { $in: ['active', 'paused'] } },
+        ],
     }).select('-password -otp -otpExpiry').lean();
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, toPublicVendor(vendor), 'Vendor detail fetched.'));
 }));
 
 // GET /api/vendors/:id/products (public)
-router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => {
+router.get('/vendors/:id([a-fA-F0-9]{24})/products', listCache, asyncHandler(async (req, res) => {
     const { page = 1, limit = 12, sort = 'newest', minPrice, maxPrice, minRating } = req.query;
     const numericPage = Math.max(parseInt(page, 10) || 1, 1);
     const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 100);
@@ -850,17 +967,23 @@ router.get('/vendors/:id/products', listCache, asyncHandler(async (req, res) => 
         rating: { rating: -1 },
     };
 
-    const vendor = await Vendor.findOne({
-        _id: req.params.id,
-        status: 'approved',
-        isActive: { $ne: false },
-    }).select('_id').lean();
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    // The storefront lists only what this vendor may sell on the experience
+    // being browsed. It previously listed every active product regardless of
+    // channel, so a Quick-Commerce-only store served QC products on the
+    // marketplace.
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+        includePaused: true,
+    });
+    if (!guard.vendorIds.includes(String(req.params.id))) {
+        throw new ApiError(404, 'Vendor not found.');
+    }
 
     const activeSaleProductIds = await getActiveSaleProductIds();
-    const filter = { isActive: true, vendorId: req.params.id };
+    const filter = { ...guard.filter, vendorId: req.params.id };
     if (activeSaleProductIds.length) {
-        filter._id = { $nin: activeSaleProductIds };
+        andCondition(filter, { _id: { $nin: activeSaleProductIds } });
     }
     if (minPrice || maxPrice) {
         filter.price = {};
@@ -962,7 +1085,7 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
     }
 
     const products = await Product.find({ _id: { $in: productIds }, isActive: true })
-        .populate('vendorId', 'shippingEnabled defaultShippingRate freeShippingThreshold sellingChannels')
+        .populate('vendorId', 'shippingEnabled defaultShippingRate freeShippingThreshold channels')
         .select('_id vendorId price variants.prices retailEnabled wholesaleEnabled wholesale')
         .lean();
 
@@ -979,7 +1102,7 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
         // Use the same authoritative pricing engine as checkout so free-shipping
         // thresholds are evaluated against the amount the customer will actually pay.
         const pricing = resolvePriceForQuantity(product, variantResolvedPrice, quantity, {
-            vendorWholesaleEnabled: product.vendorId?.sellingChannels?.wholesale?.enabled === true,
+            vendorWholesaleEnabled: product.vendorId?.channels?.wholesale?.status === 'active',
         });
         const price = pricing.unitPrice;
         const subtotal = price * quantity;

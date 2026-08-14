@@ -180,12 +180,13 @@ export const registerMarketplaceEventHandlers = () => {
     });
 
     // ── VENDOR APPROVAL EVENT ──────────────────────────────────────────────────
-    marketplaceEventBus.on(MARKETPLACE_EVENTS.VENDOR_APPROVED, async ({ vendor, vendorType }) => {
+    marketplaceEventBus.on(MARKETPLACE_EVENTS.VENDOR_APPROVED, async ({ vendor, vendorType, channels = [] }) => {
         const { createNotification } = await import('../notification.service.js');
         if (!vendor) return;
 
-        const resolvedType = String(vendorType || vendor.vendorType || 'Retail').replace('_', ' ');
-        const displayType = resolvedType.charAt(0).toUpperCase() + resolvedType.slice(1);
+        const displayType = channels.length
+            ? channels.map((channel) => String(channel).replace(/_/g, ' ')).join(', ')
+            : String(vendorType || vendor.vendorType || 'Retail').replace(/_/g, ' ');
 
         await createNotification({
             recipientId:   String(vendor._id || vendor.id),
@@ -194,10 +195,10 @@ export const registerMarketplaceEventHandlers = () => {
             type:          'vendor_approval',
             priority:      'CRITICAL',
             title:         '🎉 Vendor Account Approved',
-            message:       `Congratulations! Your DwellMart Vendor Account has been approved as a ${displayType} Vendor. You can now log in and start selling.`,
+            message:       `Congratulations! Your DwellMart Vendor Account has been approved for ${displayType}. You can now log in and start selling.`,
             actionUrl:     '/vendor/dashboard',
             actionType:    'vendor_dashboard',
-            data:          { vendorId: String(vendor._id || vendor.id), vendorType: String(vendorType || vendor.vendorType) },
+            data:          { vendorId: String(vendor._id || vendor.id), channels, legacyVendorType: String(vendorType || vendor.vendorType) },
         }).catch((err) => console.warn('Failed to send vendor approval notification:', err));
     });
 

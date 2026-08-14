@@ -8,6 +8,9 @@
  */
 
 import { execSync } from 'child_process';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 /**
  * Production-database guard.
@@ -26,7 +29,13 @@ const looksLikeProduction =
     /(prod|production|live)/i.test(mongoUri);
 const isLocal = /(localhost|127\.0\.0\.1|mongodb:\/\/mongo)/i.test(mongoUri);
 
-if (mongoUri && looksLikeProduction && !isLocal
+if (!mongoUri) {
+    console.error('\nRefusing to run integration tests without an explicit MONGO_URI.');
+    console.error('Use an isolated local test database; these suites create and delete records.\n');
+    process.exit(1);
+}
+
+if (!isLocal
     && process.env.ALLOW_TESTS_AGAINST_THIS_DB !== 'yes') {
     console.error('\n✗ Refusing to run integration tests against a remote/production-looking database.');
     console.error('  MONGO_URI points at a hosted cluster. These suites write and delete real records.');

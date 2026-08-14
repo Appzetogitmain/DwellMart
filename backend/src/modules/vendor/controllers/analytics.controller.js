@@ -4,6 +4,7 @@ import Order from '../../../models/Order.model.js';
 import Product from '../../../models/Product.model.js';
 import Commission from '../../../models/Commission.model.js';
 import mongoose from 'mongoose';
+import { channelToProductFlag } from '../../../constants/vendorChannels.js';
 
 const toDateKey = (value) => {
     const date = new Date(value);
@@ -55,6 +56,11 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
     const period = String(req.query?.period || 'month').toLowerCase();
     const { start, end } = getDateRange(period);
     const vendorObjectId = new mongoose.Types.ObjectId(req.user.id);
+    const workspace = req.vendorWorkspace;
+    const orderChannelFilter = { $or: [
+        { fulfillmentType: workspace }, { orderType: workspace }, { 'vendorItems.orderType': workspace },
+    ] };
+    const productFlag = channelToProductFlag(workspace);
 
     const [orders, productsCount, commissions, wholesaleProductsCount] = await Promise.all([
         Order.find({
@@ -62,11 +68,12 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
             isDeleted: { $ne: true },
             status: { $nin: ['cancelled', 'returned'] },
             createdAt: { $gte: start, $lte: end },
+            ...orderChannelFilter,
         })
-            .select('createdAt date status vendorItems')
+            .select('createdAt date status orderType fulfillmentType vendorItems')
             .sort({ createdAt: 1 })
             .lean(),
-        Product.countDocuments({ vendorId: req.user.id }),
+        Product.countDocuments({ vendorId: req.user.id, [productFlag]: true, isDeleted: { $ne: true } }),
         Commission.find({
             vendorId: req.user.id,
             status: { $ne: 'cancelled' },
@@ -74,7 +81,7 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
         })
             .select('vendorEarnings status')
             .lean(),
-        Product.countDocuments({ vendorId: req.user.id, wholesaleEnabled: true }),
+        Product.countDocuments({ vendorId: req.user.id, wholesaleEnabled: true, isDeleted: { $ne: true } }),
     ]);
 
     const dailyMap = {};

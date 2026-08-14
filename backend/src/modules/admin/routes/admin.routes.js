@@ -92,10 +92,12 @@ import {
 import {
     vendorListQuerySchema,
     vendorIdParamSchema,
+    vendorChannelParamSchema,
     vendorStatusUpdateSchema,
     vendorCommissionUpdateSchema,
     vendorQuickCommerceUpdateSchema,
     vendorCommissionsQuerySchema,
+    vendorChannelStatusUpdateSchema,
 } from '../validators/vendor.validator.js';
 import {
     marketingIdParamSchema,
@@ -254,6 +256,7 @@ router.get('/vendors/:id/documents', ...perm(PERMISSIONS.VENDORS_VIEW), validate
 router.patch('/vendors/documents/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), documentController.adminUpdateDocumentStatus);
 router.get('/vendors/:id/commissions', ...perm(PERMISSIONS.VENDORS_VIEW), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionsQuerySchema, 'query'), vendorController.getVendorCommissions);
 router.patch('/vendors/:id/status', ...perm(PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorStatusUpdateSchema), vendorController.updateVendorStatus);
+router.patch('/vendors/:id/channels/:channel/status', ...perm(PERMISSIONS.VENDORS_APPROVE), validate(vendorChannelParamSchema, 'params'), validate(vendorChannelStatusUpdateSchema), vendorController.updateVendorChannelStatus);
 router.patch('/vendors/:id/commission', ...perm(PERMISSIONS.VENDORS_EDIT), validate(vendorIdParamSchema, 'params'), validate(vendorCommissionUpdateSchema), vendorController.updateCommissionRate);
 router.patch('/vendors/:id/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_VENDORS_MANAGE, PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorQuickCommerceUpdateSchema), vendorController.updateVendorQuickCommerce);
 // Super Admin only — changes vendor business type and auto-syncs sellingChannels

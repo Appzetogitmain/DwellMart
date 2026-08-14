@@ -312,9 +312,9 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
     }
 
     const vendor = await Vendor.findById(vendorId)
-        .select('storeName sellingChannels quickCommerceProfile')
+        .select('storeName channels quickCommerceProfile')
         .lean();
-    if (!vendor?._id || vendor.sellingChannels?.quickCommerce?.enabled !== true) {
+    if (!vendor?._id || vendor.channels?.quickCommerce?.status !== 'active') {
         return notAvailable('VENDOR_UNAVAILABLE', 'This store is no longer available on Quick Commerce.');
     }
 

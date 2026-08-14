@@ -195,6 +195,10 @@ const VendorOrderTracking = lazy(() => import("./modules/Vendor/pages/orders/Ord
 const VendorOrderDetail = lazy(() => import("./modules/Vendor/pages/orders/OrderDetail"));
 const VendorAnalytics = lazy(() => import("./modules/Vendor/pages/Analytics"));
 const VendorQuickCommerceDashboard = lazy(() => import("./modules/Vendor/pages/QuickCommerceDashboard"));
+const VendorWorkspacePicker = lazy(() => import("./modules/Vendor/pages/WorkspacePicker"));
+const VendorBusinessOverview = lazy(() => import("./modules/Vendor/pages/BusinessOverview"));
+const VendorSellingChannels = lazy(() => import("./modules/Vendor/pages/SellingChannels"));
+const VendorNoActiveChannel = lazy(() => import("./modules/Vendor/pages/NoActiveChannel"));
 const VendorEarnings = lazy(() => import("./modules/Vendor/pages/Earnings"));
 const VendorSettings = lazy(() => import("./modules/Vendor/pages/Settings"));
 const ProfileSettings = lazy(() => import("./modules/Vendor/pages/settings/ProfileSettings"));
@@ -757,6 +761,10 @@ const AppRoutes = () => {
           </VendorProtectedRoute>
         }>
         <Route index element={<Navigate to="/vendor/dashboard" replace />} />
+        <Route path="workspaces" element={<VendorWorkspacePicker />} />
+        <Route path="business-overview" element={<VendorBusinessOverview />} />
+        <Route path="channels" element={<VendorSellingChannels />} />
+        <Route path="no-active-channel" element={<VendorNoActiveChannel />} />
         <Route path="dashboard" element={<VendorDashboard />} />
         <Route path="products" element={<VendorProducts />} />
         <Route

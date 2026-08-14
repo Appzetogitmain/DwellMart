@@ -75,9 +75,12 @@ export const getVendorCustomers = asyncHandler(async (req, res) => {
     const numericLimit = Math.max(parseInt(limit, 10) || 10, 1);
     const skip = (numericPage - 1) * numericLimit;
 
-    const orders = await Order.find({ 'vendorItems.vendorId': req.user.id })
+    const orders = await Order.find({
+        'vendorItems.vendorId': req.user.id,
+        $or: [{ fulfillmentType: req.vendorWorkspace }, { orderType: req.vendorWorkspace }, { 'vendorItems.orderType': req.vendorWorkspace }],
+    })
         .sort({ createdAt: -1 })
-        .select('userId guestInfo shippingAddress vendorItems status createdAt date orderId isDeleted')
+        .select('userId guestInfo shippingAddress vendorItems status fulfillmentType orderType createdAt date orderId isDeleted')
         .lean();
 
     const customerMap = {};
@@ -169,7 +172,10 @@ export const getVendorCustomerById = asyncHandler(async (req, res) => {
     const numericLimit = Math.max(parseInt(limit, 10) || 10, 1);
     const skip = (numericPage - 1) * numericLimit;
 
-    const orders = await Order.find({ 'vendorItems.vendorId': req.user.id })
+    const orders = await Order.find({
+        'vendorItems.vendorId': req.user.id,
+        $or: [{ fulfillmentType: req.vendorWorkspace }, { orderType: req.vendorWorkspace }, { 'vendorItems.orderType': req.vendorWorkspace }],
+    })
         .sort({ createdAt: -1 })
         .select('userId guestInfo shippingAddress vendorItems status createdAt date orderId isDeleted')
         .lean();

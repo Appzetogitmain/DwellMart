@@ -1,41 +1,34 @@
-import Product from '../models/Product.model.js';
-import ApiError from '../utils/ApiError.js';
-
 /**
- * Validate and deduct stock for order items
- * @param {Array} items - [{ productId, quantity }]
- * @returns {Array} enriched items with product data
+ * REMOVED — do not reintroduce.
+ *
+ * This module previously exported `validateAndDeductStock` and `restoreStock`,
+ * which mutated stock with a read-modify-write:
+ *
+ *     product.stockQuantity -= item.quantity;
+ *     await product.save();
+ *
+ * That is a lost-update race: two concurrent orders both read the same value
+ * and both write it back, overselling the difference. It had zero call sites,
+ * but it sat in `services/` looking exactly like the helper a future change
+ * would reach for.
+ *
+ * Stock is authoritative in exactly two places, both atomic:
+ *
+ *   services/checkout/InventoryReservationService.js
+ *       reserveStock / commitReservation / releaseReservation — conditional
+ *       `$inc` on `reservedQuantity`, variant-aware, inside a transaction.
+ *
+ *   modules/user/controllers/order.controller.js (placeOrder)
+ *       Product.findOneAndUpdate(
+ *           { _id, stockQuantity: { $gte: qty } },
+ *           { $inc: { stockQuantity: -qty } },
+ *           { session }
+ *       )
+ *       The conditional filter is what prevents overselling — a plain `$inc`
+ *       would still race past zero.
+ *
+ * Inventory is a single shared pool across Retail, Wholesale and Quick
+ * Commerce (V1). There is deliberately no per-channel stock field.
  */
-export const validateAndDeductStock = async (items) => {
-    const enriched = [];
 
-    for (const item of items) {
-        const product = await Product.findById(item.productId);
-        if (!product) throw new ApiError(404, `Product not found: ${item.productId}`);
-        if (product.stock === 'out_of_stock') throw new ApiError(400, `${product.name} is out of stock.`);
-        if (product.stockQuantity < item.quantity) throw new ApiError(400, `Only ${product.stockQuantity} units of ${product.name} available.`);
-
-        product.stockQuantity -= item.quantity;
-        if (product.stockQuantity <= 0) product.stock = 'out_of_stock';
-        else if (product.stockQuantity <= product.lowStockThreshold) product.stock = 'low_stock';
-        else product.stock = 'in_stock';
-        await product.save();
-
-        enriched.push({ ...item, product });
-    }
-
-    return enriched;
-};
-
-/**
- * Restore stock when an order is cancelled
- */
-export const restoreStock = async (items) => {
-    for (const item of items) {
-        const product = await Product.findById(item.productId);
-        if (!product) continue;
-        product.stockQuantity += item.quantity;
-        if (product.stockQuantity > 0) product.stock = product.stockQuantity <= product.lowStockThreshold ? 'low_stock' : 'in_stock';
-        await product.save();
-    }
-};
+export {};

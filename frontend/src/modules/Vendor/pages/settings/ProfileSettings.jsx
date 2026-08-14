@@ -13,7 +13,8 @@ const ProfileSettings = () => {
   const navigate = useNavigate();
 
   const getActiveTab = () => {
-    if (location.search.includes('tab=documents')) return 'documents';
+    const tab = new URLSearchParams(location.search).get('tab');
+    if (['documents', 'password', 'security', 'profile'].includes(tab)) return tab;
     return 'profile';
   };
 
@@ -120,7 +121,14 @@ const ProfileSettings = () => {
 
   const handleTabChange = (sectionId) => {
     setActiveSection(sectionId);
-    navigate(`/vendor/profile${sectionId === 'profile' ? '' : `?tab=${sectionId}`}`, { replace: true });
+    const params = new URLSearchParams(location.search);
+    if (sectionId === 'profile') {
+      params.delete('tab');
+    } else {
+      params.set('tab', sectionId);
+    }
+    const queryString = params.toString();
+    navigate(`/vendor/profile${queryString ? `?${queryString}` : ''}`, { replace: true });
   };
 
   if (!vendor) {

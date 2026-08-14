@@ -9,21 +9,17 @@ import {
     resolveWholesalePayload,
     resolveQuickCommercePayload,
 } from '../../../services/pricingValidation.service.js';
-import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
+import { channelToProductFlag, isChannelWritable } from '../../../constants/vendorChannels.js';
 
 /**
  * Derive which selling channels this vendor supports.
- * Prefers vendorType via VendorCapabilities (canonical source of truth).
- * Falls back to sellingChannels for legacy records without vendorType.
+ * Reads canonical channel authorization. Product flags never grant vendor access.
  */
 const getVendorChannels = async (vendorId) => {
-    const vendor = await Vendor.findById(vendorId).select('vendorType sellingChannels').lean();
-    const caps = getVendorCapabilities(vendor?.vendorType);
+    const vendor = await Vendor.findById(vendorId).select('channels').lean();
     return {
-        wholesale: caps.internalChannels?.wholesale === true
-            ?? vendor?.sellingChannels?.wholesale?.enabled === true,
-        quickCommerce: caps.internalChannels?.quickCommerce === true
-            ?? vendor?.sellingChannels?.quickCommerce?.enabled === true,
+        wholesale: isChannelWritable(vendor, 'wholesale'),
+        quickCommerce: isChannelWritable(vendor, 'quick_commerce'),
     };
 };
 
@@ -247,7 +243,9 @@ export const getVendorProducts = asyncHandler(async (req, res) => {
     const numericPage = Math.max(1, Number(page) || 1);
     const numericLimit = Math.max(1, Number(limit) || 20);
     const skip = (numericPage - 1) * numericLimit;
-    const filter = { vendorId: req.user.id };
+    const flag = channelToProductFlag(req.vendorWorkspace);
+    const filter = { vendorId: req.user.id, isDeleted: { $ne: true } };
+    if (String(req.query.includeUnpublished) !== 'true') filter[flag] = true;
     if (search) filter.$text = { $search: search };
     if (stock) filter.stock = stock;
 
@@ -267,7 +265,7 @@ export const getVendorProducts = asyncHandler(async (req, res) => {
 
 // GET /api/vendor/products/:id
 export const getVendorProductById = asyncHandler(async (req, res) => {
-    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id })
+    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id, isDeleted: { $ne: true } })
         .populate('categoryId', 'name parentId')
         .populate('brandId', 'name')
         .lean();
@@ -300,6 +298,10 @@ export const createProduct = asyncHandler(async (req, res) => {
     const stock = deriveStockStatus(finalStockQuantity, lowStockThreshold);
 
     const channels = await getVendorChannels(req.user.id);
+    const currentFlag = channelToProductFlag(req.vendorWorkspace);
+    rest.retailEnabled = currentFlag === 'retailEnabled';
+    rest.wholesaleEnabled = currentFlag === 'wholesaleEnabled';
+    rest.quickCommerceEnabled = currentFlag === 'quickCommerceEnabled';
 
     const resolvedWholesale = resolveWholesalePayload({
         retailEnabled: rest.retailEnabled,
@@ -354,8 +356,36 @@ export const createProduct = asyncHandler(async (req, res) => {
 
 // PUT /api/vendor/products/:id
 export const updateProduct = asyncHandler(async (req, res) => {
-    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id });
+    const currentFlag = channelToProductFlag(req.vendorWorkspace);
+    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id, isDeleted: { $ne: true } });
     if (!product) throw new ApiError(404, 'Product not found or access denied.');
+    if (req.body.expectedVersion !== undefined && Number(req.body.expectedVersion) !== Number(product.__v)) {
+        const error = new ApiError(409, 'Product changed in another workspace. Refresh and try again.');
+        error.errorCode = 'PRODUCT_VERSION_CONFLICT';
+        throw error;
+    }
+    delete req.body.expectedVersion;
+    const channelFlags = ['retailEnabled', 'wholesaleEnabled', 'quickCommerceEnabled'];
+    const crossChannelFields = channelFlags.filter((flag) => flag !== currentFlag && Object.prototype.hasOwnProperty.call(req.body, flag));
+    if (crossChannelFields.length) throw new ApiError(400, 'Use the target workspace to publish or unpublish another channel.');
+    // Editing shared fields must NOT change publication state. This line used
+    // to force `req.body[currentFlag] = true`, so an unrelated description edit
+    // silently re-published a channel the vendor had deliberately unpublished
+    // — and editing a wholesale-only product from Retail published it to
+    // Retail. Publication is changed only through
+    // PATCH /products/:id/channels/:channel.
+    // Retail publication is opt-out: legacy products predate the flag, so
+    // "not explicitly false" is the correct test there. The other two are opt-in.
+    const publishedHere = currentFlag === 'retailEnabled'
+        ? product.retailEnabled !== false
+        : product[currentFlag] === true;
+    if (!publishedHere) {
+        throw new ApiError(
+            409,
+            'This product is not published on the current workspace. Publish it here first, or switch to a workspace where it is published.',
+            [{ code: 'PRODUCT_NOT_PUBLISHED_IN_WORKSPACE', workspace: req.vendorWorkspace }]
+        );
+    }
     // Snapshot the stored wholesale config before the bulk assign, so incoming
     // tier data is only ever persisted after passing validation below.
     const storedWholesale = product.wholesale?.toObject?.() ?? product.wholesale;
@@ -452,21 +482,82 @@ export const updateProduct = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
     }
 
+    product.increment();
     await product.save();
     res.status(200).json(new ApiResponse(200, product, 'Product updated.'));
 });
 
 // DELETE /api/vendor/products/:id
 export const deleteProduct = asyncHandler(async (req, res) => {
-    const product = await Product.findOneAndDelete({ _id: req.params.id, vendorId: req.user.id });
+    const flag = channelToProductFlag(req.vendorWorkspace);
+    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id, [flag]: true });
     if (!product) throw new ApiError(404, 'Product not found or access denied.');
-    res.status(200).json(new ApiResponse(200, null, 'Product deleted.'));
+    product[flag] = false;
+    if (!product.retailEnabled && !product.wholesaleEnabled && !product.quickCommerceEnabled) {
+        product.isDeleted = true;
+        product.isActive = false;
+    }
+    await product.save();
+    res.status(200).json(new ApiResponse(200, null, 'Product unpublished from this workspace.'));
+});
+
+// PATCH /api/vendor/products/:id/channels/:channel
+// Publishing is performed from the target workspace, whose access has already
+// been verified by middleware. Shared core fields are not changed here.
+export const updateProductChannel = asyncHandler(async (req, res) => {
+    const channel = String(req.params.channel || '').replace('-', '_');
+    if (channel !== req.vendorWorkspace) throw new ApiError(403, 'Switch to the target workspace to change publishing.');
+    const flag = channelToProductFlag(channel);
+    if (!flag) throw new ApiError(400, 'Invalid product channel.');
+    if (typeof req.body.enabled !== 'boolean') throw new ApiError(400, 'enabled must be a boolean.');
+    const enabled = req.body.enabled;
+    const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id });
+    if (!product) throw new ApiError(404, 'Product not found or access denied.');
+    if (req.body.expectedVersion !== undefined && Number(req.body.expectedVersion) !== Number(product.__v)) {
+        const error = new ApiError(409, 'Product changed in another workspace. Refresh and try again.');
+        error.errorCode = 'PRODUCT_VERSION_CONFLICT';
+        throw error;
+    }
+
+    if (enabled && channel === 'wholesale') {
+        const resolved = resolveWholesalePayload({
+            retailEnabled: product.retailEnabled,
+            wholesaleEnabled: true,
+            wholesale: req.body.wholesale || product.wholesale,
+            price: product.price,
+            stockQuantity: product.stockQuantity,
+            vendorWholesaleEnabled: true,
+            quickCommerceEnabled: product.quickCommerceEnabled,
+        });
+        product.wholesale = resolved.wholesale;
+    }
+    if (enabled && channel === 'quick_commerce') {
+        const quickCommerceCategoryId = req.body.quickCommerceCategoryId || product.quickCommerceCategoryId;
+        const resolved = resolveQuickCommercePayload({
+            quickCommerceEnabled: true,
+            quickCommerce: req.body.quickCommerce || product.quickCommerce,
+            quickCommerceCategoryId,
+            vendorQuickCommerceEnabled: true,
+            categoryExperience: await getCategoryExperience(quickCommerceCategoryId),
+        });
+        product.quickCommerceCategoryId = resolved.quickCommerceCategoryId;
+        product.quickCommerce = resolved.quickCommerce;
+    }
+    product[flag] = enabled;
+    if (enabled) {
+        product.isDeleted = false;
+        product.isActive = true;
+    }
+    product.increment();
+    await product.save();
+    res.status(200).json(new ApiResponse(200, product, enabled ? 'Product published.' : 'Product unpublished.'));
 });
 
 // PATCH /api/vendor/stock/:productId
 export const updateStock = asyncHandler(async (req, res) => {
     const { stockQuantity } = req.body;
-    const product = await Product.findOne({ _id: req.params.productId, vendorId: req.user.id });
+    const flag = channelToProductFlag(req.vendorWorkspace);
+    const product = await Product.findOne({ _id: req.params.productId, vendorId: req.user.id, [flag]: true });
     if (!product) throw new ApiError(404, 'Product not found.');
 
     const numericStockQuantity = Number(stockQuantity);

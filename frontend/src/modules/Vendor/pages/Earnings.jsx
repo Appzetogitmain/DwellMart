@@ -14,11 +14,13 @@ import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { getVendorEarnings } from "../services/vendorService";
+import { useVendorWorkspace, withWorkspace } from "../hooks/useVendorWorkspace";
 
 const Earnings = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { vendor } = useVendorAuthStore();
+  const { workspace } = useVendorWorkspace();
 
   const getActiveTab = () => {
     const path = location.pathname;
@@ -86,13 +88,13 @@ const Earnings = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === "overview") {
-      navigate("/vendor/earnings");
-    } else if (tab === "commission") {
-      navigate("/vendor/earnings/commission-history");
+    let target = "/vendor/earnings";
+    if (tab === "commission") {
+      target = "/vendor/earnings/commission-history";
     } else if (tab === "settlement") {
-      navigate("/vendor/earnings/settlement-history");
+      target = "/vendor/earnings/settlement-history";
     }
+    navigate(withWorkspace(target, workspace));
   };
 
   return (

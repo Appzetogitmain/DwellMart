@@ -11,6 +11,10 @@ const adminActivityLogSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Admin',
         },
+        targetVendor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Vendor',
+        },
         action: {
             type: String,
             required: true,
@@ -35,6 +39,11 @@ const adminActivityLogSchema = new mongoose.Schema(
                 'rider_rate_card_created',
                 'rider_rate_card_superseded',
                 'rider_cash_adjusted',
+                // Vendor account/channel governance
+                'vendor_status_updated',
+                'vendor_channel_status_updated',
+                'vendor_classification_updated',
+                'vendor_quick_commerce_updated',
             ],
         },
         details: {
@@ -50,6 +59,7 @@ const adminActivityLogSchema = new mongoose.Schema(
 );
 
 adminActivityLogSchema.index({ createdAt: -1 });
+adminActivityLogSchema.index({ targetVendor: 1, createdAt: -1 });
 
 const AdminActivityLog = mongoose.model('AdminActivityLog', adminActivityLogSchema);
 export default AdminActivityLog;

@@ -3,12 +3,14 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import Product from '../../../models/Product.model.js';
 import Order from '../../../models/Order.model.js';
 import mongoose from 'mongoose';
+import { channelToProductFlag } from '../../../constants/vendorChannels.js';
 
 export const getInventoryReport = asyncHandler(async (req, res) => {
     const { lowStockOnly } = req.query;
     const vendorObjectId = new mongoose.Types.ObjectId(req.user.id);
 
-    const products = await Product.find({ vendorId: req.user.id })
+    const productFlag = channelToProductFlag(req.vendorWorkspace);
+    const products = await Product.find({ vendorId: req.user.id, [productFlag]: true, isDeleted: { $ne: true } })
         .select('name price stockQuantity lowStockThreshold')
         .lean();
 
@@ -35,6 +37,11 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
                 'vendorItems.vendorId': vendorObjectId,
                 status: { $nin: ['cancelled', 'returned'] },
                 isDeleted: { $ne: true },
+                $or: [
+                    { fulfillmentType: req.vendorWorkspace },
+                    { orderType: req.vendorWorkspace },
+                    { 'vendorItems.orderType': req.vendorWorkspace },
+                ],
             },
         },
         { $unwind: '$vendorItems' },

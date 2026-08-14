@@ -91,6 +91,18 @@ const ManageVendors = () => {
                 {value || row.name}
               </span>
               <VendorWholesaleBadge vendor={row} />
+              {Object.values(row.channels || {}).some((c) => c?.status === 'requested') && (
+                <span
+                  title="Vendor has pending selling channel requests"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/admin/vendors/${row.id}?tab=channels`);
+                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-pointer hover:bg-amber-100">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Channel Request
+                </span>
+              )}
             </div>
             <p className="text-xs text-gray-500">{row.name}</p>
           </div>

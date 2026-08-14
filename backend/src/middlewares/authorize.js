@@ -41,7 +41,7 @@ export const enforceAccountStatus = async (req, res, next) => {
 
         if (role === 'vendor') {
             const vendor = await Vendor.findById(req.user.id)
-                .select('status isVerified isActive vendorType sellingChannels')
+                .select('status isVerified isActive vendorType sellingChannels channels channelsRevision')
                 .lean();
             if (!vendor) return next(new ApiError(401, 'Account not found.'));
             if (vendor.isActive === false) {

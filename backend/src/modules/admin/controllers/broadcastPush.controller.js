@@ -48,17 +48,17 @@ const resolveRecipients = async (target) => {
             .lean();
         vendors.forEach((v) => results.push({ recipientId: v._id, recipientType: 'vendor' }));
     } else if (target === 'retail-vendors') {
-        const vendors = await Vendor.find({ status: 'approved', vendorType: 'retail' })
+        const vendors = await Vendor.find({ status: 'approved', 'channels.retail.status': 'active' })
             .select('_id')
             .lean();
         vendors.forEach((v) => results.push({ recipientId: v._id, recipientType: 'vendor' }));
     } else if (target === 'quick-commerce-vendors') {
-        const vendors = await Vendor.find({ status: 'approved', vendorType: 'quick_commerce' })
+        const vendors = await Vendor.find({ status: 'approved', 'channels.quickCommerce.status': 'active' })
             .select('_id')
             .lean();
         vendors.forEach((v) => results.push({ recipientId: v._id, recipientType: 'vendor' }));
     } else if (target === 'wholesale-vendors') {
-        const vendors = await Vendor.find({ status: 'approved', vendorType: 'wholesale' })
+        const vendors = await Vendor.find({ status: 'approved', 'channels.wholesale.status': 'active' })
             .select('_id')
             .lean();
         vendors.forEach((v) => results.push({ recipientId: v._id, recipientType: 'vendor' }));

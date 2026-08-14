@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import Button from "../../../Admin/components/Button";
 import VendorNotificationWindow from "./VendorNotificationWindow";
 import NotificationBell from "../../../../shared/components/Notifications/NotificationBell";
+import { useVendorWorkspace, WORKSPACE_LABELS } from '../../hooks/useVendorWorkspace';
 
 const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionInfo = {} }) => {
   const location = useLocation();
@@ -14,6 +15,7 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
   const { vendor, logout } = useVendorAuthStore();
   const { unreadCount, fetchNotifications } = useVendorNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const { workspace, activeWorkspaces, readableWorkspaces, switchWorkspace } = useVendorWorkspace();
 
   useEffect(() => {
     fetchNotifications();
@@ -23,6 +25,9 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
 
   const handleLogout = () => {
     logout();
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('vendor-last-workspace');
+    }
     toast.success("Logged out successfully");
     navigate("/vendor/login");
   };
@@ -105,6 +110,17 @@ const VendorHeader = ({ onMenuClick, isDesktopSidebarOpen = true, subscriptionIn
 
         {/* Right: Notifications & Logout */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {workspace && readableWorkspaces.length > 1 && (
+            <select value={workspace} onChange={(event) => switchWorkspace(event.target.value)}
+              aria-label="Vendor workspace"
+              className="max-w-36 rounded-lg border border-slate-700 bg-slate-800 px-2 py-2 text-xs text-white sm:max-w-52 sm:text-sm">
+              {readableWorkspaces.map((item) => (
+                <option key={item} value={item}>
+                  {WORKSPACE_LABELS[item]}{!activeWorkspaces.includes(item) ? ' (Paused)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
           {/* Notifications */}
           <div className="relative">
             <NotificationBell className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center p-0 cursor-pointer" iconClassName="text-sm sm:text-lg text-white" />

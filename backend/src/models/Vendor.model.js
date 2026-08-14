@@ -6,6 +6,21 @@ import {
     QUICK_COMMERCE_AVAILABILITY_VALUES,
 } from '../constants/quickCommerce.js';
 import { VendorCapabilities, VENDOR_TYPE_VALUES } from '../constants/vendorCapabilities.js';
+import { VENDOR_CHANNEL_STATUS_VALUES } from '../constants/vendorChannels.js';
+import { channelSummary, projectSellingChannels } from '../services/vendorChannel.service.js';
+
+const channelStateSchema = new mongoose.Schema({
+    status: { type: String, enum: VENDOR_CHANNEL_STATUS_VALUES, default: 'disabled', index: true },
+    requestedAt: { type: Date, default: null },
+    activatedAt: { type: Date, default: null },
+    pausedAt: { type: Date, default: null },
+    rejectedAt: { type: Date, default: null },
+    disabledAt: { type: Date, default: null },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+    requestedBy: { type: String, enum: ['vendor', 'admin', 'migration', null], default: null },
+    reason: { type: String, trim: true, default: '' },
+}, { _id: false });
 
 const vendorSchema = new mongoose.Schema(
     {
@@ -18,9 +33,8 @@ const vendorSchema = new mongoose.Schema(
         storeLogo: { type: String },
         storeDescription: { type: String },
         /**
-         * vendorType — immutable business identity assigned by Super Admin.
-         * Drives sidebar, product forms, settings, order workflows, and permissions.
-         * Vendors cannot change this. Only Super Admin can.
+         * Legacy business classification retained during migration. It is
+         * informational only and must never grant operational permissions.
          */
         vendorType: {
             type: String,
@@ -92,6 +106,35 @@ const vendorSchema = new mongoose.Schema(
                 enabled: { type: Boolean, default: false },
             },
         },
+        // Canonical operational authority. `vendorType` and `sellingChannels`
+        // remain compatibility projections during the staged migration.
+        channels: {
+            retail: { type: channelStateSchema, default: () => ({ status: 'disabled' }) },
+            wholesale: { type: channelStateSchema, default: () => ({ status: 'disabled' }) },
+            quickCommerce: { type: channelStateSchema, default: () => ({ status: 'disabled' }) },
+        },
+        channelsRevision: { type: Number, default: 0, min: 0 },
+        /**
+         * Stamped by migration 0008. Present and equal to the migration
+         * version means "this vendor's canonical channels were backfilled".
+         * The migration selects on this rather than on `$exists` of the
+         * channel sub-documents, which Mongoose now writes by default and
+         * which therefore cannot distinguish migrated from unmigrated.
+         */
+        channelMigrationVersion: { type: Number, default: null },
+        /**
+         * Original `vendorType` when migration 0008 had to normalise an
+         * unrecognised value. Retained so the rewrite stays auditable and
+         * recoverable rather than destructive.
+         */
+        legacyVendorTypeBeforeChannelMigration: { type: String, default: null },
+        /**
+         * Explicit test/seed account marker. Public listings exclude these.
+         * Replaces a hardcoded store-name regex that classified production
+         * vendors by name and hid legitimate sellers whose names happened to
+         * contain "demo", "sample", "test" and similar.
+         */
+        isTestAccount: { type: Boolean, default: false, index: true },
         // Quick Commerce operating profile. Populated only for vendors on the
         // Quick Commerce channel; every field is optional so existing vendor
         // documents remain valid without migration.
@@ -189,6 +232,9 @@ vendorSchema.index({ status: 1, createdAt: -1 });
 // excluded from the geo index entirely.
 vendorSchema.index({ 'quickCommerceProfile.location': '2dsphere' }, { sparse: true });
 vendorSchema.index({ 'sellingChannels.quickCommerce.enabled': 1, status: 1 });
+vendorSchema.index({ 'channels.retail.status': 1, status: 1, isActive: 1 });
+vendorSchema.index({ 'channels.wholesale.status': 1, status: 1, isActive: 1 });
+vendorSchema.index({ 'channels.quickCommerce.status': 1, status: 1, isActive: 1 });
 
 vendorSchema.pre('save', async function (next) {
     // Calculate Best Seller Score
@@ -215,11 +261,16 @@ vendorSchema.pre('save', function syncCountry(next) {
 });
 
 /**
- * Auto-sync sellingChannels from VendorCapabilities based on vendorType.
- * Vendors never control this — it is derived automatically.
- * Kept internally for search indexing, catalog routing, and analytics.
+ * Keep sellingChannels as a compatibility/search projection. Canonical
+ * channel states drive it after cutover; legacy mode is rollback-only.
  */
-vendorSchema.pre('save', function syncChannelsFromVendorType(next) {
+// Compatibility projection: canonical channels are authoritative outside the
+// temporary legacy rollback mode.
+vendorSchema.pre('save', function syncSellingChannelProjection(next) {
+    if (String(process.env.VENDOR_CHANNEL_AUTHORITY_MODE || 'channels').toLowerCase() !== 'legacy') {
+        this.sellingChannels = projectSellingChannels(this);
+        return next();
+    }
     const caps = VendorCapabilities[this.vendorType];
     if (caps?.internalChannels) {
         this.sellingChannels = {
@@ -254,9 +305,10 @@ vendorSchema.methods.toPublicVendor = function () {
         ...obj,
         vendorType: this.vendorType || 'retail',
         // Derived helpers for backward-compat with any existing consumer code
-        supportsMarketplace: this.sellingChannels?.retail?.enabled !== false,
-        supportsWholesale: this.sellingChannels?.wholesale?.enabled === true,
-        supportsQuickCommerce: this.sellingChannels?.quickCommerce?.enabled === true,
+        supportsMarketplace: this.channels?.retail?.status === 'active',
+        supportsWholesale: this.channels?.wholesale?.status === 'active',
+        supportsQuickCommerce: this.channels?.quickCommerce?.status === 'active',
+        ...channelSummary(this),
     };
 };
 

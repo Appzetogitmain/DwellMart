@@ -10,6 +10,9 @@ const bulkImportHistorySchema = new mongoose.Schema(
             email: { type: String },
             role: { type: String, enum: ['superadmin', 'subadmin', 'vendor'] },
         },
+        // Channel workspace this import was initiated under. Null = legacy/admin import
+        // without workspace context (pre-migration jobs remain readable from any workspace).
+        workspace: { type: String, enum: ['retail', 'wholesale', 'quick_commerce', null], default: null, index: true },
         fileName: { type: String, required: true },
         fileType: { type: String, enum: ['xlsx', 'csv'], default: 'xlsx' },
         fileSize: { type: Number, default: 0 },

@@ -352,29 +352,27 @@ export const getWholesaleStats = asyncHandler(async (req, res) => {
     const [
         retailOnlyVendors,
         wholesaleOnlyVendors,
-        hybridVendors,
+        retailAndWholesaleVendors,
         wholesaleProducts,
         totalProducts,
         orderTypeAgg,
         bulkRevenueAgg,
         topBulkProducts,
     ] = await Promise.all([
-        // Legacy vendors have no sellingChannels sub-document, so retail is
-        // matched as "not explicitly false" to keep historical data counted.
         Vendor.countDocuments({
             ...approvedVendorFilter,
-            'sellingChannels.retail.enabled': { $ne: false },
-            'sellingChannels.wholesale.enabled': { $ne: true },
+            'channels.retail.status': 'active',
+            'channels.wholesale.status': { $ne: 'active' },
         }),
         Vendor.countDocuments({
             ...approvedVendorFilter,
-            'sellingChannels.retail.enabled': false,
-            'sellingChannels.wholesale.enabled': true,
+            'channels.retail.status': { $ne: 'active' },
+            'channels.wholesale.status': 'active',
         }),
         Vendor.countDocuments({
             ...approvedVendorFilter,
-            'sellingChannels.retail.enabled': { $ne: false },
-            'sellingChannels.wholesale.enabled': true,
+            'channels.retail.status': 'active',
+            'channels.wholesale.status': 'active',
         }),
         Product.countDocuments({ isActive: true, wholesaleEnabled: true }),
         Product.countDocuments({ isActive: true }),
@@ -433,8 +431,12 @@ export const getWholesaleStats = asyncHandler(async (req, res) => {
         vendors: {
             retailOnly: retailOnlyVendors,
             wholesaleOnly: wholesaleOnlyVendors,
-            hybrid: hybridVendors,
-            wholesaleCapable: wholesaleOnlyVendors + hybridVendors,
+            // Vendors active on BOTH retail and wholesale. Not a vendor "type" —
+            // there is no hybrid vendor type in the channel model.
+            retailAndWholesale: retailAndWholesaleVendors,
+            hybrid: retailAndWholesaleVendors, // deprecated alias, kept for existing admin UI
+
+            wholesaleCapable: wholesaleOnlyVendors + retailAndWholesaleVendors,
         },
         products: {
             wholesaleProducts,
@@ -516,11 +518,11 @@ export const getQuickCommerceStats = asyncHandler(async (req, res) => {
         qcDailySeries(rangeMatch, timezone),
         Vendor.countDocuments({
             status: 'approved',
-            'sellingChannels.quickCommerce.enabled': true,
+            'channels.quickCommerce.status': 'active',
         }),
         Vendor.countDocuments({
             status: 'approved',
-            'sellingChannels.quickCommerce.enabled': true,
+            'channels.quickCommerce.status': 'active',
             'quickCommerceProfile.availabilityStatus': { $in: ['open', 'busy'] },
         }),
         Product.countDocuments({ isActive: true, quickCommerceEnabled: true }),

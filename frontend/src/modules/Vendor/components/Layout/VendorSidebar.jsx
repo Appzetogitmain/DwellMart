@@ -29,6 +29,8 @@ import {
 import { MdCurrencyRupee } from "react-icons/md";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace, withWorkspace, WORKSPACE_LABELS } from '../../hooks/useVendorWorkspace';
+import { VENDOR_MULTI_CHANNEL_ENABLED } from '../../../../shared/config/vendorChannels';
 
 // Icon mapping for menu items
 const iconMap = {
@@ -53,6 +55,7 @@ const iconMap = {
   "Quick Commerce": FiZap,
   Analytics: FiBarChart2,
   Earnings: MdCurrencyRupee,
+  Channels: FiZap,
   Settings: FiSettings,
   Profile: FiUser,
 };
@@ -91,11 +94,23 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const { vendor } = useVendorAuthStore();
   const [expandedItems, setExpandedItems] = useState({});
   const [isMobile, setIsMobile] = useState(false);
+  const { workspace } = useVendorWorkspace();
 
   // Derive capability-driven menu from vendorType
-  const vendorType = vendor?.vendorType ?? 'retail';
+  const vendorType = VENDOR_MULTI_CHANNEL_ENABLED
+    ? (workspace ?? vendor?.activeWorkspaces?.[0] ?? 'retail')
+    : (vendor?.vendorType ?? 'retail');
   const caps = getVendorCapabilities(vendorType);
-  const activeMenu = caps?.menu ?? [];
+  const activeMenu = (caps?.menu ?? []).filter((item) => {
+    if (item.title === 'Product Reviews') return caps.features?.reviews === true;
+    if (item.title === 'Return Requests') return caps.features?.returns === true;
+    if (item.title === 'Customers') return caps.features?.customers === true;
+    if (item.title === 'Shipping Management') return vendorType === 'retail';
+    return true;
+  });
+  if (vendorType === 'quick_commerce') {
+    activeMenu.splice(1, 0, { title: 'Quick Commerce', route: '/vendor/quick-commerce', icon: 'Quick Commerce' });
+  }
   const vendorTypeLabel = VENDOR_TYPE_LABELS[vendorType] ?? 'Retail';
 
   // Check if mobile on mount and resize
@@ -169,7 +184,7 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
         };
       });
     }
-    navigate(route);
+    navigate(withWorkspace(route, workspace));
     if (window.innerWidth < 1024) {
       onClose();
     }
@@ -278,11 +293,11 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
               <p className="text-xs text-slate-400 truncate">
                 {vendor?.email || "vendor@example.com"}
               </p>
-              {/* vendorType badge — read-only business identity */}
+              {/* Current operational workspace; legacy vendorType is not authorization. */}
               <span
                 style={{ fontSize: '10px' }}
                 className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary-600/30 text-primary-300 font-medium tracking-wide uppercase">
-                {vendorTypeLabel}
+                {workspace ? WORKSPACE_LABELS[workspace] : vendorTypeLabel}
               </span>
             </div>
           </div>

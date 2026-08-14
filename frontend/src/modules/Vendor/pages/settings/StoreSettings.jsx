@@ -8,6 +8,7 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { uploadVendorImage } from "../../services/vendorService";
 import QuickCommerceSettingsForm from "../../components/QuickCommerceSettingsForm";
 import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
 import toast from "react-hot-toast";
 
 /**
@@ -31,7 +32,8 @@ const SECTION_ICONS = {
 const StoreSettings = () => {
   const { vendor, updateProfile } = useVendorAuthStore();
 
-  const vendorType = vendor?.vendorType ?? "retail";
+  const { workspace } = useVendorWorkspace();
+  const vendorType = workspace ?? vendor?.activeWorkspaces?.[0] ?? "retail";
   const vendorTypeLabel = VENDOR_TYPE_LABELS[vendorType] ?? "Retail";
   const caps = getVendorCapabilities(vendorType);
 

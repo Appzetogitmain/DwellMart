@@ -16,14 +16,14 @@ import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences
 
 const isVendorWholesaleEnabled = async (vendorId) => {
     if (!vendorId) return false;
-    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
-    return vendor?.sellingChannels?.wholesale?.enabled === true;
+    const vendor = await Vendor.findById(vendorId).select('channels.wholesale.status').lean();
+    return vendor?.channels?.wholesale?.status === 'active';
 };
 
 const isVendorQuickCommerceEnabled = async (vendorId) => {
     if (!vendorId) return false;
-    const vendor = await Vendor.findById(vendorId).select('sellingChannels').lean();
-    return vendor?.sellingChannels?.quickCommerce?.enabled === true;
+    const vendor = await Vendor.findById(vendorId).select('channels.quickCommerce.status').lean();
+    return vendor?.channels?.quickCommerce?.status === 'active';
 };
 
 /** Which experience a category belongs to, for cross-tree validation. */

@@ -25,6 +25,7 @@ export const VENDOR_TYPE_LABELS = {
 };
 
 export const UNIFIED_VENDOR_MENU = [
+    { title: 'Business Overview',    route: '/vendor/business-overview',  icon: 'Analytics' },
     { title: 'Dashboard',            route: '/vendor/dashboard',          icon: 'Dashboard' },
     {
         title: 'Products',
@@ -46,6 +47,7 @@ export const UNIFIED_VENDOR_MENU = [
     { title: 'Analytics',            route: '/vendor/analytics',         icon: 'Analytics' },
     { title: 'Earnings',             route: '/vendor/earnings',          icon: 'Earnings' },
     { title: 'Store Settings',       route: '/vendor/settings',          icon: 'Settings' },
+    { title: 'Selling Channels',     route: '/vendor/channels',          icon: 'Channels' },
     { title: 'Profile',              route: '/vendor/profile',           icon: 'Profile' },
 ];
 

@@ -15,6 +15,7 @@ import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as pickupLocationController from '../controllers/pickupLocation.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
+import * as businessOverviewController from '../controllers/businessOverview.controller.js';
 import { getTaxPricingRules } from '../../admin/controllers/catalog.controller.js';
 import {
     downloadExcelTemplate,
@@ -57,6 +58,7 @@ import {
 } from '../validators/product.validator.js';
 import { uploadSingle, uploadMultiple, uploadDocumentSingle } from '../../../middlewares/upload.js';
 import { productCapabilityGuard } from '../middleware/productCapabilityGuard.js';
+import { requireReadableChannel, requireWritableChannel, requireSpecificChannel } from '../../../middlewares/vendorChannel.js';
 
 const router = Router();
 const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus, checkSubscription];
@@ -107,7 +109,10 @@ router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
 router.put('/auth/selling-channels', ...vendorAuth, validate(updateSellingChannelsSchema), authController.updateSellingChannels);
-router.put('/quick-commerce/settings', ...vendorAuth, validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
+router.get('/auth/channels', ...vendorAuthOnly, authController.getChannels);
+router.post('/auth/channels/:channel/apply', ...vendorAuth, authController.applyForChannel);
+router.delete('/auth/channels/:channel/request', ...vendorAuth, authController.withdrawChannelRequest);
+router.put('/quick-commerce/settings', ...vendorAuth, ...requireSpecificChannel('quick_commerce', { write: true }), validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
 router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
 router.delete('/auth/account', ...vendorAuthOnly, authController.deleteAccount);
@@ -116,37 +121,41 @@ router.delete('/auth/account', ...vendorAuthOnly, authController.deleteAccount);
 router.get('/subscription', ...vendorAuthOnly, subscriptionController.getCurrentSubscription);
 router.get('/subscription/plans', ...vendorAuthOnly, subscriptionController.getAvailablePlans);
 router.post('/subscription/change-plan', ...vendorAuthOnly, validate(changePlanSchema), subscriptionController.changePlan);
+router.get('/business-overview', ...vendorAuth, businessOverviewController.getBusinessOverview);
 
 // Products
-router.get('/products', ...vendorAuth, productController.getVendorProducts);
-router.get('/products/tax-pricing-rules', ...vendorAuth, getTaxPricingRules);
-router.get('/products/template/excel', ...vendorAuth, downloadExcelTemplate);
-router.get('/products/template/csv', ...vendorAuth, downloadCsvTemplate);
-router.post('/products/bulk-upload/validate', ...vendorAuth, uploadMiddleware, validateUpload);
-router.post('/products/bulk-upload/process', ...vendorAuth, productCapabilityGuard, processUpload);
-router.get('/products/bulk-upload/job/:jobId', ...vendorAuth, checkJobStatus);
-router.post('/products/bulk-upload/job/:jobId/cancel', ...vendorAuth, cancelJobHandler);
-router.get('/products/bulk-upload/history', ...vendorAuth, getImportHistory);
-router.get('/products/export', ...vendorAuth, exportProducts);
-router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
-router.post('/products', ...vendorAuth, productCapabilityGuard, validate(createProductSchema), productController.createProduct);
-router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productCapabilityGuard, validate(updateProductSchema), productController.updateProduct);
-router.delete('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.deleteProduct);
-router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
+router.get('/products', ...vendorAuth, ...requireReadableChannel, productController.getVendorProducts);
+router.get('/products/tax-pricing-rules', ...vendorAuth, ...requireReadableChannel, getTaxPricingRules);
+router.get('/products/template/excel', ...vendorAuth, ...requireReadableChannel, downloadExcelTemplate);
+router.get('/products/template/csv', ...vendorAuth, ...requireReadableChannel, downloadCsvTemplate);
+router.post('/products/bulk-upload/validate', ...vendorAuth, ...requireWritableChannel, uploadMiddleware, validateUpload);
+router.post('/products/bulk-upload/process', ...vendorAuth, ...requireWritableChannel, productCapabilityGuard, processUpload);
+router.get('/products/bulk-upload/job/:jobId', ...vendorAuth, ...requireReadableChannel, checkJobStatus);
+router.post('/products/bulk-upload/job/:jobId/cancel', ...vendorAuth, ...requireReadableChannel, cancelJobHandler);
+router.get('/products/bulk-upload/history', ...vendorAuth, ...requireReadableChannel, getImportHistory);
+router.get('/products/export', ...vendorAuth, ...requireReadableChannel, exportProducts);
+router.get('/products/:id', ...vendorAuth, ...requireReadableChannel, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
+router.post('/products', ...vendorAuth, ...requireWritableChannel, productCapabilityGuard, validate(createProductSchema), productController.createProduct);
+router.put('/products/:id', ...vendorAuth, ...requireWritableChannel, validate(productIdParamSchema, 'params'), productCapabilityGuard, validate(updateProductSchema), productController.updateProduct);
+router.patch('/products/:id/channels/:channel', ...vendorAuth, ...requireWritableChannel, productController.updateProductChannel);
+router.delete('/products/:id', ...vendorAuth, ...requireWritableChannel, validate(productIdParamSchema, 'params'), productController.deleteProduct);
+router.patch('/stock/:productId', ...vendorAuth, ...requireWritableChannel, productController.updateStock);
 
 // Orders
-router.get('/orders', ...vendorAuth, orderController.getVendorOrders);
-router.get('/orders/:id', ...vendorAuth, orderController.getVendorOrderById);
-router.patch('/orders/:id/status', ...vendorAuth, orderController.updateOrderStatus);
-router.patch('/orders/:id/quick-status', ...vendorAuth, validate(vendorQuickCommerceStatusSchema), orderController.updateQuickCommerceOrderStatus);
-router.post('/orders/:id/partial-fulfilment', ...vendorAuth, orderController.markPartialFulfilment);
-router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, orderController.acknowledgeQuickCommerceOrder);
-router.get('/quick-commerce/dashboard', ...vendorAuth, orderController.getQuickCommerceVendorDashboard);
-router.get('/quick-commerce/unacknowledged-alerts', ...vendorAuth, orderController.getUnacknowledgedVendorAlerts);
+router.get('/orders', ...vendorAuth, ...requireReadableChannel, orderController.getVendorOrders);
+router.get('/orders/:id', ...vendorAuth, ...requireReadableChannel, orderController.getVendorOrderById);
+// Paused channels cannot accept new orders or publish products, but may finish
+// already accepted work. These transitions therefore require readable access.
+router.patch('/orders/:id/status', ...vendorAuth, ...requireReadableChannel, orderController.updateOrderStatus);
+router.patch('/orders/:id/quick-status', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), validate(vendorQuickCommerceStatusSchema), orderController.updateQuickCommerceOrderStatus);
+router.post('/orders/:id/partial-fulfilment', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.markPartialFulfilment);
+router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.acknowledgeQuickCommerceOrder);
+router.get('/quick-commerce/dashboard', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.getQuickCommerceVendorDashboard);
+router.get('/quick-commerce/unacknowledged-alerts', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.getUnacknowledgedVendorAlerts);
 
 // Customers
-router.get('/customers', ...vendorAuth, customerController.getVendorCustomers);
-router.get('/customers/:id', ...vendorAuth, customerController.getVendorCustomerById);
+router.get('/customers', ...vendorAuth, ...requireReadableChannel, customerController.getVendorCustomers);
+router.get('/customers/:id', ...vendorAuth, ...requireReadableChannel, customerController.getVendorCustomerById);
 
 // Chat
 router.get('/chat/threads', ...vendorAuth, chatController.getVendorChatThreads);
@@ -167,39 +176,44 @@ router.put('/notifications/read-all', ...vendorAuth, notificationController.mark
 router.delete('/notifications/:id', ...vendorAuth, notificationController.deleteVendorNotification);
 
 // Inventory reports
-router.get('/inventory/reports', ...vendorAuth, inventoryController.getInventoryReport);
+router.get('/inventory/reports', ...vendorAuth, ...requireReadableChannel, inventoryController.getInventoryReport);
 
-// Performance metrics
-router.get('/performance/metrics', ...vendorAuth, performanceController.getPerformanceMetrics);
+// Performance metrics — channel-scoped: metrics aggregate per-channel data and
+// should be scoped to the active workspace for accuracy.
+router.get('/performance/metrics', ...vendorAuth, ...requireReadableChannel, performanceController.getPerformanceMetrics);
 
 // Analytics
-router.get('/analytics/overview', ...vendorAuth, analyticsController.getAnalyticsOverview);
+router.get('/analytics/overview', ...vendorAuth, ...requireReadableChannel, analyticsController.getAnalyticsOverview);
 
-// Earnings
+// Earnings — account-wide (spans all channels; no workspace scope needed)
 router.get('/earnings', ...vendorAuth, orderController.getEarnings);
 router.post('/earnings/request-payout', ...vendorAuth, orderController.requestPayout);
 
-// Return requests
-router.get('/return-requests', ...vendorAuth, returnController.getVendorReturnRequests);
-router.get('/return-requests/:id', ...vendorAuth, returnController.getVendorReturnRequestById);
-router.patch('/return-requests/:id/status', ...vendorAuth, returnController.updateVendorReturnRequestStatus);
+// Return requests — channel-scoped: returns are tied to the fulfillment channel.
+// A retail return should not be visible in a wholesale workspace and vice versa.
+router.get('/return-requests', ...vendorAuth, ...requireReadableChannel, returnController.getVendorReturnRequests);
+router.get('/return-requests/:id', ...vendorAuth, ...requireReadableChannel, returnController.getVendorReturnRequestById);
+router.patch('/return-requests/:id/status', ...vendorAuth, ...requireReadableChannel, returnController.updateVendorReturnRequestStatus);
 
-// Product reviews
-router.get('/reviews', ...vendorAuth, reviewController.getVendorReviews);
-router.patch('/reviews/:id/status', ...vendorAuth, reviewController.updateVendorReviewStatus);
-router.patch('/reviews/:id/response', ...vendorAuth, reviewController.addVendorReviewResponse);
+// Product reviews — channel-scoped: reviews are product-level and belong to
+// the channel through which the product was purchased.
+router.get('/reviews', ...vendorAuth, ...requireReadableChannel, reviewController.getVendorReviews);
+router.patch('/reviews/:id/status', ...vendorAuth, ...requireReadableChannel, reviewController.updateVendorReviewStatus);
+router.patch('/reviews/:id/response', ...vendorAuth, ...requireReadableChannel, reviewController.addVendorReviewResponse);
 
 
 
-// Shipping management
-router.get('/shipping/zones', ...vendorAuth, shippingController.getShippingZones);
-router.post('/shipping/zones', ...vendorAuth, shippingController.createShippingZone);
-router.put('/shipping/zones/:id', ...vendorAuth, shippingController.updateShippingZone);
-router.delete('/shipping/zones/:id', ...vendorAuth, shippingController.deleteShippingZone);
-router.get('/shipping/rates', ...vendorAuth, shippingController.getShippingRates);
-router.post('/shipping/rates', ...vendorAuth, shippingController.createShippingRate);
-router.put('/shipping/rates/:id', ...vendorAuth, shippingController.updateShippingRate);
-router.delete('/shipping/rates/:id', ...vendorAuth, shippingController.deleteShippingRate);
+// Shipping management — channel-scoped: shipping zones and rates are specific
+// to a fulfillment channel. A retail shipping zone should not be visible or
+// editable from a wholesale workspace context.
+router.get('/shipping/zones', ...vendorAuth, ...requireReadableChannel, shippingController.getShippingZones);
+router.post('/shipping/zones', ...vendorAuth, ...requireWritableChannel, shippingController.createShippingZone);
+router.put('/shipping/zones/:id', ...vendorAuth, ...requireWritableChannel, shippingController.updateShippingZone);
+router.delete('/shipping/zones/:id', ...vendorAuth, ...requireWritableChannel, shippingController.deleteShippingZone);
+router.get('/shipping/rates', ...vendorAuth, ...requireReadableChannel, shippingController.getShippingRates);
+router.post('/shipping/rates', ...vendorAuth, ...requireWritableChannel, shippingController.createShippingRate);
+router.put('/shipping/rates/:id', ...vendorAuth, ...requireWritableChannel, shippingController.updateShippingRate);
+router.delete('/shipping/rates/:id', ...vendorAuth, ...requireWritableChannel, shippingController.deleteShippingRate);
 
 // Pickup locations
 // Uses vendorAuthOnly for reads so an expired-subscription vendor can still see

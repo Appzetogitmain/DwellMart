@@ -14,10 +14,22 @@ export const vendorIdParamSchema = Joi.object({
     id: objectId.required(),
 });
 
+export const vendorChannelParamSchema = Joi.object({
+    id: objectId.required(),
+    channel: Joi.string().valid('retail', 'wholesale', 'quick_commerce', 'quickCommerce').required(),
+});
+
 export const vendorStatusUpdateSchema = Joi.object({
     status: Joi.string().valid('approved', 'suspended', 'rejected').required(),
     reason: Joi.string().trim().allow('').max(500).optional(),
     vendorType: Joi.string().valid('quick_commerce', 'retail', 'wholesale').optional(),
+    approvedChannels: Joi.array().items(Joi.string().valid('quick_commerce', 'retail', 'wholesale')).unique().min(1).optional(),
+});
+
+export const vendorChannelStatusUpdateSchema = Joi.object({
+    status: Joi.string().valid('active', 'paused', 'rejected', 'disabled').required(),
+    reason: Joi.string().trim().allow('').max(500).optional(),
+    expectedRevision: Joi.number().integer().min(0).optional(),
 });
 
 export const vendorCommissionUpdateSchema = Joi.object({
@@ -40,4 +52,3 @@ export const vendorCommissionsQuerySchema = Joi.object({
     limit: Joi.number().integer().min(1).max(200).optional(),
     status: Joi.string().valid('all', 'pending', 'paid', 'cancelled').optional(),
 });
-

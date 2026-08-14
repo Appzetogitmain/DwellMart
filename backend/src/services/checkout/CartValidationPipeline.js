@@ -30,8 +30,9 @@ import {
     resolveEffectiveQCSettings,
 } from '../quickCommerce.service.js';
 import { resolvePriceForQuantity, resolveVariantSelection } from '../pricingEngine.service.js';
-import { isWholesaleMarketplaceEnabled } from '../featureFlags.service.js';
+import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../featureFlags.service.js';
 import { isVendorEligibleForOrders, getVendorIneligibleReason } from '../../utils/vendorEligibility.js';
+import { channelAuthorityMode, legacyChannelsForVendor } from '../vendorChannel.service.js';
 
 const FULFILLMENT_TYPES = ['quick_commerce', 'retail', 'wholesale'];
 
@@ -100,20 +101,21 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
 
     // ── 1. Batch-fetch Products & Vendors ──────────────────────────────────
     const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
-    const [rawProducts, wholesaleEnabled] = await Promise.all([
+    const [rawProducts, wholesaleEnabled, quickCommerceEnabled] = await Promise.all([
         Product.find({ _id: { $in: productIds } })
             .select('_id name isActive isVisible stock stockQuantity lowStockThreshold vendorId '
                 + 'quickCommerceEnabled retailEnabled wholesaleEnabled quickCommerce wholesale '
                 + 'variants price taxRate taxIncluded')
             .lean(),
         isWholesaleMarketplaceEnabled(),
+        isQuickCommerceEnabled(),
     ]);
 
     const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 
     const vendorIds = [...new Set(rawProducts.map((p) => p.vendorId ? new mongoose.Types.ObjectId(String(p.vendorId)) : null).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
-        .select('_id storeName status isActive vendorType sellingChannels quickCommerceProfile')
+        .select('_id storeName status isActive channels quickCommerceProfile')
         .lean();
     const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
 
@@ -160,18 +162,40 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
         if (ft === 'wholesale' && !wholesaleEnabled) {
             errors.push('Wholesale Marketplace is currently disabled.');
         }
+        // Platform kill switches must apply symmetrically. Quick Commerce was
+        // enforced on the legacy order route but not here, so turning the
+        // channel off platform-wide did not stop checkout through the session
+        // path the customer UI actually uses.
+        if (ft === 'quick_commerce' && !quickCommerceEnabled) {
+            errors.push('Quick Commerce is currently disabled.');
+        }
 
         // ── Vendor ──
         const vendor = vendorMap.get(String(product.vendorId || ''));
         if (!isVendorEligibleForOrders(vendor)) {
             errors.push(getVendorIneligibleReason(vendor, productName));
         } else {
+            // ── Defect 6: Honor authority mode for rollback safety ────────────
+            // In legacy mode, vendor channel authority is determined by
+            // sellingChannels/vendorType rather than the canonical channels object.
+            // This makes VENDOR_CHANNEL_AUTHORITY_MODE=legacy actually restore
+            // the pre-migration checkout behavior instead of remaining canonical.
+            const authorityMode = channelAuthorityMode();
+            const channelPath = ft === 'quick_commerce' ? 'quickCommerce' : ft;
+            let vendorChannelActive;
+            if (authorityMode === 'legacy') {
+                // Legacy mode: vendor has access to a channel if it's in their
+                // sellingChannels or their vendorType matches.
+                vendorChannelActive = legacyChannelsForVendor(vendor).includes(ft);
+            } else {
+                vendorChannelActive = vendor?.channels?.[channelPath]?.status === 'active';
+            }
+            if (!vendorChannelActive) {
+                errors.push(`${productName}: seller is not accepting new ${ft.replace('_', ' ')} orders.`);
+            }
 
             // QC-specific vendor checks
             if (ft === 'quick_commerce') {
-                if (vendor.sellingChannels?.quickCommerce?.enabled !== true) {
-                    errors.push(`${productName}: seller is not available on Express Delivery.`);
-                }
                 const availability = resolveVendorAvailability(vendor);
                 if (!availability.isOrderable) {
                     errors.push(`${productName}: seller is not accepting orders right now (${availability.reason}).`);
@@ -215,7 +239,7 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
         // ── Wholesale MOQ ──
         if (ft === 'wholesale') {
             const pricing = resolvePriceForQuantity(product, Number(product.price), quantity, {
-                vendorWholesaleEnabled: wholesaleEnabled && vendor?.sellingChannels?.wholesale?.enabled === true,
+                vendorWholesaleEnabled: wholesaleEnabled && vendor?.channels?.wholesale?.status === 'active',
             });
             if (!pricing.eligible) {
                 errors.push(`${productName} requires a minimum order of ${pricing.minimumQuantity} units (requested ${quantity}).`);

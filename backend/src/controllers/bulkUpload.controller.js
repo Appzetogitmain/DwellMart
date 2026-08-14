@@ -110,6 +110,9 @@ export const processUpload = asyncHandler(async (req, res) => {
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new ApiError(400, 'No product rows provided for import.');
     }
+    if (req.vendorWorkspace === 'quick_commerce') {
+        throw new ApiError(400, 'Quick Commerce bulk import requires category mapping and is not available yet. Use the product form.');
+    }
 
     const jobData = await startBulkUploadJob({
         validatedRows: rows,
@@ -119,6 +122,7 @@ export const processUpload = asyncHandler(async (req, res) => {
         autoCreateBrands: Boolean(autoCreateBrands),
         fileName: fileName || 'bulk_products_import.xlsx',
         fileSize: fileSize || 0,
+        workspace: req.vendorWorkspace || null,
     });
 
     res.status(202).json(new ApiResponse(202, jobData, 'Bulk upload background job started.'));
@@ -129,10 +133,16 @@ export const processUpload = asyncHandler(async (req, res) => {
  */
 export const checkJobStatus = asyncHandler(async (req, res) => {
     const { jobId } = req.params;
-    // Ownership was not checked at all: any authenticated user could read any
-    // vendor's import progress by guessing or observing a job id.
-    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy').lean();
+    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy workspace').lean();
     assertJobAccess(req.user, jobRecord);
+
+    // Defect 9: Validate workspace ownership — prevent cross-workspace job access.
+    // A vendor should not be able to read a Retail import job while holding a
+    // Wholesale workspace. Jobs without a workspace (legacy/admin imports) are
+    // accessible from any workspace for backward compatibility.
+    if (req.vendorWorkspace && jobRecord?.workspace && jobRecord.workspace !== req.vendorWorkspace) {
+        throw new ApiError(403, `Job ${jobId} belongs to workspace '${jobRecord.workspace}', not '${req.vendorWorkspace}'.`);
+    }
 
     const progress = await getJobProgress(jobId);
     res.status(200).json(new ApiResponse(200, progress, 'Job progress details.'));
@@ -143,10 +153,15 @@ export const checkJobStatus = asyncHandler(async (req, res) => {
  */
 export const cancelJobHandler = asyncHandler(async (req, res) => {
     const { jobId } = req.params;
-    // Same gap as checkJobStatus, but destructive: any authenticated user could
-    // cancel another vendor's running import.
-    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy').lean();
+    const jobRecord = await BulkImportHistory.findOne({ jobId }).select('vendorId uploadedBy workspace').lean();
     assertJobAccess(req.user, jobRecord);
+
+    // Defect 9: Validate workspace ownership before allowing destructive cancel.
+    // A vendor must not cancel another workspace's import (e.g., Retail job
+    // visible from a Wholesale workspace would be a cross-workspace mutation).
+    if (req.vendorWorkspace && jobRecord?.workspace && jobRecord.workspace !== req.vendorWorkspace) {
+        throw new ApiError(403, `Job ${jobId} belongs to workspace '${jobRecord.workspace}', not '${req.vendorWorkspace}'. Cannot cancel.`);
+    }
 
     const result = await cancelJob(jobId);
     res.status(200).json(new ApiResponse(200, result, 'Job cancellation requested.'));

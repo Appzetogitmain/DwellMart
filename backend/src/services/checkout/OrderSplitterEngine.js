@@ -184,7 +184,7 @@ const computeGroupPricing = async (
     const pricedItems = [];
 
     const vendorWholesaleEnabled =
-        wholesaleEnabled && vendorDoc?.sellingChannels?.wholesale?.enabled === true;
+        wholesaleEnabled && vendorDoc?.channels?.wholesale?.status === 'active';
 
     for (const item of vendorItems) {
         const productId = String(item.productId || item.id || '');
@@ -326,7 +326,7 @@ export const splitAndCreateOrders = async ({
 
     const vendorIds = [...new Set(rawProducts.map((p) => p.vendorId ? new mongoose.Types.ObjectId(String(p.vendorId)) : null).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
-        .select('_id storeName sellingChannels quickCommerceProfile status isActive freeShippingThreshold defaultShippingRate shippingEnabled')
+        .select('_id storeName channels quickCommerceProfile status isActive freeShippingThreshold defaultShippingRate shippingEnabled')
         .lean();
     const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
 
@@ -644,7 +644,7 @@ export const calculateCheckoutSessionSummary = async ({
 
     const vendorIds = [...new Set(rawProducts.map((p) => String(p.vendorId || '')).filter(Boolean))];
     const rawVendors = await Vendor.find({ _id: { $in: vendorIds } })
-        .select('_id storeName sellingChannels quickCommerceProfile status isActive freeShippingThreshold defaultShippingRate shippingEnabled')
+        .select('_id storeName channels quickCommerceProfile status isActive freeShippingThreshold defaultShippingRate shippingEnabled')
         .lean();
     const vendorMap = new Map(rawVendors.map((v) => [String(v._id), v]));
 

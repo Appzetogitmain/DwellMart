@@ -18,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders, getVendorCommissions, getVendorDocuments, updateVendorQuickCommerce } from "../../services/adminService";
+import { getAllOrders, getVendorCommissions, getVendorDocuments, updateVendorQuickCommerce, updateVendorChannelStatus } from "../../services/adminService";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
@@ -33,14 +33,23 @@ const VendorDetail = () => {
   const { getVendor, updateVendorStatus, updateCommissionRate } =
     useVendorStore();
   const location = useLocation();
-  const hideActions = new URLSearchParams(location.search).get("hideActions") === "true";
+  const searchParams = new URLSearchParams(location.search);
+  const hideActions = searchParams.get("hideActions") === "true";
+  const initialTab = searchParams.get("tab") || "overview";
 
   const [vendor, setVendor] = useState(null);
   const [vendorOrders, setVendorOrders] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [additionalDocuments, setAdditionalDocuments] = useState([]);
   const [earningsSummary, setEarningsSummary] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tabParam = new URLSearchParams(location.search).get("tab");
+    if (tabParam && ["overview", "channels", "orders", "commissions", "settings"].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
   const { settings, initialize: initializeSettings } = useSettingsStore();
   const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
   const [isSavingQuickCommerce, setIsSavingQuickCommerce] = useState(false);
@@ -160,8 +169,44 @@ const VendorDetail = () => {
       }
     : null;
 
-  const handleStatusUpdate = async (newStatus) => {
-    const success = await updateVendorStatus(vendor.id, newStatus);
+  // Per-channel approval: the admin decides which requested channels to grant.
+  // Approval used to send every requested channel with no way to approve a
+  // subset, and any channel not granted stayed 'requested' forever.
+  const [isApprovalOpen, setIsApprovalOpen] = useState(false);
+  const [approvalSelection, setApprovalSelection] = useState([]);
+
+  const requestedChannelList = ['retail', 'wholesale', 'quick_commerce'].filter((channel) => {
+    const path = channel === 'quick_commerce' ? 'quickCommerce' : channel;
+    return vendor?.channels?.[path]?.status === 'requested';
+  });
+
+  const openApprovalDialog = () => {
+    setApprovalSelection(requestedChannelList);
+    setIsApprovalOpen(true);
+  };
+
+  const toggleApprovalChannel = (channel) => {
+    setApprovalSelection((current) => (
+      current.includes(channel) ? current.filter((c) => c !== channel) : [...current, channel]
+    ));
+  };
+
+  const handleStatusUpdate = async (newStatus, approvedChannelsOverride = null) => {
+    const requestedChannels = newStatus === 'approved' ? [
+      vendor.channels?.retail?.status === 'requested' && 'retail',
+      vendor.channels?.wholesale?.status === 'requested' && 'wholesale',
+      vendor.channels?.quickCommerce?.status === 'requested' && 'quick_commerce',
+    ].filter(Boolean) : null;
+    // A subset may be chosen at approval time. The server rejects every
+    // requested channel not in this list, with the supplied reason, so a
+    // partial approval is an answer rather than a request left pending.
+    const selected = newStatus === 'approved'
+      ? (approvedChannelsOverride ?? requestedChannels)
+      : null;
+    const success = await updateVendorStatus(
+      vendor.id, newStatus, '', null,
+      selected?.length ? selected : (newStatus === 'approved' ? [vendor.vendorType || 'retail'] : null)
+    );
     if (success) {
       setVendor({ ...vendor, status: newStatus });
       toast.success(`Vendor status updated to ${newStatus}`);
@@ -170,13 +215,33 @@ const VendorDetail = () => {
     }
   };
 
-  const vendorQuickCommerceEnabled = vendor?.sellingChannels?.quickCommerce?.enabled === true;
+  const handleChannelStatus = async (channel, status) => {
+    const reason = ['rejected', 'paused', 'disabled'].includes(status)
+      ? (window.prompt(`Reason for ${status} (optional):`) || '')
+      : '';
+    try {
+      const response = await updateVendorChannelStatus(vendor.id, channel, {
+        status, reason, expectedRevision: vendor.channelsRevision,
+      });
+      setVendor(response?.data || response);
+      toast.success(`${channel.replace('_', ' ')} is now ${status}`);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || 'Channel update failed');
+    }
+  };
+
+  const vendorQuickCommerceEnabled = vendor?.channels?.quickCommerce?.status === 'active';
 
   const handleToggleQuickCommerce = async () => {
     const nextEnabled = !vendorQuickCommerceEnabled;
     setIsSavingQuickCommerce(true);
     try {
-      const response = await updateVendorQuickCommerce(vendor.id, { enabled: nextEnabled });
+      // expectedRevision is mandatory server-side: omitting it used to skip the
+      // concurrency check entirely, letting two admins clobber each other.
+      const response = await updateVendorQuickCommerce(vendor.id, {
+        enabled: nextEnabled,
+        expectedRevision: vendor.channelsRevision,
+      });
       const data = response?.data ?? response;
       setVendor((prev) => ({
         ...prev,
@@ -360,7 +425,7 @@ const VendorDetail = () => {
           </Badge>
           {!hideActions && vendor.status === "pending" && (
             <button
-              onClick={() => handleStatusUpdate("approved")}
+              onClick={openApprovalDialog}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
               <FiCheckCircle />
               Approve
@@ -380,7 +445,7 @@ const VendorDetail = () => {
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="flex border-b border-gray-200">
-          {["overview", "orders", "commissions", "settings"].map((tab) => (
+          {["overview", "channels", "orders", "commissions", "settings"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -395,6 +460,30 @@ const VendorDetail = () => {
         </div>
 
         <div className="p-6">
+          {activeTab === "channels" && (
+            <div className="space-y-4">
+              <div><h2 className="text-lg font-bold text-gray-800">Channel approvals</h2><p className="text-sm text-gray-500">Each transition is independent and revision-protected.</p></div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['retail', 'retail', 'Retail Marketplace'],
+                  ['wholesale', 'wholesale', 'Wholesale Marketplace'],
+                  ['quick_commerce', 'quickCommerce', 'Quick Commerce'],
+                ].map(([channel, path, label]) => {
+                  const state = vendor.channels?.[path] || { status: 'disabled' };
+                  return <article key={channel} className="rounded-xl border border-gray-200 p-4">
+                    <div className="flex items-center justify-between"><h3 className="font-semibold text-gray-900">{label}</h3><Badge variant={state.status === 'active' ? 'success' : state.status === 'requested' ? 'warning' : 'neutral'}>{state.status}</Badge></div>
+                    {state.reason && <p className="mt-2 text-xs text-red-600">{state.reason}</p>}
+                    {!hideActions && vendor.status === 'approved' && <div className="mt-4 flex flex-wrap gap-2">
+                      {['requested', 'paused'].includes(state.status) && <button onClick={() => handleChannelStatus(channel, 'active')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white">Activate</button>}
+                      {state.status === 'active' && <button onClick={() => handleChannelStatus(channel, 'paused')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white">Pause</button>}
+                      {state.status === 'requested' && <button onClick={() => handleChannelStatus(channel, 'rejected')} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white">Reject</button>}
+                      {state.status === 'paused' && <button onClick={() => handleChannelStatus(channel, 'disabled')} className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700">Disable</button>}
+                    </div>}
+                  </article>;
+                })}
+              </div>
+            </div>
+          )}
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="space-y-6">
@@ -794,6 +883,57 @@ const VendorDetail = () => {
           )}
         </div>
       </div>
+
+      {isApprovalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Approve vendor account</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Choose which requested channels to approve. Any requested channel left
+              unchecked will be rejected and the vendor notified.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              {requestedChannelList.length === 0 && (
+                <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                  This vendor has no pending channel requests. Approve the account, then
+                  activate a channel from Channel Management.
+                </p>
+              )}
+              {requestedChannelList.map((channel) => (
+                <label key={channel} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={approvalSelection.includes(channel)}
+                    onChange={() => toggleApprovalChannel(channel)}
+                    className="h-4 w-4"
+                  />
+                  <span className="font-medium text-gray-900 capitalize">
+                    {channel.replace('_', ' ')}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setIsApprovalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button
+                disabled={requestedChannelList.length > 0 && approvalSelection.length === 0}
+                onClick={async () => {
+                  setIsApprovalOpen(false);
+                  await handleStatusUpdate('approved', approvalSelection);
+                }}
+                className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

@@ -2,6 +2,7 @@ import axios from 'axios';
 import { toastService } from './toastService';
 import { API_BASE_URL } from './constants';
 import { getExperience } from './experience';
+import { VENDOR_MULTI_CHANNEL_ENABLED } from '../config/vendorChannels';
 
 const AUTH_SCOPES = {
   admin: {
@@ -125,6 +126,9 @@ const clearScopeAuth = (scope) => {
   localStorage.removeItem(config.accessKey);
   localStorage.removeItem(config.refreshKey);
   localStorage.removeItem(config.persistKey);
+  if (scope === 'vendor' && typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('vendor-last-workspace');
+  }
 };
 
 const shouldAttemptRefresh = (error, scope) => {
@@ -190,6 +194,14 @@ api.interceptors.request.use(
     // ?experience= param on the request always wins.
     if (!config.params?.experience) {
       config.headers['X-Experience'] = getExperience();
+    }
+    // Workspace is URL-authoritative and therefore tab-safe. The header is
+    // only a selector; the backend independently verifies channel authority.
+    if (VENDOR_MULTI_CHANNEL_ENABLED && scope === 'vendor' && typeof window !== 'undefined') {
+      const workspace = new URLSearchParams(window.location.search).get('workspace');
+      if (!config.headers['X-Vendor-Workspace'] && ['retail', 'wholesale', 'quick_commerce'].includes(workspace)) {
+        config.headers['X-Vendor-Workspace'] = workspace;
+      }
     }
     return config;
   },

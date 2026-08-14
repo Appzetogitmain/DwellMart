@@ -8,6 +8,7 @@ import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
 import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
 
 import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from "../../services/vendorService";
 import { getQuickCommerceCategories } from "../../../Admin/services/adminService";
@@ -52,7 +53,8 @@ const ProductForm = () => {
   const isEdit = id && id !== "new";
 
   const vendorId = vendor?.id;
-  const vendorType = vendor?.vendorType ?? "retail";
+  const { workspace } = useVendorWorkspace();
+  const vendorType = workspace ?? vendor?.activeWorkspaces?.[0] ?? "retail";
 
   // ── Capabilities — all section gates come from here ───────────────────────
   const caps = useMemo(() => getVendorCapabilities(vendorType), [vendorType]);
@@ -133,6 +135,16 @@ const ProductForm = () => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+  useEffect(() => {
+    if (isEdit) return;
+    if (workspace === 'wholesale') {
+      setWholesaleState((state) => ({ ...state, retailEnabled: false, wholesaleEnabled: true }));
+    }
+    if (workspace === 'quick_commerce') {
+      setQuickCommerceState((state) => ({ ...state, quickCommerceEnabled: true }));
+    }
+  }, [isEdit, workspace]);
 
   // Load QC categories only when this vendor type allows the QC section
   useEffect(() => {
@@ -441,8 +453,14 @@ const ProductForm = () => {
       if (wholesaleError) { toast.error(wholesaleError); return; }
     }
 
+    const wholesalePayload = sections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {};
+    // Publishing in Wholesale cannot mutate Retail ownership fields.
+    if (workspace === 'wholesale') delete wholesalePayload.retailEnabled;
     const payload = {
       ...formData,
+      ...(isEdit && getById(id)?.__v !== undefined
+        ? { expectedVersion: getById(id).__v }
+        : {}),
       price: parsedPrice,
       originalPrice: parsedOriginalPrice,
       stockQuantity: parsedStockQuantity,
@@ -459,7 +477,7 @@ const ProductForm = () => {
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
       // Only include wholesale/QC payloads if the section is active for this type
-      ...(sections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {}),
+      ...wholesalePayload,
       ...(sections.quickCommerce ? buildQuickCommercePayload(quickCommerceState) : {}),
     };
 

@@ -14,6 +14,7 @@ import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans } from "../services/vendorService";
 import { formatPrice, getPlaceholderImage } from "../../../shared/utils/helpers";
 import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../hooks/useVendorWorkspace';
 import toast from "react-hot-toast";
 import { DashboardPage, StatCard, StatusBadge } from "../../../shared/components/Dashboard";
 import { Button, Card, Badge } from "../../../shared/components/ui";
@@ -39,7 +40,8 @@ const VendorDashboard = () => {
   const [plansLoading, setPlansLoading] = useState(true);
 
   const vendorId = vendor?.id;
-  const vendorType = vendor?.vendorType ?? "retail";
+  const { workspace } = useVendorWorkspace();
+  const vendorType = workspace ?? vendor?.activeWorkspaces?.[0] ?? "retail";
   const caps = useMemo(() => getVendorCapabilities(vendorType), [vendorType]);
   const topProducts = useMemo(() => (Array.isArray(products) ? products.slice(0, 5) : []), [products]);
 
@@ -47,9 +49,7 @@ const VendorDashboard = () => {
     if (!vendorId) return;
 
     // Load products into the product store (reuse if already fetched)
-    if (products.length === 0) {
-      fetchProducts();
-    }
+    fetchProducts();
 
     const loadDashboardData = async () => {
       setIsLoading(true);
@@ -93,7 +93,7 @@ const VendorDashboard = () => {
     };
 
     loadDashboardData();
-  }, [vendorId, fetchProducts, products.length]);
+  }, [vendorId, vendorType, fetchProducts]);
 
   // Sync product counts whenever the product store updates
   useEffect(() => {

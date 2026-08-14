@@ -28,7 +28,8 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     }
   }
 
-  const data = notification.data || {};
+  const rawData = notification.data || {};
+  const data = rawData instanceof Map ? Object.fromEntries(rawData) : (typeof rawData === 'object' && rawData !== null ? rawData : {});
   const type = String(notification.type || data.type || '').toLowerCase();
   const title = String(notification.title || '').toLowerCase();
   const message = String(notification.message || '').toLowerCase();
@@ -50,7 +51,30 @@ export const navigateToNotificationTarget = (notification, navigate, role = 'use
     }
   }
 
-  // 2. COD SETTLEMENT & EARNINGS NOTIFICATIONS
+  // 2. VENDOR & CHANNEL REQUEST NOTIFICATIONS
+  const isVendorNotification =
+    Boolean(data.vendorId || notification.vendorId) ||
+    type.includes('vendor') ||
+    type.includes('channel') ||
+    title.includes('vendor') ||
+    title.includes('channel') ||
+    message.includes('channel application') ||
+    message.includes('selling channel');
+
+  if (isVendorNotification && activeRole === 'admin') {
+    const vendorId = data.vendorId || notification.vendorId;
+    if (vendorId) {
+      const isChannel = Boolean(data.channel) || type.includes('channel') || title.includes('channel') || message.includes('channel');
+      navigate(`/admin/vendors/${vendorId}${isChannel ? '?tab=channels' : ''}`);
+      return;
+    }
+    if (title.includes('registration') || message.includes('registered')) {
+      navigate('/admin/vendors/pending-approvals');
+      return;
+    }
+  }
+
+  // 3. COD SETTLEMENT & EARNINGS NOTIFICATIONS
   const isSettlementNotification =
     Boolean(data.settlementId) ||
     type.includes('settlement') ||

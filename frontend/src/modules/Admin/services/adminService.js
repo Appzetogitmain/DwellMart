@@ -194,13 +194,17 @@ export const getAllVendors = (params = {}) =>
 export const getVendorById = (id) =>
     api.get(`/admin/vendors/${id}`);
 
-export const updateVendorStatus = (id, status, reason = '', vendorType = null) => {
+export const updateVendorStatus = (id, status, reason = '', vendorType = null, approvedChannels = null) => {
     const payload = { status, reason };
     if (vendorType) payload.vendorType = vendorType;
+    if (approvedChannels?.length) payload.approvedChannels = approvedChannels;
     return api.patch(`/admin/vendors/${id}/status`, payload);
 };
 
-/** Super Admin only — change a vendor's business type (auto-syncs sellingChannels) */
+export const updateVendorChannelStatus = (id, channel, payload) =>
+    api.patch(`/admin/vendors/${id}/channels/${channel}/status`, payload);
+
+/** Legacy informational classification only; never grants channel access. */
 export const updateVendorType = (id, vendorType) =>
     api.patch(`/admin/vendors/${id}/vendor-type`, { vendorType });
 

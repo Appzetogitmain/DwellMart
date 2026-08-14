@@ -79,9 +79,9 @@ export const useVendorStore = create((set, get) => ({
     }
   },
 
-  updateVendorStatus: async (id, status, reason = "", vendorType = null) => {
+  updateVendorStatus: async (id, status, reason = "", vendorType = null, approvedChannels = null) => {
     try {
-      const response = await updateVendorStatusApi(id, status, reason, vendorType);
+      const response = await updateVendorStatusApi(id, status, reason, vendorType, approvedChannels);
       const vendor = normalizeVendor(response?.data ?? response);
       if (!vendor) return false;
       set((state) => ({

@@ -13,6 +13,7 @@ import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { exportVendorProductsCatalog } from "../../services/vendorService";
 import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
 import api from "../../../../shared/utils/api";
 
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
@@ -27,7 +28,8 @@ const ManageProducts = () => {
   const { categories, initialize: initCategories } = useCategoryStore();
 
   // ── Capability-driven filter list ──────────────────────────────────────────
-  const vendorType = vendor?.vendorType ?? "retail";
+  const { workspace } = useVendorWorkspace();
+  const vendorType = workspace ?? vendor?.activeWorkspaces?.[0] ?? "retail";
   const caps = getVendorCapabilities(vendorType);
   const activeFilters = caps.productListFilters ?? [];
 
@@ -48,9 +50,9 @@ const ManageProducts = () => {
   useEffect(() => {
     initCategories();
     if (vendorId) {
-      fetchProducts({ fetchAll: true, limit: 200 });
+      fetchProducts({ fetchAll: true, limit: 200, includeUnpublished: true });
     }
-  }, [vendorId, initCategories, fetchProducts]);
+  }, [vendorId, workspace, initCategories, fetchProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
@@ -164,19 +166,28 @@ const ManageProducts = () => {
       ),
     },
     {
+      key: "publishing",
+      label: "Workspace",
+      sortable: false,
+      render: (_, row) => {
+        const flag = workspace === 'quick_commerce' ? 'quickCommerceEnabled' : `${workspace}Enabled`;
+        return <StatusBadge status={row[flag] === true ? 'active' : 'pending'} />;
+      },
+    },
+    {
       key: "actions",
       label: "Actions",
       sortable: false,
       render: (_, row) => (
         <div className="flex items-center gap-2">
-          <button
+          {(workspace === 'quick_commerce' ? row.quickCommerceEnabled : row[`${workspace}Enabled`]) === true && <button
             onClick={(e) => {
               e.stopPropagation();
               handleActionClick(`/vendor/products/${row._id ?? row.id}`);
             }}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
             <FiEdit />
-          </button>
+          </button>}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -227,14 +238,14 @@ const ManageProducts = () => {
           >
             History
           </Button>
-          <Button
+          {workspace !== 'quick_commerce' && <Button
             variant="secondary"
             size="sm"
             onClick={() => setIsBulkModalOpen(true)}
             leftIcon={<FiUploadCloud />}
           >
             Bulk Upload
-          </Button>
+          </Button>}
           <Button
             variant="primary"
             size="sm"

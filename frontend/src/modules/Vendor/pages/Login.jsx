@@ -21,8 +21,17 @@ const VendorLogin = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/vendor/dashboard';
-      navigate(from, { replace: true });
+      const vendor = useVendorAuthStore.getState().vendor;
+      const readableWorkspaces = vendor?.readableWorkspaces || vendor?.activeWorkspaces || [];
+      const from = location.state?.from?.pathname;
+      if (from && from !== '/vendor/dashboard' && from !== '/vendor') {
+        navigate(from, { replace: true });
+      } else if (readableWorkspaces.length > 1 && !sessionStorage.getItem('vendor-last-workspace')) {
+        navigate('/vendor/workspaces', { replace: true });
+      } else {
+        const lastWorkspace = sessionStorage.getItem('vendor-last-workspace') || readableWorkspaces[0];
+        navigate(lastWorkspace ? `/vendor/dashboard?workspace=${lastWorkspace}` : '/vendor/dashboard', { replace: true });
+      }
     }
   }, [isAuthenticated, navigate, location]);
 
@@ -44,8 +53,19 @@ const VendorLogin = () => {
     try {
       await login(formData.email, formData.password, rememberMe);
       toast.success('Login successful!');
-      const from = location.state?.from?.pathname || '/vendor/dashboard';
-      navigate(from, { replace: true });
+      sessionStorage.removeItem('vendor-last-workspace');
+      const vendor = useVendorAuthStore.getState().vendor;
+      const readableWorkspaces = vendor?.readableWorkspaces || vendor?.activeWorkspaces || [];
+      const from = location.state?.from?.pathname;
+      if (from && from !== '/vendor/dashboard' && from !== '/vendor') {
+        navigate(from, { replace: true });
+      } else if (readableWorkspaces.length > 1) {
+        navigate('/vendor/workspaces', { replace: true });
+      } else if (readableWorkspaces.length === 1) {
+        navigate(`/vendor/dashboard?workspace=${readableWorkspaces[0]}`, { replace: true });
+      } else {
+        navigate('/vendor/dashboard', { replace: true });
+      }
     } catch (error) {
       const email = formData.email.trim().toLowerCase();
       const message =

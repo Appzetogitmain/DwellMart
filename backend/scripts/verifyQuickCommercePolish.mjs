@@ -286,7 +286,7 @@ console.log('\n=== Backward compatibility ===');
     const { default: Order } = await load('../src/models/Order.model.js');
 
     record(
-        Notification.schema.path('priority').getDefault() === 'normal',
+        Notification.schema.path('priority').getDefault() === 'NORMAL',
         'notifications default to normal priority — existing alerts are unchanged',
     );
     record(
@@ -303,8 +303,8 @@ console.log('\n=== Backward compatibility ===');
         'actualEtaMinutes exists on the order',
     );
     record(
-        Order.schema.path('quickCommerce.cancelledAfterPreparation').getDefault() === false,
-        'cancelledAfterPreparation defaults to false',
+        Order.schema.path('quickCommerce.cancelledAfterPreparation').getDefault() === undefined,
+        'marketplace orders are not polluted with a QC cancellation default',
     );
     record(
         Order.schema.path('experience').getDefault() === 'marketplace',
@@ -317,7 +317,7 @@ console.log('\n=== Backward compatibility ===');
         fs.promises.readFile(path.resolve(__dirname, '../src/services/notification.service.js'), 'utf8')
     );
     record(
-        /priority\s*=\s*'normal'/.test(notificationService),
+        /priority\s*=\s*'NORMAL'/.test(notificationService),
         'createNotification defaults priority, so existing callers are unaffected',
     );
 }

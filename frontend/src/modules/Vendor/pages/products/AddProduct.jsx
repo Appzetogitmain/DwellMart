@@ -30,6 +30,7 @@ import {
   buildVariantPayload,
 } from "../../utils/variantHelpers";
 import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -39,7 +40,8 @@ const AddProduct = () => {
   const { brands, initialize: initBrands } = useBrandStore();
 
   const vendorId = vendor?.id;
-  const caps = getVendorCapabilities(vendor?.vendorType ?? 'retail');
+  const { workspace } = useVendorWorkspace();
+  const caps = getVendorCapabilities(workspace ?? vendor?.activeWorkspaces?.[0] ?? 'retail');
   const sections = caps.allowedFormSections;
 
   const [formData, setFormData] = useState({
@@ -109,6 +111,15 @@ const AddProduct = () => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+  useEffect(() => {
+    if (workspace === 'wholesale') {
+      setWholesaleState((state) => ({ ...state, retailEnabled: false, wholesaleEnabled: true }));
+    }
+    if (workspace === 'quick_commerce') {
+      setQuickCommerceState((state) => ({ ...state, quickCommerceEnabled: true }));
+    }
+  }, [workspace]);
 
   // Quick Commerce categories live in a separate tree from Marketplace.
   // Only load them if this vendor type supports Quick Commerce.
@@ -477,8 +488,8 @@ const AddProduct = () => {
         }))
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
-      ...buildWholesalePayload(wholesaleState),
-      ...buildQuickCommercePayload(quickCommerceState),
+      ...(caps.allowedFormSections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {}),
+      ...(caps.allowedFormSections.quickCommerce ? buildQuickCommercePayload(quickCommerceState) : {}),
     };
 
     const result = await addProduct(payload);

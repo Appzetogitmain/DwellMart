@@ -169,9 +169,9 @@ productSchema.index({ quickCommerceCategoryId: 1, isActive: 1 });
 
 /**
  * Product channel flags (quickCommerceEnabled, retailEnabled, wholesaleEnabled)
- * are auto-synchronized at save time by the product controller based on
- * vendor.vendorType via VendorCapabilities.
- * Vendors never control these directly from the UI.
+ * are publishing state, not authorization. Controllers may change only the
+ * flag for the server-validated workspace; vendor channel status is checked
+ * independently before catalog publication or order creation.
  */
 
 const Product = mongoose.model('Product', productSchema);

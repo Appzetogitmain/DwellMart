@@ -6,9 +6,12 @@ import StoreSettings from './settings/StoreSettings';
 import PaymentSettings from './settings/PaymentSettings';
 import ShippingSettings from './settings/ShippingSettings';
 
+import { useVendorWorkspace, withWorkspace } from '../hooks/useVendorWorkspace';
+
 const VendorSettings = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { workspace } = useVendorWorkspace();
   
   // Get active tab from URL or default to 'store'
   const getActiveTabFromUrl = () => {
@@ -27,13 +30,10 @@ const VendorSettings = () => {
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    if (tabId === 'store') {
-      navigate('/vendor/settings/store');
-    } else if (tabId === 'payment') {
-      navigate('/vendor/settings/payment');
-    } else if (tabId === 'shipping') {
-      navigate('/vendor/settings/shipping');
-    }
+    let target = '/vendor/settings/store';
+    if (tabId === 'payment') target = '/vendor/settings/payment';
+    else if (tabId === 'shipping') target = '/vendor/settings/shipping';
+    navigate(withWorkspace(target, workspace));
   };
 
   const tabs = [

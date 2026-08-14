@@ -1,83 +1,80 @@
 /**
  * productCapabilityGuard.js
  *
- * Middleware that enforces vendorType-based field restrictions on product
- * create/update requests. Reads VendorCapabilities.allowedProductFields
- * for the authenticated vendor's type.
+ * Enforces product-field ownership on vendor product writes, using the
+ * server-validated workspace (`req.vendorWorkspace`) — never a client-supplied
+ * vendor type.
  *
- * Behaviour:
- *   PRODUCT_FIELD_STRICT=true  → 400 Bad Request for prohibited fields
- *   unset (default)            → observe-only: logs what would be rejected
+ * What it blocks:
+ *   - CROSS-CHANNEL fields: writing another channel's owned data (e.g. setting
+ *     `wholesale.priceTiers` from the Retail workspace). Always rejected —
+ *     this is the authorization boundary the multi-channel spec requires.
+ *   - UNKNOWN fields: keys belonging to no known class. Rejected in strict
+ *     mode; logged in observe-only mode.
  *
- * Observe-only is the default because this guard was inert since it was written
- * (it read an unset `req.vendor`), so no payload has ever been validated against
- * it. Enforcing immediately would reject writes that have always been accepted.
+ * What it deliberately allows:
+ *   - The SHARED CORE (name, images, price, stock, category, variants, SEO...)
+ *     from every workspace the vendor holds. One product document, one shared
+ *     core — see constants/productFieldOwnership.js.
+ *
+ * Modes:
+ *   PRODUCT_FIELD_STRICT unset | 'true'  → strict (default): 400 on violations
+ *   PRODUCT_FIELD_STRICT = 'false'       → observe-only for UNKNOWN fields;
+ *                                          cross-channel writes are STILL
+ *                                          rejected, because that is a
+ *                                          security boundary, not a schema
+ *                                          strictness preference.
  */
 
-import { getVendorCapabilities } from '../../../constants/vendorCapabilities.js';
+import { classifyProductFields } from '../../../constants/productFieldOwnership.js';
 
-/**
- * Top-level field keys that are always permitted regardless of vendorType
- * (internal system fields set by the server, not the client).
- */
-const SYSTEM_FIELDS = new Set([
-    '_id', '__v', 'vendorId', 'createdAt', 'updatedAt',
-    'retailEnabled', 'wholesaleEnabled', 'quickCommerceEnabled',
-    'sellingChannels', 'isActive',
-]);
+const workspaceLabel = (workspace) => String(workspace || '')
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 export const productCapabilityGuard = (req, res, next) => {
     try {
-        const vendor = req.vendor;
-        if (!vendor) return next(); // authenticate middleware will handle missing vendor
+        // `enforceAccountStatus` populates req.vendor; `resolveVendorWorkspace`
+        // populates req.vendorWorkspace. Both run before this guard on every
+        // route that mounts it. Missing either means the request never passed
+        // authorization, so defer to those middlewares rather than guessing.
+        if (!req.vendor || !req.vendorWorkspace) return next();
 
-        const vendorType = vendor.vendorType ?? 'retail';
-        const caps = getVendorCapabilities(vendorType);
-        const allowedFields = caps.allowedProductFields ?? [];
+        const workspace = req.vendorWorkspace;
+        const { crossChannel, unknown } = classifyProductFields(req.body, workspace);
 
-        // This guard never ran: it reads `req.vendor`, which nothing assigned,
-        // so it returned on its first line for every request since it was
-        // written. Now that `enforceAccountStatus` populates the vendor, the
-        // guard is live — and switching it straight to rejection would start
-        // failing product writes that have been accepted all along.
-        //
-        // Default is therefore observe-only: log what WOULD be rejected without
-        // changing behaviour. Set PRODUCT_FIELD_STRICT=true to enforce, once the
-        // logs show what real payloads actually contain.
-        const strictMode = process.env.PRODUCT_FIELD_STRICT === 'true';
-
-        const prohibited = [];
-
-        for (const field of Object.keys(req.body)) {
-            if (SYSTEM_FIELDS.has(field)) continue;
-            if (allowedFields.includes(field)) continue;
-            prohibited.push(field);
-        }
-
-        if (prohibited.length > 0 && !strictMode) {
-            console.warn(
-                `[ProductCapabilityGuard] observe-only: vendorType=${vendorType} `
-                + `would reject fields=[${prohibited.join(', ')}] on ${req.method} ${req.originalUrl}`
-            );
-            return next();
-        }
-
-        if (prohibited.length > 0) {
-            const typeLabel = vendorType
-                .split('_')
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' ');
-
-            return res.status(400).json({
+        if (crossChannel.length > 0) {
+            return res.status(403).json({
                 success: false,
-                message: `Field "${prohibited[0]}" is not allowed for ${typeLabel} vendors.`,
-                prohibitedFields: prohibited,
-                vendorType,
+                message: `"${crossChannel[0]}" belongs to another selling channel. `
+                    + `Switch to that workspace to change it.`,
+                errorCode: 'CROSS_CHANNEL_FIELD_DENIED',
+                prohibitedFields: crossChannel,
+                workspace,
             });
         }
 
-        next();
+        if (unknown.length > 0) {
+            const strictMode = String(process.env.PRODUCT_FIELD_STRICT || 'true').toLowerCase() !== 'false';
+            if (!strictMode) {
+                console.warn(
+                    `[ProductCapabilityGuard] observe-only: workspace=${workspace} `
+                    + `unknown fields=[${unknown.join(', ')}] on ${req.method} ${req.originalUrl}`
+                );
+                return next();
+            }
+            return res.status(400).json({
+                success: false,
+                message: `Field "${unknown[0]}" is not a recognised product field for ${workspaceLabel(workspace)}.`,
+                errorCode: 'UNKNOWN_PRODUCT_FIELD',
+                prohibitedFields: unknown,
+                workspace,
+            });
+        }
+
+        return next();
     } catch (err) {
-        next(err);
+        return next(err);
     }
 };

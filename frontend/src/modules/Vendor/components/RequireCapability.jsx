@@ -17,19 +17,21 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { getVendorCapabilities } from "../../../shared/config/vendorCapabilities";
+import { useVendorWorkspace, withWorkspace } from '../hooks/useVendorWorkspace';
 
 const RequireCapability = ({ feature, permission, children }) => {
   const { vendor } = useVendorAuthStore();
   const location = useLocation();
+  const { workspace } = useVendorWorkspace();
 
-  const vendorType = vendor?.vendorType ?? "retail";
+  const vendorType = workspace ?? vendor?.activeWorkspaces?.[0] ?? "retail";
   const caps = getVendorCapabilities(vendorType);
 
   // Check feature flag
   if (feature && !caps.features?.[feature]) {
     return (
       <Navigate
-        to="/vendor/dashboard"
+        to={withWorkspace("/vendor/dashboard", workspace)}
         state={{ from: location, accessDenied: true, reason: `Feature "${feature}" not available for your plan.` }}
         replace
       />
@@ -40,7 +42,7 @@ const RequireCapability = ({ feature, permission, children }) => {
   if (permission && !caps.permissions?.[permission]) {
     return (
       <Navigate
-        to="/vendor/dashboard"
+        to={withWorkspace("/vendor/dashboard", workspace)}
         state={{ from: location, accessDenied: true, reason: `Permission "${permission}" not available for your plan.` }}
         replace
       />

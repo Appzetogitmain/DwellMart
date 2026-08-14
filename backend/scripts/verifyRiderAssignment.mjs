@@ -18,6 +18,7 @@
  */
 
 import path from 'path';
+import { readFileSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -187,8 +188,11 @@ console.log('\n=== Actor authority ===');
         'vendors own only the preparation stages',
     );
     record(
-        QUICK_COMMERCE_RIDER_STATUSES.every((s) => ['picked_up', 'arriving', 'delivered'].includes(s)),
-        'riders own only the transit stages',
+        QUICK_COMMERCE_RIDER_STATUSES.every((s) => [
+            'picked_up', 'arriving', 'delivered', 'customer_unreachable',
+            'retry_scheduled', 'returned_to_store',
+        ].includes(s)),
+        'riders own only transit and delivery-exception stages',
     );
     record(
         !QUICK_COMMERCE_RIDER_STATUSES.includes('accepted') && !QUICK_COMMERCE_VENDOR_STATUSES.includes('delivered'),
@@ -264,7 +268,16 @@ console.log('\n=== Backward compatibility ===');
 
     const { default: Order } = await load('../src/models/Order.model.js');
     const assignmentDefault = Order.schema.path('quickCommerce.assignment.status')?.getDefault?.();
-    record(assignmentDefault === 'pending', 'order assignment status defaults to pending', String(assignmentDefault));
+    record(
+        assignmentDefault === undefined,
+        'marketplace orders are not polluted with a QC assignment default',
+        String(assignmentDefault),
+    );
+    const splitterSource = readFileSync(path.resolve(__dirname, '../src/services/checkout/OrderSplitterEngine.js'), 'utf8');
+    record(
+        /assignment:\s*\{\s*status:\s*['"]pending['"]/.test(splitterSource),
+        'new QC orders explicitly initialize assignment status to pending',
+    );
     record(
         Order.schema.path('experience').getDefault() === 'marketplace',
         'existing orders remain marketplace by default',

@@ -41,8 +41,12 @@ export default {
                 await InventoryReservation.collection.dropIndex(OLD_INDEX);
                 droppedOld = true;
             }
+            const expiresIdx = existing.find((i) => i.name === 'expiresAt_1');
+            if (expiresIdx && expiresIdx.expireAfterSeconds === undefined) {
+                await InventoryReservation.collection.dropIndex('expiresAt_1');
+            }
         } catch (err) {
-            console.warn(`[migrate 0007] Could not drop ${OLD_INDEX}: ${err.message}`);
+            console.warn(`[migrate 0007] Could not drop indexes: ${err.message}`);
         }
 
         // Building this can fail if two open holds already exist for the same
