@@ -450,6 +450,7 @@ const SubscriptionOnboardingWizard = ({
         setSelectedPlan(data.subscription.plan);
       }
 
+      /* Online gateway payment options commented out as requested (preserved for future enablement):
       const isFree = selectedPlan?.isFree || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
 
       if (!isFree) {
@@ -474,6 +475,7 @@ const SubscriptionOnboardingWizard = ({
           console.warn("Cashfree onboarding notice:", cfErr);
         }
       }
+      */
 
       setStep(3);
       setPaymentState('confirmed');
@@ -819,12 +821,24 @@ const SubscriptionOnboardingWizard = ({
                 {paymentState === 'failed' ? <div className="mt-4 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs font-bold text-rose-800">{t('Billing could not be confirmed. Please retry the payment step.')}</div> : null}
 
                 <div className="mt-6 flex flex-col gap-3">
+                  {/* Payment gateway button commented out as requested (preserved for future enablement):
                   <button type="button" onClick={handlePayment} disabled={isLoading || paymentState === 'processing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 sm:py-4 font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-60 shadow-lg shadow-amber-500/20 text-sm sm:text-base">
                     {isLoading ? <FiLoader className="animate-spin text-lg" /> : (selectedPlan?.isFree ? <FiCheck /> : <FiCreditCard />)}
                     {isLoading ? (selectedPlan?.isFree ? t('Activating...') : t('Preparing checkout...')) : paymentState === 'processing' ? t('Checking payment status...') : paymentState === 'checkout_open' ? t('Payment window open') : (selectedPlan?.isFree ? t('Activate free plan') : t('Start secure payment'))}
                   </button>
+                  */}
 
-                  <button type="button" onClick={() => setStep(1)} className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100 transition">{t('Back to registration')}</button>
+                  <button
+                    type="button"
+                    onClick={handlePayment}
+                    disabled={isLoading || paymentState === 'processing'}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 sm:py-4 font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-60 shadow-lg shadow-amber-500/20 text-sm sm:text-base cursor-pointer"
+                  >
+                    {isLoading ? <FiLoader className="animate-spin text-lg" /> : <FiCheck />}
+                    {isLoading ? t('Submitting...') : (selectedPlan?.isFree ? t('Activate free plan') : t('Confirm & Submit Subscription'))}
+                  </button>
+
+                  <button type="button" onClick={() => setStep(1)} className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer">{t('Back to registration')}</button>
                 </div>
               </div>
             </motion.div>

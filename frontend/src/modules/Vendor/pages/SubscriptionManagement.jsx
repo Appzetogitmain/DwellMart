@@ -172,6 +172,7 @@ const SubscriptionManagement = () => {
       const isFree = plan?.isFree || (Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0) === 0 && Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0) === 0);
       const email = subscription?.vendor?.email || localStorage.getItem('vendor-email');
 
+      /* Online gateway payment options commented out as requested (preserved for future enablement):
       if (!isFree && email) {
         try {
           const sessionRes = await api.post('/payments/cashfree/session', {
@@ -192,6 +193,7 @@ const SubscriptionManagement = () => {
           console.warn("Cashfree plan change notice:", cfErr);
         }
       }
+      */
 
       const response = await changeVendorSubscriptionPlan(planId);
       const data = response?.data || {};
