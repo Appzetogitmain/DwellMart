@@ -51,6 +51,8 @@ export const useVendorStore = create((set, get) => ({
   getAllVendors: () => get().vendors,
 
   getVendor: async (id) => {
+    if (!id || id === 'undefined' || id === 'null') return null;
+
     const existing = get().vendors.find(
       (v) => String(v.id || v._id) === String(id)
     );
@@ -61,15 +63,16 @@ export const useVendorStore = create((set, get) => ({
 
     try {
       const response = await getVendorById(id);
-      const vendor = normalizeVendor(response?.data ?? response);
-      if (!vendor) return null;
+      const payload = response?.data?.vendor ?? response?.data ?? response;
+      const vendor = normalizeVendor(payload);
+      if (!vendor || (!vendor.id && !vendor._id)) return null;
       set((state) => ({
         selectedVendor: vendor,
         vendors: state.vendors.some(
-          (v) => String(v.id || v._id) === String(vendor.id)
+          (v) => String(v.id || v._id) === String(vendor.id || vendor._id)
         )
           ? state.vendors.map((v) =>
-            String(v.id || v._id) === String(vendor.id) ? vendor : v
+            String(v.id || v._id) === String(vendor.id || vendor._id) ? vendor : v
           )
           : [...state.vendors, vendor],
       }));
