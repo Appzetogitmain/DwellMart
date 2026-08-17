@@ -139,7 +139,8 @@ const Footer = () => {
               </p>
             </div>
             
-            {/* Social Icons Bar */}
+            {/* Social Icons Bar (Commented out as requested) */}
+            {/*
             <div className="pt-1">
               <span className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
                 Connect With Us
@@ -160,6 +161,7 @@ const Footer = () => {
                 ))}
               </div>
             </div>
+            */}
           </div>
 
           {/* Shop Categories */}
@@ -274,11 +276,14 @@ const Footer = () => {
           <p className="text-xs text-gray-500 text-center sm:text-left font-medium">
             &copy; {currentYear} <span className="text-white font-bold">Dwell Mart</span>. {t("All rights reserved.")}
           </p>
+          {/* Payment Methods (Commented out as requested) */}
+          {/*
           <div className="flex items-center gap-3 opacity-70">
             <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/visa.svg" alt="Visa" className="h-4 sm:h-5" />
             <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/mastercard.svg" alt="Mastercard" className="h-6 sm:h-7" />
             <img src="https://cdn.jsdelivr.net/gh/aaronfagan/svg-credit-card-payment-icons@master/flat/paypal.svg" alt="PayPal" className="h-4 sm:h-5" />
           </div>
+          */}
         </div>
       </div>
     </footer>
