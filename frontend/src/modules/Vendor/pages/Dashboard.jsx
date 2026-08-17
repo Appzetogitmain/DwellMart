@@ -271,44 +271,46 @@ const VendorDashboard = () => {
                 key={plan._id}
                 variant={plan.isMostPopular ? "elevated" : "default"}
                 padding="md"
-                className={`relative border-2 ${
+                className={`flex flex-col justify-between border-2 transition-all hover:shadow-md ${
                   plan.isMostPopular ? 'border-brand-primary bg-brand-primary/5' : 'border-borderToken-default'
                 }`}
               >
-                {plan.isMostPopular && (
-                  <div className="absolute -top-3 right-6">
-                    <Badge variant="gold" size="xs">
-                      <FiCheck className="mr-1 inline" /> POPULAR
-                    </Badge>
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="text-base font-bold text-textColor-primary leading-tight">{plan.name}</h3>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {plan.isTrial && (
+                        <Badge variant="info" size="xs">
+                          TRIAL
+                        </Badge>
+                      )}
+                      {plan.isMostPopular && (
+                        <Badge variant="gold" size="xs">
+                          <FiCheck className="mr-1 inline stroke-[3]" /> POPULAR
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                )}
-                {plan.isTrial && (
-                  <div className="absolute -top-3 left-6">
-                    <Badge variant="default" size="xs">TRIAL</Badge>
-                  </div>
-                )}
 
-                <div className="mb-4">
-                  <h3 className="text-base font-bold text-textColor-primary mb-1">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1">
+                  <div className="flex items-baseline gap-1 mb-0.5">
                     <span className="text-2xl font-black text-textColor-primary">{plan.price}</span>
-                    <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'AED'}</span>
+                    <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'USD'}</span>
                   </div>
-                  <p className="text-xs text-textColor-muted">{plan.durationDays} days</p>
+                  <p className="text-xs text-textColor-muted mb-4">{plan.durationDays} days</p>
+
+                  {plan.features?.length > 0 && (
+                    <ul className="space-y-2 mb-4">
+                      {plan.features.slice(0, 4).map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs text-textColor-muted">
+                          <FiCheck className="text-brand-primary mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-1">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
-                {plan.features?.length > 0 && (
-                  <ul className="space-y-2 mb-4">
-                    {plan.features.slice(0, 4).map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-textColor-muted">
-                        <FiCheck className="text-brand-primary mt-0.5 flex-shrink-0" />
-                        <span className="line-clamp-1">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <div className="flex items-center gap-2 mt-auto">
+                <div className="flex items-center gap-2 pt-3 border-t border-borderToken-light mt-auto">
                   <span className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-status-success' : 'bg-textColor-muted'}`}></span>
                   <span className="text-[10px] font-bold text-textColor-muted uppercase tracking-tight">
                     {plan.isActive ? 'Active Plan' : 'Inactive'}

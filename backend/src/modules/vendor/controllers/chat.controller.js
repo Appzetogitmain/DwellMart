@@ -55,7 +55,7 @@ export const getVendorChatThreads = asyncHandler(async (req, res) => {
                     vendorId,
                     orderRef: order._id,
                     ...seed,
-                    lastMessage: 'Hello, I need help with my order',
+                    lastMessage: '',
                     lastActivity: order?.createdAt || new Date(),
                     unreadCount: 0,
                 },
@@ -83,26 +83,6 @@ export const getVendorChatMessages = asyncHandler(async (req, res) => {
     if (!thread) throw new ApiError(404, 'Chat thread not found.');
 
     const messages = await VendorChatMessage.find({ threadId: thread._id }).sort({ createdAt: 1 });
-
-    if (messages.length === 0) {
-        const seeded = await VendorChatMessage.create([
-            {
-                threadId: thread._id,
-                senderType: 'customer',
-                senderId: thread.customerUserId || null,
-                message: thread.lastMessage || 'Hello, I need help with my order',
-            },
-            {
-                threadId: thread._id,
-                senderType: 'vendor',
-                senderId: req.user.id,
-                message: 'Hi! How can I help you today?',
-            },
-        ]);
-        return res
-            .status(200)
-            .json(new ApiResponse(200, seeded.map(serializeMessage), 'Chat messages fetched.'));
-    }
 
     res
         .status(200)

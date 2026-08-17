@@ -306,8 +306,8 @@ const Chat = () => {
 
             <div className="flex-1 p-4 overflow-y-auto space-y-4 max-h-[500px]">
               {isLoadingMessages ? (
-                <div className="text-center text-gray-500">Loading messages...</div>
-              ) : (
+                <div className="text-center py-8 text-gray-500">Loading messages...</div>
+              ) : messages.length > 0 ? (
                 messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -335,6 +335,12 @@ const Chat = () => {
                     </div>
                   </div>
                 ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-48 text-center text-gray-400">
+                  <FiMessageCircle className="text-3xl mb-2 opacity-50" />
+                  <p className="text-sm font-medium text-gray-600">No messages yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Type a message below to start the conversation.</p>
+                </div>
               )}
               <div ref={messagesEndRef} />
             </div>

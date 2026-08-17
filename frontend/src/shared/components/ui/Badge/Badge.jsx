@@ -10,11 +10,14 @@ const Badge = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-[10px] gap-1',
+    xs: 'px-2 py-0.5 text-[10px] gap-1',
+    sm: 'px-2.5 py-0.5 text-[11px] gap-1',
     md: 'px-3 py-1 text-xs gap-1.5',
+    lg: 'px-4 py-1.5 text-sm gap-2',
   };
 
   const variantStyles = {
+    default: 'bg-surface-background text-textColor-primary border border-borderToken-default font-bold',
     verified: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-400',
     new: 'bg-amber-500/10 text-amber-600 border border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-400',
     hot: 'bg-red-500/10 text-red-600 border border-red-500/30 dark:bg-red-500/20 dark:text-red-400',

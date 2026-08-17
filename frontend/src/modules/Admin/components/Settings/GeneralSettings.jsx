@@ -92,9 +92,10 @@ const GeneralSettings = () => {
           </label>
           <AnimatedSelect
             name="timezone"
-            value={formData.timezone || 'UTC'}
+            value={formData.timezone || 'Asia/Kolkata'}
             onChange={handleChange}
             options={[
+              { value: 'Asia/Kolkata', label: 'India Standard Time (IST - Asia/Kolkata)' },
               { value: 'UTC', label: 'UTC' },
               { value: 'America/New_York', label: 'Eastern Time' },
               { value: 'America/Chicago', label: 'Central Time' },

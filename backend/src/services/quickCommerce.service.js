@@ -30,16 +30,53 @@ const parseTimeToMinutes = (value) => {
 };
 
 /**
+ * Convert Date to local weekday (0=Sun, 1=Mon, ..., 6=Sat) and minutes since midnight
+ * in the configured store/app timezone (default: Asia/Kolkata).
+ */
+export const getWallClockTime = (now = new Date(), timeZone = process.env.APP_TIMEZONE || 'Asia/Kolkata') => {
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            weekday: 'short',
+            hourCycle: 'h23',
+            hour: 'numeric',
+            minute: 'numeric',
+        });
+        const parts = formatter.formatToParts(now);
+        const map = {};
+        parts.forEach((p) => { map[p.type] = p.value; });
+        const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+        const day = weekdayMap[map.weekday] ?? now.getDay();
+        const hours = parseInt(map.hour, 10);
+        const minutes = parseInt(map.minute, 10);
+        return {
+            day,
+            nowMinutes: (Number.isFinite(hours) ? hours : now.getHours()) * 60 + (Number.isFinite(minutes) ? minutes : now.getMinutes()),
+        };
+    } catch {
+        return {
+            day: now.getDay(),
+            nowMinutes: now.getHours() * 60 + now.getMinutes(),
+        };
+    }
+};
+
+/**
  * Is the vendor inside its configured business hours right now?
+ *
+ * Evaluates against the store's wall-clock timezone (defaults to Asia/Kolkata / APP_TIMEZONE)
+ * rather than the server's raw system timezone (which is typically UTC in production).
  *
  * No hours configured → treated as always open, so a vendor is never
  * accidentally hidden by an empty schedule.
  * Supports overnight windows (e.g. 22:00–02:00).
  */
-export const isWithinBusinessHours = (businessHours, now = new Date()) => {
+export const isWithinBusinessHours = (businessHours, now = new Date(), timeZone = process.env.APP_TIMEZONE || 'Asia/Kolkata') => {
     if (!Array.isArray(businessHours) || businessHours.length === 0) return true;
 
-    const today = businessHours.find((entry) => Number(entry?.day) === now.getDay());
+    const { day, nowMinutes } = getWallClockTime(now, timeZone);
+
+    const today = businessHours.find((entry) => Number(entry?.day) === day);
     if (!today) return true;
     if (today.isClosed === true) return false;
 
@@ -47,7 +84,6 @@ export const isWithinBusinessHours = (businessHours, now = new Date()) => {
     const closeMinutes = parseTimeToMinutes(today.close);
     if (openMinutes === null || closeMinutes === null) return true;
 
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
     if (openMinutes === closeMinutes) return true;               // 24h window
     if (openMinutes < closeMinutes) {
         return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
@@ -67,7 +103,7 @@ export const isWithinBusinessHours = (businessHours, now = new Date()) => {
  *   reason: string|null      // why it is not orderable
  * }}
  */
-export const resolveVendorAvailability = (vendor, now = new Date()) => {
+export const resolveVendorAvailability = (vendor, now = new Date(), timeZone = process.env.APP_TIMEZONE || 'Asia/Kolkata') => {
     const profile = vendor?.quickCommerceProfile;
     const channelEnabled = vendor?.channels?.quickCommerce?.status === 'active';
 
@@ -113,7 +149,7 @@ export const resolveVendorAvailability = (vendor, now = new Date()) => {
         };
     }
 
-    if (!isWithinBusinessHours(profile?.businessHours, now)) {
+    if (!isWithinBusinessHours(profile?.businessHours, now, timeZone)) {
         return {
             status,
             isDiscoverable: true,

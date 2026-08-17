@@ -29,7 +29,8 @@ const Card = forwardRef(({
     glass: 'bg-surface-card/80 backdrop-blur-md border border-borderToken-goldAccent shadow-card text-textColor-primary',
   };
 
-  const baseStyles = 'rounded-card overflow-hidden transition-all duration-300 ease-in-out';
+  const hasOverflowClass = /(^|\s)(!?)overflow-(hidden|visible|auto|scroll)/.test(className);
+  const baseStyles = `rounded-card ${hasOverflowClass ? '' : 'overflow-hidden'} transition-all duration-300 ease-in-out`;
   const hoverStyles = hoverable ? 'hover:-translate-y-1 hover:shadow-card-hover cursor-pointer' : '';
 
   const combinedClasses = `
