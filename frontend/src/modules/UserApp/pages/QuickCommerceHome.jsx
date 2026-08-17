@@ -9,6 +9,7 @@ import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useAuthStore } from "../../../shared/store/authStore";
 import { useCartStore, useUIStore } from "../../../shared/store/useStore";
+import { useAutoLocation } from "../../../shared/hooks/useAutoLocation";
 import { getLocationQueryParams } from "../../../shared/utils/experience";
 import { getPublicCategories } from "../../Admin/services/adminService";
 import CategoryImage from "../../../shared/components/CategoryImage";
@@ -97,11 +98,14 @@ const ProductShelf = ({ title, products, isLoading, onSeeAll }) => {
  */
 const QuickCommerceHome = () => {
   const navigate = useNavigate();
-  const { location, serviceability, checkServiceability } = useExperienceStore();
+  const { location, isLocating, serviceability, checkServiceability } = useExperienceStore();
   const { isAuthenticated } = useAuthStore();
   const { fetchAddresses } = useAddressStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const toggleCart = useUIStore((state) => state.toggleCart);
+
+  // Automatically request/detect live location when entering Quick Commerce
+  useAutoLocation({ autoPromptIfUnknown: true, fallbackToSavedAddress: true });
 
   const [categories, setCategories] = useState([]);
   const [showLocationPrompt, setShowLocationPrompt] = useState(false);
@@ -217,8 +221,12 @@ const QuickCommerceHome = () => {
                     <span className="text-xs font-black tracking-tight text-textColor-primary">Delivery in 10–15 mins</span>
                     <FiChevronRight className="text-textColor-muted text-xs shrink-0" />
                   </div>
-                  <p className="text-[11px] font-semibold text-textColor-secondary truncate max-w-[170px] sm:max-w-md">
-                    {location?.label || "Set your delivery location..."}
+                  <p className={`text-[11px] font-semibold truncate max-w-[170px] sm:max-w-md ${
+                    isLocating ? "text-amber-500 animate-pulse" : "text-textColor-secondary"
+                  }`}>
+                    {isLocating
+                      ? "Detecting live location..."
+                      : location?.label || "Set your delivery location..."}
                   </p>
                 </div>
               </button>

@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import api from "../utils/api";
 import useCurrencyStore from "../store/currencyStore";
 import { useVendorAuthStore } from "../../modules/Vendor/store/vendorAuthStore";
+import { useNotificationStore } from "../store/useNotificationStore";
+import { useAutoLocation } from "../hooks/useAutoLocation";
+import NotificationDrawer from "./Notifications/NotificationDrawer";
 
 const PRODUCTS_CACHE_KEY = "user-catalog-products-cache";
 const VENDORS_CACHE_KEY = "user-catalog-vendors-cache";
@@ -45,11 +48,11 @@ const normalizeBrand = (raw) => ({
   id: raw?._id || raw?.id,
 });
 
-import { useNotificationStore } from "../store/useNotificationStore";
-import NotificationDrawer from "./Notifications/NotificationDrawer";
-
 const AppBootstrap = () => {
   const { fetchCurrencies } = useCurrencyStore();
+
+  // Silently detect and refresh live customer location on app load if permission was previously granted
+  useAutoLocation({ silentOnly: true, fallbackToSavedAddress: true });
 
   useEffect(() => {
     fetchCurrencies();

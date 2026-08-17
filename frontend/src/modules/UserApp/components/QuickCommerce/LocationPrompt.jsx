@@ -24,10 +24,9 @@ const resolveLocationLabel = async (location, fallback) => {
  * Quick Commerce location capture — Refactored to Design System
  */
 const LocationPrompt = ({ onClose, showClose = true }) => {
-  const { setLocation, isCheckingServiceability } = useExperienceStore();
+  const { setLocation, isCheckingServiceability, isLocating, detectLiveLocation } = useExperienceStore();
   const { addresses } = useAddressStore();
   const [pincode, setPincode] = useState("");
-  const [isLocating, setIsLocating] = useState(false);
   const [isUsingMapLocation, setIsUsingMapLocation] = useState(false);
   const [mapPoint, setMapPoint] = useState(null);
 
@@ -38,35 +37,20 @@ const LocationPrompt = ({ onClose, showClose = true }) => {
     (address) => address?.zipCode || address?.pincode
   );
 
-  const handleUseGps = () => {
-    if (!navigator.geolocation) {
-      toast.error("Your browser does not support location access. Enter a pincode instead.");
-      return;
+  const handleUseGps = async () => {
+    const result = await detectLiveLocation({
+      silentOnly: false,
+      timeout: 10000,
+    });
+
+    if (result.success) {
+      toast.success("Live location detected!");
+      onClose?.();
+    } else if (result.isDenied) {
+      toast.error("Location permission was denied. Enter a pincode or select a saved address.");
+    } else if (!result.skipped) {
+      toast.error(result.error || "Could not detect location. Enter a pincode instead.");
     }
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const location = {
-          latitude: Number(position.coords.latitude.toFixed(6)),
-          longitude: Number(position.coords.longitude.toFixed(6)),
-          source: "gps",
-        };
-        try {
-          await setLocation({
-            ...location,
-            label: await resolveLocationLabel(location, "Current location"),
-          });
-          onClose?.();
-        } finally {
-          setIsLocating(false);
-        }
-      },
-      () => {
-        setIsLocating(false);
-        toast.error("Could not read your location. Try a saved address or enter a pincode.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const handleUseSavedAddress = async (address) => {

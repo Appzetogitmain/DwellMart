@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
+import { useExperienceStore } from "../../../../shared/store/experienceStore";
 import { appLogo } from "../../../../data/logos";
 import { loginLogo } from "../../../../shared/utils/imagePaths";
 import SearchBar from "../../../../shared/components/SearchBar";
@@ -26,6 +27,7 @@ import NotificationBell from "../../../../shared/components/Notifications/Notifi
 const DesktopHeader = ({ hideSellButton = false }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { location, isLocating } = useExperienceStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const unreadCount = useUserNotificationStore((state) => state.unreadCount);
@@ -121,6 +123,19 @@ const DesktopHeader = ({ hideSellButton = false }) => {
         <div className="flex-1 min-w-[100px] max-w-[140px] md:max-w-[170px] lg:max-w-[220px] xl:max-w-[280px] z-20">
           <SearchBar />
         </div>
+
+        {/* Location Indicator (if detected or locating) */}
+        {(location?.label || isLocating) && (
+          <div
+            className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900/90 border border-gray-800 text-xs text-gray-300 max-w-[160px] truncate shrink-0 cursor-default"
+            title={location?.label || "Detecting live location..."}
+          >
+            <FiMapPin className={`text-xs shrink-0 ${isLocating ? "text-amber-400 animate-pulse" : "text-[#ffc101]"}`} />
+            <span className={`truncate text-[11px] font-medium ${isLocating ? "text-amber-400 animate-pulse" : "text-gray-300"}`}>
+              {isLocating ? "Locating..." : location?.city || location?.label}
+            </span>
+          </div>
+        )}
 
         {/* Right Section: Selectors, Actions & Login/User */}
         <div className="flex items-center gap-1 lg:gap-2 shrink-0 relative z-30">
