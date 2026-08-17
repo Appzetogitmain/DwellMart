@@ -58,6 +58,15 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
         return { successCount: 0, failureCount: tokens.length, fallback: true };
     }
 
+    const clientUrl = process.env.CLIENT_URL || 'https://dwellmart.in';
+    const baseUrl = clientUrl.endsWith('/') ? clientUrl.slice(0, -1) : clientUrl;
+    const defaultIconUrl = `${baseUrl}/favicon.png`;
+    const defaultBadgeUrl = `${baseUrl}/favicon.png`;
+    const notificationIcon = image && image.startsWith('http') ? image : defaultIconUrl;
+    const actionLink = data?.actionUrl
+        ? (data.actionUrl.startsWith('http') ? data.actionUrl : `${baseUrl}${data.actionUrl.startsWith('/') ? '' : '/'}${data.actionUrl}`)
+        : `${baseUrl}/notifications`;
+
     const payload = {
         notification: {
             title: String(title || ''),
@@ -77,13 +86,13 @@ export const sendMulticastPushNotification = async ({ tokens = [], title, body, 
             notification: {
                 title: String(title || ''),
                 body: String(body || ''),
-                icon: image || '/login_logo.png',
-                ...(image ? { image } : {}),
-                badge: '/login_logo.png',
+                icon: notificationIcon,
+                image: image || notificationIcon,
+                badge: defaultBadgeUrl,
                 requireInteraction: true,
             },
             fcmOptions: {
-                link: data?.actionUrl || '/notifications',
+                link: actionLink,
             },
         },
         tokens,

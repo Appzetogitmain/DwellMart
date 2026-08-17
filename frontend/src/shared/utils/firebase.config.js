@@ -99,7 +99,9 @@ export const setupFcmForegroundListener = async () => {
             const title = payload?.notification?.title || payload?.data?.title || 'DwellMart Notification';
             const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || '';
             const image = payload?.notification?.imageUrl || payload?.notification?.image || payload?.data?.image || '';
-            const icon = payload?.notification?.icon || image || '/favicon.png';
+            const rawIcon = payload?.notification?.icon || payload?.notification?.imageUrl || payload?.data?.image || '/logo.png';
+            const icon = rawIcon.startsWith('http') ? rawIcon : new URL(rawIcon, window.location.origin).href;
+            const badge = new URL('/favicon.png', window.location.origin).href;
             const actionUrl = payload?.data?.actionUrl || '/notifications';
 
             toast(`${title}${body ? `\n${body}` : ''}`, { duration: 7000 });
@@ -110,7 +112,7 @@ export const setupFcmForegroundListener = async () => {
                     body,
                     icon,
                     ...(image ? { image } : {}),
-                    badge: '/favicon.png',
+                    badge,
                     tag: `dwell-mart-${Date.now()}`,
                     data: {
                         ...(payload?.data || {}),
