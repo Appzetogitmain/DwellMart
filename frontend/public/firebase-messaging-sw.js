@@ -13,13 +13,17 @@ self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim(
 messaging.onBackgroundMessage((payload) => {
     const title = payload?.notification?.title || payload?.data?.title || 'DwellMart Notification';
     const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || '';
-    const icon = payload?.notification?.icon || '/favicon.png';
+    const rawIcon = payload?.notification?.icon || payload?.notification?.imageUrl || payload?.data?.image || '/logo.png';
+    const icon = rawIcon.startsWith('http') ? rawIcon : new URL(rawIcon, self.location.origin).href;
+    const badge = new URL('/favicon.png', self.location.origin).href;
+    const image = payload?.notification?.imageUrl || payload?.notification?.image || payload?.data?.image || '';
     const actionUrl = payload?.data?.actionUrl || payload?.data?.link || '/notifications';
 
     return self.registration.showNotification(title, {
         body,
         icon,
-        badge: icon,
+        badge,
+        ...(image ? { image } : {}),
         tag: `dwell-mart-${payload?.data?.notificationId || Date.now()}`,
         data: {
             ...(payload?.data || {}),
