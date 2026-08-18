@@ -98,7 +98,7 @@ const resolveVariantKeys = async (items = []) => {
         items.map((i) => String(i?.productId || i?.id || '')).filter((id) => mongoose.isValidObjectId(id))
     )];
     const products = await Product.find({ _id: { $in: ids } })
-        .select('_id variants')
+        .select('_id variants price name')
         .lean();
     const byId = new Map(products.map((p) => [String(p._id), p]));
 
@@ -189,17 +189,14 @@ export const reserveStock = async (items, sessionId, dbSession = null) => {
     // key, so without this variant reservation would silently never engage —
     // the feature would look implemented and hold nothing.
     const variantKeys = await resolveVariantKeys(items);
-    let itemIndex = -1;
 
     // Process all items. Collect failures rather than aborting on first error
     // so the frontend can show ALL unavailable items at once.
-    for (const item of items) {
-        itemIndex += 1;
+    for (const [itemIndex, item] of items.entries()) {
         const productId      = String(item.productId || item.id || '');
         const quantity       = Number(item.quantity  || 1);
         const fulfillmentType = String(item.fulfillmentType || 'retail').toLowerCase();
         const expiresAt      = getExpiresAt(fulfillmentType);
-        itemIndex += 1;
         const variantKey     = variantKeys.get(itemIndex) || '';
 
         const opts = dbSession ? { session: dbSession } : {};
@@ -407,9 +404,7 @@ export const commitReservation = async (sessionId, items = [], dbSession = null)
     // Same resolution as the reservation path — a recovered expired hold must
     // not oversell a variant either.
     const directVariantKeys = await resolveVariantKeys(items);
-    let directIndex = -1;
-    for (const item of items) {
-        directIndex += 1;
+    for (const [directIndex, item] of items.entries()) {
         const productId = String(item.productId || item.id || item._id || '');
         if (!productId || !mongoose.isValidObjectId(productId)) continue;
         const quantity = Number(item.quantity || 1);
