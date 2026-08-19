@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   FiArrowLeft,
+  FiBriefcase,
   FiCheck,
   FiCreditCard,
   FiFileText,
@@ -61,7 +62,7 @@ const SubscriptionOnboardingWizard = ({
   const { getTranslatedText: t } = usePageTranslation([
     'Plans', 'Registration', 'Payment', 'Done',
     'Free', 'Popular', 'per', 'Selected', 'Choose Plan',
-    'Back to plans', 'Full name', 'Store name', 'Email', 'Phone',
+    'Back to plans', 'Full name', 'Company name', 'Company Name', 'Store name', 'Email', 'Phone',
     'Store description', 'Street', 'City', 'State', 'Zip code', 'Country',
     'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST', 'MSME', 'Enrolment ID/UIN',
     'I agree to the', 'Terms & Conditions', 'Register and verify email',
@@ -627,10 +628,10 @@ const SubscriptionOnboardingWizard = ({
                   </label>
 
                   <label className="relative block">
-                    <span className="text-xs font-bold text-slate-700 mb-1 block">Store Name <span className="text-red-500">*</span></span>
+                    <span className="text-xs font-bold text-slate-700 mb-1 block">{t('Company Name')} <span className="text-red-500">*</span></span>
                     <div className="relative">
-                      <FiShoppingBag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input name="storeName" value={formData.storeName} onChange={handleChange} required placeholder={t('Store name')} className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white transition-colors" />
+                      <FiBriefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input name="storeName" value={formData.storeName} onChange={handleChange} required placeholder={t('Company name')} className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white transition-colors" />
                     </div>
                   </label>
 

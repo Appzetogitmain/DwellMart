@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
 import { loginLogo } from '../../../shared/utils/imagePaths';
 
-const VEHICLE_TYPES = ['Bike', 'Scooter', 'Car', 'Van', 'Truck'];
+const VEHICLE_TYPES = ['Bike', 'Scooter', 'Cycle'];
 
 const DeliveryRegister = () => {
   const navigate = useNavigate();
@@ -21,10 +21,8 @@ const DeliveryRegister = () => {
     phone: '',
     address: '',
     vehicleType: 'Bike',
-    vehicleNumber: '',
     password: '',
     confirmPassword: '',
-    drivingLicense: null,
     aadharCard: null,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +30,7 @@ const DeliveryRegister = () => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (name === 'drivingLicense' || name === 'aadharCard') {
+    if (name === 'aadharCard') {
       setFormData((prev) => ({ ...prev, [name]: files?.[0] || null }));
       return;
     }
@@ -46,8 +44,8 @@ const DeliveryRegister = () => {
       toast.error('Please fill in all required fields');
       return;
     }
-    if (!formData.drivingLicense || !formData.aadharCard) {
-      toast.error('Driving License and Aadhar Card are required');
+    if (!formData.aadharCard) {
+      toast.error('Aadhar Card is required');
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -66,9 +64,7 @@ const DeliveryRegister = () => {
         phone: formData.phone.trim(),
         address: formData.address.trim(),
         vehicleType: formData.vehicleType,
-        vehicleNumber: formData.vehicleNumber.trim(),
         password: formData.password,
-        drivingLicense: formData.drivingLicense,
         aadharCard: formData.aadharCard,
       });
       toast.success(result.message || 'Registration submitted');
@@ -232,38 +228,20 @@ const DeliveryRegister = () => {
                 <FiTruck className="text-amber-600" />
                 Vehicle Information
               </h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* Vehicle Type */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                    Vehicle Type
-                  </label>
-                  <select
-                    name="vehicleType"
-                    value={formData.vehicleType}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-800 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 transition-all"
-                  >
-                    {VEHICLE_TYPES.map((v) => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Vehicle Number */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                    Vehicle Number
-                  </label>
-                  <input
-                    type="text"
-                    name="vehicleNumber"
-                    value={formData.vehicleNumber}
-                    onChange={handleChange}
-                    placeholder="MH 01 AB 1234"
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 transition-all"
-                  />
-                </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                  Vehicle Type
+                </label>
+                <select
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleChange}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-800 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 transition-all"
+                >
+                  {VEHICLE_TYPES.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
               </div>
             </section>
 
@@ -273,46 +251,23 @@ const DeliveryRegister = () => {
                 <FiFileText className="text-amber-600" />
                 Document Upload
               </h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {/* Driving License */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                    Driving License <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      name="drivingLicense"
-                      onChange={handleChange}
-                      accept=".pdf,image/*"
-                      required
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ffc101]/10 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-[#ffc101]/20 transition-all"
-                    />
-                  </div>
-                  {formData.drivingLicense && (
-                    <p className="mt-1 text-xs text-green-600 font-medium">✓ {formData.drivingLicense.name}</p>
-                  )}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                  Aadhar Card <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    name="aadharCard"
+                    onChange={handleChange}
+                    accept=".pdf,image/*"
+                    required
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ffc101]/10 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-[#ffc101]/20 transition-all"
+                  />
                 </div>
-
-                {/* Aadhar Card */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                    Aadhar Card <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      name="aadharCard"
-                      onChange={handleChange}
-                      accept=".pdf,image/*"
-                      required
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ffc101]/10 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-amber-700 hover:file:bg-[#ffc101]/20 transition-all"
-                    />
-                  </div>
-                  {formData.aadharCard && (
-                    <p className="mt-1 text-xs text-green-600 font-medium">✓ {formData.aadharCard.name}</p>
-                  )}
-                </div>
+                {formData.aadharCard && (
+                  <p className="mt-1 text-xs text-green-600 font-medium">✓ {formData.aadharCard.name}</p>
+                )}
               </div>
             </section>
 

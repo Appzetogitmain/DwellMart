@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiArrowLeft,
   FiArrowRight,
+  FiBriefcase,
   FiCheck,
   FiCreditCard,
   FiEye,
@@ -377,7 +378,7 @@ const VendorRegister = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#221300] via-[#3a2403] to-[#1a1204] px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#221300] via-[#3a2403] to-[#1a1204] px-3 sm:px-4 py-6 sm:py-8 overflow-x-hidden">
       <div className="mx-auto max-w-5xl">
         <Link
           to="/vendor/login"
@@ -394,34 +395,42 @@ const VendorRegister = () => {
           </p>
         </div>
 
-        <div className="mb-10 flex items-center justify-center">
-          {STEPS.map((step, index) => (
-            <div key={step} className="flex items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
-                    index < currentStep
-                      ? 'bg-[#ffc101] text-black'
-                      : index === currentStep
-                      ? 'bg-white text-[#5a3a00] ring-4 ring-[#ffc101]/20'
-                      : 'bg-white/10 text-white/60'
-                  }`}
-                >
-                  {index < currentStep ? <FiCheck /> : index + 1}
+        <div className="mb-8 sm:mb-12 w-full max-w-2xl mx-auto px-1 sm:px-4">
+          <div className="flex items-start justify-between">
+            {STEPS.map((step, index) => (
+              <div key={step} className="flex items-center flex-1 last:flex-none">
+                <div className="flex flex-col items-center shrink-0">
+                  <div
+                    className={`flex h-8 w-8 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-full text-xs sm:text-sm font-bold shadow-sm sm:shadow-md transition-all ${
+                      index < currentStep
+                        ? 'bg-[#ffc101] text-black'
+                        : index === currentStep
+                        ? 'bg-white text-[#5a3a00] ring-2 sm:ring-4 ring-[#ffc101]/20 font-extrabold'
+                        : 'bg-white/10 text-white/60'
+                    }`}
+                  >
+                    {index < currentStep ? <FiCheck className="stroke-[3] text-xs sm:text-sm" /> : index + 1}
+                  </div>
+                  <span
+                    className={`mt-1.5 text-[10px] sm:text-xs font-bold text-center whitespace-nowrap ${
+                      index <= currentStep ? 'text-white' : 'text-white/50'
+                    }`}
+                  >
+                    {step}
+                  </span>
                 </div>
-                <span className={`mt-2 text-xs ${index <= currentStep ? 'text-white' : 'text-white/50'}`}>
-                  {step}
-                </span>
+                {index < STEPS.length - 1 && (
+                  <div className="flex-1 mx-1 sm:mx-2 md:mx-3 -mt-4 sm:-mt-5">
+                    <div
+                      className={`h-0.5 sm:h-1 w-full rounded-full transition-colors ${
+                        index < currentStep ? 'bg-[#ffc101]' : 'bg-white/10'
+                      }`}
+                    />
+                  </div>
+                )}
               </div>
-              {index < STEPS.length - 1 && (
-                <div
-                  className={`mx-2 h-1 w-16 rounded-full md:w-24 ${
-                    index < currentStep ? 'bg-[#ffc101]' : 'bg-white/10'
-                  }`}
-                />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -634,16 +643,16 @@ const VendorRegister = () => {
 
                     <div className="md:col-span-2">
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        Store Name <span className="text-red-500">*</span>
+                        Company Name <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <FiShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <FiBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                           name="storeName"
                           value={formData.storeName}
                           onChange={handleChange}
                           required
-                          placeholder="My Awesome Store"
+                          placeholder="My Awesome Company"
                           className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
                         />
                       </div>

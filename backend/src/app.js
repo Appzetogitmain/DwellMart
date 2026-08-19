@@ -35,6 +35,8 @@ import { resolveExperience } from './middlewares/resolveExperience.js';
 import errorHandler from './middlewares/errorHandler.js';
 import notFound from './middlewares/notFound.js';
 
+import fs from 'fs';
+
 const app = express();
 app.use(requestIdMiddleware);
 app.set('trust proxy', 1);
@@ -42,6 +44,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsRoot = path.resolve(__dirname, '../uploads');
 const deliveryDocsRoot = path.resolve(uploadsRoot, 'delivery-docs');
+const vendorDocsRoot = path.resolve(uploadsRoot, 'vendor_documents');
+const tmpUploadsRoot = path.resolve(uploadsRoot, 'tmp');
+
+fs.mkdirSync(uploadsRoot, { recursive: true });
+fs.mkdirSync(deliveryDocsRoot, { recursive: true });
+fs.mkdirSync(vendorDocsRoot, { recursive: true });
+fs.mkdirSync(tmpUploadsRoot, { recursive: true });
 
 const isValidDeliveryDocToken = (relativePath, rawToken) => {
     if (!rawToken) return false;
@@ -216,6 +225,77 @@ app.use(
         },
     })
 );
+
+// Fallback for missing uploaded static files
+app.use('/uploads', (req, res) => {
+    if (req.accepts('html')) {
+        const filename = req.path.split('/').pop() || 'file';
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+        return res.status(404).send(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Document File Not Found - DwellMart</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #140d02; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1rem; }
+                    .card { background: #221504; padding: 2.5rem; border-radius: 1.5rem; border: 1px solid rgba(255, 193, 1, 0.2); text-align: center; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+                    .icon { width: 56px; height: 56px; background: rgba(255, 193, 1, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; color: #ffc101; font-size: 1.5rem; font-weight: bold; }
+                    h1 { font-size: 1.25rem; font-weight: 700; color: #ffffff; margin: 0 0 0.5rem; }
+                    p { font-size: 0.875rem; color: rgba(255,255,255,0.7); line-height: 1.6; margin: 0 0 1rem; }
+                    .filename { font-family: monospace; background: rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 0.375rem; color: #ffd042; font-size: 0.8rem; word-break: break-all; }
+                    .actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
+                    .btn { cursor: pointer; border: none; background: #ffc101; color: #000000; font-weight: 700; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; transition: background 0.2s; }
+                    .btn:hover { background: #ffd042; }
+                    .btn-secondary { cursor: pointer; border: none; display: inline-block; text-decoration: none; background: rgba(255, 255, 255, 0.1); color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; transition: background 0.2s; }
+                    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="icon">!</div>
+                    <h1>Document File Unavailable</h1>
+                    <p>The document file <span class="filename">${filename}</span> is not available on the server.</p>
+                    <p>This file was uploaded during initial testing before upload directories were initialized. The vendor can re-upload the document from their portal.</p>
+                    <div class="actions">
+                        <button type="button" id="closeBtn" class="btn">Close Window</button>
+                        <button type="button" id="returnBtn" class="btn-secondary">Return to Admin Panel</button>
+                    </div>
+                </div>
+                <script>
+                    document.getElementById('returnBtn').addEventListener('click', function() {
+                        if (document.referrer && document.referrer.length > 5) {
+                            window.location.href = document.referrer;
+                        } else {
+                            window.location.href = 'http://localhost:3000/admin/vendors';
+                        }
+                    });
+                    document.getElementById('closeBtn').addEventListener('click', function() {
+                        try {
+                            window.close();
+                        } catch (e) {}
+                        setTimeout(function() {
+                            if (!window.closed) {
+                                if (document.referrer && document.referrer.length > 5) {
+                                    window.location.href = document.referrer;
+                                } else {
+                                    window.location.href = 'http://localhost:3000/admin/vendors';
+                                }
+                            }
+                        }, 100);
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+    }
+    return res.status(404).json({
+        success: false,
+        message: 'The requested document file was not found on the server.',
+    });
+});
 app.use('/api/payments', paymentRouter);
 app.use('/api/products', bulkUploadRoutes);
 app.use('/api/quick', quickCommerceRoutes);
