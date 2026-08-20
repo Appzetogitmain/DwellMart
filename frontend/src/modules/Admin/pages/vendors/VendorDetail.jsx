@@ -22,7 +22,7 @@ import { getAllOrders, getVendorCommissions, getVendorDocuments, updateVendorQui
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
-import { formatPrice } from "../../../../shared/utils/helpers";
+import { formatPrice, getImageUrl } from "../../../../shared/utils/helpers";
 import { VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
 // import { formatDateTime } from '../../../utils/adminHelpers';
 import toast from "react-hot-toast";
