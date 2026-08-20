@@ -106,9 +106,11 @@ export const getActiveOrder = asyncHandler(async (req, res) => {
 /**
  * GET /api/user/orders/:id/tracking
  *
- * The customer's live view: current Quick Commerce status, the ETA promised at
- * checkout, and the rider's last known position. Ownership-scoped — a customer
- * can only track their own order.
+ * The customer's live view. Returns:
+ *   - Quick Commerce: current QC status, ETA, rider location
+ *   - Retail / Wholesale: DTDC shipment status, AWB, tracking history
+ *
+ * Ownership-scoped — a customer can only track their own order.
  */
 export const getOrderTracking = asyncHandler(async (req, res) => {
     const idFilter = [{ orderId: req.params.id }];
@@ -121,13 +123,17 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
         userId: req.user.id,
         isDeleted: { $ne: true },
     })
-        .select('orderId status experience quickCommerce deliveryBoyId createdAt deliveredAt')
+        .select('orderId status fulfillmentType experience quickCommerce deliveryBoyId trackingNumber integration createdAt deliveredAt')
         .lean();
 
     if (!order) throw new ApiError(404, 'Order not found.');
 
+    const isQC = order.experience === EXPERIENCES.QUICK_COMMERCE
+              || order.fulfillmentType === 'quick_commerce';
+
+    // ── QC: Rider info ──────────────────────────────────────────────────
     let rider = null;
-    if (order.deliveryBoyId) {
+    if (isQC && order.deliveryBoyId) {
         const riderDoc = await DeliveryBoy.findById(order.deliveryBoyId)
             .select('name phone vehicleType vehicleNumber avatar location lastLocationAt')
             .lean();
@@ -141,10 +147,40 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
                 vehicleType: riderDoc.vehicleType,
                 vehicleNumber: riderDoc.vehicleNumber,
                 avatar: riderDoc.avatar,
-                // [lng, lat] → the {latitude, longitude} the client expects.
                 latitude: coordinates ? coordinates[1] : null,
                 longitude: coordinates ? coordinates[0] : null,
                 lastLocationAt: riderDoc.lastLocationAt || null,
+            };
+        }
+    }
+
+    // ── Retail / Wholesale: DTDC shipment info ──────────────────────────
+    let shipment = null;
+    if (!isQC) {
+        // Dynamic import to avoid loading Shipment model when it's not needed for QC
+        const { default: Shipment } = await import('../../../models/Shipment.model.js');
+        const shipmentDoc = await Shipment.findOne({ orderId: order._id })
+            .select('awbNumber carrierName serviceType status estimatedDelivery bookedAt pickedUpAt inTransitAt outForDeliveryAt deliveredAt trackingHistory')
+            .lean();
+
+        if (shipmentDoc) {
+            shipment = {
+                awbNumber:         shipmentDoc.awbNumber || null,
+                carrier:           shipmentDoc.carrierName || 'DTDC',
+                serviceType:       shipmentDoc.serviceType || null,
+                status:            shipmentDoc.status,
+                estimatedDelivery: shipmentDoc.estimatedDelivery || null,
+                bookedAt:          shipmentDoc.bookedAt || null,
+                pickedUpAt:        shipmentDoc.pickedUpAt || null,
+                inTransitAt:       shipmentDoc.inTransitAt || null,
+                outForDeliveryAt:  shipmentDoc.outForDeliveryAt || null,
+                deliveredAt:       shipmentDoc.deliveredAt || null,
+                trackingHistory:   (shipmentDoc.trackingHistory || []).map((e) => ({
+                    status:      e.status,
+                    description: e.description,
+                    location:    e.location,
+                    timestamp:   e.timestamp,
+                })),
             };
         }
     }
@@ -153,13 +189,20 @@ export const getOrderTracking = asyncHandler(async (req, res) => {
         orderId: order.orderId,
         orderRefId: String(order._id),
         experience: order.experience,
+        fulfillmentType: order.fulfillmentType,
         status: order.status,
+        // QC fields
         quickCommerceStatus: order.quickCommerce?.status || null,
         promisedEtaMinutes: order.quickCommerce?.promisedEtaMinutes ?? null,
         promisedAt: order.quickCommerce?.promisedAt || null,
         assignmentStatus: order.quickCommerce?.assignment?.status || null,
-        isQuickCommerce: order.experience === EXPERIENCES.QUICK_COMMERCE,
+        isQuickCommerce: isQC,
         deliveredAt: order.deliveredAt || null,
         rider,
+        // DTDC fields
+        shipment,
+        trackingNumber: order.trackingNumber || null,
+        deliveryPartner: order.integration?.deliveryPartnerName || null,
     }, 'Order tracking fetched.'));
 });
+

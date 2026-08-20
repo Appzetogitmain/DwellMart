@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { INDIAN_PINCODE_PATTERN, PINCODE_ERROR_MESSAGE } from '../../../constants/pincode.js';
 
 export const placeOrderSchema = Joi.object({
     items: Joi.array().items(
@@ -16,7 +17,10 @@ export const placeOrderSchema = Joi.object({
         address: Joi.string().required(),
         city: Joi.string().required(),
         state: Joi.string().required(),
-        zipCode: Joi.string().required(),
+        // Was a bare `Joi.string().required()` — weaker even than the address
+        // schema, so an order could carry a pincode an address never could.
+        zipCode: Joi.string().trim().pattern(INDIAN_PINCODE_PATTERN).required()
+            .messages({ 'string.pattern.base': PINCODE_ERROR_MESSAGE }),
         country: Joi.string().required(),
     }).required(),
     paymentMethod: Joi.string().valid('card', 'cash', 'cod', 'bank', 'wallet', 'upi').required(),

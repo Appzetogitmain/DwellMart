@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiCheck, FiShield } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiShield, FiMessageCircle } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import MobileLayout from "../components/Layout/MobileLayout";
@@ -25,14 +25,33 @@ const MobileVerification = () => {
     'Verification successful!',
     'Invalid verification code. Please try again.',
     'Verification code sent to your email',
+    'Verification code sent to your WhatsApp',
+    'WhatsApp Verification',
+    'Enter the verification code we sent to your WhatsApp.',
+    'Check your email inbox, including the spam folder.',
+    'Code expires in',
+    'Your code has expired. Please request a new code.',
+    'Too many code requests. Please wait before trying again.',
+    'Sending...',
     'Failed to resend code. Please try again.'
   ]);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { verifyOTP, resendOTP, pendingEmail, isLoading } = useAuthStore();
+  const {
+    verifyOTP, resendOTP, pendingEmail, isLoading,
+    otpChannel, otpExpiresInMinutes, otpRequestedAt,
+  } = useAuthStore();
   const [codes, setCodes] = useState(['', '', '', '', '', '']);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [isResending, setIsResending] = useState(false);
   const inputRefs = useRef([]);
+
+  // The server reports where it actually delivered the code. Never infer this
+  // from "a phone number was supplied" — WhatsApp may have failed and fallen
+  // back to email, and telling the user to check the wrong place strands them.
+  const deliveredViaWhatsApp = otpChannel === 'whatsapp';
+  const isExpired = secondsLeft <= 0 && Boolean(otpRequestedAt);
 
   const email =
     String(location.state?.email || pendingEmail || searchParams.get('email') || '')
@@ -49,6 +68,32 @@ const MobileVerification = () => {
       inputRefs.current[0].focus();
     }
   }, [email, navigate]);
+
+  // Countdown to the code's five-minute expiry. Held equal to the backend
+  // window and to the WhatsApp template validity — a UI that promises longer
+  // than the code lives is worse than no timer at all.
+  useEffect(() => {
+    if (!otpRequestedAt) return undefined;
+    const totalMs = (otpExpiresInMinutes || 5) * 60 * 1000;
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((otpRequestedAt + totalMs - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      return remaining;
+    };
+
+    if (tick() === 0) return undefined;
+    const timer = setInterval(() => {
+      if (tick() === 0) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpRequestedAt, otpExpiresInMinutes]);
+
+  const formatCountdown = (total) => {
+    const mm = String(Math.floor(total / 60)).padStart(2, '0');
+    const ss = String(total % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
 
   const handleChange = (index, value) => {
     // Only allow single digit
@@ -99,13 +144,33 @@ const MobileVerification = () => {
     }
   };
 
+  // Resend is ALWAYS user-initiated. Nothing here auto-resends: each send costs
+  // a real message and issues a new code that invalidates the one the user may
+  // already be typing.
   const handleResend = async () => {
-    if (!email) return;
+    if (!email || isResending) return;
+    setIsResending(true);
     try {
-      await resendOTP(email);
-      toast.success(t('Verification code sent to your email'));
+      const result = await resendOTP(email);
+      setCodes(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+      toast.success(
+        result?.otpChannel === 'whatsapp'
+          ? t('Verification code sent to your WhatsApp')
+          : t('Verification code sent to your email')
+      );
     } catch (error) {
-      toast.error(error?.message || t('Failed to resend code. Please try again.'));
+      const status = error?.response?.status;
+      if (status === 429) {
+        toast.error(
+          error?.response?.data?.message
+          || t('Too many code requests. Please wait before trying again.')
+        );
+      } else {
+        toast.error(error?.message || t('Failed to resend code. Please try again.'));
+      }
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -156,16 +221,50 @@ const MobileVerification = () => {
                   </div>
                 </motion.div>
 
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
-                  <FiShield className="text-xs" />
-                  <span>{t('Email Verification')}</span>
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3 border ${
+                  deliveredViaWhatsApp
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                }`}>
+                  {deliveredViaWhatsApp ? <FiMessageCircle className="text-xs" /> : <FiShield className="text-xs" />}
+                  <span>{deliveredViaWhatsApp ? t('WhatsApp Verification') : t('Email Verification')}</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1.5">{t('Verification code')}</h1>
                 <p className="text-slate-400 text-xs sm:text-sm">
-                  {t("Enter the verification code we've sent to your")}{' '}
-                  <span className="font-medium text-amber-400">{email || t('email')}</span>
+                  {deliveredViaWhatsApp
+                    ? t('Enter the verification code we sent to your WhatsApp.')
+                    : <>
+                        {t("Enter the verification code we've sent to your")}{' '}
+                        <span className="font-medium text-amber-400">{email || t('email')}</span>
+                      </>}
                 </p>
+
+                {/* The code was NOT delivered where the user expected. Say so
+                    plainly rather than leaving them watching a silent phone. */}
+                {otpChannel === 'email' && (
+                  <p className="mt-2 text-[11px] text-slate-500">
+                    {t('Check your email inbox, including the spam folder.')}
+                  </p>
+                )}
+
+                {/* Countdown / expiry. Held equal to the five-minute backend window. */}
+                {otpRequestedAt && (
+                  <div className="mt-4">
+                    {isExpired ? (
+                      <p className="text-xs font-semibold text-red-400">
+                        {t('Your code has expired. Please request a new code.')}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-400">
+                        {t('Code expires in')}{' '}
+                        <span className={`font-bold tabular-nums ${secondsLeft <= 60 ? 'text-red-400' : 'text-amber-400'}`}>
+                          {formatCountdown(secondsLeft)}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Code Input Form */}
@@ -194,7 +293,7 @@ const MobileVerification = () => {
                 {/* Submit Button */}
                 <motion.button
                   type="submit"
-                  disabled={isLoading || codes.some(code => !code)}
+                  disabled={isLoading || isExpired || codes.some(code => !code)}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-sm sm:text-base shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_6px_25px_rgba(212,175,55,0.45)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
@@ -210,9 +309,10 @@ const MobileVerification = () => {
                   <button
                     type="button"
                     onClick={handleResend}
-                    className="text-amber-400 hover:text-amber-300 font-bold transition-colors underline underline-offset-4 decoration-amber-500/40 hover:decoration-amber-400"
+                    disabled={isResending}
+                    className="text-amber-400 hover:text-amber-300 font-bold transition-colors underline underline-offset-4 decoration-amber-500/40 hover:decoration-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {t('Resend')}
+                    {isResending ? t('Sending...') : t('Resend')}
                   </button>
                 </p>
               </div>

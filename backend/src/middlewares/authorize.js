@@ -47,7 +47,7 @@ export const enforceAccountStatus = async (req, res, next) => {
             if (vendor.isActive === false) {
                 return next(new ApiError(403, 'Vendor account is deactivated. Contact support.'));
             }
-            if (!vendor.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
+            if (!vendor.isVerified) return next(new ApiError(403, 'Your account is not verified. Please contact support.'));
             if (vendor.status !== 'approved') {
                 return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
             }

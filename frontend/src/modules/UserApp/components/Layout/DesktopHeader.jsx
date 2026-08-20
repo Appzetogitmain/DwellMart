@@ -23,12 +23,25 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserNotificationStore } from "../../store/userNotificationStore";
 import NotificationBell from "../../../../shared/components/Notifications/NotificationBell";
+import { EXPERIENCES } from "../../../../shared/utils/experience";
 
 const DesktopHeader = ({ hideSellButton = false }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { location, isLocating } = useExperienceStore();
   const itemCount = useCartStore((state) => state.getItemCount());
+  /**
+   * Quick Commerce and Marketplace hold separate baskets, and the count above
+   * only ever reflects the active one. Without this the header cannot show
+   * that anything is waiting in the other basket, which is what made switching
+   * experience look like the cart had been emptied.
+   */
+  const cartExperience = useCartStore((state) => state.cartExperience);
+  useCartStore((state) => state.carts);
+  const getCartCountForExperience = useCartStore((state) => state.getCartCountForExperience);
+  const otherBasketCount = getCartCountForExperience(
+    cartExperience === EXPERIENCES.QUICK_COMMERCE ? EXPERIENCES.MARKETPLACE : EXPERIENCES.QUICK_COMMERCE
+  );
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const unreadCount = useUserNotificationStore((state) => state.unreadCount);
   const { getTranslatedText: t } = usePageTranslation(["Home", "Shop", "Categories", "Offers", "Track Order", "Sell On Dwell Mart", "Profile", "Orders", "Logout", "Login"]);
@@ -165,12 +178,22 @@ const DesktopHeader = ({ hideSellButton = false }) => {
               data-cart-icon
               onClick={toggleCart}
               className="relative p-1.5 text-gray-300 hover:text-[#ffc101] transition-colors cursor-pointer"
-              title="Shopping Cart">
+              title={otherBasketCount > 0
+                ? `Shopping Cart — ${otherBasketCount} more saved in your other basket`
+                : "Shopping Cart"}>
               <FiShoppingBag className="text-base lg:text-lg xl:text-xl" />
               {itemCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#ffc101] text-black text-[10px] font-extrabold flex items-center justify-center">
                   {itemCount > 9 ? "9+" : itemCount}
                 </span>
+              )}
+              {/* A quieter marker for the OTHER basket, so the two counts are
+                  never confused with one another. */}
+              {otherBasketCount > 0 && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-slate-900"
+                  aria-hidden="true"
+                />
               )}
             </button>
 

@@ -22,6 +22,7 @@ import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
 import { getPlaceholderImage } from '../../../shared/utils/helpers';
 import { getOrderById, updateOrderStatus } from '../services/adminService';
 import toast from 'react-hot-toast';
+import DtdcShipmentPanel from '../../../shared/components/DtdcShipmentPanel';
 
 const OrderDetail = () => {
   const ORDER_PRODUCT_PLACEHOLDER = getPlaceholderImage(100, 100, 'Product');
@@ -236,6 +237,19 @@ const OrderDetail = () => {
               </div>
             )}
           </div>
+
+          {/* DTDC Shipment Management — retail/wholesale only.
+              `fulfillmentType` is null on orders created before fulfilment
+              groups existed, so `experience` has to be consulted too; without
+              it a legacy Quick Commerce order rendered a "Book DTDC Shipment"
+              button for a parcel that internal riders carry. */}
+          {order.experience !== 'quick_commerce' && order.fulfillmentType !== 'quick_commerce' && (
+            <DtdcShipmentPanel
+              orderId={id}
+              context="admin"
+              fulfillmentType={order.fulfillmentType || order.orderType}
+            />
+          )}
 
           {/* Order Items */}
           {itemsArray.length > 0 && (

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
@@ -735,4 +736,78 @@ export const deleteBrand = asyncHandler(async (req, res) => {
 
     await Brand.findByIdAndDelete(req.params.id);
     res.status(200).json(new ApiResponse(200, null, 'Brand deleted.'));
+});
+
+/**
+ * GET /products/missing-shipping
+ *
+ * Courier-eligible products whose parcel data is an ESTIMATE rather than a
+ * measurement — either never entered, or seeded by migration 0014.
+ *
+ * Drives the catalogue banner that tells an operator how much of the catalogue
+ * is booking at a guess. Quick Commerce-only products are excluded: they never
+ * reach a courier, so an estimate on them costs nothing.
+ */
+export const listProductsMissingShipping = asyncHandler(async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+    const { vendorId, channel } = req.query;
+
+    const filter = {
+        isDeleted: { $ne: true },
+        // Estimated OR absent. Both mean "nobody has measured this".
+        $and: [
+            {
+                $or: [
+                    { 'shipping.source': 'estimated' },
+                    { 'shipping.weight': { $exists: false } },
+                    { 'shipping.weight': { $lte: 0 } },
+                ],
+            },
+            { $or: [{ retailEnabled: { $ne: false } }, { wholesaleEnabled: true }] },
+        ],
+    };
+
+    if (vendorId) {
+        if (!mongoose.Types.ObjectId.isValid(vendorId)) throw new ApiError(400, 'Invalid vendorId.');
+        filter.vendorId = vendorId;
+    }
+    if (channel === 'wholesale') filter.wholesaleEnabled = true;
+    else if (channel === 'retail') filter.retailEnabled = { $ne: false };
+    else if (channel) throw new ApiError(400, 'Channel must be retail or wholesale.');
+
+    const [products, total, totalCourierEligible] = await Promise.all([
+        Product.find(filter)
+            .select('name sku shipping retailEnabled wholesaleEnabled vendorId createdAt')
+            .populate('vendorId', 'storeName')
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .lean(),
+        Product.countDocuments(filter),
+        Product.countDocuments({
+            isDeleted: { $ne: true },
+            $or: [{ retailEnabled: { $ne: false } }, { wholesaleEnabled: true }],
+        }),
+    ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        products: products.map((p) => ({
+            _id: p._id,
+            name: p.name,
+            sku: p.sku || null,
+            vendorId: p.vendorId?._id || p.vendorId || null,
+            vendorName: p.vendorId?.storeName || null,
+            channels: [
+                p.retailEnabled !== false ? 'retail' : null,
+                p.wholesaleEnabled === true ? 'wholesale' : null,
+            ].filter(Boolean),
+            shippingSource: p.shipping?.source || null,
+            estimatedWeight: p.shipping?.weight ?? null,
+        })),
+        total,
+        totalCourierEligible,
+        page,
+        pages: Math.ceil(total / limit) || 1,
+    }, 'Products missing shipping details'));
 });

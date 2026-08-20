@@ -44,6 +44,8 @@ import { commitReservation } from './InventoryReservationService.js';
 import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../events/marketplaceEventBus.js';
 import { roundMoney, assertPriceConsistency } from '../PriceReconciliationService.js';
 import { calculateVendorShippingForGroups } from '../vendorShipping.service.js';
+import { normalizeProductShipping } from '../shipping/parcelMetrics.js';
+import { checkDeliverability, deliverabilityStamp } from '../shipping/deliverability.service.js';
 import { ensureVendorCommissionsForOrder } from '../commission.service.js';
 
 /**
@@ -219,6 +221,8 @@ const computeGroupPricing = async (
         subtotal += lineSubtotal;
         savings  += pricing.savings || 0;
 
+        const parcel = normalizeProductShipping(product?.shipping);
+
         pricedItems.push({
             productId:       productId ? new mongoose.Types.ObjectId(productId) : null,
             vendorId:        vendorDoc?._id || null,
@@ -232,6 +236,12 @@ const computeGroupPricing = async (
             appliedTier:     pricing.appliedTier || null,
             unitRetailPrice: pricing.unitRetailPrice,
             savings:         pricing.savings || 0,
+            // Parcel snapshot, normalised to kg/cm once here so every
+            // downstream consumer reads one unit system. Omitted entirely when
+            // the product carries no measurements, so `undefined` continues to
+            // mean "never measured" rather than "measured as zero".
+            ...(parcel.weightKg ? { shippingWeightKg: parcel.weightKg } : {}),
+            ...(parcel.dims ? { shippingDims: parcel.dims } : {}),
         });
     }
 
@@ -311,14 +321,34 @@ export const splitAndCreateOrders = async ({
     userId          = null,
     settings        = {},
 }) => {
-    // ── 0. Validate cart (throws CartValidationFailed if invalid) ──────────
+    // ── 0a. Deliverability ─────────────────────────────────────────────────
+    // The authoritative check. The checkout screen asks the same question for
+    // instant feedback, but a REST client can skip the screen entirely — so the
+    // refusal has to live here, on the only path that creates an order.
+    //
+    // Only a DEFINITIVE carrier refusal stops the order. An unreachable carrier
+    // yields `blocking: false` and is recorded on the order instead; see
+    // services/shipping/deliverability.service.js.
+    const deliverability = await checkDeliverability(shippingAddress?.zipCode, {
+        requiresCod: String(paymentMethod || '').toLowerCase() === 'cod',
+    });
+
+    if (deliverability.blocking) {
+        throw new ApiError(400, deliverability.message, [{
+            code: 'DESTINATION_NOT_DELIVERABLE',
+            pincode: shippingAddress?.zipCode,
+            status: deliverability.status,
+        }]);
+    }
+
+    // ── 0b. Validate cart (throws CartValidationFailed if invalid) ──────────
     await assertCartValid({ items, customerLocation });
 
     // ── 1. Batch-fetch all required documents ──────────────────────────────
     const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
     const [rawProducts, wholesaleEnabled] = await Promise.all([
         Product.find({ _id: { $in: productIds } })
-            .select('_id name images price taxRate taxIncluded retailEnabled wholesaleEnabled quickCommerceEnabled wholesale vendorId stock stockQuantity')
+            .select('_id name images price taxRate taxIncluded retailEnabled wholesaleEnabled quickCommerceEnabled wholesale shipping vendorId stock stockQuantity')
             .lean(),
         isWholesaleMarketplaceEnabled(),
     ]);
@@ -463,10 +493,20 @@ export const splitAndCreateOrders = async ({
                             packagingFee: pricing.packagingFee || 0,
                             tax:       pricing.tax,
                             discount:  pricing.discount,
+                            // The channel this group was split under. `orderType`
+                            // below is a PRICING type from deriveOrderType() and
+                            // cannot represent Quick Commerce, so it must never
+                            // be the only channel signal on the slice.
+                            fulfillmentType: ft,
                             orderType: deriveOrderType(pricingTypes),
                             status:    'pending',
                         }],
                         shippingAddress,
+                        // What we knew about this destination when the order was
+                        // taken. A vendor opening an `unverified` order knows the
+                        // address was never confirmed, rather than finding out
+                        // when the booking fails.
+                        deliverability: deliverabilityStamp(deliverability),
                         paymentMethod,
                         paymentStatus: session.paymentStatus === 'paid' ? 'paid' : 'pending',
                         status:        session.paymentStatus === 'paid' ? 'confirmed' : 'pending',

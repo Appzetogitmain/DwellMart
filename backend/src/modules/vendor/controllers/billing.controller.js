@@ -2,7 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiError from '../../../utils/ApiError.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import Admin from '../../../models/Admin.model.js';
-import EmailVerification from '../../../models/EmailVerification.model.js';
+import { isPhoneVerified } from '../../../services/phoneVerification.service.js';
 import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -26,8 +26,8 @@ const isFreePlan = (plan) =>
  * registration has not logged in yet. Two proofs are accepted:
  *
  *   1. An authenticated vendor acting on their own account (renewal case).
- *   2. A verified `EmailVerification` record for that address, which is created
- *      by the registration OTP flow and expires with it.
+ *   2. A verified `PhoneVerification` record for the vendor's mobile number,
+ *      which is created by the registration OTP flow and expires with it.
  *
  * Without one of these, supplying any known vendor email was enough to act on
  * that vendor's account.
@@ -36,16 +36,14 @@ const assertOnboardingAuthority = async (req, vendor) => {
     const callerId = req.user?.id || req.user?._id;
     if (callerId && String(callerId) === String(vendor._id)) return;
 
-    const verification = await EmailVerification.findOne({
-        email: String(vendor.email || '').trim().toLowerCase(),
-        isVerified: true,
-    }).lean();
-
-    if (verification) return;
+    // The proven contact is the MOBILE NUMBER. Falling back to the email
+    // address here would reopen exactly the hole this function exists to
+    // close: an email is asserted at signup, never demonstrated.
+    if (await isPhoneVerified(vendor.phoneE164)) return;
 
     throw new ApiError(
         403,
-        'Verify your email address before continuing with onboarding.'
+        'Verify your mobile number before continuing with onboarding.'
     );
 };
 
@@ -137,7 +135,7 @@ export const initiateOnboardingSubscription = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email: normalizedEmail });
 
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
-    if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
+    if (!vendor.isVerified) throw new ApiError(403, 'Your account is not verified. Please contact support.');
 
     // Prove the caller controls this mailbox before acting on the account.
     // This route has no session (a vendor mid-onboarding has not logged in yet),

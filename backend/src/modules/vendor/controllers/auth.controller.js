@@ -8,10 +8,18 @@ import Product from '../../../models/Product.model.js';
 import Order from '../../../models/Order.model.js';
 import Admin from '../../../models/Admin.model.js';
 import Settings from '../../../models/Settings.model.js';
-import EmailVerification from '../../../models/EmailVerification.model.js';
+import PhoneVerification from '../../../models/PhoneVerification.model.js';
+import {
+    sendPhoneVerification,
+    confirmPhoneVerification,
+    isPhoneVerified,
+    clearPhoneVerification,
+    requireE164,
+} from '../../../services/phoneVerification.service.js';
 import crypto from 'crypto';
 import { generateTokens } from '../../../utils/generateToken.js';
-import { isMockOTP, isOTPMatch, sendOTP } from '../../../services/otp.service.js';
+import { isMockOTP, isOTPMatch, sendOTP, sendResetOTP, OTP_EXPIRY_MS, OTP_EXPIRY_MINUTES } from '../../../services/otp.service.js';
+import { toE164 } from '../../../utils/phone.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 import {
@@ -54,7 +62,10 @@ const getVendorOnboardingState = async (vendorDoc) => {
         : vendorDoc;
 
     if (!vendor.isVerified) {
-        return { onboardingStatus: 'registered', nextStep: 'verify_email', subscription: null };
+        // Unreachable for new vendors — registration cannot complete without a
+        // proven mobile number. Legacy rows can still sit here, and the resume
+        // branch in `register` is their recovery path.
+        return { onboardingStatus: 'registered', nextStep: 'verify_phone', subscription: null };
     }
 
     if (vendor.status === 'approved') {
@@ -162,26 +173,31 @@ export const register = asyncHandler(async (req, res) => {
 
     const { plan } = await resolvePlanSelection({ selectionToken, selectedPlanId });
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    const phoneE164 = requireE164(phone);
     const existing = await Vendor.findOne({ email: normalizedEmail }).populate('selectedPlan');
 
-    const verificationRecord = await EmailVerification.findOne({ email: normalizedEmail, isVerified: true });
-    if (!verificationRecord) {
-        throw new ApiError(400, 'Email not verified. Please verify your email first.');
+    // The MOBILE NUMBER is the proven contact. The email address is collected
+    // for correspondence but is never verified — a vendor is identified by a
+    // number they demonstrably control.
+    if (!(await isPhoneVerified(phoneE164))) {
+        throw new ApiError(400, 'Mobile number not verified. Please verify your mobile number first.');
     }
 
     if (existing) {
         const onboarding = await getVendorOnboardingState(existing);
         if (
-            onboarding.nextStep === 'verify_email'
+            onboarding.nextStep === 'verify_phone'
             || onboarding.nextStep === 'choose_plan'
             || onboarding.nextStep === 'complete_payment'
         ) {
             existing.selectedPlan = plan._id;
             existing.country = String(address?.country || existing.country || '').trim();
             existing.isVerified = true;
+            existing.phoneE164 = phoneE164;
+            existing.phoneVerified = true;
             existing.onboardingStatus = 'plan_selected';
             await existing.save({ validateBeforeSave: false });
-            await EmailVerification.deleteOne({ email: normalizedEmail });
+            await clearPhoneVerification(phoneE164);
 
             return res.status(200).json(
                 new ApiResponse(
@@ -239,6 +255,9 @@ export const register = asyncHandler(async (req, res) => {
         email: normalizedEmail,
         password,
         phone: String(phone || '').trim(),
+        phoneE164,
+        // Proven by the WhatsApp code that gated this registration.
+        phoneVerified: true,
         country: String(address?.country || '').trim(),
         storeName: String(storeName || '').trim(),
         storeDescription: String(storeDescription || '').trim(),
@@ -251,7 +270,7 @@ export const register = asyncHandler(async (req, res) => {
         onboardingStatus: 'plan_selected',
         selectedPlan: plan._id,
         documents,
-        isVerified: true, // Already verified inline
+        isVerified: true, // Mobile number proven before this point
         sellingChannels: {
             retail: { enabled: retailRequested },
             wholesale: { enabled: wholesaleRequested },
@@ -266,8 +285,8 @@ export const register = asyncHandler(async (req, res) => {
         wholesaleProfile: wholesaleRequested ? wholesaleProfile : undefined,
     });
 
-    // Clean up verification record
-    await EmailVerification.deleteOne({ email: normalizedEmail });
+    // Consume the verification record now that it has done its job.
+    await clearPhoneVerification(phoneE164);
 
     // Notify all active admins of new vendor registration
     try {
@@ -301,66 +320,51 @@ export const register = asyncHandler(async (req, res) => {
                 onboardingStatus: 'plan_selected',
                 nextStep: 'complete_payment',
             },
-            'Registration successful. Email verified.'
+            'Registration successful. Mobile number verified.'
         )
     );
 });
 
+/**
+ * POST /auth/request-registration-otp
+ *
+ * Issues a WhatsApp code to the MOBILE NUMBER a prospective vendor is
+ * registering with. There is no email step: the address is collected for
+ * correspondence and never verified.
+ */
 export const requestRegistrationOTP = asyncHandler(async (req, res) => {
-    const email = String(req.body?.email || '').trim().toLowerCase();
-    if (!email) throw new ApiError(400, 'Email is required.');
+    const phoneE164 = requireE164(req.body?.phone);
 
-    // Check if vendor already exists and is verified
-    const existingVendor = await Vendor.findOne({ email });
+    // An existing, fully-registered vendor on this number should log in rather
+    // than start again.
+    const existingVendor = await Vendor.findOne({ phoneE164 });
     if (existingVendor && existingVendor.isVerified) {
-        throw new ApiError(409, 'Email is already registered and verified. Please login.');
+        throw new ApiError(409, 'This mobile number is already registered. Please login.');
     }
 
-    const useMockOTP = process.env.NODE_ENV !== 'production' && ['true', '1'].includes(process.env.USE_MOCK_OTP);
-    const otp = useMockOTP ? (process.env.MOCK_OTP || '123456') : crypto.randomInt(100000, 999999).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const result = await sendPhoneVerification(phoneE164);
 
-    await EmailVerification.findOneAndUpdate(
-        { email },
-        { otp, otpExpiry, isVerified: false },
-        { upsate: true, new: true, setDefaultsOnInsert: true, upsert: true }
-    );
-
-    if (!useMockOTP) {
-        try {
-            await sendEmail({
-                to: email,
-                subject: 'Your registration verification code',
-                text: `Your verification code is ${otp}. It expires in 10 minutes.`,
-                html: `<p>Your verification code is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-            });
-        } catch (err) {
-            console.warn(`[Registration OTP] Email send failed for ${email}: ${err.message}`);
-        }
-    } else {
-        console.log(`[Registration OTP] Mock OTP ${otp} generated for ${email}`);
-    }
-
-    res.status(200).json(new ApiResponse(200, null, 'Verification code sent to your email.'));
+    res.status(200).json(new ApiResponse(200, {
+        channel: result.channel,
+        expiresInMinutes: result.expiresInMinutes,
+    }, 'Verification code sent to your WhatsApp.'));
 });
 
+/**
+ * POST /auth/verify-registration-otp
+ *
+ * Marks the number proven. The resulting record is also the authority token
+ * the session-less onboarding routes accept — see billing.controller.js.
+ */
 export const verifyRegistrationOTP = asyncHandler(async (req, res) => {
-    const { email, otp } = req.body;
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const { phone, otp } = req.body;
+    const { phoneE164 } = await confirmPhoneVerification(phone, otp);
 
-    const record = await EmailVerification.findOne({ email: normalizedEmail });
-    if (!record) throw new ApiError(400, 'No verification requested for this email.');
-
-    const useMockOTP = process.env.NODE_ENV !== 'production' && ['true', '1'].includes(process.env.USE_MOCK_OTP);
-    const isMatch = useMockOTP && otp === process.env.MOCK_OTP ? true : record.otp === String(otp).trim();
-
-    if (!isMatch) throw new ApiError(400, 'Invalid verification code.');
-    if (record.otpExpiry < Date.now()) throw new ApiError(400, 'Verification code has expired.');
-
-    record.isVerified = true;
-    await record.save();
-
-    res.status(200).json(new ApiResponse(200, { email: normalizedEmail, isVerified: true }, 'Email verified successfully.'));
+    res.status(200).json(new ApiResponse(
+        200,
+        { phone: phoneE164, isVerified: true },
+        'Mobile number verified successfully.',
+    ));
 });
 
 export const getOnboardingStatus = asyncHandler(async (req, res) => {
@@ -398,39 +402,6 @@ export const getOnboardingStatus = asyncHandler(async (req, res) => {
     );
 });
 
-export const verifyOTP = asyncHandler(async (req, res) => {
-    const { email, otp } = req.body;
-
-    const vendor = await Vendor.findOne({ email }).select('+otp +otpExpiry');
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
-    if (!isOTPMatch(vendor.otp, otp)) throw new ApiError(400, 'Invalid OTP.');
-    if (!isMockOTP(otp) && vendor.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
-
-    vendor.isVerified = true;
-    vendor.onboardingStatus = vendor.selectedPlan ? 'plan_selected' : 'email_verified';
-    vendor.otp = undefined;
-    vendor.otpExpiry = undefined;
-    await vendor.save();
-
-    const message = vendor.selectedPlan
-        ? 'Email verified. Please complete your subscription payment.'
-        : 'Email verified. Please complete your plan selection.';
-
-    res.status(200).json(new ApiResponse(200, { email: vendor.email }, message));
-});
-
-export const resendOTP = asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    if (!email) throw new ApiError(400, 'Email is required.');
-
-    const vendor = await Vendor.findOne({ email });
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
-    if (vendor.isVerified) throw new ApiError(400, 'Email is already verified.');
-
-    await sendOTP(vendor, 'vendor_verification');
-    res.status(200).json(new ApiResponse(200, null, 'OTP resent successfully. Please check your email.'));
-});
-
 export const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
@@ -443,25 +414,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         );
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    vendor.resetOtp = otp;
-    vendor.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    vendor.resetOtpVerified = false;
-    await vendor.save({ validateBeforeSave: false });
-
-    try {
-        await sendEmail({
-            to: vendor.email,
-            subject: 'Vendor password reset OTP',
-            text: `Your password reset OTP is ${otp}. It expires in 10 minutes.`,
-            html: `<p>Your password reset OTP is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-        });
-    } catch (err) {
-        console.warn(`[Vendor Forgot Password] Email send failed for ${vendor.email}: ${err.message}`);
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[Vendor Forgot Password] Reset OTP generated for ${vendor.email}`);
-        }
-    }
+    // Unified OTP service: cryptographic code, 5-minute window, and
+    // WhatsApp-only-when-the-number-is-proven channel policy.
+    await sendResetOTP(vendor, 'password_reset');
 
     return res.status(200).json(
         new ApiResponse(200, null, 'If the email exists, a reset OTP has been sent.')
@@ -512,7 +467,9 @@ export const login = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email: normalizedEmail }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (vendor.isActive === false) throw new ApiError(403, 'Vendor account is deactivated. Contact support.');
-    if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
+    // Registration cannot complete without a proven mobile number, so this is
+    // a defensive gate for legacy rows rather than a step a vendor can action.
+    if (!vendor.isVerified) throw new ApiError(403, 'Your account is not verified. Please contact support.');
 
     const onboarding = await getVendorOnboardingState(vendor);
     if (onboarding.nextStep === 'choose_plan') {
@@ -559,7 +516,7 @@ export const refresh = asyncHandler(async (req, res) => {
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
     if (vendor.isActive === false) throw new ApiError(403, 'Vendor account is deactivated. Contact support.');
-    if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
+    if (!vendor.isVerified) throw new ApiError(403, 'Your account is not verified. Please contact support.');
 
     const onboarding = await getVendorOnboardingState(vendor);
     if (onboarding.nextStep === 'choose_plan') {
@@ -988,10 +945,12 @@ export const deleteAccount = asyncHandler(async (req, res) => {
                 { $set: { isActive: false, isVisible: false, retailEnabled: false, wholesaleEnabled: false, quickCommerceEnabled: false } },
                 { session }
             );
-            await EmailVerification.deleteOne(
-                { email: String(req.user.email || '').trim().toLowerCase() },
-                { session }
-            );
+            // Drop any lingering phone-verification record so a deleted
+            // account cannot leave behind a token that still authorises
+            // session-less onboarding for that number.
+            if (vendor.phoneE164) {
+                await PhoneVerification.deleteOne({ phoneE164: vendor.phoneE164 }, { session });
+            }
         });
     } finally {
         await session.endSession();

@@ -17,6 +17,8 @@ import adminRoutes from './modules/admin/routes/admin.routes.js';
 import vendorRoutes from './modules/vendor/routes/vendor.routes.js';
 import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import integrationRoutes from './modules/integrations/routes/integration.routes.js';
+import dtdcWebhookRoutes from './modules/integrations/routes/dtdcWebhook.routes.js';
+import whatsappWebhookRoutes from './modules/integrations/routes/whatsappWebhook.routes.js';
 import translationRoutes from './routes/translationRoutes.js';
 import supportRoutes from './routes/support.routes.js';
 import bulkUploadRoutes from './routes/bulkUpload.routes.js';
@@ -226,6 +228,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/delivery', deliveryRoutes);
 app.use('/api/integrations', integrationRoutes);
+app.use('/api/integrations', dtdcWebhookRoutes);
+// Inert until INTERAKT_WEBHOOK_SECRET is configured — the route fails closed.
+app.use('/api/integrations', whatsappWebhookRoutes);
 app.use('/api/v1/translate', translationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/device-tokens', deviceTokenRoutes);

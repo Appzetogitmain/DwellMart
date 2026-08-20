@@ -79,6 +79,21 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         throw new ApiError(400, `Payment method "${normalized}" is currently disabled.`);
     }
 
+    // 1b. Validate deliverability (destination pincode + COD eligibility)
+    if (shippingAddress?.zipCode) {
+        const { checkDeliverability } = await import('../../../services/shipping/deliverability.service.js');
+        const deliverability = await checkDeliverability(shippingAddress.zipCode, {
+            requiresCod: String(normalized || '').toLowerCase() === 'cod',
+        });
+        if (deliverability.blocking) {
+            throw new ApiError(400, deliverability.message, [{
+                code: 'DESTINATION_NOT_DELIVERABLE',
+                pincode: shippingAddress.zipCode,
+                status: deliverability.status,
+            }]);
+        }
+    }
+
     // 2. Validate cart (lightweight — full validation runs again in the splitter)
     const validation = await validateCart({ items, customerLocation });
     if (!validation.valid) {

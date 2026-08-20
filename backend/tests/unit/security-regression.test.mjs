@@ -449,10 +449,21 @@ section('Environment contract');
         CLOUDINARY_CLOUD_NAME: 'c', CLOUDINARY_API_KEY: 'k', CLOUDINARY_API_SECRET: 's',
         CLIENT_URL: 'https://x', CASHFREE_APP_ID: 'a', CASHFREE_SECRET_KEY: 'b',
         CASHFREE_ENV: 'production', SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: 'p',
+        // Carrier credentials are production-required: without them retail and
+        // wholesale orders cannot be despatched at all.
+        DTDC_CUSTOMER_CODE: 'cc', DTDC_API_KEY: 'ak', DTDC_ENVIRONMENT: 'production',
     };
 
     reset(prodComplete);
     ok('a complete production environment passes', collectEnvViolations().length === 0);
+
+    reset({ ...prodComplete, DTDC_ENVIRONMENT: 'sandbox' });
+    ok('a sandbox courier environment is rejected in production',
+        collectEnvViolations().some((v) => v.key === 'DTDC_ENVIRONMENT'));
+
+    reset({ ...prodComplete, DTDC_API_KEY: '' });
+    ok('a missing courier API key is rejected in production',
+        collectEnvViolations().some((v) => v.key === 'DTDC_API_KEY'));
 
     reset({ ...prodComplete, USE_MOCK_OTP: 'true' });
     ok('mock OTP is rejected in production',

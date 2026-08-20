@@ -41,27 +41,66 @@ const normalize = (value) => {
  * Resolve the canonical channel for an order, optionally narrowed to one
  * vendor's slice of a multi-vendor order.
  *
+ * Three fields carry channel information and they are NOT equally expressive:
+ *
+ *   fulfillmentType  channel-aware. Says exactly which of the three channels.
+ *   experience       channel-aware for Quick Commerce only; its other value,
+ *                    'marketplace', is coarser than `orderType`.
+ *   orderType        NOT channel-aware. Written from `deriveOrderType()`, it
+ *                    reports a PRICING type — 'retail' | 'wholesale' | 'mixed'
+ *                    — and has no Quick Commerce value at all.
+ *
+ * That last point is the crux. Because `orderType` cannot say
+ * "quick_commerce", a Quick Commerce order's slice reads `orderType: 'retail'`
+ * — which is missing information, not a disagreement. Letting it outrank the
+ * order's own `fulfillmentType` meant a vendor-scoped lookup of a genuine
+ * Quick Commerce order answered 'retail'. Downstream, the retail state machine
+ * governed a Quick Commerce order in the vendor workspace, and — once a
+ * courier integration existed — a Quick Commerce parcel resolved to DTDC
+ * instead of an internal rider.
+ *
  * Precedence:
- *   1. this vendor's `vendorItems[].orderType` (most specific)
- *   2. `order.fulfillmentType`                 (operational truth)
- *   3. `order.orderType` / `order.experience`  (legacy fallback)
- *   4. 'retail'                                (documents predating all three)
+ *   1. slice `fulfillmentType`   — specific AND fully expressive
+ *   2. order `fulfillmentType`, or `experience` when it says quick_commerce —
+ *      an answer no legacy field could have contradicted, so nothing may
+ *      override it
+ *   3. slice `orderType`         — a legacy refinement, still meaningful
+ *      between retail and wholesale (one marketplace order really can carry a
+ *      single wholesale vendor slice)
+ *   4. order `orderType` / `experience`
+ *   5. 'retail'                  — documents predating all of the above
  *
  * @param {object} order
  * @param {string|object} [vendorId] restrict to this vendor's slice
  * @returns {'retail'|'wholesale'|'quick_commerce'}
  */
 export const resolveOrderChannel = (order, vendorId = null) => {
-    if (vendorId) {
-        const slice = (order?.vendorItems || []).find(
+    const slice = vendorId
+        ? (order?.vendorItems || []).find(
             (item) => String(item?.vendorId) === String(vendorId)
-        );
-        const sliceChannel = normalize(slice?.fulfillmentType) || normalize(slice?.orderType);
-        if (sliceChannel) return sliceChannel;
-    }
-    return normalize(order?.fulfillmentType)
+        )
+        : null;
+
+    // 1. The slice's own channel-aware value.
+    const sliceCanonical = normalize(slice?.fulfillmentType);
+    if (sliceCanonical) return sliceCanonical;
+
+    // 2. The order's channel-aware value. `experience` counts here only when it
+    //    names Quick Commerce; 'marketplace' is coarser than `orderType` and is
+    //    left to the fallback chain below.
+    const experienceChannel = normalize(order?.experience);
+    const orderCanonical = normalize(order?.fulfillmentType)
+        || (experienceChannel === VendorChannels.QUICK_COMMERCE ? experienceChannel : null);
+
+    if (orderCanonical === VendorChannels.QUICK_COMMERCE) return orderCanonical;
+
+    // 3. A legacy slice value refines a retail/wholesale order.
+    const sliceLegacy = normalize(slice?.orderType);
+    if (sliceLegacy) return sliceLegacy;
+
+    return orderCanonical
         || normalize(order?.orderType)
-        || normalize(order?.experience)
+        || experienceChannel
         || VendorChannels.RETAIL;
 };
 

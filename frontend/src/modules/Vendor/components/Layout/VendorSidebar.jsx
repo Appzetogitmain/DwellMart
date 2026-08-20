@@ -106,6 +106,7 @@ const VendorSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
     if (item.title === 'Return Requests') return caps.features?.returns === true;
     if (item.title === 'Customers') return caps.features?.customers === true;
     if (item.title === 'Shipping Management') return vendorType === 'retail';
+    if (item.title === 'Pickup Locations') return vendorType === 'retail' || vendorType === 'wholesale';
     return true;
   });
   if (vendorType === 'quick_commerce') {

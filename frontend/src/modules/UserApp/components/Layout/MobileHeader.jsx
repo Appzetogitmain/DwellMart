@@ -7,6 +7,7 @@ import {
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import MobileMenu from "./MobileMenu";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
+import { EXPERIENCES } from "../../../../shared/utils/experience";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import { appLogo } from "../../../../data/logos";
 import { loginLogo } from "../../../../shared/utils/imagePaths";
@@ -49,6 +50,17 @@ const MobileHeader = ({ hideSellButton = false }) => {
   const location = useLocation();
 
   const itemCount = useCartStore((state) => state.getItemCount());
+  /**
+   * `itemCount` reflects the ACTIVE basket only — Quick Commerce and
+   * Marketplace hold separate ones. The dot below marks the other basket so
+   * switching experience no longer reads as "my cart was emptied".
+   */
+  const cartExperience = useCartStore((state) => state.cartExperience);
+  useCartStore((state) => state.carts);
+  const getCartCountForExperience = useCartStore((state) => state.getCartCountForExperience);
+  const otherBasketCount = getCartCountForExperience(
+    cartExperience === EXPERIENCES.QUICK_COMMERCE ? EXPERIENCES.MARKETPLACE : EXPERIENCES.QUICK_COMMERCE
+  );
   const toggleCart = useUIStore((state) => state.toggleCart);
   const cartAnimationTrigger = useUIStore(
     (state) => state.cartAnimationTrigger
@@ -352,6 +364,12 @@ const MobileHeader = ({ hideSellButton = false }) => {
                   style={{ backgroundColor: "#ffc101" }}>
                   {itemCount > 9 ? "9+" : itemCount}
                 </motion.span>
+              )}
+              {otherBasketCount > 0 && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900"
+                  aria-hidden="true"
+                />
               )}
             </motion.button>
 

@@ -15,6 +15,7 @@ import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as pickupLocationController from '../controllers/pickupLocation.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
+import * as shipmentController from '../controllers/shipment.controller.js';
 import * as businessOverviewController from '../controllers/businessOverview.controller.js';
 import { getTaxPricingRules } from '../../admin/controllers/catalog.controller.js';
 import {
@@ -31,14 +32,12 @@ import {
 import checkSubscription from '../../../middlewares/checkSubscription.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
-import { authLimiter } from '../../../middlewares/rateLimiter.js';
+import { authLimiter, otpPerAccountLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import {
     registerSchema,
     onboardingStatusSchema,
     loginSchema,
-    verifyOtpSchema,
-    resendOtpSchema,
     refreshTokenSchema,
     logoutSchema,
     forgotPasswordSchema,
@@ -96,11 +95,9 @@ router.post(
     authController.register
 );
 router.post('/auth/onboarding-status', validate(onboardingStatusSchema), authController.getOnboardingStatus);
-router.post('/auth/verify-otp', validate(verifyOtpSchema), authController.verifyOTP);
-router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resendOTP);
-router.post('/auth/request-registration-otp', validate(requestRegistrationOtpSchema), authController.requestRegistrationOTP);
+router.post('/auth/request-registration-otp', otpLimiter, otpPerAccountLimiter, validate(requestRegistrationOtpSchema), authController.requestRegistrationOTP);
 router.post('/auth/verify-registration-otp', validate(verifyRegistrationOtpSchema), authController.verifyRegistrationOTP);
-router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/auth/forgot-password', authLimiter, otpPerAccountLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/auth/verify-reset-otp', authLimiter, validate(verifyResetOtpSchema), authController.verifyResetOTP);
 router.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);
@@ -143,6 +140,10 @@ router.patch('/stock/:productId', ...vendorAuth, ...requireWritableChannel, prod
 
 // Orders
 router.get('/orders', ...vendorAuth, ...requireReadableChannel, orderController.getVendorOrders);
+// Literal path MUST precede '/orders/:id' — Express matches in declaration
+// order, and the parameterised route would otherwise capture this request with
+// id = 'awaiting-shipment'.
+router.get('/orders/awaiting-shipment', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorListAwaitingShipment);
 router.get('/orders/:id', ...vendorAuth, ...requireReadableChannel, orderController.getVendorOrderById);
 // Paused channels cannot accept new orders or publish products, but may finish
 // already accepted work. These transitions therefore require readable access.
@@ -152,6 +153,14 @@ router.post('/orders/:id/partial-fulfilment', ...vendorAuth, ...requireSpecificC
 router.post('/quick-commerce/orders/:id/acknowledge', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.acknowledgeQuickCommerceOrder);
 router.get('/quick-commerce/dashboard', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.getQuickCommerceVendorDashboard);
 router.get('/quick-commerce/unacknowledged-alerts', ...vendorAuth, ...requireSpecificChannel('quick_commerce'), orderController.getUnacknowledgedVendorAlerts);
+
+// ─── DTDC Shipments (Retail / Wholesale only) ─────────────────────────────────
+router.post('/orders/:id/book-dtdc', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorBookDtdcShipment);
+router.get('/orders/:id/shipping-label', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorGetShippingLabel);
+router.get('/orders/:id/shipment', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorGetShipment);
+router.get('/orders/:id/package-preview', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorGetPackagePreview);
+router.post('/orders/:id/sync-tracking', ...vendorAuth, ...requireReadableChannel, shipmentController.vendorSyncTracking);
+router.get('/check-serviceability', ...vendorAuth, shipmentController.vendorCheckServiceability);
 
 // Customers
 router.get('/customers', ...vendorAuth, ...requireReadableChannel, customerController.getVendorCustomers);

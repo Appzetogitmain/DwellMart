@@ -32,6 +32,82 @@ const BULK_REPORTS_DIR = path.join(UPLOADS_DIR, 'bulk-reports');
 // In-memory job state store for real-time progress & cancellation
 const activeJobs = new Map();
 
+
+/**
+ * Parse the shipping columns from one spreadsheet row.
+ *
+ * These columns have existed in the template for some time and were read into
+ * the validated row — but never written to the product, so every weight a
+ * vendor typed was silently discarded. They are now validated and persisted,
+ * which means a bad value must be REPORTED on its row rather than dropped.
+ *
+ * Accepts dimensions either as three columns or as one "30x20x15" cell, which
+ * is how carriers print them and how a vendor expects to type them.
+ *
+ * @returns {{shipping: object|null, errors: string[]}}
+ */
+export const parseShippingColumns = ({
+    weight, weightUnitRaw, length, width, height, dimensionUnitRaw, combinedDims,
+}) => {
+    const errors = [];
+
+    const weightUnit = weightUnitRaw || 'kg';
+    if (weightUnitRaw && !['kg', 'g'].includes(weightUnit)) {
+        errors.push(`Weight Unit must be kg or g (got "${weightUnitRaw}").`);
+    }
+
+    const dimensionUnit = dimensionUnitRaw || 'cm';
+    if (dimensionUnitRaw && !['cm', 'in'].includes(dimensionUnit)) {
+        errors.push(`Dimension Unit must be cm or in (got "${dimensionUnitRaw}").`);
+    }
+
+    let l = length;
+    let w = width;
+    let h = height;
+
+    if (combinedDims) {
+        const parts = combinedDims.toLowerCase().split(/[x*×]/).map((v) => v.trim());
+        if (parts.length !== 3) {
+            errors.push(`Dimensions must be in LxWxH form, e.g. 30x20x15 (got "${combinedDims}").`);
+        } else {
+            [l, w, h] = parts;
+        }
+    }
+
+    const numeric = (raw, label, max) => {
+        if (raw === '' || raw === undefined || raw === null) return null;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) { errors.push(`${label} must be a number (got "${raw}").`); return null; }
+        if (n < 0) { errors.push(`${label} cannot be negative.`); return null; }
+        if (n === 0) return null;
+        if (n > max) { errors.push(`${label} must not exceed ${max}.`); return null; }
+        return n;
+    };
+
+    const weightValue = numeric(weight, 'Weight', 100000);
+    const lengthValue = numeric(l, 'Length', 1000);
+    const widthValue  = numeric(w, 'Width', 1000);
+    const heightValue = numeric(h, 'Height', 1000);
+
+    const dimsGiven = [lengthValue, widthValue, heightValue].filter((v) => v !== null).length;
+    if (dimsGiven > 0 && dimsGiven < 3) {
+        errors.push('Give all three of Length, Width and Height, or none — a partial set cannot describe a parcel.');
+    }
+
+    if (errors.length > 0) return { shipping: null, errors };
+    if (weightValue === null && dimsGiven === 0) return { shipping: null, errors };
+
+    const shipping = { source: 'vendor' };
+    if (weightValue !== null) { shipping.weight = weightValue; shipping.weightUnit = weightUnit; }
+    if (dimsGiven === 3) {
+        shipping.length = lengthValue;
+        shipping.width = widthValue;
+        shipping.height = heightValue;
+        shipping.dimensionUnit = dimensionUnit;
+    }
+    return { shipping, errors };
+};
+
 /**
  * Generate sample Excel or CSV template with headers, instructions, and sample rows
  */
@@ -51,9 +127,11 @@ export const generateTemplate = async (format = 'xlsx', isAdmin = false) => {
         'Stock',
         'Minimum Stock',
         'Weight',
+        'Weight Unit',
         'Length',
         'Width',
         'Height',
+        'Dimension Unit',
         'GST %',
         'Tax Included',
         'Status',
@@ -353,6 +431,14 @@ export const validateBulkUpload = async ({
         const length = String(raw['Length'] || '').trim();
         const width = String(raw['Width'] || '').trim();
         const height = String(raw['Height'] || '').trim();
+        const weightUnitRaw = String(raw['Weight Unit'] || '').trim().toLowerCase();
+        const dimensionUnitRaw = String(raw['Dimension Unit'] || '').trim().toLowerCase();
+        // Also accept a single "30x20x15" cell, which is how carriers print
+        // dimensions and how a vendor filling a spreadsheet expects to type them.
+        const combinedDims = String(raw['Dimensions (LxWxH)'] || raw['Dimensions'] || '').trim();
+        const shippingParse = parseShippingColumns({
+            weight, weightUnitRaw, length, width, height, dimensionUnitRaw, combinedDims,
+        });
         const gstNum = raw['GST %'] !== '' ? parseFloat(raw['GST %']) : 18;
         const taxIncludedStr = String(raw['Tax Included'] || 'Yes').trim().toLowerCase();
         const statusStr = String(raw['Status'] || 'Active').trim().toLowerCase();
@@ -387,6 +473,12 @@ export const validateBulkUpload = async ({
 
         const errors = [];
         const warnings = [];
+
+        // Shipping columns are parsed above but reported here, once the row's
+        // own error list exists. A bad weight is a row-level error, not a
+        // silent discard — which is what happened to every weight a vendor
+        // typed before these columns were persisted at all.
+        errors.push(...shippingParse.errors);
 
         // 1. Required Fields
         if (!name) errors.push('Product Name is required.');
@@ -553,6 +645,7 @@ export const validateBulkUpload = async ({
             length,
             width,
             height,
+            shipping: shippingParse.shipping,
             taxRate: gstNum,
             taxIncluded: taxIncludedStr === 'yes' || taxIncludedStr === 'true',
             isActive: statusStr === 'active' || statusStr === 'in_stock',
@@ -754,6 +847,10 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                         brandId: finalBrandId || existingProduct.brandId,
                                         unit: row.unit,
                                         hsnCode: row.hsnCode,
+                                        // Only overwrite when the sheet supplied
+                                        // figures — a blank column must not erase
+                                        // measurements entered in the product form.
+                                        ...(row.shipping ? { shipping: row.shipping } : {}),
                                         taxRate: row.taxRate,
                                         taxIncluded: row.taxIncluded,
                                         isActive: row.isActive,
@@ -813,6 +910,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 costPrice: row.costPrice,
                                 unit: row.unit,
                                 hsnCode: row.hsnCode,
+                                ...(row.shipping ? { shipping: row.shipping } : {}),
                                 stockQuantity: row.stockQuantity,
                                 stock: row.stockQuantity > 5 ? 'in_stock' : row.stockQuantity > 0 ? 'low_stock' : 'out_of_stock',
                                 minimumOrderQuantity: row.minimumStock,
@@ -1036,6 +1134,12 @@ export const exportProductsCatalog = async ({ user, targetVendorId = null, forma
         'Cost Price',
         'Stock',
         'Minimum Stock',
+        'Weight',
+        'Weight Unit',
+        'Length',
+        'Width',
+        'Height',
+        'Dimension Unit',
         'GST %',
         'Tax Included',
         'Status',
@@ -1062,6 +1166,14 @@ export const exportProductsCatalog = async ({ user, targetVendorId = null, forma
         p.costPrice || 0,
         p.stockQuantity || 0,
         p.minimumOrderQuantity || 1,
+        // Blank rather than 0 when unmeasured — a 0 would round-trip back as a
+        // measurement of nothing, and re-importing must not fabricate one.
+        p.shipping?.weight ?? '',
+        p.shipping?.weight ? (p.shipping.weightUnit || 'kg') : '',
+        p.shipping?.length ?? '',
+        p.shipping?.width ?? '',
+        p.shipping?.height ?? '',
+        p.shipping?.length ? (p.shipping.dimensionUnit || 'cm') : '',
         p.taxRate || 18,
         p.taxIncluded ? 'Yes' : 'No',
         p.isActive ? 'Active' : 'Inactive',

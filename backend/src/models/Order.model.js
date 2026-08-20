@@ -41,6 +41,25 @@ const orderItemSchema = new mongoose.Schema({
     },
     unitRetailPrice: Number,
     savings: { type: Number, default: 0 },
+    /**
+     * Parcel data captured from the product AT ORDER TIME, already normalised
+     * to kilograms and centimetres.
+     *
+     * A SNAPSHOT, deliberately, for the same reason `appliedTier` and
+     * `unitRetailPrice` beside it are snapshots: a vendor correcting a
+     * product's weight next month must not retroactively change what an
+     * already-despatched consignment was declared with.
+     *
+     * Absent on legacy lines and on products with no measurements — the
+     * payload builder falls back to a documented estimate and says so.
+     */
+    shippingWeightKg: Number,
+    shippingDims: {
+        _id: false,
+        length: Number,
+        width: Number,
+        height: Number,
+    },
 });
 
 const vendorItemGroupSchema = new mongoose.Schema({
@@ -52,6 +71,20 @@ const vendorItemGroupSchema = new mongoose.Schema({
     packagingFee: Number,
     tax: Number,
     discount: Number,
+    /**
+     * Canonical channel for this vendor's slice.
+     *
+     * Distinct from `orderType` below, which the splitter writes from
+     * `deriveOrderType()` and which reports a PRICING type — it cannot express
+     * Quick Commerce at all, so a QC slice was indistinguishable from a retail
+     * one. Null on documents written before this field existed; migration 0012
+     * backfills them from the order-level value.
+     */
+    fulfillmentType: {
+        type: String,
+        enum: ['quick_commerce', 'retail', 'wholesale'],
+        default: null,
+    },
     orderType: { type: String, enum: ['retail', 'wholesale', 'mixed'], default: 'retail' },
     status: {
         type: String,
@@ -99,6 +132,16 @@ const orderIntegrationSchema = new mongoose.Schema(
         },
         lastPartnerSyncAt: { type: Date },
         deliveredAt: { type: Date },
+        /**
+         * When the seller was last told this order still has no courier
+         * booking. Present so the sweep is idempotent ACROSS restarts and
+         * instances — an in-memory guard would re-alert on every redeploy.
+         *
+         * Must be declared here: Mongoose strict mode silently discards writes
+         * to undeclared sub-document paths, so the stamp was being dropped and
+         * the sweep alerted the same order on every pass.
+         */
+        unbookedAlertedAt: { type: Date, default: null },
         inventoryUpdateMode: {
             type: String,
             enum: INTEGRATION_INVENTORY_UPDATE_MODES,
@@ -128,6 +171,21 @@ const orderSchema = new mongoose.Schema(
             state: String,
             zipCode: String,
             country: String,
+        },
+        /**
+         * What the courier said about this destination when the order was
+         * taken. `unverified` means the carrier could not be reached at
+         * checkout — the order was accepted rather than lost to a third-party
+         * outage, and the vendor is shown this before booking.
+         */
+        deliverability: {
+            _id: false,
+            checkedAt: { type: Date },
+            status: {
+                type: String,
+                enum: ['deliverable', 'not_deliverable', 'unverified', 'invalid_format'],
+            },
+            codAvailable: { type: Boolean, default: null },
         },
         paymentMethod: { type: String, enum: ['card', 'cash', 'bank', 'wallet', 'upi', 'cod'] },
         paymentStatus: {

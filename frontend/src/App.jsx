@@ -39,6 +39,7 @@ const PromoCodes = lazy(() => import("./modules/Admin/pages/PromoCodes"));
 const AllOrders = lazy(() => import("./modules/Admin/pages/orders/AllOrders"));
 const OrderTracking = lazy(() => import("./modules/Admin/pages/orders/OrderTracking"));
 const Invoice = lazy(() => import("./modules/Admin/pages/orders/Invoice"));
+const Shipments = lazy(() => import("./modules/Admin/pages/orders/Shipments"));
 // Products child pages
 const ManageProducts = lazy(() => import("./modules/Admin/pages/products/ManageProducts"));
 const TaxPricing = lazy(() => import("./modules/Admin/pages/products/TaxPricing"));
@@ -158,8 +159,6 @@ import CustomerSupport from "./modules/UserApp/pages/Support";
 // ─── Delivery Routes — auth pages eager, app pages lazy ─────────────────────
 import DeliveryLogin from "./modules/Delivery/pages/Login";
 import DeliveryRegister from "./modules/Delivery/pages/Register";
-import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
-import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
 import DeliveryCashSettlements from "./modules/Delivery/pages/CashSettlements";
 import DeliveryWallet from "./modules/Delivery/pages/Wallet";
 import DeliveryPrivacyPolicy from "./modules/Delivery/pages/PrivacyPolicy";
@@ -175,7 +174,6 @@ const DeliverySupport = lazy(() => import("./modules/Delivery/pages/Support"));
 // ─── Vendor Routes — auth pages eager, app pages lazy ────────────────────────
 import VendorLogin from "./modules/Vendor/pages/Login";
 import VendorRegister from "./modules/Vendor/pages/Register";
-import VendorVerification from "./modules/Vendor/pages/Verification";
 import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
 import VendorRenewSubscription from "./modules/Vendor/pages/VendorRenewSubscription";
@@ -613,6 +611,8 @@ const AppRoutes = () => {
         <Route path="orders/:id/invoice" element={<AdminRouteGuard permission="orders.view"><Invoice /></AdminRouteGuard>} />
         <Route path="orders/all-orders" element={<AdminRouteGuard permission="orders.view"><AllOrders /></AdminRouteGuard>} />
         <Route path="orders/order-tracking" element={<AdminRouteGuard permission="orders.view"><OrderTracking /></AdminRouteGuard>} />
+        <Route path="orders/shipments" element={<AdminRouteGuard permission="orders.view"><Shipments /></AdminRouteGuard>} />
+        <Route path="shipments" element={<AdminRouteGuard permission="orders.view"><Shipments /></AdminRouteGuard>} />
         <Route path="return-requests" element={<AdminRouteGuard permission="orders.view"><ReturnRequests /></AdminRouteGuard>} />
         <Route path="return-requests/:id" element={<AdminRouteGuard permission="orders.view"><ReturnRequestDetail /></AdminRouteGuard>} />
         <Route path="customers" element={<AdminRouteGuard permission="users.view"><Customers /></AdminRouteGuard>} />
@@ -713,14 +713,6 @@ const AppRoutes = () => {
       {/* Delivery Routes */}
       <Route path="/delivery/login" element={<DeliveryLogin />} />
       <Route path="/delivery/register" element={<DeliveryRegister />} />
-      <Route
-        path="/delivery/forgot-password"
-        element={<DeliveryForgotPassword />}
-      />
-      <Route
-        path="/delivery/reset-password"
-        element={<DeliveryResetPassword />}
-      />
       <Route path="/delivery/privacy" element={<DeliveryPrivacyPolicy />} />
       <Route path="/delivery/contact" element={<DeliveryContactUs />} />
       <Route
@@ -743,7 +735,6 @@ const AppRoutes = () => {
       {/* Vendor Routes */}
       <Route path="/vendor/login" element={<VendorLogin />} />
       <Route path="/vendor/register" element={<VendorRegister />} />
-      <Route path="/vendor/verification" element={<VendorVerification />} />
       <Route
         path="/vendor/forgot-password"
         element={<VendorForgotPassword />}

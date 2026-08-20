@@ -64,7 +64,7 @@ const SubscriptionOnboardingWizard = ({
     'Back to plans', 'Full name', 'Store name', 'Email', 'Phone',
     'Store description', 'Street', 'City', 'State', 'Zip code', 'Country',
     'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST', 'MSME', 'Enrolment ID/UIN',
-    'I agree to the', 'Terms & Conditions', 'Register and verify email',
+    'I agree to the', 'Terms & Conditions', 'Register and Continue to Payment',
     'Complete your subscription', 'Activate your free trial', 'Start your free trial without any payment required.',
     'Billing becomes active only after webhook confirmation updates MongoDB.',
     'Waiting for billing confirmation. This page will keep checking automatically.',
@@ -81,8 +81,8 @@ const SubscriptionOnboardingWizard = ({
     'This onboarding cannot continue. Please contact support.',
     'Authorization received. Waiting for billing confirmation.',
     'Payment window was closed.', 'Unable to start payment.',
-    'Please verify your email first.', 'Please select a subscription plan first.',
-    'Verify', 'Sending...', 'Resend', 'Confirm', 'Verified', 'Verify email first', 'Verification code sent to your email.', 'Email verified successfully.', 'Please enter a valid email address.', 'Please enter a valid 6-digit code.',
+    'Please complete registration first.', 'Please select a subscription plan first.',
+    'Verify', 'Sending...', 'Resend', 'Confirm', 'Verified', 'Verify mobile number first', 'Verification code sent to your WhatsApp.', 'Mobile number verified successfully.', 'Please enter a valid mobile number.', 'Please enter a valid 6-digit code.', 'Could not send the WhatsApp code.', 'Invalid verification code.',
     'Selling Channels', 'Retail Marketplace', 'Wholesale Marketplace', 'Quick Commerce',
     'At least one selling channel must stay enabled.', 'GST Number', 'Business Name',
     'Wholesale Contact Name', 'Wholesale Contact Phone', 'Bulk Order Support Email',
@@ -116,11 +116,13 @@ const SubscriptionOnboardingWizard = ({
   const [documentFile, setDocumentFile] = useState(null);
   const [documentType, setDocumentType] = useState('tradeLicense');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  // The MOBILE NUMBER is what gets verified now. The email address is collected
+  // for correspondence and is never verified.
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
-  const [emailOtp, setEmailOtp] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -161,8 +163,11 @@ const SubscriptionOnboardingWizard = ({
       setSelectedPlan({ ...translated, featureHighlights: highlights });
     }
 
-    if (data.nextStep === 'verify_email') {
-      navigate('/vendor/verification', { replace: true, state: { email, returnTo } });
+    if (data.nextStep === 'verify_phone') {
+      // No standalone verification page any more: the mobile number is proven
+      // inside registration itself, which also resumes a part-finished account.
+      persistEmail(email);
+      setStep(0);
       return false;
     }
     if (data.nextStep === 'choose_plan') {
@@ -302,29 +307,37 @@ const SubscriptionOnboardingWizard = ({
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    if (name === 'email' && isEmailVerified) return;
+    // Changing the number after verifying it invalidates the proof.
+    if (name === 'phone' && isPhoneVerified) return;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleRequestOtp = async () => {
-    const email = formData.email?.trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error(t('Please enter a valid email address.'));
+    const phone = formData.phone?.trim();
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      toast.error(t('Please enter a valid mobile number.'));
       return;
     }
 
     setIsSendingOtp(true);
     try {
-      await api.post('/vendor/auth/request-registration-otp', { email });
+      await api.post('/vendor/auth/request-registration-otp', { phone });
       setShowOtpInput(true);
-      toast.success(t('Verification code sent to your email.'));
+      toast.success(t('Verification code sent to your WhatsApp.'));
+    } catch (error) {
+      // There is no email fallback for this code by design, so a delivery
+      // failure has to be shown rather than swallowed.
+      toast.error(
+        error?.response?.data?.message
+        || t('Could not send the WhatsApp code. Check the number and try again.')
+      );
     } finally {
       setIsSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    const otp = emailOtp.trim();
+    const otp = phoneOtp.trim();
     if (!/^\d{6}$/.test(otp)) {
       toast.error(t('Please enter a valid 6-digit code.'));
       return;
@@ -333,12 +346,14 @@ const SubscriptionOnboardingWizard = ({
     setIsVerifyingOtp(true);
     try {
       await api.post('/vendor/auth/verify-registration-otp', {
-        email: formData.email,
+        phone: formData.phone,
         otp,
       });
-      setIsEmailVerified(true);
+      setIsPhoneVerified(true);
       setShowOtpInput(false);
-      toast.success(t('Email verified successfully.'));
+      toast.success(t('Mobile number verified successfully.'));
+    } catch (error) {
+      toast.error(error?.response?.data?.message || t('Invalid verification code.'));
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -435,7 +450,9 @@ const SubscriptionOnboardingWizard = ({
 
   const handlePayment = async () => {
     if (!paymentEmail) {
-      toast.error(t('Please verify your email first.'));
+      // The address is only missing if the registration step was skipped —
+      // nothing here verifies an email any more.
+      toast.error(t('Please complete registration first.'));
       return;
     }
 
@@ -634,35 +651,51 @@ const SubscriptionOnboardingWizard = ({
                     </div>
                   </label>
 
-                  {/* Email & OTP Verification */}
+                  {/* Email — collected for correspondence, never verified */}
+                  <label className="relative block">
+                    <span className="text-xs font-bold text-slate-700 mb-1 block">Email Address <span className="text-red-500">*</span></span>
+                    <div className="relative">
+                      <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        placeholder={t('Email')}
+                        className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white transition-colors"
+                      />
+                    </div>
+                  </label>
+
+                  {/* Mobile number & WhatsApp OTP verification */}
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-bold text-slate-700">Email Address <span className="text-red-500">*</span></span>
+                    <span className="text-xs font-bold text-slate-700">Mobile Number <span className="text-red-500">*</span></span>
                     <div className="flex gap-2">
                       <label className="relative flex-1">
-                        <FiMail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
+                          name="phone"
+                          value={formData.phone}
                           onChange={handleChange}
-                          readOnly={isEmailVerified}
+                          readOnly={isPhoneVerified}
                           required
-                          placeholder={t('Email')}
+                          placeholder={t('Mobile number with country code')}
                           className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm outline-none transition-colors ${
-                            isEmailVerified ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-[#ffc101] focus:bg-white'
+                            isPhoneVerified ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-[#ffc101] focus:bg-white'
                           }`}
                         />
-                        {isEmailVerified && (
+                        {isPhoneVerified && (
                           <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-600">
                             <FiCheck className="stroke-[3]" />
                           </div>
                         )}
                       </label>
-                      {!isEmailVerified && (
+                      {!isPhoneVerified && (
                         <button
                           type="button"
                           onClick={handleRequestOtp}
-                          disabled={isSendingOtp || !formData.email}
+                          disabled={isSendingOtp || !formData.phone}
                           className="rounded-xl bg-[#ffc101] px-4 py-3 text-xs font-extrabold text-black hover:bg-[#ffd042] disabled:opacity-50 shadow-sm"
                         >
                           {isSendingOtp ? t('Sending...') : showOtpInput ? t('Resend') : t('Verify')}
@@ -670,20 +703,27 @@ const SubscriptionOnboardingWizard = ({
                       )}
                     </div>
 
-                    {showOtpInput && !isEmailVerified && (
+                    {!isPhoneVerified && (
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {t('We will send a verification code to this number on WhatsApp.')}
+                      </p>
+                    )}
+
+                    {showOtpInput && !isPhoneVerified && (
                       <div className="mt-2 flex gap-2">
                         <input
                           type="text"
+                          inputMode="numeric"
                           maxLength={6}
-                          value={emailOtp}
-                          onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
-                          placeholder="6-digit OTP code"
+                          value={phoneOtp}
+                          onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ''))}
+                          placeholder="6-digit WhatsApp code"
                           className="flex-1 rounded-xl border border-slate-300 bg-amber-50/50 px-4 py-2 text-center text-sm font-bold tracking-widest text-slate-900 focus:border-[#ffc101] outline-none"
                         />
                         <button
                           type="button"
                           onClick={handleVerifyOtp}
-                          disabled={isVerifyingOtp || emailOtp.length !== 6}
+                          disabled={isVerifyingOtp || phoneOtp.length !== 6}
                           className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
                         >
                           {isVerifyingOtp ? '...' : t('Confirm')}
@@ -691,14 +731,6 @@ const SubscriptionOnboardingWizard = ({
                       </div>
                     )}
                   </div>
-
-                  <label className="relative block">
-                    <span className="text-xs font-bold text-slate-700 mb-1 block">Phone Number <span className="text-red-500">*</span></span>
-                    <div className="relative">
-                      <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input name="phone" value={formData.phone} onChange={handleChange} required placeholder={t('Phone')} className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#ffc101] focus:bg-white transition-colors" />
-                    </div>
-                  </label>
 
                   {/* Selling Channels */}
                   {(wholesaleMarketplaceEnabled || quickCommerceEnabled) && (
@@ -784,11 +816,11 @@ const SubscriptionOnboardingWizard = ({
 
                 <button
                   type="submit"
-                  disabled={isLoading || !isEmailVerified}
+                  disabled={isLoading || !isPhoneVerified}
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-4 text-sm font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-50 shadow-lg shadow-amber-500/20"
                 >
                   {isLoading ? <FiLoader className="animate-spin text-lg" /> : null}
-                  {!isEmailVerified ? t('Verify email first') : t('Register and Continue to Payment')}
+                  {!isPhoneVerified ? t('Verify mobile number first') : t('Register and Continue to Payment')}
                 </button>
               </form>
             </motion.div>

@@ -12,6 +12,7 @@ import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import { useAuthStore } from '../../../shared/store/authStore';
 import QuickCommerceTrackingPanel from '../components/QuickCommerceTrackingPanel';
+import DtdcTrackingPanel from '../components/DtdcTrackingPanel';
 import { useOrderTracking } from '../../../shared/hooks/useOrderTracking';
 
 const MobileTrackOrder = () => {
@@ -212,6 +213,15 @@ const MobileTrackOrder = () => {
             <div className="px-4 py-4 space-y-4">
               {/* Quick Commerce live tracking. Renders nothing for Marketplace orders. */}
               <QuickCommerceTrackingPanel orderId={orderId} />
+
+              {/* DTDC shipment tracking for retail/wholesale orders */}
+              {!tracking?.isQuickCommerce && (
+                <DtdcTrackingPanel
+                  shipment={tracking?.shipment}
+                  trackingNumber={tracking?.trackingNumber || order?.trackingNumber}
+                  deliveryPartner={tracking?.deliveryPartner}
+                />
+              )}
 
               {/* Tracking Timeline */}
               <div className="glass-card rounded-2xl p-4 bg-surface border border-border">

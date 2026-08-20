@@ -23,6 +23,8 @@ import { calculateVendorShippingForGroups } from '../services/vendorShipping.ser
 import { resolvePriceForQuantity } from '../services/pricingEngine.service.js';
 import { resolveVariantPrice } from '../services/variantPricing.service.js';
 import { getRequestExperience, normalizeExperience, EXPERIENCES } from '../constants/experiences.js';
+import { deliverabilityLimiter } from '../middlewares/rateLimiter.js';
+import { checkDeliverability } from '../services/shipping/deliverability.service.js';
 import { buildCatalogFilter } from '../services/catalogQuery.service.js';
 import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
 import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../services/featureFlags.service.js';
@@ -1535,3 +1537,30 @@ router.get('/currencies', asyncHandler(async (req, res) => {
 router.get('/:id([a-fA-F0-9]{24})', detailCache, getProductDetail);
 
 export default router;
+
+/**
+ * GET /api/public/deliverability?pincode=452001[&vendorId=...][&paymentMethod=cod]
+ *
+ * Can we deliver to this pincode, and can we collect cash there?
+ *
+ * Public because the customer asks it before they have committed to anything —
+ * often before they have even logged in. Rate-limited and cached because every
+ * miss costs a call to DTDC, who rate-limit us in turn.
+ *
+ * Never fails the request on a carrier outage: an unreachable carrier returns
+ * an `unverified` verdict with `blocking: false`, and checkout continues. See
+ * services/shipping/deliverability.service.js for why failing closed here would
+ * turn someone else's downtime into our lost revenue.
+ */
+router.get('/deliverability', deliverabilityLimiter, asyncHandler(async (req, res) => {
+    const { pincode, vendorId, paymentMethod } = req.query;
+
+    if (!pincode) throw new ApiError(400, 'A pincode is required.');
+
+    const verdict = await checkDeliverability(pincode, {
+        vendorId: vendorId && mongoose.isValidObjectId(vendorId) ? vendorId : null,
+        requiresCod: String(paymentMethod || '').toLowerCase() === 'cod',
+    });
+
+    res.status(200).json(new ApiResponse(200, verdict, 'Deliverability checked'));
+}));

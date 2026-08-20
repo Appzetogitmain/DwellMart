@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   FiSave, FiGlobe, FiShoppingBag, FiUpload, FiTrash2,
-  FiLoader, FiZap, FiInfo, FiTruck, FiFileText, FiBriefcase,
+  FiLoader, FiZap, FiInfo, FiTruck, FiFileText, FiBriefcase, FiMapPin,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
@@ -208,16 +209,46 @@ const StoreSettings = () => {
       // ── Shipping settings placeholder ─────────────────────────────────────────
       case "ShippingSettings":
         return (
-          <div className="p-3 sm:p-4 md:p-6">
+          <div className="p-3 sm:p-4 md:p-6 space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-              <div className="flex items-start gap-3">
-                <FiTruck className="text-amber-500 text-xl flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="text-base font-semibold text-amber-900">Shipping Settings</h3>
-                  <p className="text-sm text-amber-700 mt-1">
-                    Configure shipping zones and rates from the Shipping Management section.
-                  </p>
+              <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+                <div className="flex items-start gap-3">
+                  <FiTruck className="text-amber-500 text-xl flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-base font-semibold text-amber-900">Shipping Rates & Zones</h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Configure customer delivery charges, free shipping thresholds, and shipping zones.
+                    </p>
+                  </div>
                 </div>
+                <Link
+                  to="/vendor/shipping-management"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-colors inline-flex items-center gap-1.5 self-start"
+                >
+                  <FiTruck />
+                  <span>Manage Shipping Rates &rarr;</span>
+                </Link>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+              <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
+                <div className="flex items-start gap-3">
+                  <FiMapPin className="text-blue-500 text-xl flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-base font-semibold text-blue-900">Warehouse & Pickup Locations</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Manage physical store & warehouse pickup locations where courier partners (DTDC) will collect dispatched parcels.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to="/vendor/pickup-locations"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-colors inline-flex items-center gap-1.5 self-start"
+                >
+                  <FiMapPin />
+                  <span>Manage Pickup Locations &rarr;</span>
+                </Link>
               </div>
             </div>
           </div>
@@ -401,7 +432,7 @@ const StoreSettings = () => {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Address</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Public Store Address</label>
                     <textarea
                       name="address"
                       value={formData.address || ""}
@@ -410,6 +441,22 @@ const StoreSettings = () => {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                       placeholder="Street, City, State ZIP"
                     />
+                    <p className="mt-1 text-xs text-gray-500">This address is shown on your public storefront and customer invoices.</p>
+                  </div>
+
+                  <div className="md:col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <FiMapPin className="text-blue-600 shrink-0" />
+                      <span className="text-xs text-blue-900">
+                        Looking to configure warehouse & dispatch addresses for courier pickups?
+                      </span>
+                    </div>
+                    <Link
+                      to="/vendor/pickup-locations"
+                      className="text-xs text-blue-700 hover:text-blue-800 font-semibold underline whitespace-nowrap shrink-0"
+                    >
+                      Manage Pickup Locations &rarr;
+                    </Link>
                   </div>
                 </div>
               </div>

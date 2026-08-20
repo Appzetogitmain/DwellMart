@@ -1,27 +1,40 @@
 import Joi from 'joi';
 
-export const loginSchema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
+/**
+ * Delivery-partner authentication is passwordless.
+ *
+ * Identity is the mobile number and the only credential is a WhatsApp OTP, so
+ * there is no login password, no confirm-password, and no reset flow to
+ * validate. The schemas that covered those were removed with the endpoints.
+ */
+
+const phone = Joi.string().trim().required().messages({
+    'string.empty': 'Mobile number is required.',
+    'any.required': 'Mobile number is required.',
+});
+
+/** Step one of login: request a code. */
+export const requestOtpSchema = Joi.object({
+    phone,
+});
+
+/** Step two of login: exchange the code for a session. */
+export const verifyLoginOtpSchema = Joi.object({
+    phone,
+    otp: Joi.string().pattern(/^\d{6}$/).required().messages({
+        'string.pattern.base': 'Enter the 6-digit code.',
+    }),
 });
 
 export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
+    // Collected for correspondence and admin lookup. Never verified — the
+    // mobile number is the proven contact.
     email: Joi.string().email().lowercase().required(),
-    password: Joi.string().min(6).required(),
-    phone: Joi.string().trim().required(),
+    phone,
     address: Joi.string().trim().allow('').optional(),
     vehicleType: Joi.string().trim().allow('').optional(),
     vehicleNumber: Joi.string().trim().allow('').optional(),
-});
-
-export const forgotPasswordSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
-});
-
-export const verifyResetOtpSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
-    otp: Joi.string().pattern(/^\d{6}$/).required(),
 });
 
 export const refreshTokenSchema = Joi.object({
@@ -30,12 +43,4 @@ export const refreshTokenSchema = Joi.object({
 
 export const logoutSchema = Joi.object({
     refreshToken: Joi.string().allow('').optional(),
-});
-
-export const resetPasswordSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
-    password: Joi.string().min(6).required(),
-    confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
-        'any.only': 'Confirm password must match password.',
-    }),
 });

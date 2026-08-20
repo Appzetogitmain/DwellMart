@@ -14,7 +14,8 @@ import ExperienceBadge from "../../../../shared/components/ExperienceBadge";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import { formatPrice } from '../../../../shared/utils/helpers';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
-import { getAllVendorOrders, updateVendorOrderStatus } from '../../services/vendorService';
+import { getAllVendorOrders, updateVendorOrderStatus, getOrdersAwaitingShipment } from '../../services/vendorService';
+import { FiTruck } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const AllOrders = () => {
@@ -25,8 +26,35 @@ const AllOrders = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedExperience, setSelectedExperience] = useState('all');
+  /**
+   * Orders that are ready to despatch but have no courier booking. Fetched
+   * from the server rather than derived here, because eligibility depends on
+   * whether a Shipment carries an AWB — which the order list does not know.
+   */
+  const [awaitingIds, setAwaitingIds] = useState(null);
+  const [awaitingOnly, setAwaitingOnly] = useState(false);
 
   const vendorId = vendor?.id;
+
+  useEffect(() => {
+    if (!vendorId) return;
+    let cancelled = false;
+
+    const fetchAwaiting = async () => {
+      try {
+        const res = await getOrdersAwaitingShipment({ limit: 100 });
+        if (cancelled) return;
+        const rows = res?.data?.orders ?? [];
+        setAwaitingIds(new Set(rows.map((o) => String(o.orderId))));
+      } catch {
+        // A failure here must not blank the order list; the chip simply hides.
+        if (!cancelled) setAwaitingIds(new Set());
+      }
+    };
+
+    fetchAwaiting();
+    return () => { cancelled = true; };
+  }, [vendorId]);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -46,8 +74,14 @@ const AllOrders = () => {
     fetchOrders();
   }, [vendorId]);
 
+  const awaitingCount = awaitingIds?.size ?? 0;
+
   const filteredOrders = useMemo(() => {
     let filtered = orders;
+
+    if (awaitingOnly && awaitingIds) {
+      filtered = filtered.filter((order) => awaitingIds.has(String(order.orderId)));
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -75,7 +109,7 @@ const AllOrders = () => {
     }
 
     return filtered;
-  }, [orders, searchQuery, selectedStatus, selectedExperience, vendorId]);
+  }, [awaitingOnly, awaitingIds, orders, searchQuery, selectedStatus, selectedExperience, vendorId]);
 
   // Get per-vendor allocated total from vendorSummary or vendorItems group
   const getVendorSubtotal = (order) => {
@@ -255,6 +289,26 @@ const AllOrders = () => {
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
               />
             </div>
+
+            {awaitingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setAwaitingOnly((v) => !v)}
+                aria-pressed={awaitingOnly}
+                className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  awaitingOnly
+                    ? 'bg-amber-500 border-amber-500 text-white'
+                    : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                }`}>
+                <FiTruck className="w-4 h-4" />
+                Awaiting Shipment
+                <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                  awaitingOnly ? 'bg-white/25 text-white' : 'bg-amber-200 text-amber-900'
+                }`}>
+                  {awaitingCount}
+                </span>
+              </button>
+            )}
 
             <AnimatedSelect
               value={selectedExperience}

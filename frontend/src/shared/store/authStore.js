@@ -12,6 +12,11 @@ export const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       pendingEmail: null,
+      // OTP delivery metadata reported by the server. The code itself never
+      // reaches the client.
+      otpChannel: null,
+      otpExpiresInMinutes: 5,
+      otpRequestedAt: null,
 
       // Login action
       login: async (email, password, rememberMe = false) => {
@@ -68,7 +73,10 @@ export const useAuthStore = create(
       register: async (name, email, password, phone) => {
         set({ isLoading: true });
         try {
-          const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+          // Send the number EXACTLY as the country-code selector produced it.
+          // This previously ran `.slice(-10)`, which discarded the dial code and
+          // left the server unable to address the number on WhatsApp.
+          const normalizedPhone = String(phone || '').trim();
           const payload = {
             name,
             email,
@@ -76,7 +84,8 @@ export const useAuthStore = create(
             ...(normalizedPhone ? { phone: normalizedPhone } : {}),
           };
 
-          await api.post('/user/auth/register', payload);
+          const response = await api.post('/user/auth/register', payload);
+          const data = response?.data ?? response;
 
           set({
             user: null,
@@ -84,13 +93,19 @@ export const useAuthStore = create(
             refreshToken: null,
             isAuthenticated: false,
             pendingEmail: email,
+            // Where the server actually delivered the code, and how long it is
+            // good for. Never assume WhatsApp succeeded just because a phone
+            // was supplied — the server reports the channel it really used.
+            otpChannel: data?.otpChannel || 'email',
+            otpExpiresInMinutes: data?.otpExpiresInMinutes ?? 5,
+            otpRequestedAt: Date.now(),
             isLoading: false,
           });
 
           localStorage.removeItem('token');
           localStorage.removeItem('refresh-token');
 
-          return { success: true, email };
+          return { success: true, email, otpChannel: data?.otpChannel || 'email' };
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -140,9 +155,15 @@ export const useAuthStore = create(
         set({ isLoading: true });
         try {
           const normalizedEmail = String(email || '').trim().toLowerCase();
-          await api.post('/user/auth/resend-otp', { email: normalizedEmail });
-          set({ isLoading: false });
-          return { success: true };
+          const response = await api.post('/user/auth/resend-otp', { email: normalizedEmail });
+          const data = response?.data ?? response;
+          set({
+            otpChannel: data?.otpChannel || 'email',
+            otpExpiresInMinutes: data?.otpExpiresInMinutes ?? 5,
+            otpRequestedAt: Date.now(),
+            isLoading: false,
+          });
+          return { success: true, otpChannel: data?.otpChannel || 'email' };
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -345,6 +366,9 @@ export const useAuthStore = create(
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
         pendingEmail: state.pendingEmail,
+        otpChannel: state.otpChannel,
+        otpExpiresInMinutes: state.otpExpiresInMinutes,
+        otpRequestedAt: state.otpRequestedAt,
       }),
     }
   )

@@ -20,6 +20,7 @@ import GeneralSection    from "../../components/ProductSections/GeneralSection";
 import MediaSection      from "../../components/ProductSections/MediaSection";
 import PricingSection    from "../../components/ProductSections/PricingSection";
 import InventorySection  from "../../components/ProductSections/InventorySection";
+import ShippingSection   from "../../components/ProductSections/ShippingSection";
 import VariantsSection   from "../../components/ProductSections/VariantsSection";
 import VisibilitySection from "../../components/ProductSections/VisibilitySection";
 import TagsAndFAQsSection from "../../components/ProductSections/TagsAndFAQsSection";
@@ -80,6 +81,7 @@ const ProductForm = () => {
     warrantyPeriod: "",
     guaranteePeriod: "",
     hsnCode: "",
+    shipping: { weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm" },
     flashSale: false,
     isNewArrival: false,
     isFeatured: false,
@@ -229,6 +231,14 @@ const ProductForm = () => {
       warrantyPeriod: product.warrantyPeriod || "",
       guaranteePeriod: product.guaranteePeriod || "",
       hsnCode: product.hsnCode || "",
+      shipping: {
+        weight:        product.shipping?.weight ?? "",
+        weightUnit:    product.shipping?.weightUnit || "kg",
+        length:        product.shipping?.length ?? "",
+        width:         product.shipping?.width ?? "",
+        height:        product.shipping?.height ?? "",
+        dimensionUnit: product.shipping?.dimensionUnit || "cm",
+      },
       flashSale: product.flashSale || false,
       isNewArrival: product.isNewArrival || false,
       isFeatured: product.isFeatured || false,
@@ -255,6 +265,18 @@ const ProductForm = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  /**
+   * `shipping` is a nested object, so the flat `handleChange` (which writes
+   * `formData[name]`) cannot address it without inventing dotted-name parsing
+   * for one section.
+   */
+  const handleShipping = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      shipping: { ...(prev.shipping || {}), [field]: value },
     }));
   };
 
@@ -456,8 +478,35 @@ const ProductForm = () => {
     const wholesalePayload = sections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {};
     // Publishing in Wholesale cannot mutate Retail ownership fields.
     if (workspace === 'wholesale') delete wholesalePayload.retailEnabled;
+    /**
+     * Empty inputs are dropped rather than sent as "". The validator types
+     * these as numbers, and a blank string would fail validation on every save
+     * for a vendor who simply has not measured the product yet.
+     *
+     * `source` is never sent: it is server-authored, so a client cannot launder
+     * a backfilled estimate into a claimed measurement.
+     */
+    const buildShippingPayload = () => {
+      if (!sections.shipping) return {};
+      const raw = formData.shipping || {};
+      const numeric = {};
+      for (const key of ['weight', 'length', 'width', 'height']) {
+        const value = raw[key];
+        if (value !== '' && value !== null && value !== undefined) numeric[key] = Number(value);
+      }
+      if (Object.keys(numeric).length === 0) return { shipping: {} };
+      return {
+        shipping: {
+          ...numeric,
+          weightUnit: raw.weightUnit || 'kg',
+          dimensionUnit: raw.dimensionUnit || 'cm',
+        },
+      };
+    };
+
     const payload = {
       ...formData,
+      ...buildShippingPayload(),
       ...(isEdit && getById(id)?.__v !== undefined
         ? { expectedVersion: getById(id).__v }
         : {}),
@@ -537,6 +586,13 @@ const ProductForm = () => {
         {/* ── Section: Inventory ───────────────────────────────────────────── */}
         {sections.inventory && (
           <InventorySection formData={formData} handleChange={handleChange} />
+        )}
+
+        {/* ── Section: Shipping (Retail & Wholesale) ───────────────────────── */}
+        {/* Parcel data for the courier. Absent for Quick Commerce, which is
+            delivered by internal riders and never billed on volumetric weight. */}
+        {sections.shipping && (
+          <ShippingSection formData={formData} handleShipping={handleShipping} />
         )}
 
         {/* ── Section: Wholesale Pricing (Wholesale only) ───────────────────── */}

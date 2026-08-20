@@ -40,6 +40,8 @@ const PRODUCTION_REQUIRED = [
     'SMTP_HOST',
     'SMTP_USER',
     'SMTP_PASS',
+    'DTDC_CUSTOMER_CODE',
+    'DTDC_API_KEY',
 ];
 
 /**
@@ -57,8 +59,34 @@ const PRODUCTION_FORBIDDEN = [
     // absence — see productCapabilityGuard.js.
 ];
 
+/**
+ * Required only when another setting turns the dependent feature on.
+ *
+ * `VALUE_ASSERTIONS` skips a key that is absent entirely — absence is the
+ * required lists' job — so a key that is mandatory only under a condition
+ * cannot be expressed there.
+ */
+const CONDITIONALLY_REQUIRED = [
+    {
+        key: 'INTERAKT_API_KEY',
+        // WhatsApp OTP is an optional enhancement over the email path, so the
+        // key is not required outright. What must never happen is the switch
+        // being ON with no key behind it: every OTP then silently takes the
+        // email fallback while the configuration claims WhatsApp is live.
+        when: () => String(process.env.WHATSAPP_ENABLED || '').toLowerCase() === 'true'
+            && String(process.env.WHATSAPP_DRY_RUN || '').toLowerCase() !== 'true',
+        reason: 'is required when WHATSAPP_ENABLED=true and WHATSAPP_DRY_RUN is not true',
+    },
+];
+
 /** Value assertions that only make sense once the key is present. */
 const VALUE_ASSERTIONS = [
+    {
+        key: 'DTDC_ENVIRONMENT',
+        productionOnly: true,
+        assert: (v) => String(v || '').toLowerCase() === 'production',
+        message: 'must be "production" when NODE_ENV=production',
+    },
     {
         key: 'CASHFREE_ENV',
         productionOnly: true,
@@ -76,6 +104,12 @@ const VALUE_ASSERTIONS = [
         productionOnly: true,
         assert: (v) => String(v || '').length >= 32,
         message: 'must be at least 32 characters in production',
+    },
+    {
+        key: 'WHATSAPP_DRY_RUN',
+        productionOnly: true,
+        assert: (v) => String(v || '').toLowerCase() !== 'true',
+        message: 'must not be true in production — dry-run silently sends no WhatsApp messages at all',
     },
     {
         key: 'INTEGRATION_API_KEY_PEPPER',
@@ -109,6 +143,12 @@ export const collectEnvViolations = () => {
             if (value !== undefined && when(value)) {
                 violations.push({ key, reason: 'must not be enabled in production' });
             }
+        }
+    }
+
+    for (const { key, when, reason } of CONDITIONALLY_REQUIRED) {
+        if (when() && !String(process.env[key] || '').trim()) {
+            violations.push({ key, reason });
         }
     }
 

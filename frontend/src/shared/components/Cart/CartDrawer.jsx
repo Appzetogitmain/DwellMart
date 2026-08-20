@@ -6,6 +6,7 @@ import { useAuthStore } from "../../store/authStore";
 import Price from "../Price";
 import { Link } from "react-router-dom";
 import SwipeableCartItem from "./SwipeableCartItem";
+import OtherBasketNotice from "./OtherBasketNotice";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
 import { Drawer, EmptyState, Button, Badge } from "../ui";
@@ -123,22 +124,29 @@ const CartDrawer = () => {
         {/* Cart Body */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-4 scrollbar-admin">
           {items.length === 0 ? (
-            <EmptyState
-              variant="cart"
-              title={t("Your cart is empty")}
-              description={t("Add some items to get started!")}
-              titleClassName="text-white font-bold"
-              descriptionClassName="text-gray-300 font-medium"
-              className="bg-slate-800/80 border border-slate-700/60 shadow-lg rounded-2xl p-6"
-              action={
-                <Button onClick={toggleCart} variant="primary" size="md">
-                  {t("Explore Products")}
-                </Button>
-              }
-            />
+            <div className="space-y-4">
+              {/* An empty basket is not the whole story when the other
+                  experience is holding items. Say so before the empty state,
+                  or the customer concludes their products were deleted. */}
+              <OtherBasketNotice />
+              <EmptyState
+                variant="cart"
+                title={t("Your cart is empty")}
+                description={t("Add some items to get started!")}
+                titleClassName="text-white font-bold"
+                descriptionClassName="text-gray-300 font-medium"
+                className="bg-slate-800/80 border border-slate-700/60 shadow-lg rounded-2xl p-6"
+                action={
+                  <Button onClick={toggleCart} variant="primary" size="md">
+                    {t("Explore Products")}
+                  </Button>
+                }
+              />
+            </div>
           ) : (
             <AnimatePresence mode="popLayout">
               <div className="space-y-4">
+                <OtherBasketNotice />
                 {displayGroups.map((fg) => {
                   const cfg = FULFILLMENT_CONFIG[fg.fulfillmentType] || FULFILLMENT_CONFIG.retail;
                   const { Icon } = cfg;

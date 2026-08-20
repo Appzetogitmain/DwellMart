@@ -7,6 +7,28 @@ const userSchema = new mongoose.Schema(
         email: { type: String, required: true, unique: true, lowercase: true, index: true },
         password: { type: String, required: true, select: false },
         phone: { type: String, trim: true },
+
+        /**
+         * WhatsApp addressing + consent.
+         *
+         * `phone` is preserved verbatim as the display value. `phoneE164` is
+         * the normalised form used to address WhatsApp, kept separate so a
+         * bad normalisation can never destroy what the user actually typed.
+         *
+         * No unique index: production already contains duplicate phone values,
+         * and adding one here would fail the migration rather than surface them.
+         */
+        phoneE164: { type: String, trim: true, default: null, index: true, sparse: true },
+        phoneVerified: { type: Boolean, default: false },
+        whatsappOptIn: { type: Boolean, default: false },
+        whatsappOptInAt: { type: Date, default: null },
+        /**
+         * Which channel carried the CURRENT verification code.
+         *
+         * Only 'whatsapp' — meaning WhatsApp was the sole carrier — lets a
+         * successful verification prove the handset. See otp.service.js.
+         */
+        otpDeliveredVia: { type: String, default: null, select: false },
         avatar: { type: String }, // Cloudinary URL
         role: { type: String, enum: ['customer', 'delivery'], default: 'customer' },
         isVerified: { type: Boolean, default: false },

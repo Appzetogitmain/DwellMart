@@ -10,7 +10,7 @@ import * as trackingController from '../../delivery/controllers/location.control
 import * as notificationController from '../controllers/notification.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
-import { authLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
+import { authLimiter, otpLimiter, otpPerAccountLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
 import * as checkoutController from '../controllers/checkout.controller.js';
@@ -39,8 +39,8 @@ const customerAuth = [authenticate, authorize('customer'), enforceAccountStatus]
 // Auth routes
 router.post('/auth/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/auth/verify-otp', validate(otpSchema), authController.verifyOTP);
-router.post('/auth/resend-otp', otpLimiter, validate(resendOtpSchema), authController.resendOTP);
-router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post('/auth/resend-otp', otpLimiter, otpPerAccountLimiter, validate(resendOtpSchema), authController.resendOTP);
+router.post('/auth/forgot-password', authLimiter, otpPerAccountLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/auth/verify-reset-otp', authLimiter, validate(verifyResetOtpSchema), authController.verifyResetOTP);
 router.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);

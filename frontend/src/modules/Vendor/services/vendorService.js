@@ -23,13 +23,6 @@ export const initiateVendorOnboardingSubscription = (email, payload = {}) =>
 export const getPublicSubscriptionPlans = (country = '') =>
   api.get('/subscription-plans', { params: country ? { country } : {} });
 
-/**
- * Verify email OTP after registration
- * @param {string} email
- * @param {string} otp
- */
-export const verifyVendorOTP = (email, otp) =>
-    api.post('/vendor/auth/verify-otp', { email, otp });
 
 export const getVendorOnboardingStatus = (email) =>
     api.post('/vendor/auth/onboarding-status', { email });
@@ -41,12 +34,6 @@ export const getVendorSubscriptionPlans = () => api.get('/vendor/subscription/pl
 export const changeVendorSubscriptionPlan = (planId) =>
   api.post('/vendor/subscription/change-plan', { planId });
 
-/**
- * Resend OTP to vendor email (vendor must still be unverified)
- * @param {string} email
- */
-export const resendVendorOTP = (email) =>
-    api.post('/vendor/auth/resend-otp', { email });
 
 /**
  * Request reset OTP for vendor forgot password flow
@@ -618,3 +605,34 @@ export const uploadVendorImages = (files, folder = 'vendors/products') => {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };
+
+// ─── DTDC Shipments ───────────────────────────────────────────────────────────
+/**
+ * @param {object} [packageDetails] vendor-confirmed weight/dimensions. Applies
+ *        to this shipment only; the product is never modified.
+ */
+export const bookDtdcShipment = (orderId, packageDetails = undefined) =>
+    api.post(`/vendor/orders/${orderId}/book-dtdc`, packageDetails);
+
+/** What would be declared to the courier if this order were booked now. */
+export const getPackagePreview = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/package-preview`);
+
+export const getShippingLabel = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipping-label`, { responseType: 'blob' });
+
+export const getOrderShipment = (orderId) =>
+    api.get(`/vendor/orders/${orderId}/shipment`);
+
+export const syncOrderTracking = (orderId) =>
+    api.post(`/vendor/orders/${orderId}/sync-tracking`);
+
+export const checkVendorServiceability = (originPincode, destPincode) =>
+    api.get('/vendor/check-serviceability', { params: { originPincode, destPincode } });
+
+/**
+ * Retail and wholesale orders this vendor has not yet handed to the courier.
+ * Quick Commerce is excluded server-side — it has no courier booking.
+ */
+export const getOrdersAwaitingShipment = (params = {}) =>
+    api.get('/vendor/orders/awaiting-shipment', { params });

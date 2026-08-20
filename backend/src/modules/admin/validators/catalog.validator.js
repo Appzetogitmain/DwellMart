@@ -76,6 +76,28 @@ const productBaseSchema = {
     warrantyPeriod: Joi.string().allow('').optional(),
     guaranteePeriod: Joi.string().allow('').optional(),
     hsnCode: Joi.string().allow('').optional(),
+    /**
+     * Parcel characteristics. Bounds are deliberate: a vendor typing 1500 for
+     * 1.5 kg is a real support cost, and DTDC rejects it anyway — better to
+     * catch it in the form than at the carrier.
+     */
+    shipping: Joi.object({
+        weight:        Joi.number().min(0).max(100000).allow(null).optional(),
+        weightUnit:    Joi.string().valid('kg', 'g').optional(),
+        length:        Joi.number().min(0).max(1000).allow(null).optional(),
+        width:         Joi.number().min(0).max(1000).allow(null).optional(),
+        height:        Joi.number().min(0).max(1000).allow(null).optional(),
+        dimensionUnit: Joi.string().valid('cm', 'in').optional(),
+        /**
+         * Server-authored. Declared as forbidden rather than merely omitted so
+         * an attempt is REJECTED rather than silently stripped by the
+         * middleware's `stripUnknown` -- a client claiming 'vendor' on
+         * backfilled data would launder an estimate into a measurement, and
+         * that deserves a 400, not a shrug.
+         */
+        source: Joi.any().forbidden(),
+    }).optional(),
+
     tags: Joi.array().items(Joi.string().trim()).optional(),
     seoTitle: Joi.string().allow('').optional(),
     seoDescription: Joi.string().allow('').optional(),

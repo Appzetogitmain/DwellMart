@@ -154,7 +154,7 @@ export const useOrderStore = create(
               variant:         item.variant || undefined,
               vendorId:        item.vendorId,
               vendorName:      item.vendorName,
-              fulfillmentType: item.fulfillmentType || (item.quickCommerceEnabled ? 'quick_commerce' : item.wholesaleEnabled ? 'wholesale' : (getExperience() === 'quick_commerce' ? 'quick_commerce' : 'retail')),
+              fulfillmentType: item.fulfillmentType || (item.quickCommerceEnabled ? 'quick_commerce' : (item.wholesaleEnabled && item.retailEnabled === false) ? 'wholesale' : (getExperience() === 'quick_commerce' ? 'quick_commerce' : 'retail')),
               name:            item.name,
               image:           item.image,
             })),

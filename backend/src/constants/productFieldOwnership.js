@@ -57,6 +57,11 @@ export const SHARED_PRODUCT_FIELDS = Object.freeze([
     // Fulfilment policy
     'codAllowed', 'returnable', 'cancelable',
     'warrantyPeriod', 'guaranteePeriod',
+    // Parcel characteristics. Shared, not channel-owned: the same box ships
+    // whichever channel sold it, and both courier channels need it. Marking it
+    // channel-owned would stop a wholesale-only vendor from ever entering the
+    // weight their own consignments are declared with.
+    'shipping',
     // Storefront presentation
     'isActive', 'isVisible', 'isFeatured', 'isNewArrival', 'flashSale',
     'seoTitle', 'seoDescription', 'faqs', 'relatedProducts',

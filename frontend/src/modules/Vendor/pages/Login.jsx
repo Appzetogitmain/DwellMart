@@ -73,18 +73,6 @@ const VendorLogin = () => {
         error?.message ||
         'Invalid credentials';
 
-      if (message.includes('Please verify your email first')) {
-        toast.error(message);
-        navigate('/vendor/verification', {
-          replace: true,
-          state: {
-            email,
-            returnTo: '/vendor/register',
-          },
-        });
-        return;
-      }
-
       if (message.includes('Please complete your vendor onboarding by choosing a subscription plan')) {
         toast.error(message);
         navigate('/vendor/register', {

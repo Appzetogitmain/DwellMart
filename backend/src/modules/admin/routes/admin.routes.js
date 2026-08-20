@@ -6,6 +6,7 @@ import * as catalogController from '../controllers/catalog.controller.js';
 import * as customerController from '../controllers/customer.controller.js';
 import * as deliveryController from '../controllers/delivery.controller.js';
 import * as returnController from '../controllers/return.controller.js';
+import * as shipmentController from '../controllers/shipment.controller.js';
 import * as supportController from '../controllers/support.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
@@ -174,6 +175,19 @@ router.post('/orders/:id/retry-assignment', ...permAny(PERMISSIONS.QUICKCOMMERCE
 router.post('/orders/:id/delivery-override', ...permAny(PERMISSIONS.QUICKCOMMERCE_ORDERS_MANAGE, PERMISSIONS.ORDERS_UPDATE), orderController.deliveryOverride);
 router.delete('/orders/:id', ...perm(PERMISSIONS.ORDERS_CANCEL), orderController.deleteOrder);
 
+// ─── DTDC Shipments ───────────────────────────────────────────────────────────
+router.get('/shipments', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.listShipments);
+// Literal path first — '/shipments/:id' would otherwise capture it.
+router.get('/shipments/awaiting-booking', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.listAwaitingBooking);
+router.get('/shipments/:id', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.getShipmentDetail);
+router.get('/check-serviceability', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.adminCheckServiceability);
+router.post('/orders/:id/book-dtdc', ...perm(PERMISSIONS.ORDERS_UPDATE), shipmentController.adminBookDtdcShipment);
+router.post('/orders/:id/cancel-shipment', ...perm(PERMISSIONS.ORDERS_UPDATE), shipmentController.adminCancelShipment);
+router.get('/orders/:id/shipping-label', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.adminGetShippingLabel);
+router.post('/orders/:id/sync-tracking', ...perm(PERMISSIONS.ORDERS_UPDATE), shipmentController.adminSyncTracking);
+router.get('/orders/:id/shipment', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.getOrderShipment);
+router.get('/orders/:id/package-preview', ...perm(PERMISSIONS.ORDERS_VIEW), shipmentController.adminGetPackagePreview);
+
 // ─── Checkout Sessions (Enterprise Marketplace) ───────────────────────────────
 // View CheckoutSession hierarchy — session → fulfillment groups → sub-orders
 
@@ -228,6 +242,9 @@ router.post('/products/bulk-upload/job/:jobId/cancel', ...perm(PERMISSIONS.PRODU
 router.get('/products/bulk-upload/history', ...perm(PERMISSIONS.PRODUCTS_VIEW), getImportHistory);
 router.get('/products/export', ...permAny(PERMISSIONS.REPORTS_EXPORT, PERMISSIONS.PRODUCTS_VIEW), exportProducts);
 router.get('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getTaxPricingRules);
+// Literal path MUST precede '/products/:id' — Express matches in
+// declaration order and would otherwise read this as a product id.
+router.get('/products/missing-shipping', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.listProductsMissingShipping);
 router.get('/products/:id', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getProductById);
 router.post('/products', ...perm(PERMISSIONS.PRODUCTS_ADD), validate(createProductSchema), catalogController.createProduct);
 router.put('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_EDIT), validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);

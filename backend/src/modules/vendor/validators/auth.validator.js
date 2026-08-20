@@ -145,21 +145,19 @@ export const loginSchema = Joi.object({
     password: Joi.string().required(),
 });
 
-export const verifyOtpSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
-    otp: Joi.string().pattern(/^\d{6}$/).required(),
-});
-
-export const resendOtpSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
-});
-
+// Registration OTP is issued to the MOBILE NUMBER, never to an email address.
 export const requestRegistrationOtpSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
+    phone: Joi.string().trim().required().messages({
+        'string.empty': 'Mobile number is required.',
+        'any.required': 'Mobile number is required.',
+    }),
 });
 
 export const verifyRegistrationOtpSchema = Joi.object({
-    email: Joi.string().email().lowercase().required(),
+    phone: Joi.string().trim().required().messages({
+        'string.empty': 'Mobile number is required.',
+        'any.required': 'Mobile number is required.',
+    }),
     otp: Joi.string().pattern(/^\d{6}$/).required(),
 });
 

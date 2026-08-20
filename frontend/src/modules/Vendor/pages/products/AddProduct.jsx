@@ -10,6 +10,7 @@ import { uploadVendorImage, uploadVendorImages, getVendorTaxPricingRules } from 
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import WholesalePricingSection from "../../../../shared/components/WholesalePricingSection";
+import ShippingSection from "../../components/ProductSections/ShippingSection";
 import QuickCommerceProductSection from "../../../../shared/components/QuickCommerceProductSection";
 import toast from "react-hot-toast";
 import {
@@ -61,6 +62,7 @@ const AddProduct = () => {
     warrantyPeriod: "",
     guaranteePeriod: "",
     hsnCode: "",
+    shipping: { weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm" },
     flashSale: false,
     isNewArrival: false,
     isFeatured: false,
@@ -167,6 +169,17 @@ const AddProduct = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  /**
+   * `shipping` is nested, which the flat `handleChange` above cannot address
+   * without inventing dotted-name parsing for a single section.
+   */
+  const handleShipping = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      shipping: { ...(prev.shipping || {}), [field]: value },
     }));
   };
 
@@ -468,6 +481,30 @@ const AddProduct = () => {
       return;
     }
 
+    /**
+     * Blank inputs are dropped rather than sent as "". The validator types
+     * these as numbers, so a blank string would fail every save by a vendor
+     * who has not measured the product yet. `source` is server-authored and is
+     * never sent from the client.
+     */
+    const buildShippingPayload = () => {
+      if (!sections.shipping) return {};
+      const raw = formData.shipping || {};
+      const numeric = {};
+      for (const key of ['weight', 'length', 'width', 'height']) {
+        const value = raw[key];
+        if (value !== '' && value !== null && value !== undefined) numeric[key] = Number(value);
+      }
+      if (Object.keys(numeric).length === 0) return {};
+      return {
+        shipping: {
+          ...numeric,
+          weightUnit: raw.weightUnit || 'kg',
+          dimensionUnit: raw.dimensionUnit || 'cm',
+        },
+      };
+    };
+
     const payload = {
       ...formData,
       price: parsedPrice,
@@ -488,6 +525,7 @@ const AddProduct = () => {
         }))
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
+      ...buildShippingPayload(),
       ...(caps.allowedFormSections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {}),
       ...(caps.allowedFormSections.quickCommerce ? buildQuickCommercePayload(quickCommerceState) : {}),
     };
@@ -825,6 +863,14 @@ const AddProduct = () => {
             </div>
           </div>
         </div>
+
+        {/* Shipping — parcel data for the courier. Absent for Quick Commerce,
+            which is delivered by internal riders. */}
+        {sections.shipping && (
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+            <ShippingSection formData={formData} handleShipping={handleShipping} />
+          </div>
+        )}
 
         {/* Wholesale & Bulk Pricing (Wholesale vendors only) */}
         {sections.wholesalePricing && (

@@ -7,15 +7,13 @@ import * as settlementController from '../controllers/settlement.controller.js';
 import * as walletController from '../controllers/wallet.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
-import { authLimiter, withdrawalLimiter } from '../../../middlewares/rateLimiter.js';
+import { authLimiter, withdrawalLimiter, otpPerAccountLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadDeliveryDocuments } from '../../../middlewares/upload.js';
 import {
-    loginSchema,
+    requestOtpSchema,
+    verifyLoginOtpSchema,
     registerSchema,
-    forgotPasswordSchema,
-    verifyResetOtpSchema,
-    resetPasswordSchema,
     refreshTokenSchema,
     logoutSchema,
 } from '../validators/auth.validator.js';
@@ -37,6 +35,10 @@ const deliveryAuth = [authenticate, authorize('delivery'), enforceAccountStatus]
 const IS_PRODUCTION = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
 
 // Auth
+// Registration proves the mobile number first; `register` refuses an unproven
+// number because that number becomes the partner's only login credential.
+router.post('/auth/request-registration-otp', authLimiter, otpLimiter, otpPerAccountLimiter, validate(requestOtpSchema), authController.requestRegistrationOTP);
+router.post('/auth/verify-registration-otp', authLimiter, validate(verifyLoginOtpSchema), authController.verifyRegistrationOTP);
 router.post(
     '/auth/register',
     authLimiter,
@@ -47,10 +49,10 @@ router.post(
     validate(registerSchema),
     authController.register
 );
-router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
-router.post('/auth/verify-reset-otp', authLimiter, validate(verifyResetOtpSchema), authController.verifyResetOTP);
-router.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
-router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);
+// Passwordless login: mobile number + WhatsApp OTP. There is no password,
+// so there is nothing to forget and nothing to reset.
+router.post('/auth/request-otp', authLimiter, otpLimiter, otpPerAccountLimiter, validate(requestOtpSchema), authController.requestLoginOTP);
+router.post('/auth/verify-otp', authLimiter, validate(verifyLoginOtpSchema), authController.verifyLoginOTP);
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...deliveryAuth, authController.getProfile);

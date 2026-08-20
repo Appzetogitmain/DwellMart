@@ -12,6 +12,9 @@ import {
   FiTag,
   FiZap,
   FiPackage,
+  FiAlertCircle,
+  FiAlertTriangle,
+  FiLoader,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiLock } from "react-icons/fi";
@@ -30,6 +33,8 @@ import { formatEtaRange } from "../../../shared/utils/quickCommerceEta";
 import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
 import { reverseGeocode } from "../../../shared/maps/googleMaps";
 import PlaceAutocompleteInput from "../../../shared/maps/PlaceAutocompleteInput";
+import { checkPincodeDeliverability } from "../../../shared/services/deliverabilityService";
+import { isValidPincode, normalizePincode, PINCODE_ERROR_MESSAGE } from "../../../shared/utils/pincode";
 import toast from "react-hot-toast";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { useDynamicTranslation } from "../../../hooks/useDynamicTranslation";
@@ -147,6 +152,8 @@ const MobileCheckout = () => {
   const [shippingOption, setShippingOption] = useState("standard");
   const [estimatedShipping, setEstimatedShipping] = useState(null);
   const [isEstimatingShipping, setIsEstimatingShipping] = useState(false);
+  const [deliverabilityVerdict, setDeliverabilityVerdict] = useState(null);
+  const [isCheckingDeliverability, setIsCheckingDeliverability] = useState(false);
   // Quick Commerce fees and ETA, always server-computed.
   const [quickEstimate, setQuickEstimate] = useState(null);
   const [isEstimatingQuick, setIsEstimatingQuick] = useState(false);
@@ -448,6 +455,48 @@ const MobileCheckout = () => {
     };
   }, [isQuickCommerce, items, formData.country, shippingOption, appliedCoupon?.type]);
 
+  useEffect(() => {
+    if (isQuickCommerce) {
+      setDeliverabilityVerdict(null);
+      return undefined;
+    }
+
+    const pin = normalizePincode(formData.zipCode);
+    if (!pin || pin.length < 6) {
+      setDeliverabilityVerdict(null);
+      return undefined;
+    }
+
+    let active = true;
+    const timer = setTimeout(async () => {
+      setIsCheckingDeliverability(true);
+      try {
+        const verdict = await checkPincodeDeliverability(pin, {
+          paymentMethod: formData.paymentMethod === 'cash' ? 'cod' : formData.paymentMethod,
+        });
+        if (active) {
+          setDeliverabilityVerdict(verdict);
+        }
+      } catch {
+        if (active) {
+          setDeliverabilityVerdict({
+            status: 'unverified',
+            deliverable: true,
+            blocking: false,
+            message: 'Delivery could not be verified automatically.',
+          });
+        }
+      } finally {
+        if (active) setIsCheckingDeliverability(false);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [isQuickCommerce, formData.zipCode, formData.paymentMethod]);
+
   const handleApplyCoupon = async (codeOverride = "") => {
     const normalizedCode = String(codeOverride || couponCode).trim().toUpperCase();
     if (!normalizedCode) {
@@ -651,6 +700,17 @@ const MobileCheckout = () => {
       return;
     }
 
+    if (!isQuickCommerce) {
+      if (!isValidPincode(normalizedShipping.zipCode)) {
+        toast.error(t(PINCODE_ERROR_MESSAGE));
+        return;
+      }
+      if (deliverabilityVerdict && deliverabilityVerdict.blocking) {
+        toast.error(deliverabilityVerdict.message || t("This destination is not serviceable for delivery."));
+        return;
+      }
+    }
+
     if (step === 2 && isApplyingCoupon) {
       toast.error(t("Please wait for coupon validation to complete."));
       return;
@@ -694,7 +754,7 @@ const MobileCheckout = () => {
           items: items.map((item) => ({
             ...item,
             productId: item.id || item.productId || item._id,
-            fulfillmentType: item.fulfillmentType || (isQuickCommerce ? 'quick_commerce' : (item.wholesaleEnabled ? 'wholesale' : 'retail')),
+            fulfillmentType: item.fulfillmentType || (isQuickCommerce ? 'quick_commerce' : (item.wholesaleEnabled && item.retailEnabled === false ? 'wholesale' : 'retail')),
           })),
           shippingAddress: normalizedShipping,
           paymentMethod: formData.paymentMethod,
@@ -1016,11 +1076,52 @@ const MobileCheckout = () => {
                           <input
                             type="text"
                             name="zipCode"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="e.g. 452001"
                             value={formData.zipCode}
-                            onChange={handleInputChange}
+                            onChange={(e) => {
+                              const clean = normalizePincode(e.target.value);
+                              setFormData((prev) => ({ ...prev, zipCode: clean }));
+                            }}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                              deliverabilityVerdict?.blocking
+                                ? 'border-status-error bg-red-50/20'
+                                : deliverabilityVerdict?.deliverable
+                                ? 'border-status-success'
+                                : 'border-border'
+                            } focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content`}
                           />
+                          {!isQuickCommerce && isCheckingDeliverability && (
+                            <p className="mt-1.5 text-xs text-blue-600 animate-pulse flex items-center gap-1.5">
+                              <FiLoader className="animate-spin text-sm" />
+                              <span>Checking delivery availability...</span>
+                            </p>
+                          )}
+                          {!isQuickCommerce && !isCheckingDeliverability && deliverabilityVerdict && (
+                            <div className="mt-1.5">
+                              {deliverabilityVerdict.blocking ? (
+                                <p className="text-xs text-status-error font-medium flex items-center gap-1.5">
+                                  <FiAlertCircle className="text-sm shrink-0" />
+                                  <span>{deliverabilityVerdict.message}</span>
+                                </p>
+                              ) : deliverabilityVerdict.deliverable ? (
+                                <p className="text-xs text-green-700 font-medium flex items-center gap-1.5">
+                                  <FiCheck className="text-sm shrink-0 text-green-600" />
+                                  <span>
+                                    Deliverable to {deliverabilityVerdict.city || 'your location'}
+                                    {deliverabilityVerdict.codAvailable === false ? ' (Prepaid only)' : ''}
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-700 font-medium flex items-center gap-1.5">
+                                  <FiAlertTriangle className="text-sm shrink-0 text-amber-600" />
+                                  <span>{deliverabilityVerdict.message}</span>
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-content-secondary mb-2">
@@ -1582,7 +1683,12 @@ const AddressFormModal = ({ onSubmit, onCancel, initialAddress = {}, location = 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    const cleanZip = normalizePincode(formData.zipCode);
+    if (!isValidPincode(cleanZip)) {
+      toast.error(PINCODE_ERROR_MESSAGE);
+      return;
+    }
+    onSubmit({ ...formData, zipCode: cleanZip });
   };
 
   return (
@@ -1694,8 +1800,14 @@ const AddressFormModal = ({ onSubmit, onCancel, initialAddress = {}, location = 
               <input
                 type="text"
                 name="zipCode"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="e.g. 452001"
                 value={formData.zipCode}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const clean = normalizePincode(e.target.value);
+                  setFormData((prev) => ({ ...prev, zipCode: clean }));
+                }}
                 required
                 className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
               />

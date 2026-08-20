@@ -66,6 +66,43 @@ export const assignDeliveryBoy = (id, deliveryBoyId) =>
 export const deleteOrder = (id) =>
     api.delete(`/admin/orders/${id}`);
 
+// ─── DTDC Shipments ───────────────────────────────────────────────────────────
+export const getShipments = (params = {}) =>
+    api.get('/admin/shipments', { params });
+
+export const getShipmentById = (id) =>
+    api.get(`/admin/shipments/${id}`);
+
+export const bookDtdcShipment = (orderId, packageDetails = undefined) =>
+    api.post(`/admin/orders/${orderId}/book-dtdc`, packageDetails);
+
+/** What would be declared to the courier if this order were booked now. */
+export const getPackagePreview = (orderId) =>
+    api.get(`/admin/orders/${orderId}/package-preview`);
+
+/** Courier-eligible products whose parcel data is an estimate, not a measurement. */
+export const getProductsMissingShipping = (params = {}) =>
+    api.get('/admin/products/missing-shipping', { params });
+
+export const cancelDtdcShipment = (orderId) =>
+    api.post(`/admin/orders/${orderId}/cancel-shipment`);
+
+export const getShippingLabel = (orderId) =>
+    api.get(`/admin/orders/${orderId}/shipping-label`, { responseType: 'blob' });
+
+export const syncOrderTracking = (orderId) =>
+    api.post(`/admin/orders/${orderId}/sync-tracking`);
+
+export const getOrderShipment = (orderId) =>
+    api.get(`/admin/orders/${orderId}/shipment`);
+
+export const checkServiceability = (originPincode, destPincode) =>
+    api.get('/admin/check-serviceability', { params: { originPincode, destPincode } });
+
+/** Retail/wholesale orders that are ready to ship with no courier booking. */
+export const getOrdersAwaitingBooking = (params = {}) =>
+    api.get('/admin/shipments/awaiting-booking', { params });
+
 // ─── Products / Catalog ───────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

@@ -13,6 +13,7 @@ import { RetryQueueService } from "./services/events/RetryQueueService.js";
 import { sweepExpiredReservations } from "./services/checkout/InventoryReservationService.js";
 import { startOrderRecoveryWorker } from "./services/checkout/OrderRecoveryWorker.js";
 import { startEscalatedOrderRecoveryWorker } from "./services/riderAssignment.service.js";
+import { startUnbookedOrderSweep } from "./services/shipping/unbookedOrderAlerts.service.js";
 import { COD_CAPTURE_JOB, handleCodCaptureRetry } from "./services/deliveryCash.service.js";
 import { RIDER_EARNING_JOB, handleRiderEarningRetry } from "./services/wallet/riderEarnings.service.js";
 import { startWalletMaturityWorker } from "./services/wallet/walletMaturity.worker.js";
@@ -72,6 +73,12 @@ const startServer = async () => {
 
     // ── Rider wallet maturity sweep (5 min — PENDING → AVAILABLE earnings) ──
     startWalletMaturityWorker(5 * 60_000);
+
+    // ── Unbooked courier order sweep (15 min) ───────────────────────────────
+    // Retail and wholesale consignments are booked by hand. This surfaces the
+    // orders nobody has booked, which were previously invisible. Leased, so
+    // only one instance alerts.
+    startUnbookedOrderSweep(15 * 60_000);
 
     // ── Financial integrity monitor (6h) ────────────────────────────────────
     // Watches the invariants the remediation phases established: session vs

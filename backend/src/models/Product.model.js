@@ -83,6 +83,35 @@ const productSchema = new mongoose.Schema(
         },
         retailEnabled: { type: Boolean, default: true },
         wholesaleEnabled: { type: Boolean, default: false },
+        /**
+         * Physical parcel characteristics, declared to the courier.
+         *
+         * Channel-NEUTRAL by design: a box is the same box whether it sells
+         * retail or wholesale, so this lives in SHARED_PRODUCT_FIELDS and is
+         * editable from either workspace. Quick Commerce never reads it —
+         * internal riders do not bill on volumetric weight, and QC is
+         * structurally excluded from the courier.
+         *
+         * OPTIONAL. A product without it books at an estimate and the vendor
+         * is warned; requiring it would make every pre-existing product
+         * uneditable until someone measured it. Units are stored as the vendor
+         * entered them and normalised once, at the point of consumption.
+         */
+        shipping: {
+            weight:        { type: Number, min: 0 },
+            weightUnit:    { type: String, enum: ['kg', 'g'], default: 'kg' },
+            length:        { type: Number, min: 0 },
+            width:         { type: Number, min: 0 },
+            height:        { type: Number, min: 0 },
+            dimensionUnit: { type: String, enum: ['cm', 'in'], default: 'cm' },
+            /**
+             * How these numbers came to be here.
+             *   'vendor'    — entered by a human
+             *   'estimated' — written by the backfill, NOT a measurement
+             * Absent on products that predate the field.
+             */
+            source:        { type: String, enum: ['vendor', 'estimated'] },
+        },
         wholesale: {
             moqEnabled: { type: Boolean, default: false },
             moq: { type: Number, min: 1 },

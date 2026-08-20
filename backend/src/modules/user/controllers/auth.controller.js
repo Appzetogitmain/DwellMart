@@ -3,7 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import User from '../../../models/User.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
-import { isMockOTP, isOTPMatch, sendOTP } from '../../../services/otp.service.js';
+import { isMockOTP, isOTPMatch, sendOTP, sendResetOTP, OTP_EXPIRY_MINUTES } from '../../../services/otp.service.js';
 import { sendEmail } from '../../../services/email.service.js';
 import {
     uploadLocalFileToCloudinaryAndCleanup,
@@ -17,6 +17,7 @@ import {
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
 import { buildDeletedEmail } from '../../../utils/accountDeletion.js';
+import { buildPhoneFields } from '../../../utils/phone.js';
 
 const extractCloudinaryPublicId = (url = '') => {
     const raw = String(url || '').trim();
@@ -36,7 +37,9 @@ const extractCloudinaryPublicId = (url = '') => {
 export const register = asyncHandler(async (req, res) => {
     const { name, email, password, phone } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
-    const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    // `phone` keeps its national-only shape for downstream consumers; the E.164
+    // form is derived from the raw input so the country code is not lost.
+    const { phone: normalizedPhone, phoneE164 } = buildPhoneFields(phone);
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
@@ -46,10 +49,16 @@ export const register = asyncHandler(async (req, res) => {
         email: normalizedEmail,
         password,
         ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+        ...(phoneE164 ? { phoneE164 } : {}),
     });
-    await sendOTP(user, 'email_verification');
+    const delivery = await sendOTP(user, 'email_verification');
 
-    res.status(201).json(new ApiResponse(201, { email: user.email }, 'Registration successful. Please verify your email.'));
+    res.status(201).json(new ApiResponse(201, {
+        email: user.email,
+        // Delivery metadata only — the code itself never leaves the server.
+        otpChannel: delivery.channel,
+        otpExpiresInMinutes: OTP_EXPIRY_MINUTES,
+    }, 'Registration successful. Please verify your account.'));
 });
 
 // POST /api/user/auth/verify-otp
@@ -57,14 +66,23 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry');
+    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry +otpDeliveredVia');
     if (!user) throw new ApiError(404, 'User not found.');
     if (!isOTPMatch(user.otp, otp)) throw new ApiError(400, 'Invalid OTP.');
     if (!isMockOTP(otp) && user.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired. Please request a new one.');
 
     user.isVerified = true;
+
+    // The phone is proven ONLY when WhatsApp was the sole carrier of this code.
+    // Under the rollout's dual delivery the same code also reaches the inbox,
+    // so verifying it says nothing about who holds the handset.
+    if (user.otpDeliveredVia === 'whatsapp') {
+        user.phoneVerified = true;
+    }
+
     user.otp = undefined;
     user.otpExpiry = undefined;
+    user.otpDeliveredVia = undefined;
     await user.save();
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
@@ -139,8 +157,11 @@ export const resendOTP = asyncHandler(async (req, res) => {
     if (!user) throw new ApiError(404, 'User not found.');
     if (user.isVerified) throw new ApiError(400, 'Email already verified.');
 
-    await sendOTP(user, 'email_verification');
-    res.status(200).json(new ApiResponse(200, null, 'OTP resent successfully.'));
+    const delivery = await sendOTP(user, 'email_verification');
+    res.status(200).json(new ApiResponse(200, {
+        otpChannel: delivery.channel,
+        otpExpiresInMinutes: OTP_EXPIRY_MINUTES,
+    }, 'OTP resent successfully.'));
 });
 
 // POST /api/user/auth/forgot-password
@@ -159,26 +180,14 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         throw new ApiError(403, 'Please verify your email first. A new verification OTP has been sent.');
     }
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    user.resetOtp = otp;
-    user.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    user.resetOtpVerified = false;
-    await user.save({ validateBeforeSave: false });
+    // Unified OTP service: cryptographic code, 5-minute window, and
+    // WhatsApp-only-when-the-number-is-proven channel policy.
+    await sendResetOTP(user, 'password_reset');
 
-    try {
-        await sendEmail({
-            to: user.email,
-            subject: 'Password reset OTP',
-            text: `Your password reset OTP is ${otp}. It expires in 10 minutes.`,
-            html: `<p>Your password reset OTP is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-        });
-    } catch (err) {
-        console.warn(`[User Forgot Password] Email send failed for ${user.email}: ${err.message}`);
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[User Forgot Password] Reset OTP generated for ${user.email}`);
-        }
-    }
-
+    // The delivery channel is deliberately NOT reported here. This endpoint
+    // answers identically for an unknown email to avoid account enumeration,
+    // and "sent via WhatsApp" would confirm both that the account exists and
+    // that it carries a verified phone.
     return res.status(200).json(new ApiResponse(200, null, 'If the email exists, a reset OTP has been sent.'));
 });
 
@@ -232,12 +241,23 @@ export const getProfile = asyncHandler(async (req, res) => {
 export const updateProfile = asyncHandler(async (req, res) => {
     const { name, phone } = req.body;
     const normalizedName = String(name || '').trim();
-    const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const { phone: normalizedPhone, phoneE164 } = buildPhoneFields(phone);
+
+    const current = await User.findById(req.user.id).select('phoneE164');
+    if (!current) throw new ApiError(404, 'User not found.');
 
     const updatePayload = {
         name: normalizedName,
         phone: normalizedPhone || undefined,
     };
+
+    // Changing the number invalidates any prior proof of ownership: the new
+    // number has not been verified, and password reset trusts that flag.
+    if (phoneE164 && phoneE164 !== current.phoneE164) {
+        updatePayload.phoneE164 = phoneE164;
+        updatePayload.phoneVerified = false;
+        updatePayload.whatsappOptInAt = null;
+    }
 
     const user = await User.findByIdAndUpdate(
         req.user.id,

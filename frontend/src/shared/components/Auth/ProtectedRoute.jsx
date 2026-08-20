@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 
@@ -14,7 +15,7 @@ const decodeJwtPayload = (token) => {
 };
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, user, token } = useAuthStore();
+  const { isAuthenticated, user, token, logout } = useAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('token');
   const tokenPayload = decodeJwtPayload(accessToken);
@@ -22,22 +23,24 @@ const ProtectedRoute = ({ children }) => {
   const tokenExpiryMs =
     typeof tokenPayload?.exp === 'number' ? tokenPayload.exp * 1000 : null;
   const isExpired = tokenExpiryMs ? Date.now() >= tokenExpiryMs : false;
+  const hasValidRole = !resolvedRole || resolvedRole === 'customer';
 
-  if (!isAuthenticated || !accessToken) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  const isSessionInvalid =
+    !accessToken || isExpired || !hasValidRole;
 
-  if (isExpired) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh-token');
-    localStorage.removeItem('auth-storage');
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
+  useEffect(() => {
+    if ((isAuthenticated || accessToken) && isSessionInvalid) {
+      if (typeof logout === 'function') {
+        logout();
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh-token');
+        localStorage.removeItem('auth-storage');
+      }
+    }
+  }, [isAuthenticated, accessToken, isSessionInvalid, logout]);
 
-  if (resolvedRole && resolvedRole !== 'customer') {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh-token');
-    localStorage.removeItem('auth-storage');
+  if (!isAuthenticated || isSessionInvalid) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

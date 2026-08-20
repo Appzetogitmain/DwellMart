@@ -89,14 +89,39 @@ export const useDeliveryAuthStore = create(
       isUpdatingOrderStatus: false,
       isUpdatingStatus: false,
 
-      // Delivery boy login action
+      // Step one of registration: prove the mobile number over WhatsApp.
+      requestRegistrationOtp: async (phone) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.post('/delivery/auth/request-registration-otp', { phone });
+          const payload = response?.data ?? response;
+          set({ isLoading: false });
+          return { success: true, expiresInMinutes: payload?.expiresInMinutes ?? 5 };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      verifyRegistrationOtp: async (phone, otp) => {
+        set({ isLoading: true });
+        try {
+          await api.post('/delivery/auth/verify-registration-otp', { phone, otp });
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Step two: submit the application. The number must already be verified.
       register: async (registrationData) => {
         set({ isLoading: true });
         try {
           const formData = new FormData();
           formData.append('name', registrationData.name || '');
           formData.append('email', registrationData.email || '');
-          formData.append('password', registrationData.password || '');
           formData.append('phone', registrationData.phone || '');
           formData.append('address', registrationData.address || '');
           formData.append('vehicleType', registrationData.vehicleType || '');
@@ -120,50 +145,25 @@ export const useDeliveryAuthStore = create(
         }
       },
 
-      forgotPassword: async (email) => {
+      // Step one of login: request a WhatsApp code for a registered number.
+      requestLoginOtp: async (phone) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/delivery/auth/forgot-password', { email });
+          const response = await api.post('/delivery/auth/request-otp', { phone });
           const payload = response?.data ?? response;
           set({ isLoading: false });
-          return { success: true, message: payload?.message };
+          return { success: true, expiresInMinutes: payload?.expiresInMinutes ?? 5 };
         } catch (error) {
           set({ isLoading: false });
           throw error;
         }
       },
 
-      verifyResetOtp: async (email, otp) => {
+      // Step two: exchange the code for a session. There is no password.
+      login: async (phone, otp) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/delivery/auth/verify-reset-otp', { email, otp });
-          const payload = response?.data ?? response;
-          set({ isLoading: false });
-          return { success: true, message: payload?.message };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      resetPassword: async (email, password, confirmPassword) => {
-        set({ isLoading: true });
-        try {
-          const response = await api.post('/delivery/auth/reset-password', { email, password, confirmPassword });
-          const payload = response?.data ?? response;
-          set({ isLoading: false });
-          return { success: true, message: payload?.message };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      // Delivery boy login action
-      login: async (email, password, rememberMe = false) => {
-        set({ isLoading: true });
-        try {
-          const response = await api.post('/delivery/auth/login', { email, password });
+          const response = await api.post('/delivery/auth/verify-otp', { phone, otp });
           const payload = response?.data ?? response;
           const accessToken = payload?.accessToken;
           const refreshToken = payload?.refreshToken;

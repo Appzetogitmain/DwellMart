@@ -15,6 +15,11 @@ import m0007 from './0007_variant_aware_reservations.js';
 import m0008 from './0008_vendor_channels.js';
 import m0009 from './0009_order_channel_attribution.js';
 import m0010 from './0010_vendor_channel_migration_stamp.js';
+import m0011 from './0011_shipment_model.js';
+import m0012 from './0012_vendor_item_fulfillment_type.js';
+import m0013 from './0013_phone_e164_backfill.js';
+import m0014 from './0014_product_shipping_backfill.js';
+import m0015 from './0015_delivery_passwordless_and_phone_identity.js';
 
 export const MIGRATIONS = [
     m0001,
@@ -27,6 +32,11 @@ export const MIGRATIONS = [
     m0008,
     m0009,
     m0010,
+    m0011,
+    m0012,
+    m0013,
+    m0014,
+    m0015,
 ];
 
 export default MIGRATIONS;

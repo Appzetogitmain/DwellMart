@@ -13,6 +13,7 @@ import { useAuthStore } from '../../../shared/store/authStore';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import GoogleMapPicker from '../../../shared/maps/GoogleMapPicker';
 import { reverseGeocode } from '../../../shared/maps/googleMaps';
+import { INDIAN_PINCODE_PATTERN, PINCODE_ERROR_MESSAGE, normalizePincode } from '../../../shared/utils/pincode';
 
 const MobileAddresses = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -583,10 +584,24 @@ const AddressFormModal = ({
                     <label className="block text-xs font-semibold text-content-secondary mb-1.5">{t('Zip Code')}</label>
                     <input
                       type="text"
-                      {...register('zipCode', { required: t('Zip code is required') })}
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="e.g. 452001"
+                      {...register('zipCode', {
+                        required: t('Zip code is required'),
+                        pattern: {
+                          value: INDIAN_PINCODE_PATTERN,
+                          message: t(PINCODE_ERROR_MESSAGE),
+                        },
+                        validate: (val) =>
+                          INDIAN_PINCODE_PATTERN.test(String(val || '').trim()) || t(PINCODE_ERROR_MESSAGE),
+                      })}
                       className={`w-full px-3 py-2.5 rounded-xl border ${errors.zipCode ? 'border-status-error' : 'border-border'
                         } bg-surface text-content focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm`}
                     />
+                    {errors.zipCode && (
+                      <p className="mt-1 text-xs text-status-error">{errors.zipCode.message}</p>
+                    )}
                   </div>
                 </div>
                 <div>

@@ -9,13 +9,14 @@ import {
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
-import { getVendorOrderById, updateVendorOrderStatus } from '../../services/vendorService';
+import { getVendorOrderById, updateVendorOrderStatus, getOrdersAwaitingShipment } from '../../services/vendorService';
 import { formatPrice, getPlaceholderImage } from '../../../../shared/utils/helpers';
 import Badge from '../../../../shared/components/Badge';
 import WholesaleBadge from '../../../../shared/components/WholesaleBadge';
 import AnimatedSelect from '../../../Admin/components/AnimatedSelect';
 import QuickCommerceOrderPanel from '../../components/QuickCommerceOrderPanel';
 import toast from 'react-hot-toast';
+import DtdcShipmentPanel from '../../../../shared/components/DtdcShipmentPanel';
 
 const OrderDetail = () => {
     const { id } = useParams();
@@ -25,6 +26,13 @@ const OrderDetail = () => {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    /**
+     * How long this order has been dispatch-ready without a courier booking.
+     * Comes from the awaiting-shipment endpoint so the banner, the list chip
+     * and the alert all agree — recomputing it here would be a fourth copy of
+     * the eligibility rule.
+     */
+    const [readySinceHours, setReadySinceHours] = useState(null);
 
     const vendorId = vendor?.id || vendor?._id || vendor?.userId;
     const shippingAddress = order?.shippingAddress ?? order?.address ?? null;
@@ -38,6 +46,23 @@ const OrderDetail = () => {
         order?.userId?.email ??
         order?.guestInfo?.email ??
         'N/A';
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await getOrdersAwaitingShipment({ limit: 100 });
+                if (cancelled) return;
+                const match = (res?.data?.orders ?? []).find(
+                    (o) => String(o.orderId) === String(id) || String(o._id) === String(id)
+                );
+                setReadySinceHours(match ? match.hoursAwaiting : null);
+            } catch {
+                if (!cancelled) setReadySinceHours(null);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [id]);
 
     useEffect(() => {
         if (!id) return;
@@ -232,6 +257,16 @@ const OrderDetail = () => {
                             },
                         }));
                     }}
+                />
+            )}
+
+            {/* DTDC Shipment Management — retail/wholesale only. */}
+            {order.experience !== 'quick_commerce' && order.fulfillmentType !== 'quick_commerce' && (
+                <DtdcShipmentPanel
+                    orderId={id}
+                    context="vendor"
+                    readySinceHours={readySinceHours}
+                    fulfillmentType={order.fulfillmentType || vendorItem?.fulfillmentType || vendorItem?.orderType}
                 />
             )}
 

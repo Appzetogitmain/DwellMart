@@ -1,13 +1,27 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
 
 const deliveryBoySchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true },
         email: { type: String, required: true, unique: true, lowercase: true },
-        password: { type: String, required: true, select: false },
         phone: { type: String, required: true },
+
+        /**
+         * WhatsApp addressing + consent. Mirrors User/Vendor so a single OTP
+         * service can address any of the three account types identically.
+         */
+        phoneE164: { type: String, trim: true, default: null, index: true, sparse: true },
+        phoneVerified: { type: Boolean, default: false },
+        whatsappOptIn: { type: Boolean, default: false },
+        whatsappOptInAt: { type: Date, default: null },
+        /**
+         * Which channel carried the CURRENT verification code.
+         *
+         * Only 'whatsapp' — meaning WhatsApp was the sole carrier — lets a
+         * successful verification prove the handset. See otp.service.js.
+         */
+        otpDeliveredVia: { type: String, default: null, select: false },
         address: { type: String, trim: true },
         vehicleType: { type: String, trim: true },
         vehicleNumber: { type: String, trim: true },
@@ -23,9 +37,6 @@ const deliveryBoySchema = new mongoose.Schema(
             drivingLicense: { type: String, trim: true },
             aadharCard: { type: String, trim: true },
         },
-        resetOtp: { type: String, select: false },
-        resetOtpExpiry: { type: Date, select: false },
-        resetOtpVerified: { type: Boolean, default: false, select: false },
         refreshTokenHash: { type: String, select: false },
         refreshTokenExpiresAt: { type: Date, select: false },
         isActive: { type: Boolean, default: true },
@@ -122,9 +133,9 @@ const deliveryBoySchema = new mongoose.Schema(
  */
 deliveryBoySchema.methods.toJSON = function toJSON() {
     const obj = this.toObject();
-    delete obj.password;
+    delete obj.password; // legacy rows until migration 0015 unsets it
     delete obj.payoutDetails;
-    delete obj.resetOtp;
+    delete obj.resetOtp;      // legacy rows until migration 0015 unsets it
     delete obj.resetOtpExpiry;
     delete obj.refreshTokenHash;
     return obj;
@@ -137,15 +148,16 @@ deliveryBoySchema.index({ activeOrderId: 1, status: 1, isAvailable: 1, applicati
 // PERF-5: Backs the QC sweep staleness check (riders who have gone dark mid-delivery).
 deliveryBoySchema.index({ lastLocationAt: 1, isAvailable: 1, status: 1 });
 
-deliveryBoySchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
-    this.password = await bcrypt.hash(this.password, 12);
-    next();
-});
+/**
+ * Delivery partners have no password.
+ *
+ * Authentication is mobile number + WhatsApp OTP end to end: there is nothing
+ * to hash, nothing to compare, and nothing to reset. The bcrypt pre-save hook
+ * and `comparePassword` that used to live here were removed with the field, so
+ * a stale hash on a legacy row can never be used to authenticate.
+ */
 
-deliveryBoySchema.methods.comparePassword = async function (candidatePassword) {
-    return bcrypt.compare(candidatePassword, this.password);
-};
+
 
 const DeliveryBoy = mongoose.model('DeliveryBoy', deliveryBoySchema);
 export default DeliveryBoy;

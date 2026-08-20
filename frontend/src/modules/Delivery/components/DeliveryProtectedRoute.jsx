@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
 
@@ -14,7 +15,7 @@ const decodeJwtPayload = (token) => {
 };
 
 const DeliveryProtectedRoute = ({ children }) => {
-  const { isAuthenticated, token } = useDeliveryAuthStore();
+  const { isAuthenticated, token, logout } = useDeliveryAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('delivery-token');
   const payload = decodeJwtPayload(accessToken);
@@ -22,22 +23,19 @@ const DeliveryProtectedRoute = ({ children }) => {
   const tokenExpiryMs =
     typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
   const isExpired = tokenExpiryMs ? Date.now() >= tokenExpiryMs : false;
+  const hasValidRole = role === 'delivery';
+  const hasRoleClaim = Boolean(role);
 
-  if (!isAuthenticated || !accessToken) {
-    return <Navigate to="/delivery/login" state={{ from: location }} replace />;
-  }
+  const isSessionInvalid =
+    !accessToken || isExpired || (hasRoleClaim && !hasValidRole);
 
-  if (isExpired) {
-    localStorage.removeItem('delivery-token');
-    localStorage.removeItem('delivery-refresh-token');
-    localStorage.removeItem('delivery-auth-storage');
-    return <Navigate to="/delivery/login" state={{ from: location }} replace />;
-  }
+  useEffect(() => {
+    if ((isAuthenticated || accessToken) && isSessionInvalid) {
+      logout();
+    }
+  }, [isAuthenticated, accessToken, isSessionInvalid, logout]);
 
-  if (role && role !== 'delivery') {
-    localStorage.removeItem('delivery-token');
-    localStorage.removeItem('delivery-refresh-token');
-    localStorage.removeItem('delivery-auth-storage');
+  if (!isAuthenticated || isSessionInvalid) {
     return <Navigate to="/delivery/login" state={{ from: location }} replace />;
   }
 

@@ -61,6 +61,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     warrantyPeriod: "",
     guaranteePeriod: "",
     hsnCode: "",
+    shipping: { weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm" },
     flashSale: false,
     isNewArrival: false,
     isFeatured: false,
@@ -170,6 +171,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
             warrantyPeriod: product.warrantyPeriod || "",
             guaranteePeriod: product.guaranteePeriod || "",
             hsnCode: product.hsnCode || "",
+            shipping: {
+              weight:        product.shipping?.weight ?? "",
+              weightUnit:    product.shipping?.weightUnit || "kg",
+              length:        product.shipping?.length ?? "",
+              width:         product.shipping?.width ?? "",
+              height:        product.shipping?.height ?? "",
+              dimensionUnit: product.shipping?.dimensionUnit || "cm",
+            },
             flashSale: product.flashSale || false,
             isNewArrival: product.isNewArrival || false,
             isFeatured: product.isFeatured || false,
@@ -233,6 +242,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         warrantyPeriod: "",
         guaranteePeriod: "",
         hsnCode: "",
+    shipping: { weight: "", weightUnit: "kg", length: "", width: "", height: "", dimensionUnit: "cm" },
         flashSale: false,
         isNewArrival: false,
         isFeatured: false,
@@ -269,6 +279,19 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  /**
+   * `shipping` is nested; the flat `handleChange` writes `formData[name]` and
+   * cannot address it. Field names and units are identical to the vendor
+   * ShippingSection — two vocabularies for the same data is how the
+   * retail/wholesale orderType confusion started.
+   */
+  const handleShipping = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      shipping: { ...(prev.shipping || {}), [field]: value },
     }));
   };
 
@@ -661,8 +684,30 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return;
     }
 
+    /**
+     * Blank inputs are dropped rather than sent as "" — the validator types
+     * these as numbers. `source` is server-authored and never sent.
+     */
+    const buildShippingPayload = () => {
+      const raw = formData.shipping || {};
+      const numeric = {};
+      for (const key of ["weight", "length", "width", "height"]) {
+        const value = raw[key];
+        if (value !== "" && value !== null && value !== undefined) numeric[key] = Number(value);
+      }
+      if (Object.keys(numeric).length === 0) return {};
+      return {
+        shipping: {
+          ...numeric,
+          weightUnit: raw.weightUnit || "kg",
+          dimensionUnit: raw.dimensionUnit || "cm",
+        },
+      };
+    };
+
     const submissionData = {
       ...formData,
+      ...buildShippingPayload(),
       price: parseFloat(formData.price),
       originalPrice: formData.originalPrice
         ? parseFloat(formData.originalPrice)
@@ -1269,6 +1314,64 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           placeholder="Enter HSN Code"
                         />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping — parcel data the courier is declared with.
+                      Quick Commerce ignores it: internal riders do not bill on
+                      volumetric weight. */}
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <h3 className="text-sm font-bold text-gray-800 mb-1">Shipping</h3>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Leave blank and consignments are booked at an estimated 0.5&nbsp;kg.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Weight (per unit)</label>
+                        <input
+                          type="number" min="0" step="0.001"
+                          value={formData.shipping?.weight ?? ""}
+                          onChange={(e) => handleShipping("weight", e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="e.g., 2.4"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Weight Unit</label>
+                        <select
+                          value={formData.shipping?.weightUnit || "kg"}
+                          onChange={(e) => handleShipping("weightUnit", e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="kg">Kilograms (kg)</option>
+                          <option value="g">Grams (g)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                      {["length", "width", "height"].map((axis) => (
+                        <div key={axis}>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">{axis}</label>
+                          <input
+                            type="number" min="0" step="0.1"
+                            value={formData.shipping?.[axis] ?? ""}
+                            onChange={(e) => handleShipping(axis, e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            placeholder="0"
+                          />
+                        </div>
+                      ))}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Unit</label>
+                        <select
+                          value={formData.shipping?.dimensionUnit || "cm"}
+                          onChange={(e) => handleShipping("dimensionUnit", e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="cm">Centimetres</option>
+                          <option value="in">Inches</option>
+                        </select>
                       </div>
                     </div>
                   </div>

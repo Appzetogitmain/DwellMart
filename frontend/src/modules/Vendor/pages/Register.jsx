@@ -39,11 +39,11 @@ const VendorRegister = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [registrationDocument, setRegistrationDocument] = useState(null);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
-  const [emailOtp, setEmailOtp] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
 
   const [documentType, setDocumentType] = useState('tradeLicense');
   const [showPassword, setShowPassword] = useState(false);
@@ -75,11 +75,10 @@ const VendorRegister = () => {
     const response = await api.post('/vendor/auth/onboarding-status', { email });
     const data = response?.data || {};
 
-    if (data.nextStep === 'verify_email') {
-      navigate('/vendor/verification', {
-        replace: true,
-        state: { email, returnTo: '/vendor/register' },
-      });
+    if (data.nextStep === 'verify_phone') {
+      // Registration itself proves the mobile number and resumes the account.
+      sessionStorage.setItem(ONBOARDING_STORAGE_KEY, email);
+      setOnboardingEmail(email);
       return false;
     }
 
@@ -194,7 +193,8 @@ const VendorRegister = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    if (name === 'email' && isEmailVerified) return;
+    // Changing the number after proving it would invalidate the proof.
+    if (name === 'phone' && isPhoneVerified) return;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -220,24 +220,28 @@ const VendorRegister = () => {
   };
 
   const handleRequestOtp = async () => {
-    const email = formData.email?.trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Please enter a valid email address.');
+    const phone = formData.phone?.trim();
+    if (!phone || phone.replace(/\D/g, '').length < 10) {
+      toast.error('Please enter a valid mobile number.');
       return;
     }
 
     setIsSendingOtp(true);
     try {
-      await api.post('/vendor/auth/request-registration-otp', { email });
+      await api.post('/vendor/auth/request-registration-otp', { phone });
       setShowOtpInput(true);
-      toast.success('Verification code sent to your email.');
+      toast.success('Verification code sent to your WhatsApp.');
+    } catch (error) {
+      // This code has no email fallback by design, so a delivery failure has to
+      // be surfaced rather than swallowed.
+      toast.error(error?.response?.data?.message || 'Could not send the WhatsApp code.');
     } finally {
       setIsSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    const otp = emailOtp.trim();
+    const otp = phoneOtp.trim();
     if (!/^\d{6}$/.test(otp)) {
       toast.error('Please enter a valid 6-digit code.');
       return;
@@ -246,12 +250,14 @@ const VendorRegister = () => {
     setIsVerifyingOtp(true);
     try {
       await api.post('/vendor/auth/verify-registration-otp', {
-        email: formData.email,
+        phone: formData.phone,
         otp,
       });
-      setIsEmailVerified(true);
+      setIsPhoneVerified(true);
       setShowOtpInput(false);
-      toast.success('Email verified successfully.');
+      toast.success('Mobile number verified successfully.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Invalid verification code.');
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -559,77 +565,86 @@ const VendorRegister = () => {
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
                         Email <span className="text-red-500">*</span>
                       </label>
+                      {/* Collected for correspondence only. The proven contact
+                          is the mobile number below. */}
+                      <div className="relative">
+                        <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          required
+                          placeholder="vendor@example.com"
+                          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                        Phone <span className="text-red-500">*</span>
+                      </label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                           <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
                             onChange={handleChange}
-                            readOnly={isEmailVerified}
+                            readOnly={isPhoneVerified}
                             required
-                            placeholder="vendor@example.com"
-                            className={`w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 ${
-                              isEmailVerified ? 'bg-green-50 border-green-200' : 'bg-gray-50 focus:border-[#ffc101]'
+                            placeholder="+919876543210"
+                            className={`w-full rounded-xl border py-3 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20 ${
+                              isPhoneVerified ? 'bg-green-50 border-green-200 font-semibold' : 'border-gray-200 bg-gray-50 focus:border-[#ffc101]'
                             }`}
                           />
-                          {isEmailVerified && (
+                          {isPhoneVerified && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-green-600">
                               <FiCheck className="stroke-[3]" />
                             </div>
                           )}
                         </div>
-                        {!isEmailVerified && (
+                        {!isPhoneVerified && (
                           <button
                             type="button"
                             onClick={handleRequestOtp}
-                            disabled={isSendingOtp || !formData.email}
+                            disabled={isSendingOtp || !formData.phone}
                             className="rounded-xl bg-[#ffc101] px-4 py-3 text-sm font-semibold text-black hover:bg-[#ffd042] disabled:opacity-50"
                           >
                             {isSendingOtp ? 'Sending...' : showOtpInput ? 'Resend' : 'Verify'}
                           </button>
                         )}
                       </div>
-                      
-                      {showOtpInput && !isEmailVerified && (
+
+                      {!isPhoneVerified && (
+                        <p className="mt-1.5 text-xs text-gray-500">
+                          We will send a 6-digit code to this number on WhatsApp.
+                        </p>
+                      )}
+
+                      {showOtpInput && !isPhoneVerified && (
                         <div className="mt-3 flex gap-2">
                           <input
                             type="text"
+                            inputMode="numeric"
                             maxLength={6}
-                            value={emailOtp}
-                            onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
+                            value={phoneOtp}
+                            onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ''))}
                             placeholder="6-digit code"
                             className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-center text-sm font-bold tracking-widest text-gray-800 focus:border-[#ffc101] focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={handleVerifyOtp}
-                            disabled={isVerifyingOtp || emailOtp.length !== 6}
+                            disabled={isVerifyingOtp || phoneOtp.length !== 6}
                             className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
                           >
                             {isVerifyingOtp ? '...' : 'Confirm'}
                           </button>
                         </div>
                       )}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        Phone <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          required
-                          placeholder="+1234567890"
-                          className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#ffc101] focus:outline-none focus:ring-2 focus:ring-[#ffc101]/20"
-                        />
-                      </div>
                     </div>
 
                     <div className="md:col-span-2">
@@ -793,10 +808,10 @@ const VendorRegister = () => {
 
                   <button
                     type="submit"
-                    disabled={isLoading || !agreedToTerms || !isEmailVerified}
+                    disabled={isLoading || !agreedToTerms || !isPhoneVerified}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffc101] py-3 font-semibold text-black hover:bg-[#ffd042] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {!isEmailVerified ? 'Verify Email First' : isLoading ? 'Registering...' : (
+                    {!isPhoneVerified ? 'Verify Mobile Number First' : isLoading ? 'Registering...' : (
                       <>
                         Register as Vendor <FiArrowRight />
                       </>

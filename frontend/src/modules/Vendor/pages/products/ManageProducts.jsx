@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiEdit, FiTrash2 } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiAlertTriangle } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { DashboardPage, DataTable, StatusBadge } from "../../../../shared/components/Dashboard";
 import { Button, Badge, Card, Select } from "../../../../shared/components/ui";
@@ -19,6 +19,20 @@ import api from "../../../../shared/utils/api";
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
 import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
 import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
+
+
+/**
+ * True when this product would ship at an estimate.
+ *
+ * A backfilled `source: 'estimated'` counts: seeding made the guess visible,
+ * it did not turn it into a measurement.
+ */
+const needsShippingData = (product) => {
+  const courierEligible = product?.retailEnabled !== false || product?.wholesaleEnabled === true;
+  if (!courierEligible) return false;
+  const weight = Number(product?.shipping?.weight);
+  return !(weight > 0) || product?.shipping?.source === 'estimated';
+};
 
 const ManageProducts = () => {
   const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
@@ -139,6 +153,15 @@ const ManageProducts = () => {
               }}
             />
             <span className="font-medium">{value}</span>
+            {/* Quick Commerce is rider-delivered and never declared to a
+                courier, so an unmeasured QC-only product is not a problem. */}
+            {needsShippingData(row) && (
+              <FiAlertTriangle
+                className="w-3.5 h-3.5 shrink-0 text-amber-500"
+                title="No shipping weight set — consignments for this product are estimated"
+                aria-label="No shipping weight set"
+              />
+            )}
           </div>
         );
       },

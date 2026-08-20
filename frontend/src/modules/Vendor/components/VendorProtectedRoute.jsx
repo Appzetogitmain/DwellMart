@@ -24,38 +24,28 @@ const decodeJwtPayload = (token) => {
  * non-blocking banners/overlays without remounting the whole tree.
  */
 const VendorProtectedRoute = ({ children }) => {
-  const { isAuthenticated, token } = useVendorAuthStore();
+  const { isAuthenticated, token, logout } = useVendorAuthStore();
   const location = useLocation();
   const accessToken = token || localStorage.getItem('vendor-token');
-
-  // Re-hydrate vendor auth state from localStorage on page refresh
-  useEffect(() => {
-    if (!isAuthenticated && accessToken) {
-      useVendorAuthStore.getState().initialize();
-    }
-  }, [isAuthenticated, accessToken]);
-
-  if (!accessToken) {
-    return <Navigate to="/vendor/login" state={{ from: location }} replace />;
-  }
 
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();
   const tokenExpiryMs =
     typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
   const isExpired = tokenExpiryMs ? Date.now() >= tokenExpiryMs : false;
+  const hasValidRole = role === 'vendor';
+  const hasRoleClaim = Boolean(role);
 
-  if (isExpired) {
-    localStorage.removeItem('vendor-token');
-    localStorage.removeItem('vendor-refresh-token');
-    localStorage.removeItem('vendor-auth-storage');
-    return <Navigate to="/vendor/login" state={{ from: location }} replace />;
-  }
+  const isSessionInvalid =
+    !accessToken || isExpired || (hasRoleClaim && !hasValidRole);
 
-  if (role && role !== 'vendor') {
-    localStorage.removeItem('vendor-token');
-    localStorage.removeItem('vendor-refresh-token');
-    localStorage.removeItem('vendor-auth-storage');
+  useEffect(() => {
+    if ((isAuthenticated || accessToken) && isSessionInvalid) {
+      logout();
+    }
+  }, [isAuthenticated, accessToken, isSessionInvalid, logout]);
+
+  if (!isAuthenticated || isSessionInvalid) {
     return <Navigate to="/vendor/login" state={{ from: location }} replace />;
   }
 

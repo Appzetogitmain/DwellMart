@@ -9,7 +9,8 @@
     "route": "/admin/orders",
     "children": [
       "All Orders",
-      "Order Tracking"
+      "Order Tracking",
+      "DTDC Shipments"
     ]
   },
   {

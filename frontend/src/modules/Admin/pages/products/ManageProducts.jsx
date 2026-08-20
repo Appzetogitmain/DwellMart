@@ -15,13 +15,27 @@ import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpe
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { getAllProducts, deleteProduct, exportProductsCatalog } from "../../services/adminService";
+import { getAllProducts, deleteProduct, exportProductsCatalog, getProductsMissingShipping } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageProducts = () => {
   const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
   const [products, setProducts] = useState([]);
+  /**
+   * How much of the courier-eligible catalogue is booking at an estimate.
+   * Surfaced here because this is where an operator can actually do something
+   * about it.
+   */
+  const [missingShipping, setMissingShipping] = useState(null);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProductsMissingShipping({ limit: 1 })
+      .then((res) => { if (!cancelled) setMissingShipping(res?.data || null); })
+      .catch(() => { if (!cancelled) setMissingShipping(null); });
+    return () => { cancelled = true; };
+  }, []);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
@@ -205,6 +219,23 @@ const ManageProducts = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
+      {missingShipping?.total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-900">
+            <strong>{missingShipping.total}</strong> of {missingShipping.totalCourierEligible} courier
+            products have no measured shipping weight — their consignments are declared at an
+            estimate, which can attract weight discrepancy charges.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="text-sm font-semibold text-amber-900 underline underline-offset-2"
+          >
+            Filter by the warning icon below
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="lg:hidden">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">

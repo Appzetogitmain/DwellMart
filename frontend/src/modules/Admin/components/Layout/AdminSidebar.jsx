@@ -90,6 +90,7 @@ export const CHILD_PERMISSION_MAP = {
   // Orders
   "All Orders": "orders.view",
   "Order Tracking": "orders.view",
+  "DTDC Shipments": "orders.view",
 
   // Products
   "Manage Products": "products.view",
@@ -171,6 +172,7 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/orders": {
       "All Orders": "/admin/orders/all-orders",
       "Order Tracking": "/admin/orders/order-tracking",
+      "DTDC Shipments": "/admin/orders/shipments",
     },
     "/admin/products": {
       "Manage Products": "/admin/products/manage-products",

@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiTruck, FiArrowRight } from 'react-icons/fi';
+import { FiPhone, FiShield, FiTruck, FiArrowRight, FiArrowLeft } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
 import toast from 'react-hot-toast';
 import { loginLogo } from '../../../shared/utils/imagePaths';
 
+/**
+ * Delivery partner login — mobile number + WhatsApp OTP.
+ *
+ * There is no password anywhere in this flow, so there is nothing to remember
+ * and nothing to reset. Two steps: request a code, then exchange it for a
+ * session.
+ */
 const DeliveryLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading } = useDeliveryAuthStore();
+  const { login, requestLoginOtp, isAuthenticated, isLoading } = useDeliveryAuthStore();
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [step, setStep] = useState('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -27,28 +32,52 @@ const DeliveryLogin = () => {
     }
   }, [isAuthenticated, navigate, location]);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  // Countdown to the code's five-minute expiry, held equal to the backend
+  // window and the WhatsApp template validity.
+  useEffect(() => {
+    if (secondsLeft <= 0) return undefined;
+    const timer = setInterval(() => setSecondsLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const formatCountdown = (total) =>
+    `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields');
+  const isExpired = step === 'otp' && secondsLeft === 0;
+
+  const handleRequestOtp = async (event) => {
+    event.preventDefault();
+    const trimmed = phone.trim();
+    if (trimmed.replace(/\D/g, '').length < 10) {
+      toast.error('Please enter a valid mobile number');
       return;
     }
 
     try {
-      await login(formData.email, formData.password, rememberMe);
+      const result = await requestLoginOtp(trimmed);
+      setStep('otp');
+      setOtp('');
+      setSecondsLeft((result?.expiresInMinutes ?? 5) * 60);
+      toast.success('If this number is registered, a code has been sent to WhatsApp.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error.message || 'Could not send the code');
+    }
+  };
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+    if (!/^\d{6}$/.test(otp.trim())) {
+      toast.error('Enter the 6-digit code');
+      return;
+    }
+
+    try {
+      await login(phone.trim(), otp.trim());
       toast.success('Login successful!');
       const from = location.state?.from?.pathname || '/delivery/dashboard';
       navigate(from, { replace: true });
     } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      toast.error(error?.response?.data?.message || error.message || 'Invalid code');
     }
   };
 
@@ -96,109 +125,141 @@ const DeliveryLogin = () => {
               Delivery Portal Login
             </h1>
             <p className="text-slate-400 text-xs sm:text-sm">
-              Sign in to manage your deliveries &amp; partner account
+              Sign in with your mobile number &mdash; no password needed
             </p>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Field */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <FiMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-500/80 text-lg pointer-events-none" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="delivery@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all font-medium text-sm hover:border-slate-600"
-                  required
-                />
+          {/* Step one: mobile number */}
+          {step === 'phone' ? (
+            <form onSubmit={handleRequestOtp} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                  Mobile Number
+                </label>
+                <div className="relative">
+                  <FiPhone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-500/80 text-lg pointer-events-none" />
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all font-medium text-sm hover:border-slate-600"
+                    required
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  We will send a verification code to this number on WhatsApp.
+                </p>
               </div>
-            </div>
 
-            {/* Password Field */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-500/80 text-lg pointer-events-none" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  className="w-full pl-11 pr-11 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all font-medium text-sm hover:border-slate-600"
-                  required
-                />
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-sm sm:text-base shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_6px_25px_rgba(212,175,55,0.45)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
+              >
+                {isLoading ? (
+                  <span>Sending code...</span>
+                ) : (
+                  <>
+                    <span>Send WhatsApp Code</span>
+                    <FiArrowRight className="text-lg group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : (
+            /* Step two: the code */
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <button
+                type="button"
+                onClick={() => { setStep('phone'); setOtp(''); }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors"
+              >
+                <FiArrowLeft className="text-sm" />
+                <span>Change number</span>
+              </button>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                  WhatsApp Code
+                </label>
+                <div className="relative">
+                  <FiShield className="absolute left-4 top-1/2 transform -translate-y-1/2 text-amber-500/80 text-lg pointer-events-none" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))}
+                    placeholder="6-digit code"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white text-center tracking-[0.4em] font-bold placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all text-sm"
+                    required
+                  />
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Sent to <span className="font-semibold text-amber-400">{phone}</span>
+                </p>
+                {isExpired ? (
+                  <p className="mt-2 text-[11px] font-semibold text-red-400">
+                    Your code has expired. Please request a new code.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Code expires in{' '}
+                    <span className={`font-bold tabular-nums ${secondsLeft <= 60 ? 'text-red-400' : 'text-amber-400'}`}>
+                      {formatCountdown(secondsLeft)}
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <motion.button
+                type="submit"
+                disabled={isLoading || isExpired || otp.length !== 6}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-sm sm:text-base shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_6px_25px_rgba(212,175,55,0.45)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
+              >
+                {isLoading ? (
+                  <span>Verifying...</span>
+                ) : (
+                  <>
+                    <span>Login to Delivery Dashboard</span>
+                    <FiArrowRight className="text-lg group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </motion.button>
+
+              {/* Resend is always user-initiated — never automatic. */}
+              <p className="text-center text-xs text-slate-400">
+                Did not receive the code?{' '}
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-amber-400 transition-colors p-1"
+                  onClick={handleRequestOtp}
+                  disabled={isLoading}
+                  className="text-amber-400 hover:text-amber-300 font-bold underline underline-offset-4 decoration-amber-500/40 disabled:opacity-50"
                 >
-                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                  Resend
                 </button>
-              </div>
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-slate-900 cursor-pointer accent-amber-500"
-                />
-                <span className="text-xs sm:text-sm text-slate-300 group-hover:text-white transition-colors">
-                  Remember me
-                </span>
-              </label>
-              <Link
-                to="/delivery/forgot-password"
-                className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 font-medium transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-
-            {/* Submit Button */}
-            <motion.button
-              type="submit"
-              disabled={isLoading}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-400 hover:to-amber-500 text-slate-950 rounded-xl font-bold text-sm sm:text-base shadow-[0_4px_20px_rgba(212,175,55,0.3)] hover:shadow-[0_6px_25px_rgba(212,175,55,0.45)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2"
-            >
-              {isLoading ? (
-                <span>Logging in...</span>
-              ) : (
-                <>
-                  <span>Login to Delivery Dashboard</span>
-                  <FiArrowRight className="text-lg group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </motion.button>
-
-            {/* Register Link */}
-            <div className="text-center pt-4 border-t border-slate-800/80 mt-6">
-              <p className="text-xs sm:text-sm text-slate-400">
-                New delivery partner?{' '}
-                <Link
-                  to="/delivery/register"
-                  className="text-amber-400 hover:text-amber-300 font-bold transition-colors underline underline-offset-4 decoration-amber-500/40 hover:decoration-amber-400"
-                >
-                  Register as Delivery Partner
-                </Link>
               </p>
-            </div>
-          </form>
+            </form>
+          )}
+
+          {/* Register Link */}
+          <div className="text-center pt-4 border-t border-slate-800/80 mt-6">
+            <p className="text-xs sm:text-sm text-slate-400">
+              New delivery partner?{' '}
+              <Link
+                to="/delivery/register"
+                className="text-amber-400 hover:text-amber-300 font-bold transition-colors underline underline-offset-4 decoration-amber-500/40 hover:decoration-amber-400"
+              >
+                Register as Delivery Partner
+              </Link>
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

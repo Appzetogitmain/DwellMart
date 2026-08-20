@@ -4,6 +4,7 @@ import ApiError from '../../../utils/ApiError.js';
 import Product from '../../../models/Product.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
+import { assertShippingPolicy } from '../../../services/shipping/shippingPolicy.service.js';
 import Category from '../../../models/Category.model.js';
 import {
     resolveWholesalePayload,
@@ -296,6 +297,10 @@ export const createProduct = asyncHandler(async (req, res) => {
         ? variantAggregateStock
         : stockQuantity;
     const stock = deriveStockStatus(finalStockQuantity, lowStockThreshold);
+
+    // Policy gate for NEW products only. Off by default; see
+    // services/shipping/shippingPolicy.service.js for why.
+    await assertShippingPolicy(rest, req.vendorWorkspace);
 
     const channels = await getVendorChannels(req.user.id);
     const currentFlag = channelToProductFlag(req.vendorWorkspace);
