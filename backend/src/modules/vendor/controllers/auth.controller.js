@@ -28,7 +28,7 @@ import {
     persistRefreshSession,
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
-import { uploadLocalFileToCloudinaryAndCleanup } from '../../../services/upload.service.js';
+import { uploadLocalFileToCloudinaryAndCleanup, uploadLocalFileToCloudinaryAndCleanupWithType } from '../../../services/upload.service.js';
 import { resolvePlanSelection } from '../../../services/billing/planSelection.service.js';
 import { serializePlan } from '../../../services/billing/plan.service.js';
 import { getCurrentVendorSubscription, serializeSubscription } from '../../../services/billing/subscriptionState.service.js';
@@ -110,25 +110,26 @@ const uploadVendorDocument = async ({ file, documentType }) => {
     }
 
     let documentUrl = '';
-    let documentFileType = '';
+    let documentFileType = file.mimetype.startsWith('image/')
+        ? 'image'
+        : file.mimetype === 'application/pdf'
+            ? 'pdf'
+            : 'word';
 
-    if (file.mimetype.startsWith('image/')) {
-        documentFileType = 'image';
-        try {
-            const uploaded = await uploadLocalFileToCloudinaryAndCleanup(file.path, 'vendor_documents');
-            documentUrl = uploaded.url;
-        } catch {
-            throw new ApiError(500, 'Failed to upload document image.');
-        }
-    } else {
-        documentFileType = file.mimetype === 'application/pdf' ? 'pdf' : 'word';
+    try {
+        const uploaded = await uploadLocalFileToCloudinaryAndCleanupWithType(file.path, 'vendor_documents', 'auto');
+        documentUrl = uploaded.url;
+    } catch (cloudinaryErr) {
+        console.warn(`[Vendor Document Upload] Cloudinary upload warning: ${cloudinaryErr?.message || cloudinaryErr}. Storing locally.`);
         const docDir = path.resolve(process.cwd(), 'uploads/vendor_documents');
         if (!fs.existsSync(docDir)) {
             fs.mkdirSync(docDir, { recursive: true });
         }
         const fileName = file.filename;
         const destPath = path.join(docDir, fileName);
-        fs.renameSync(file.path, destPath);
+        if (fs.existsSync(file.path)) {
+            fs.renameSync(file.path, destPath);
+        }
         documentUrl = `/uploads/vendor_documents/${fileName}`;
     }
 
