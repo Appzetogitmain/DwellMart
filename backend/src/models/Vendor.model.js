@@ -240,6 +240,8 @@ const vendorSchema = new mongoose.Schema(
         onboardingEmailSentAt: { type: Date, default: null },
         onboardingEmailInvoiceId: { type: String, trim: true, default: null },
         selectedPlan: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan' },
+        hasUsedTrial: { type: Boolean, default: false, index: true },
+        trialUsedAt: { type: Date, default: null },
         billing: {},
         joinDate: { type: Date, default: Date.now },
     },

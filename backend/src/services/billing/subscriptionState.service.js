@@ -76,6 +76,7 @@ const upsertPaymentRecord = async ({
         amount,
         currency,
         status,
+        transaction_id: raw?.gatewayPaymentRef || `${gateway}_${subscriptionId}_${Date.now()}`,
         invoice_id: invoiceId,
         raw,
     });
@@ -174,11 +175,19 @@ export const activateSubscription = async ({
         );
     }
 
-    if (activationSource === 'zero_price_plan' && !isZeroPricePlan(plan)) {
-        throw new ApiError(
-            402,
-            'This plan requires payment. Complete checkout to activate your subscription.'
-        );
+    if (activationSource === 'zero_price_plan') {
+        if (!isZeroPricePlan(plan)) {
+            throw new ApiError(
+                402,
+                'This plan requires payment. Complete checkout to activate your subscription.'
+            );
+        }
+        if (vendor.hasUsedTrial) {
+            throw new ApiError(
+                403,
+                'You have already used your free trial. Please select a paid subscription plan.'
+            );
+        }
     }
 
     if (activationSource === 'admin_grant') {
@@ -237,6 +246,10 @@ export const activateSubscription = async ({
     }
 
     vendor.selectedPlan = plan._id;
+    if (activationSource === 'zero_price_plan') {
+        vendor.hasUsedTrial = true;
+        vendor.trialUsedAt = now;
+    }
     vendor.onboardingStatus = 'subscription_active';
     vendor.onboardingCompletedAt = new Date();
     await vendor.save({ validateBeforeSave: false });

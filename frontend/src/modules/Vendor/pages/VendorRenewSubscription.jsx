@@ -39,7 +39,12 @@ const VendorRenewSubscription = () => {
     const bootstrap = async () => {
       try {
         const response = await getVendorSubscriptionPlans();
-        setPlans(response?.data || []);
+        const rawPlans = Array.isArray(response?.data) ? response.data : [];
+        // Renewals are strictly for paid plans — filter out free/trial plans
+        const paidPlans = rawPlans.filter(
+          (p) => !p.isFree && !p.isTrial && (Number(p?.pricing?.inr ?? p?.price_inr ?? 0) > 0 || Number(p?.pricing?.usd ?? p?.price_usd ?? 0) > 0)
+        );
+        setPlans(paidPlans);
       } finally {
         setIsLoading(false);
       }
@@ -55,7 +60,11 @@ const VendorRenewSubscription = () => {
     }
 
     const selectedPlan = plans.find((p) => p._id === selectedPlanId);
-    const isFree = selectedPlan?.isFree || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
+    const isFree = selectedPlan?.isFree || selectedPlan?.isTrial || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
+    if (isFree) {
+      toast.error('Free trial is not available for renewal. Please select a paid plan.');
+      return;
+    }
     const email = vendor?.email || localStorage.getItem('vendor-email');
 
     setIsSubmitting(true);

@@ -44,6 +44,13 @@ section('B-1 — Free activation of paid subscriptions');
         () => activateSubscription({ vendor, plan: paid, activationSource: 'admin_grant', reason: 'goodwill credit' }),
         'acting admin');
 
+    const freePlan = { _id: 'f', price_inr: 0, price_usd: 0, interval: 'month', interval_count: 1 };
+    const trialUsedVendor = { _id: 'v_used', country: 'India', hasUsedTrial: true, save: async () => {} };
+
+    await throwsAsync('a vendor who already used trial cannot re-activate free plan',
+        () => activateSubscription({ vendor: trialUsedVendor, plan: freePlan, activationSource: 'zero_price_plan' }),
+        'already used your free trial');
+
     await throwsAsync('the removed legacy entry point fails loudly',
         () => activateInternalSubscription({}),
         'has been removed');

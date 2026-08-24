@@ -184,6 +184,9 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
         const isFreePlan = Number(plan.price_inr || 0) === 0 && Number(plan.price_usd || 0) === 0;
 
         if (isFreePlan) {
+            if (vendor.hasUsedTrial) {
+                throw new ApiError(403, 'You have already used your free trial. Please select a paid subscription plan.');
+            }
             const subscription = await activateSubscription({
                 vendor,
                 plan,

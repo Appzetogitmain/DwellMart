@@ -20,6 +20,7 @@ import m0012 from './0012_vendor_item_fulfillment_type.js';
 import m0013 from './0013_phone_e164_backfill.js';
 import m0014 from './0014_product_shipping_backfill.js';
 import m0015 from './0015_delivery_passwordless_and_phone_identity.js';
+import m0016 from './0016_backfill_vendor_trial_used.js';
 
 export const MIGRATIONS = [
     m0001,
@@ -37,6 +38,7 @@ export const MIGRATIONS = [
     m0013,
     m0014,
     m0015,
+    m0016,
 ];
 
 export default MIGRATIONS;

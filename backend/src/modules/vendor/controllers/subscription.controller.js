@@ -53,9 +53,13 @@ export const getCurrentSubscription = asyncHandler(async (req, res) => {
 });
 
 export const getAvailablePlans = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('country');
+    const vendor = await Vendor.findById(req.user.id).select('country hasUsedTrial');
+    const query = { isActive: true };
+    if (vendor?.hasUsedTrial) {
+        query.$or = [{ price_inr: { $gt: 0 } }, { price_usd: { $gt: 0 } }];
+    }
     const plans = await SubscriptionPlan
-        .find({ isActive: true })
+        .find(query)
         .sort({ sortOrder: 1, createdAt: -1 });
 
     res.status(200).json(
@@ -100,6 +104,12 @@ export const changePlan = asyncHandler(async (req, res) => {
     // time. Payment now happens at the gateway; activation happens in the
     // webhook / verify path.
     const isFreePlan = Number(plan.price_inr || 0) === 0 && Number(plan.price_usd || 0) === 0;
+    if (isFreePlan && vendor.hasUsedTrial) {
+        throw new ApiError(
+            403,
+            'You have already used your free trial. Please select a paid subscription plan.'
+        );
+    }
     if (!isFreePlan) {
         return res.status(402).json(
             new ApiResponse(

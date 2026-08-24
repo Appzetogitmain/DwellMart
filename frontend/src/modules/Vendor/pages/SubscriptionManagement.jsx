@@ -124,7 +124,12 @@ const SubscriptionManagement = () => {
       ]);
       const subscriptionData = subscriptionRes?.data?.subscription || null;
       setSubscription(subscriptionData);
-      setPlans(Array.isArray(plansRes?.data) ? plansRes.data : []);
+      const rawPlans = Array.isArray(plansRes?.data) ? plansRes.data : [];
+      // If vendor already has an existing subscription or has used trial, filter out free/trial plans
+      const availablePlans = subscriptionData
+        ? rawPlans.filter((p) => (!p.isFree && !p.isTrial) || String(p._id || p.id) === String(subscriptionData?.plan?._id || subscriptionData?.plan?.id))
+        : rawPlans;
+      setPlans(availablePlans);
       setSelectedPlanId(String(subscriptionData?.plan?._id || subscriptionData?.plan?.id || ''));
     } finally {
       setIsLoading(false);
@@ -166,10 +171,15 @@ const SubscriptionManagement = () => {
       return;
     }
 
+    const isFree = plan?.isFree || plan?.isTrial || (Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0) === 0 && Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0) === 0);
+    if (isFree && subscription) {
+      toast.error('Free trial is only available once for new accounts. Please choose a paid plan.');
+      return;
+    }
+
     setSelectedPlanId(planId);
     setIsSubmitting(true);
     try {
-      const isFree = plan?.isFree || (Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0) === 0 && Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0) === 0);
       const email = subscription?.vendor?.email || localStorage.getItem('vendor-email');
 
       /* Online gateway payment options commented out as requested (preserved for future enablement):

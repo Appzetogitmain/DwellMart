@@ -181,6 +181,13 @@ export const initiateOnboardingSubscription = asyncHandler(async (req, res) => {
         );
     }
 
+    if (vendor.hasUsedTrial) {
+        throw new ApiError(
+            403,
+            'You have already used your free trial. Please select a paid subscription plan.'
+        );
+    }
+
     const subscription = await activateSubscription({
         vendor,
         plan,
