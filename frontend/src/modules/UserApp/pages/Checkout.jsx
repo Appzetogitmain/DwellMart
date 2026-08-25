@@ -1152,88 +1152,39 @@ const MobileCheckout = () => {
                       {t('Payment Method')}
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {/* Cash On Delivery (Active) */}
-                      <label
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          formData.paymentMethod === "cash"
+                      {["card", "cash", "wallet", "upi"].filter(method => {
+                        if (!paymentSettings) return true; // Show all until loaded
+                        if (method === 'card') return paymentSettings.cardEnabled !== false;
+                        if (method === 'cash') return paymentSettings.codEnabled !== false;
+                        if (method === 'wallet') return paymentSettings.walletEnabled !== false;
+                        if (method === 'upi') return paymentSettings.upiEnabled !== false;
+                        return true;
+                      }).map((method) => (
+                        <label
+                          key={method}
+                          className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
                             ? "border-brand-primary bg-surface-muted"
                             : "border-border"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="cash"
-                          checked={formData.paymentMethod === "cash"}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-brand-primary"
-                        />
-                        <span className="font-semibold text-content capitalize text-base">
-                          {t("Cash on Delivery")}
-                        </span>
-                      </label>
-
-                      {/* Commented out other payment options as requested (preserved for future enablement):
-                      <label
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          formData.paymentMethod === "card"
-                            ? "border-brand-primary bg-surface-muted"
-                            : "border-border"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="card"
-                          checked={formData.paymentMethod === "card"}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-brand-primary"
-                        />
-                        <span className="font-semibold text-content capitalize text-base">
-                          {t("Credit/Debit Card")}
-                        </span>
-                      </label>
-
-                      <label
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          formData.paymentMethod === "wallet"
-                            ? "border-brand-primary bg-surface-muted"
-                            : "border-border"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="wallet"
-                          checked={formData.paymentMethod === "wallet"}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-brand-primary"
-                        />
-                        <span className="font-semibold text-content capitalize text-base">
-                          {t("Digital Wallet")}
-                        </span>
-                      </label>
-
-                      <label
-                        className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          formData.paymentMethod === "upi"
-                            ? "border-brand-primary bg-surface-muted"
-                            : "border-border"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="upi"
-                          checked={formData.paymentMethod === "upi"}
-                          onChange={handleInputChange}
-                          className="w-5 h-5 text-brand-primary"
-                        />
-                        <span className="font-semibold text-content capitalize text-base">
-                          {t("UPI")}
-                        </span>
-                      </label>
-                      */}
+                            }`}>
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value={method}
+                            checked={formData.paymentMethod === method}
+                            onChange={handleInputChange}
+                            className="w-5 h-5 text-brand-primary"
+                          />
+                          <span className="font-semibold text-content capitalize text-base">
+                            {method === "card"
+                              ? t("Credit/Debit Card")
+                              : method === "cash"
+                                ? t("Cash on Delivery")
+                                : method === "wallet"
+                                  ? t("Digital Wallet")
+                                  : t("UPI")}
+                          </span>
+                        </label>
+                      ))}
                     </div>
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}

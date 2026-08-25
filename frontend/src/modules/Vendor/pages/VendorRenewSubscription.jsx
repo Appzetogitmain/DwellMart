@@ -69,7 +69,6 @@ const VendorRenewSubscription = () => {
 
     setIsSubmitting(true);
     try {
-      /* Online gateway payment options commented out as requested (preserved for future enablement):
       if (!isFree && email) {
         try {
           const sessionRes = await api.post('/payments/cashfree/session', {
@@ -90,7 +89,6 @@ const VendorRenewSubscription = () => {
           console.warn("Cashfree renewal notice:", cfErr);
         }
       }
-      */
 
       await changeVendorSubscriptionPlan(selectedPlanId);
       toast.success('Subscription updated successfully.');
