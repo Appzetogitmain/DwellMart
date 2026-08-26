@@ -33,11 +33,23 @@ const isTruthy = (value) => ['true', '1', 'yes', 'on'].includes(String(value || 
 
 const isMockEnabled = () => process.env.NODE_ENV !== 'production' && isTruthy(process.env.USE_MOCK_OTP);
 
-const generateCode = () => (
-    isMockEnabled()
+const normalizeOtpOverride = (otpOverride) => {
+    if (otpOverride === undefined || otpOverride === null || otpOverride === '') return null;
+    const code = String(otpOverride).trim();
+    if (!/^\d{6}$/.test(code)) {
+        throw new Error('otpOverride must be a 6-digit code');
+    }
+    return code;
+};
+
+const generateCode = (otpOverride = null) => {
+    const override = normalizeOtpOverride(otpOverride);
+    if (override) return override;
+
+    return isMockEnabled()
         ? String(process.env.MOCK_OTP || '').trim()
-        : crypto.randomInt(100000, 999999).toString()
-);
+        : crypto.randomInt(100000, 999999).toString();
+};
 
 /**
  * Normalise a caller-supplied number, or reject it.
@@ -55,12 +67,15 @@ export const requireE164 = (phone) => {
  * Issue a verification code to a mobile number over WhatsApp.
  *
  * @param   {string} phone raw, any format
+ * @param   {object} [options]
+ * @param   {string} [options.otpOverride] controlled code for a caller-owned
+ *          non-production test login flow
  * @returns {Promise<{phoneE164: string, channel: 'whatsapp', expiresInMinutes: number}>}
  * @throws  {ApiError} 400 on an unusable number, 503 when WhatsApp cannot deliver
  */
-export const sendPhoneVerification = async (phone) => {
+export const sendPhoneVerification = async (phone, options = {}) => {
     const phoneE164 = requireE164(phone);
-    const otp = generateCode();
+    const otp = generateCode(options?.otpOverride);
     const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS);
 
     // Persist BEFORE sending: a crash mid-send must never leave the user

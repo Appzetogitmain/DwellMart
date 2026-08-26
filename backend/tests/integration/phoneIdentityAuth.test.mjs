@@ -29,6 +29,10 @@ import {
     clearPhoneVerification,
     requireE164,
 } from '../../src/services/phoneVerification.service.js';
+import {
+    requestLoginOTP,
+    verifyLoginOTP,
+} from '../../src/modules/delivery/controllers/auth.controller.js';
 
 let mongod;
 const realFetch = global.fetch;
@@ -57,6 +61,8 @@ test.before(async () => {
         WHATSAPP_DRY_RUN: 'false',
         INTERAKT_API_KEY: 'TEST_KEY_NOT_REAL',
         WHATSAPP_DEFAULT_COUNTRY_CODE: '+91',
+        JWT_SECRET: 'phone-identity-access-secret',
+        JWT_REFRESH_SECRET: 'phone-identity-refresh-secret',
         NODE_ENV: 'test',
     });
     delete process.env.USE_MOCK_OTP;
@@ -79,6 +85,29 @@ test.beforeEach(async () => {
 const storedCode = async (phoneE164) => {
     const record = await PhoneVerification.findOne({ phoneE164 }).select('+otp');
     return record?.otp;
+};
+
+const invokeHandler = async (handler, body) => {
+    const res = {
+        statusCode: 200,
+        body: null,
+        status(code) {
+            this.statusCode = code;
+            return this;
+        },
+        json(payload) {
+            this.body = payload;
+            return this;
+        },
+    };
+    let capturedError = null;
+
+    await handler({ body }, res, (err) => {
+        capturedError = err;
+    });
+
+    if (capturedError) throw capturedError;
+    return res;
 };
 
 // ── Pre-account OTP: WhatsApp only ───────────────────────────────────────────
@@ -282,4 +311,32 @@ test('serialised delivery output never exposes credential fields', async () => {
     for (const dead of ['password', 'resetOtp', 'otp"']) {
         assert.ok(!json.includes(dead), `${dead} must not appear in serialised output`);
     }
+});
+
+test('delivery login uses the local default OTP for the configured rider number', async () => {
+    const rider = await DeliveryBoy.create({
+        name: 'Default OTP Rider',
+        email: 'default-otp-rider@example.com',
+        phone: '7869958637',
+        phoneE164: PHONE,
+        phoneVerified: true,
+        applicationStatus: 'approved',
+        isActive: true,
+    });
+
+    const requestRes = await invokeHandler(requestLoginOTP, { phone: '7869958637' });
+
+    assert.equal(requestRes.statusCode, 200);
+    assert.equal(await storedCode(PHONE), '123456');
+    assert.equal(interaktCalls.length, 1);
+    assert.deepEqual(interaktCalls[0].body.template.bodyValues, ['123456']);
+    assert.deepEqual(interaktCalls[0].body.template.buttonValues, { 0: ['123456'] });
+
+    const verifyRes = await invokeHandler(verifyLoginOTP, { phone: '7869958637', otp: '123456' });
+
+    assert.equal(verifyRes.statusCode, 200);
+    assert.ok(verifyRes.body.data.accessToken);
+    assert.ok(verifyRes.body.data.refreshToken);
+    assert.equal(String(verifyRes.body.data.deliveryBoy.id), String(rider._id));
+    assert.equal(await storedCode(PHONE), undefined, 'login OTP must be consumed after a successful session');
 });

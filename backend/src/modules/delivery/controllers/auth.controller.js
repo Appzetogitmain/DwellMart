@@ -24,6 +24,18 @@ import {
     requireE164,
 } from '../../../services/phoneVerification.service.js';
 
+const DEFAULT_DELIVERY_LOGIN_OTP_PHONE_E164 = '+917869958637';
+const DEFAULT_DELIVERY_LOGIN_OTP = '123456';
+
+const isProduction = () => String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+
+const getDeliveryLoginOtpOverride = (phoneE164) => {
+    if (isProduction()) return null;
+    return phoneE164 === DEFAULT_DELIVERY_LOGIN_OTP_PHONE_E164
+        ? DEFAULT_DELIVERY_LOGIN_OTP
+        : null;
+};
+
 const getUploadedPath = (file) => {
     if (!file?.filename) return '';
     return `/uploads/delivery-docs/${file.filename}`;
@@ -199,7 +211,8 @@ export const requestLoginOTP = asyncHandler(async (req, res) => {
     // and "pending approval" is the answer they need rather than silence.
     assertLoginEligible(deliveryBoy);
 
-    await sendPhoneVerification(phoneE164);
+    const otpOverride = getDeliveryLoginOtpOverride(phoneE164);
+    await sendPhoneVerification(phoneE164, otpOverride ? { otpOverride } : undefined);
     return res.status(200).json(generic);
 });
 
