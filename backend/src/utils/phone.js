@@ -20,9 +20,21 @@ const KNOWN_DIAL_CODES = ['971', '966', '977', '880', '94', '92', '91', '65', '6
 /**
  * National-number lengths for the dial codes we can assert on. Used to tell
  * `919876543210` (a full Indian number) apart from a national number that
- * merely happens to start with `91`.
+ * merely happens to start with `91`, `94`, `92`, etc.
  */
-const NATIONAL_LENGTH = { 91: 10, 1: 10, 44: 10, 971: 9, 65: 8 };
+const NATIONAL_LENGTH = {
+    91: 10,  // India: 10 digits
+    1: 10,   // US / Canada: 10 digits
+    44: 10,  // UK: 10 digits
+    971: 9,  // UAE: 9 digits
+    65: 8,   // Singapore: 8 digits
+    966: 9,  // Saudi Arabia: 9 digits
+    977: 10, // Nepal: 10 digits
+    880: 10, // Bangladesh: 10 digits
+    94: 9,   // Sri Lanka: 9 digits (total 11 digits: 94 + 9 digits)
+    92: 10,  // Pakistan: 10 digits (total 12 digits: 92 + 10 digits)
+    60: 9,   // Malaysia: 9 digits
+};
 
 const MIN_E164_DIGITS = 8;
 const MAX_E164_DIGITS = 15;
@@ -64,12 +76,12 @@ export const toE164 = (value, dialCode = null) => {
     // Already carries a recognisable dial code AND is the right total length
     // for that country — otherwise it is a national number that coincidentally
     // starts with those digits.
-    const matched = KNOWN_DIAL_CODES.find((code) => digits.startsWith(code));
+    const matched = KNOWN_DIAL_CODES.find((code) => {
+        const expected = NATIONAL_LENGTH[code];
+        return digits.startsWith(code) && expected && digits.length === code.length + expected;
+    });
     if (matched) {
-        const expected = NATIONAL_LENGTH[matched];
-        if (!expected || digits.length === matched.length + expected) {
-            return withinBounds(digits) ? `+${digits}` : null;
-        }
+        return withinBounds(digits) ? `+${digits}` : null;
     }
 
     const combined = `${String(dialCode || defaultDialCode()).replace(/\D/g, '')}${digits}`;

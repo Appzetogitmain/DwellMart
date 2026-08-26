@@ -14,6 +14,9 @@ import { toE164, isValidE164, splitE164, maskPhone, defaultDialCode } from '../.
 test('toE164: bare Indian national number gains the default dial code', () => {
     assert.equal(toE164('9876543210'), '+919876543210');
     assert.equal(toE164('7869958637'), '+917869958637');
+    assert.equal(toE164('9424999443'), '+919424999443'); // bare Indian number starting with 94
+    assert.equal(toE164('9212345678'), '+919212345678'); // bare Indian number starting with 92
+    assert.equal(toE164('8801234567'), '+918801234567'); // bare Indian number starting with 880
 });
 
 test('toE164: formatting characters are ignored', () => {

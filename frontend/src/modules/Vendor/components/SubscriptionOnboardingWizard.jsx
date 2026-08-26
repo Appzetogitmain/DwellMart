@@ -390,10 +390,6 @@ const SubscriptionOnboardingWizard = ({
       return;
     }
 
-    if (!documentFile) {
-      toast.error(`${t('Please upload your')} ${documentType === 'gst' ? t('GST') : t('Trade Licence')} ${t('document.')}`);
-      return;
-    }
     if (formData.password !== formData.confirmPassword) {
       toast.error(t('Passwords do not match.'));
       return;
@@ -415,7 +411,9 @@ const SubscriptionOnboardingWizard = ({
       payload.append('selectedPlanId', selectedPlan._id);
       payload.append('documentType', documentType);
       payload.append('agreedToTerms', true);
-      payload.append('document', documentFile);
+      if (documentFile) {
+        payload.append('document', documentFile);
+      }
 
       payload.append('sellingChannels', JSON.stringify({
         retail: { enabled: formData.sellingChannels.retail },
@@ -793,7 +791,7 @@ const SubscriptionOnboardingWizard = ({
 
                   {/* Document Upload */}
                   <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="mb-2 text-xs font-extrabold text-slate-900 uppercase tracking-wider">Business Document Upload <span className="text-red-500">*</span></p>
+                    <p className="mb-2 text-xs font-extrabold text-slate-900 uppercase tracking-wider">Business Document Upload</p>
                     <div className="flex flex-col sm:flex-row gap-3 items-center">
                       <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="rounded-xl border border-slate-300 bg-white text-slate-900 px-3.5 py-2.5 text-xs font-bold outline-none focus:border-[#ffc101]">
                         <option value="tradeLicense">{t('Trade Licence')}</option>
