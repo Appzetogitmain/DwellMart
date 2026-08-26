@@ -449,54 +449,70 @@ const SubscriptionOnboardingWizard = ({
 
   const handlePayment = async () => {
     if (!paymentEmail) {
-      // The address is only missing if the registration step was skipped —
-      // nothing here verifies an email any more.
       toast.error(t('Please complete registration first.'));
       return;
     }
 
     setIsLoading(true);
+    setPaymentState('idle');
+
+    const isFree = selectedPlan?.isFree || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
+
     try {
-      const response = await initiateVendorOnboardingSubscription(paymentEmail, {
-        selectionToken,
-        selectedPlanId: selectedPlan?._id,
-      });
-      const data = response?.data || {};
-      if (data.subscription?.plan) {
-        setSelectedPlan(data.subscription.plan);
-      }
+      if (isFree) {
+        const response = await initiateVendorOnboardingSubscription(paymentEmail, {
+          selectionToken,
+          selectedPlanId: selectedPlan?._id,
+        });
+        const data = response?.data || response || {};
+        if (data.subscription?.plan) {
+          setSelectedPlan(data.subscription.plan);
+        }
+        setStep(3);
+        setPaymentState('confirmed');
+        clearStorage();
+        toast.success(t('Subscription activated successfully!'));
+      } else {
+        // Paid Plan — Initiate Cashfree Checkout Session
+        const sessionRes = await api.post('/payments/cashfree/session', {
+          subscriptionPlanId: selectedPlan?._id,
+          email: paymentEmail,
+        });
+        const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || sessionRes || {};
 
-      const isFree = selectedPlan?.isFree || (Number(selectedPlan?.pricing?.inr ?? selectedPlan?.price_inr ?? 0) === 0 && Number(selectedPlan?.pricing?.usd ?? selectedPlan?.price_usd ?? 0) === 0);
+        if (!paymentSessionId) {
+          throw new Error(sessionRes?.message || 'Could not initiate payment session.');
+        }
 
-      if (!isFree) {
+        setPaymentState('checkout_open');
+        const cashfree = await getCashfreeInstance(environment || 'sandbox');
         try {
-          const sessionRes = await api.post('/payments/cashfree/session', {
-            subscriptionPlanId: selectedPlan?._id,
-            email: paymentEmail,
+          await cashfree.checkout({
+            paymentSessionId,
+            redirectTarget: '_modal',
           });
-          const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || {};
+        } catch (modalErr) {
+          console.warn('Cashfree modal notice:', modalErr);
+        }
 
-          if (paymentSessionId) {
-            setPaymentState('checkout_open');
-            const cashfree = await getCashfreeInstance(environment || 'sandbox');
-            await cashfree.checkout({
-              paymentSessionId,
-              redirectTarget: "_modal",
-            });
-            setPaymentState('processing');
-            await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-          }
-        } catch (cfErr) {
-          console.warn("Cashfree onboarding notice:", cfErr);
+        // Verify payment status with server
+        setPaymentState('processing');
+        const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+        const verifyData = verifyRes.data?.data || verifyRes.data || verifyRes || {};
+
+        if (verifyData.isPaid) {
+          setStep(3);
+          setPaymentState('confirmed');
+          clearStorage();
+          toast.success(t('Subscription activated successfully!'));
+        } else {
+          setPaymentState('failed');
+          toast.error(t('Payment was not completed. Please retry.'));
         }
       }
-
-      setStep(3);
-      setPaymentState('confirmed');
-      clearStorage();
-      toast.success(t('Subscription activated successfully!'));
     } catch (error) {
-      toast.error(error.message || t('Unable to activate subscription.'));
+      console.error('Payment error:', error);
+      toast.error(error.response?.data?.message || error.message || t('Unable to activate subscription.'));
       setPaymentState('failed');
     } finally {
       setIsLoading(false);

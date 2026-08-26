@@ -2,7 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiError from '../../../utils/ApiError.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import Admin from '../../../models/Admin.model.js';
-import { isPhoneVerified } from '../../../services/phoneVerification.service.js';
+import { isPhoneVerified, clearPhoneVerification } from '../../../services/phoneVerification.service.js';
 import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -32,7 +32,7 @@ const isFreePlan = (plan) =>
  * Without one of these, supplying any known vendor email was enough to act on
  * that vendor's account.
  */
-const assertOnboardingAuthority = async (req, vendor) => {
+export const assertOnboardingAuthority = async (req, vendor) => {
     const callerId = req.user?.id || req.user?._id;
     if (callerId && String(callerId) === String(vendor._id)) return;
 
@@ -47,13 +47,18 @@ const assertOnboardingAuthority = async (req, vendor) => {
     );
 };
 
-const rememberSubscribedVendor = async (vendor, planId) => {
+export const rememberSubscribedVendor = async (vendor, planId) => {
     if (!vendor) return;
     const shouldNotifyAdmins = vendor.status === 'pending' && vendor.onboardingStatus !== 'subscription_active';
     vendor.selectedPlan = planId;
     vendor.onboardingStatus = 'subscription_active';
     vendor.onboardingCompletedAt = new Date();
     await vendor.save({ validateBeforeSave: false });
+
+    // Consume the temporary onboarding verification authority record now that onboarding is complete
+    if (vendor.phoneE164) {
+        await clearPhoneVerification(vendor.phoneE164);
+    }
 
     if (shouldNotifyAdmins) {
         const admins = await Admin.find({ isActive: true }).select('_id');

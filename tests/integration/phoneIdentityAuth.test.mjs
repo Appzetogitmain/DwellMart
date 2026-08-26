@@ -109,7 +109,6 @@ const invokeHandler = async (handler, body) => {
     if (capturedError) throw capturedError;
     return res;
 };
-
 // ── Pre-account OTP: WhatsApp only ───────────────────────────────────────────
 
 test('a verification code is sent over WhatsApp using the approved template', async () => {
@@ -312,7 +311,6 @@ test('serialised delivery output never exposes credential fields', async () => {
         assert.ok(!json.includes(dead), `${dead} must not appear in serialised output`);
     }
 });
-
 test('delivery login uses the local default OTP for the configured rider number', async () => {
     const rider = await DeliveryBoy.create({
         name: 'Default OTP Rider',

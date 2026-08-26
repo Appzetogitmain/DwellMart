@@ -12,7 +12,12 @@ import { VENDOR_TYPE_VALUES } from '../../../constants/vendorCapabilities.js';
 import { clampServiceRadius, resolveVendorAvailability } from '../../../services/quickCommerce.service.js';
 import { canTransitionVendorChannel, normalizeVendorChannel, VENDOR_CHANNEL_VALUES, vendorChannelPath } from '../../../constants/vendorChannels.js';
 import { projectSellingChannels } from '../../../services/vendorChannel.service.js';
-import { applyChannelTransition, assertChannelRevision, assertQuickCommerceReady } from '../../../services/vendorChannelTransition.service.js';
+import {
+    applyChannelTransition,
+    assertChannelRevision,
+    assertQuickCommerceReady,
+    quickCommerceReadiness,
+} from '../../../services/vendorChannelTransition.service.js';
 import { isQuickCommerceEnabled, isWholesaleMarketplaceEnabled } from '../../../services/featureFlags.service.js';
 import AdminActivityLog from '../../../models/AdminActivityLog.model.js';
 
@@ -156,22 +161,13 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     const rejectedChannelList = [];
     if (status === 'approved') {
         const selected = approvedChannels?.length ? approvedChannels : [vendorType];
-        approvedChannelList = selected;
         if (selected.includes('wholesale')) {
             if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
         }
-        if (selected.includes('quick_commerce')) {
-            if (!(await isQuickCommerceEnabled())) {
-                throw new ApiError(403, 'Quick Commerce is disabled platform-wide.');
-            }
-            // Same readiness bar as the per-channel activation endpoint.
-            assertQuickCommerceReady(vendor);
-        }
-        // Approval goes through the same state machine as the per-channel
-        // endpoint. It previously wrote 'active' directly, so account approval
-        // could raise a rejected or disabled channel straight to active —
-        // exactly the transitions the per-channel endpoint refuses.
+
         const normalizedSelected = selected.map((channel) => normalizeVendorChannel(channel));
+        const channelsToActivate = [];
+
         for (const channel of normalizedSelected) {
             const path = vendorChannelPath(channel);
             const current = vendor.channels?.[path]?.status;
@@ -181,10 +177,30 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
                 throw new ApiError(409,
                     `Cannot approve ${channel}: the vendor has no pending request for it (current status: ${current || 'disabled'}).`);
             }
+
+            if (channel === 'quick_commerce') {
+                if (!(await isQuickCommerceEnabled())) {
+                    throw new ApiError(403, 'Quick Commerce is disabled platform-wide.');
+                }
+                const { ready } = quickCommerceReadiness(vendor);
+                if (!ready) {
+                    // Quick Commerce operational setup is not yet complete (e.g. from initial registration).
+                    // Defer activation: leave channel in 'requested' state so that general vendor
+                    // approval succeeds and vendor/admin can configure store setup later.
+                    continue;
+                }
+            }
+
+            channelsToActivate.push(channel);
+        }
+
+        for (const channel of channelsToActivate) {
             applyChannelTransition(vendor, channel, 'active', { actor: 'admin', actorId: req.user.id });
         }
 
-        // Every channel the vendor asked for and the admin did not select is
+        approvedChannelList = channelsToActivate;
+
+        // Every channel the vendor asked for and the admin did NOT select is
         // explicitly rejected with the supplied reason. Leaving them
         // 'requested' stranded the application forever, with no reason and no
         // notification — the vendor saw a request that was never answered.

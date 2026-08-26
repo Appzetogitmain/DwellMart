@@ -198,7 +198,6 @@ export const register = asyncHandler(async (req, res) => {
             existing.phoneVerified = true;
             existing.onboardingStatus = 'plan_selected';
             await existing.save({ validateBeforeSave: false });
-            await clearPhoneVerification(phoneE164);
 
             return res.status(200).json(
                 new ApiResponse(
@@ -285,9 +284,6 @@ export const register = asyncHandler(async (req, res) => {
         channelsRevision: 1,
         wholesaleProfile: wholesaleRequested ? wholesaleProfile : undefined,
     });
-
-    // Consume the verification record now that it has done its job.
-    await clearPhoneVerification(phoneE164);
 
     // Notify all active admins of new vendor registration
     try {
@@ -611,8 +607,8 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findById(req.user.id);
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    if (!['active', 'paused'].includes(vendor.channels?.quickCommerce?.status)) {
-        throw new ApiError(403, 'Enable the Quick Commerce selling channel before configuring its settings.');
+    if (!['requested', 'active', 'paused'].includes(vendor.channels?.quickCommerce?.status)) {
+        throw new ApiError(403, 'Request or enable the Quick Commerce selling channel before configuring its settings.');
     }
 
     const quickCommerceEnabled = await isQuickCommerceEnabled();
@@ -778,7 +774,7 @@ export const updateSellingChannels = asyncHandler(async (req, res) => {
 });
 
 export const getChannels = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('channels channelsRevision vendorType sellingChannels').lean();
+    const vendor = await Vendor.findById(req.user.id).select('channels channelsRevision vendorType sellingChannels quickCommerceProfile').lean();
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, channelSummary(vendor), 'Vendor channels fetched.'));
 });

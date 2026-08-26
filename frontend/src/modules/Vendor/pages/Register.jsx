@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
+import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS = ['Plans', 'Registration', 'Payment', 'Thank You'];
@@ -294,6 +295,55 @@ const VendorRegister = () => {
       console.error('Free plan activation error:', error);
       setPaymentState('failed');
       toast.error('Could not complete onboarding.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePaidPlanCheckout = async () => {
+    if (!selectedPlan?._id) {
+      toast.error('Please select a subscription plan.');
+      return;
+    }
+
+    setIsLoading(true);
+    setPaymentState('idle');
+    try {
+      const sessionRes = await api.post('/payments/cashfree/session', {
+        subscriptionPlanId: selectedPlan._id,
+        email: paymentEmail,
+      });
+      const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || sessionRes || {};
+
+      if (!paymentSessionId) {
+        throw new Error(sessionRes?.message || 'Could not initiate payment session.');
+      }
+
+      setPaymentState('checkout_open');
+      const cashfree = await getCashfreeInstance(environment || 'sandbox');
+      try {
+        await cashfree.checkout({
+          paymentSessionId,
+          redirectTarget: '_modal',
+        });
+      } catch (modalErr) {
+        console.warn('Cashfree modal notice:', modalErr);
+      }
+
+      setPaymentState('processing');
+      const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+      const verifyData = verifyRes.data?.data || verifyRes.data || verifyRes || {};
+
+      if (verifyData.isPaid) {
+        await syncFromStatus(paymentEmail, plans);
+      } else {
+        setPaymentState('failed');
+        toast.error('Payment was not completed. Please retry.');
+      }
+    } catch (error) {
+      console.error('Paid plan checkout error:', error);
+      setPaymentState('failed');
+      toast.error(error.response?.data?.message || error.message || 'Could not start payment.');
     } finally {
       setIsLoading(false);
     }
@@ -913,14 +963,11 @@ const VendorRegister = () => {
                   {!selectedPlan?.isFree && !selectedPlan?.isTrial ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setTempSelectedPlan(selectedPlan);
-                        setShowPaymentModal(true);
-                      }}
+                      onClick={handlePaidPlanCheckout}
                       disabled={isLoading || paymentState === 'processing'}
                       className="w-full rounded-xl bg-[#ffc101] py-3 font-semibold text-black hover:bg-[#ffd042] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isLoading ? 'Preparing Checkout...' : paymentState === 'processing' ? 'Checking Payment Status...' : paymentState === 'checkout_open' ? 'Payment Window Open' : 'Choose Payment Method'}
+                      {isLoading ? 'Preparing Checkout...' : paymentState === 'processing' ? 'Checking Payment Status...' : paymentState === 'checkout_open' ? 'Payment Window Open' : 'Start Secure Payment'}
                     </button>
                   ) : (
                     <button

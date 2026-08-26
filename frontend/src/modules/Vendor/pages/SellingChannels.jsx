@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { FiShoppingBag, FiLayers, FiZap, FiCheckCircle, FiClock, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
+import {
+  FiShoppingBag,
+  FiLayers,
+  FiZap,
+  FiCheckCircle,
+  FiClock,
+  FiAlertCircle,
+  FiArrowRight,
+  FiSettings,
+  FiX,
+  FiAlertTriangle,
+} from 'react-icons/fi';
 import api from '../../../shared/utils/api';
 import { WORKSPACE_LABELS } from '../hooks/useVendorWorkspace';
+import QuickCommerceSettingsForm from '../components/QuickCommerceSettingsForm';
 
 const CHANNEL_CONFIGS = {
   retail: {
@@ -69,9 +81,16 @@ const getStatusBadge = (status) => {
 const SellingChannels = () => {
   const [summary, setSummary] = useState(null);
   const [busy, setBusy] = useState('');
+  const [isQcModalOpen, setIsQcModalOpen] = useState(false);
 
-  const load = () =>
-    api.get('/vendor/auth/channels').then((response) => setSummary(response?.data || response));
+  const load = async () => {
+    try {
+      const response = await api.get('/vendor/auth/channels');
+      setSummary(response?.data || response);
+    } catch {
+      // Ignored
+    }
+  };
 
   useEffect(() => {
     load();
@@ -83,6 +102,9 @@ const SellingChannels = () => {
       const response = await api.post(`/vendor/auth/channels/${channel}/apply`, {});
       setSummary(response?.data || response);
       toast.success('Channel application submitted successfully.');
+      if (channel === 'quick_commerce') {
+        setIsQcModalOpen(true);
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || err?.message || 'Failed to submit application');
     } finally {
@@ -103,6 +125,12 @@ const SellingChannels = () => {
     }
   };
 
+  const isQcConfigured = Boolean(
+    summary?.quickCommerceProfile?.storeType &&
+      (summary?.quickCommerceProfile?.location?.coordinates?.length === 2 ||
+        summary?.quickCommerceProfile?.servicedPincodes?.length)
+  );
+
   return (
     <section className="space-y-6 max-w-5xl">
       <div>
@@ -117,6 +145,7 @@ const SellingChannels = () => {
           const state = summary?.channels?.[config.path] || { status: 'disabled' };
           const Icon = config.icon;
           const isBusy = busy === channel;
+          const isQC = channel === 'quick_commerce';
 
           return (
             <article
@@ -126,7 +155,9 @@ const SellingChannels = () => {
               <div>
                 {/* Header */}
                 <div className="flex items-center justify-between gap-3">
-                  <div className={`w-10 h-10 rounded-xl ${config.bg} ${config.border} border flex items-center justify-center`}>
+                  <div
+                    className={`w-10 h-10 rounded-xl ${config.bg} ${config.border} border flex items-center justify-center`}
+                  >
                     <Icon className={`text-xl ${config.color}`} />
                   </div>
                   {getStatusBadge(state.status)}
@@ -148,10 +179,32 @@ const SellingChannels = () => {
                     <strong>Note:</strong> {state.reason}
                   </div>
                 )}
+
+                {/* Quick Commerce Setup Readiness Notice */}
+                {isQC && state.status === 'requested' && (
+                  <div
+                    className={`mt-3 p-2.5 rounded-xl text-xs flex items-start gap-2 border ${
+                      isQcConfigured
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-amber-50 border-amber-200 text-amber-800'
+                    }`}
+                  >
+                    {isQcConfigured ? (
+                      <FiCheckCircle className="text-emerald-600 mt-0.5 shrink-0" />
+                    ) : (
+                      <FiAlertTriangle className="text-amber-600 mt-0.5 shrink-0" />
+                    )}
+                    <span>
+                      {isQcConfigured
+                        ? 'Store setup submitted. Ready for admin activation.'
+                        : 'Store setup is required before this channel can be activated.'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
-              <div className="mt-6 pt-4 border-t border-slate-100">
+              <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
                 {['disabled', 'rejected'].includes(state.status) && (
                   <button
                     disabled={isBusy}
@@ -163,7 +216,31 @@ const SellingChannels = () => {
                   </button>
                 )}
 
-                {state.status === 'requested' && (
+                {state.status === 'requested' && isQC && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsQcModalOpen(true)}
+                      className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all shadow-xs hover:shadow cursor-pointer ${
+                        isQcConfigured
+                          ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300'
+                          : 'bg-amber-500 hover:bg-amber-600 text-white'
+                      }`}
+                    >
+                      <FiSettings className="text-base" />
+                      <span>{isQcConfigured ? 'Edit Store Setup' : 'Complete Setup'}</span>
+                    </button>
+                    <button
+                      disabled={isBusy}
+                      onClick={() => withdraw(channel)}
+                      className="w-full rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {isBusy ? 'Withdrawing...' : 'Withdraw Request'}
+                    </button>
+                  </>
+                )}
+
+                {state.status === 'requested' && !isQC && (
                   <button
                     disabled={isBusy}
                     onClick={() => withdraw(channel)}
@@ -174,16 +251,67 @@ const SellingChannels = () => {
                 )}
 
                 {state.status === 'active' && (
-                  <div className="flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <FiCheckCircle className="text-sm" />
-                    <span>Channel is Active & Enabled</span>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-200">
+                      <FiCheckCircle className="text-sm" />
+                      <span>Channel is Active & Enabled</span>
+                    </div>
+                    {isQC && (
+                      <button
+                        type="button"
+                        onClick={() => setIsQcModalOpen(true)}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                      >
+                        <FiSettings className="text-xs" />
+                        <span>Store & Delivery Settings</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </article>
           );
         })}
       </div>
+
+      {/* Quick Commerce Setup Modal */}
+      {isQcModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-6 sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <FiZap className="text-xl text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Quick Commerce Operational Setup
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Set your store type, exact fulfillment location on Google Maps, and delivery parameters.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsQcModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                title="Close"
+              >
+                <FiX className="text-xl" />
+              </button>
+            </div>
+
+            <QuickCommerceSettingsForm
+              vendor={summary}
+              onSaved={async () => {
+                await load();
+                setIsQcModalOpen(false);
+                toast.success('Quick Commerce setup saved! Your settings are under review.');
+              }}
+            />
+          </div>
+        </div>
+      )}
     </section>
   );
 };

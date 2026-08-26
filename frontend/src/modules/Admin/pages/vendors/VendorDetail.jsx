@@ -223,7 +223,12 @@ const VendorDetail = () => {
       selected?.length ? selected : (newStatus === 'approved' ? [vendor.vendorType || 'retail'] : null)
     );
     if (success) {
-      setVendor({ ...vendor, status: newStatus });
+      const refreshed = await getVendor(vendor.id);
+      if (refreshed) {
+        setVendor(refreshed);
+      } else {
+        setVendor({ ...vendor, status: newStatus });
+      }
       toast.success(`Vendor status updated to ${newStatus}`);
     } else {
       toast.error("Failed to update vendor status");

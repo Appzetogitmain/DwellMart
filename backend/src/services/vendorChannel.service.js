@@ -54,6 +54,7 @@ export const channelSummary = (vendor) => ({
     activeWorkspaces: effectiveWritableChannels(vendor),
     readableWorkspaces: effectiveReadableChannels(vendor),
     channels: vendor?.channels || {},
+    quickCommerceProfile: vendor?.quickCommerceProfile || null,
 });
 
 export const projectSellingChannels = (vendor) => ({

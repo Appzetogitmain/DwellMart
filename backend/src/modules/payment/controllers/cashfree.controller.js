@@ -19,6 +19,10 @@ import { activateSubscription } from '../../../services/billing/subscriptionStat
 import { roundMoney } from '../../../services/PriceReconciliationService.js';
 import { incrementCouponUsage } from '../../../services/coupon.service.js';
 import { settleRefundFromGateway } from '../../../services/refund/RefundOrchestrator.service.js';
+import {
+    assertOnboardingAuthority,
+    rememberSubscribedVendor,
+} from '../../vendor/controllers/billing.controller.js';
 
 const checkSessionOwnership = (session, reqUser) => {
     if (session.userId) {
@@ -169,6 +173,11 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
         if (!vendor) {
             throw new ApiError(404, 'Vendor not found.');
         }
+        if (!vendor.isVerified) {
+            throw new ApiError(403, 'Your account is not verified. Please contact support.');
+        }
+
+        await assertOnboardingAuthority(req, vendor);
 
         const plan = await SubscriptionPlan.findById(subscriptionPlanId);
         if (!plan || !plan.isActive) {
@@ -192,6 +201,7 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
                 plan,
                 activationSource: 'zero_price_plan',
             });
+            await rememberSubscribedVendor(vendor, plan._id);
             return res.status(200).json(
                 new ApiResponse(200, { isFree: true, subscription }, 'Free plan activated successfully.')
             );
@@ -206,7 +216,7 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
                 id: vendor._id,
                 name: vendor.name || vendor.storeName || 'Vendor Owner',
                 email: vendor.email,
-                phone: vendor.phone || null,
+                phone: vendor.phone || vendor.phoneE164 || null,
             },
             returnUrl: `${clientUrl}/vendor/register?cf_order_id=${cfOrderId}`,
         });
@@ -270,6 +280,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                     activationSource: 'gateway_verified',
                     gatewayPaymentRef: String(cfOrder?.cf_order_id || targetId),
                 });
+
+                await rememberSubscribedVendor(vendor, plan._id);
+
                 return res.status(200).json(
                     new ApiResponse(200, { verified: true, isPaid: true, subscription }, 'Vendor subscription payment verified.')
                 );
@@ -546,6 +559,8 @@ export const handleWebhook = asyncHandler(async (req, res) => {
                                 activationSource: 'gateway_webhook',
                                 gatewayPaymentRef: String(paymentData.cf_payment_id || cfOrderId),
                             });
+
+                            await rememberSubscribedVendor(vendor, plan._id);
                         }
                     }
                 }

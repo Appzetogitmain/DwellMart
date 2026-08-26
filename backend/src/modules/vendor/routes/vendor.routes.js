@@ -109,7 +109,7 @@ router.put('/auth/selling-channels', ...vendorAuth, validate(updateSellingChanne
 router.get('/auth/channels', ...vendorAuthOnly, authController.getChannels);
 router.post('/auth/channels/:channel/apply', ...vendorAuth, authController.applyForChannel);
 router.delete('/auth/channels/:channel/request', ...vendorAuth, authController.withdrawChannelRequest);
-router.put('/quick-commerce/settings', ...vendorAuth, ...requireSpecificChannel('quick_commerce', { write: true }), validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
+router.put('/quick-commerce/settings', ...vendorAuth, validate(updateQuickCommerceSettingsSchema), authController.updateQuickCommerceSettings);
 router.put('/auth/change-password', ...vendorAuth, authController.changePassword);
 router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
 router.delete('/auth/account', ...vendorAuthOnly, authController.deleteAccount);
