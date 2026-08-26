@@ -238,6 +238,9 @@ export const updateVendorStatus = (id, status, reason = '', vendorType = null, a
     return api.patch(`/admin/vendors/${id}/status`, payload);
 };
 
+export const deleteVendor = (id) =>
+    api.delete(`/admin/vendors/${id}`);
+
 export const updateVendorChannelStatus = (id, channel, payload) =>
     api.patch(`/admin/vendors/${id}/channels/${channel}/status`, payload);
 

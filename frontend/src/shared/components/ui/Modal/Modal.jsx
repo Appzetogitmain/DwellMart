@@ -33,8 +33,13 @@ const Modal = ({
       // Move focus inside modal
       setTimeout(() => {
         if (modalRef.current) {
+          const autoFocusElement = modalRef.current.querySelector('[autofocus], input:not([disabled]), textarea:not([disabled])');
+          if (autoFocusElement) {
+            autoFocusElement.focus();
+            return;
+          }
           const focusable = modalRef.current.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            'button:not([aria-label="Close modal"]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           );
           if (focusable.length > 0) {
             focusable[0].focus();
@@ -103,16 +108,16 @@ const Modal = ({
   };
 
   const variantIcons = {
-    confirmation: <FiAlertTriangle className="text-amber-500 text-xl" />,
-    danger: <FiAlertTriangle className="text-statusToken-error text-xl" />,
-    success: <FiCheckCircle className="text-emerald-500 text-xl" />,
+    confirmation: <FiAlertTriangle className="text-amber-500 text-2xl flex-shrink-0" />,
+    danger: <FiAlertTriangle className="text-red-500 text-2xl flex-shrink-0" />,
+    success: <FiCheckCircle className="text-emerald-600 text-2xl flex-shrink-0" />,
     default: null,
   };
 
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto">
           
           {/* Backdrop Layer */}
           <motion.div
@@ -125,44 +130,47 @@ const Modal = ({
             aria-hidden="true"
           />
 
-          {/* Modal Container */}
-          <motion.div
-            ref={modalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={title ? 'modal-title' : undefined}
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`relative bg-surface-card border border-borderToken-default rounded-card shadow-modal overflow-hidden text-textColor-primary z-10 my-auto ${
-              sizeStyles[size] || sizeStyles.md
-            } ${className}`}
-            data-component="Modal"
-            data-variant={variant}
-            data-size={size}
-            {...props}
-          >
-            {/* Built-in Close Button */}
-            {onClose && !isLoading && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="absolute top-4 right-4 p-1.5 text-textColor-muted hover:text-textColor-primary rounded-button transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary/40 z-20"
-                aria-label="Close modal"
-              >
-                <FiX className="text-lg" />
-              </button>
-            )}
+          {/* Centering wrapper */}
+          <div className="flex min-h-full items-center justify-center p-4 sm:p-6 text-center">
+            {/* Modal Container */}
+            <motion.div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? 'modal-title' : undefined}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className={`relative w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-left text-gray-900 dark:text-gray-100 z-10 my-8 ${
+                sizeStyles[size] || sizeStyles.md
+              } ${className}`}
+              data-component="Modal"
+              data-variant={variant}
+              data-size={size}
+              {...props}
+            >
+              {/* Built-in Close Button */}
+              {onClose && !isLoading && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-200 rounded-lg transition-colors outline-none focus:outline-none z-20"
+                  aria-label="Close modal"
+                >
+                  <FiX className="text-lg" />
+                </button>
+              )}
 
-            {/* Optional Top Title Header */}
-            {(title || variantIcons[variant]) && (
-              <ModalHeader title={title} subtitle={subtitle} icon={variantIcons[variant]} />
-            )}
+              {/* Optional Top Title Header */}
+              {(title || variantIcons[variant]) && (
+                <ModalHeader title={title} subtitle={subtitle} icon={variantIcons[variant]} />
+              )}
 
-            {/* Modal Body / Children */}
-            {children}
-          </motion.div>
+              {/* Modal Body / Children */}
+              {children}
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>
@@ -174,31 +182,31 @@ const Modal = ({
 // Compound Modal Subcomponents
 const ModalHeader = ({ title, subtitle, icon, children, className = '' }) => (
   <div
-    className={`p-5 sm:p-6 border-b border-borderToken-light flex items-start gap-3 ${className}`}
+    className={`p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 flex items-start gap-3 bg-white dark:bg-gray-900 ${className}`}
     data-component="ModalHeader"
   >
     {icon && <div className="mt-0.5 flex-shrink-0">{icon}</div>}
     <div className="space-y-1 min-w-0 flex-1 pr-6">
       {title && (
-        <h2 id="modal-title" className="text-lg sm:text-xl font-bold tracking-tight text-textColor-primary">
+        <h2 id="modal-title" className="text-lg sm:text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           {title}
         </h2>
       )}
-      {subtitle && <p className="text-xs text-textColor-muted font-normal">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-gray-500 font-normal">{subtitle}</p>}
       {children}
     </div>
   </div>
 );
 
 const ModalBody = ({ children, className = '' }) => (
-  <div className={`p-5 sm:p-6 space-y-4 max-h-[70vh] overflow-y-auto ${className}`} data-component="ModalBody">
+  <div className={`p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 ${className}`} data-component="ModalBody">
     {children}
   </div>
 );
 
 const ModalFooter = ({ children, className = '' }) => (
   <div
-    className={`p-4 sm:p-5 border-t border-borderToken-light bg-surface-background/50 flex items-center justify-end gap-3 ${className}`}
+    className={`p-4 sm:p-5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-end gap-3 ${className}`}
     data-component="ModalFooter"
   >
     {children}

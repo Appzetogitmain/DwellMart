@@ -4,6 +4,7 @@ import {
   getVendorById,
   updateVendorStatus as updateVendorStatusApi,
   updateCommissionRate as updateCommissionRateApi,
+  deleteVendor as deleteVendorApi,
 } from "../services/adminService";
 
 const normalizeVendor = (vendor) => {
@@ -124,6 +125,25 @@ export const useVendorStore = create((set, get) => ({
       return true;
     } catch {
       return false;
+    }
+  },
+
+  deleteVendor: async (id) => {
+    try {
+      await deleteVendorApi(id);
+      set((state) => ({
+        vendors: state.vendors.filter(
+          (v) => String(v.id || v._id) !== String(id)
+        ),
+        selectedVendor:
+          state.selectedVendor &&
+          String(state.selectedVendor.id || state.selectedVendor._id) === String(id)
+            ? null
+            : state.selectedVendor,
+      }));
+      return true;
+    } catch (err) {
+      throw err;
     }
   },
 }));

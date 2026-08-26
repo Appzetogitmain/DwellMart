@@ -82,11 +82,11 @@ const Button = forwardRef(({
 
   // Variant styles driven by CSS variables & Tailwind semantic tokens
   const variantStyles = {
-    primary:   'bg-brand-primary hover:bg-brand-primaryHover active:bg-brand-primaryActive text-black shadow-button border border-transparent',
-    secondary: 'bg-surface-card hover:bg-borderToken-light active:bg-borderToken-default text-textColor-primary border border-borderToken-default shadow-sm',
-    outline:   'bg-transparent hover:bg-brand-primary/10 text-brand-primary border border-brand-primary',
-    danger:    'bg-statusToken-error hover:bg-red-600 text-white shadow-sm border border-transparent',
-    success:   'bg-statusToken-success hover:bg-emerald-600 text-white shadow-sm border border-transparent',
+    primary:   'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-slate-950 font-semibold shadow-sm border border-transparent',
+    secondary: 'bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-700 border border-gray-300 shadow-sm',
+    outline:   'bg-transparent hover:bg-primary-50 text-primary-600 border border-primary-500',
+    danger:    'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white shadow-sm border border-transparent',
+    success:   'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm border border-transparent',
     ghost:     toneMap[tone]?.ghost ?? toneMap.neutral.ghost,
     icon:      toneMap[tone]?.icon  ?? toneMap.neutral.icon,
   };

@@ -3,6 +3,17 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import VendorDocument from '../../../models/VendorDocument.model.js';
+import VendorSubscription from '../../../models/VendorSubscription.model.js';
+import VendorShippingZone from '../../../models/VendorShippingZone.model.js';
+import VendorShippingRate from '../../../models/VendorShippingRate.model.js';
+import PickupLocation from '../../../models/PickupLocation.model.js';
+import BulkImportHistory from '../../../models/BulkImportHistory.model.js';
+import VendorChatThread from '../../../models/VendorChatThread.model.js';
+import VendorChatMessage from '../../../models/VendorChatMessage.model.js';
+import InventoryReservation from '../../../models/InventoryReservation.model.js';
+import Notification from '../../../models/Notification.model.js';
+import Review from '../../../models/Review.model.js';
+import Product from '../../../models/Product.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
 import { sendEmail } from '../../../services/email.service.js';
@@ -133,9 +144,15 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     const allowed = ['approved', 'suspended', 'rejected'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
 
-    // Clients must supply approvedChannels (new contract) or legacy vendorType.
-    // vendorType is accepted only as a single-channel shorthand for backward compat.
-    if (status === 'approved') {
+    const vendor = await Vendor.findById(req.params.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const previousStatus = vendor.status;
+    const isReactivation = previousStatus === 'suspended' && status === 'approved';
+
+    // Clients must supply approvedChannels (new contract) or legacy vendorType during initial approval.
+    // When reactivating a previously suspended vendor, existing channels are retained if approvedChannels is omitted.
+    if (status === 'approved' && !isReactivation) {
         if (!approvedChannels?.length && !vendorType) {
             throw new ApiError(400, 'At least one approved channel is required (use approvedChannels array).');
         }
@@ -151,73 +168,81 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         }
     }
 
-    const vendor = await Vendor.findById(req.params.id);
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
-
-    const previousStatus = vendor.status;
     vendor.status = status;
-    vendor.suspensionReason = reason || '';
+    vendor.suspensionReason = status === 'suspended' ? (reason || '') : '';
     let approvedChannelList = [];
     const rejectedChannelList = [];
     if (status === 'approved') {
-        const selected = approvedChannels?.length ? approvedChannels : [vendorType];
-        if (selected.includes('wholesale')) {
-            if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
-        }
-
-        const normalizedSelected = selected.map((channel) => normalizeVendorChannel(channel));
-        const channelsToActivate = [];
-
-        for (const channel of normalizedSelected) {
-            const path = vendorChannelPath(channel);
-            const current = vendor.channels?.[path]?.status;
-            // Approving a channel the vendor never applied for is not an
-            // approval; it is a grant. Require a pending request.
-            if (current !== 'requested') {
-                throw new ApiError(409,
-                    `Cannot approve ${channel}: the vendor has no pending request for it (current status: ${current || 'disabled'}).`);
-            }
-
-            if (channel === 'quick_commerce') {
-                if (!(await isQuickCommerceEnabled())) {
-                    throw new ApiError(403, 'Quick Commerce is disabled platform-wide.');
+        if (!isReactivation || approvedChannels?.length || vendorType) {
+            const selected = approvedChannels?.length ? approvedChannels : [vendorType].filter(Boolean);
+            if (selected.length > 0) {
+                if (selected.includes('wholesale')) {
+                    if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
                 }
-                const { ready } = quickCommerceReadiness(vendor);
-                if (!ready) {
-                    // Quick Commerce operational setup is not yet complete (e.g. from initial registration).
-                    // Defer activation: leave channel in 'requested' state so that general vendor
-                    // approval succeeds and vendor/admin can configure store setup later.
-                    continue;
+
+                const normalizedSelected = selected.map((channel) => normalizeVendorChannel(channel));
+                const channelsToActivate = [];
+
+                for (const channel of normalizedSelected) {
+                    const path = vendorChannelPath(channel);
+                    const current = vendor.channels?.[path]?.status;
+                    // Approving a channel the vendor never applied for is not an
+                    // approval; it is a grant. Require a pending request unless already active during reactivation.
+                    if (current !== 'requested') {
+                        if (isReactivation && current === 'active') {
+                            channelsToActivate.push(channel);
+                            continue;
+                        }
+                        throw new ApiError(409,
+                            `Cannot approve ${channel}: the vendor has no pending request for it (current status: ${current || 'disabled'}).`);
+                    }
+
+                    if (channel === 'quick_commerce') {
+                        if (!(await isQuickCommerceEnabled())) {
+                            throw new ApiError(403, 'Quick Commerce is disabled platform-wide.');
+                        }
+                        const { ready } = quickCommerceReadiness(vendor);
+                        if (!ready) {
+                            // Quick Commerce operational setup is not yet complete (e.g. from initial registration).
+                            // Defer activation: leave channel in 'requested' state so that general vendor
+                            // approval succeeds and vendor/admin can configure store setup later.
+                            continue;
+                        }
+                    }
+
+                    channelsToActivate.push(channel);
                 }
+
+                for (const channel of channelsToActivate) {
+                    applyChannelTransition(vendor, channel, 'active', { actor: 'admin', actorId: req.user.id });
+                }
+
+                approvedChannelList = channelsToActivate;
+
+                // Every channel the vendor asked for and the admin did NOT select is
+                // explicitly rejected with the supplied reason.
+                for (const path of ['retail', 'wholesale', 'quickCommerce']) {
+                    const channelValue = { retail: 'retail', wholesale: 'wholesale', quickCommerce: 'quick_commerce' }[path];
+                    if (vendor.channels?.[path]?.status === 'requested'
+                        && !normalizedSelected.includes(channelValue)) {
+                        applyChannelTransition(vendor, channelValue, 'rejected', {
+                            actor: 'admin',
+                            actorId: req.user.id,
+                            reason: reason || 'Not approved during account review.',
+                        });
+                        rejectedChannelList.push(channelValue);
+                    }
+                }
+
+                if (vendorType) vendor.vendorType = vendorType;
             }
-
-            channelsToActivate.push(channel);
+        } else {
+            // Pure reactivation: vendor's existing channels are retained as-is
+            approvedChannelList = Object.entries(vendor.channels || {})
+                .filter(([_, cfg]) => cfg?.status === 'active')
+                .map(([path]) => ({ retail: 'retail', wholesale: 'wholesale', quickCommerce: 'quick_commerce' }[path]))
+                .filter(Boolean);
         }
-
-        for (const channel of channelsToActivate) {
-            applyChannelTransition(vendor, channel, 'active', { actor: 'admin', actorId: req.user.id });
-        }
-
-        approvedChannelList = channelsToActivate;
-
-        // Every channel the vendor asked for and the admin did NOT select is
-        // explicitly rejected with the supplied reason. Leaving them
-        // 'requested' stranded the application forever, with no reason and no
-        // notification — the vendor saw a request that was never answered.
-        for (const path of ['retail', 'wholesale', 'quickCommerce']) {
-            const channelValue = { retail: 'retail', wholesale: 'wholesale', quickCommerce: 'quick_commerce' }[path];
-            if (vendor.channels?.[path]?.status === 'requested'
-                && !normalizedSelected.includes(channelValue)) {
-                applyChannelTransition(vendor, channelValue, 'rejected', {
-                    actor: 'admin',
-                    actorId: req.user.id,
-                    reason: reason || 'Not approved during account review.',
-                });
-                rejectedChannelList.push(channelValue);
-            }
-        }
-
-        if (vendorType) vendor.vendorType = vendorType;
     } else if (status === 'rejected') {
         for (const path of ['retail', 'wholesale', 'quickCommerce']) {
             if (vendor.channels?.[path]?.status === 'requested') {
@@ -235,6 +260,7 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     await recordVendorAdminAction(req, vendor._id, 'vendor_status_updated', {
         previousStatus,
         status,
+        isReactivation,
         reason: reason || '',
         approvedChannels: approvedChannelList,
         rejectedChannels: rejectedChannelList,
@@ -267,7 +293,9 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         .join(', ');
     const vendorMessage =
         status === 'approved'
-            ? `Congratulations! Your DwellMart Vendor account has been approved for: ${approvedChannelLabels}. You can now log in and start selling.`
+            ? isReactivation
+                ? `Your DwellMart Vendor account has been reactivated. You can now log in and continue selling.`
+                : `Congratulations! Your DwellMart Vendor account has been approved for: ${approvedChannelLabels}. You can now log in and start selling.`
             : status === 'rejected'
             ? `Your vendor application was not approved.${reason ? ` Reason: ${reason}` : ' Please contact support for details.'}`
             : status === 'suspended'
@@ -277,7 +305,7 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     try {
         await sendEmail({
             to: vendor.email,
-            subject: `DwellMart Vendor Account ${status[0].toUpperCase()}${status.slice(1)}`,
+            subject: `DwellMart Vendor Account ${isReactivation ? 'Reactivated' : `${status[0].toUpperCase()}${status.slice(1)}`}`,
             text: vendorMessage,
             html: `<p>${vendorMessage}</p>`,
         });
@@ -285,7 +313,74 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
         console.warn(`Vendor status email failed for ${vendor.email}: ${err.message}`);
     }
 
-    res.status(200).json(new ApiResponse(200, toApiVendor(vendor), `Vendor ${status} successfully.`));
+    res.status(200).json(new ApiResponse(200, toApiVendor(vendor), isReactivation ? 'Vendor reactivated successfully.' : `Vendor ${status} successfully.`));
+});
+
+// DELETE /api/admin/vendors/:id
+export const hardDeleteVendor = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const vendor = await Vendor.findById(id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    // 1. Safety Guard: Check if vendor has active/completed real customer orders
+    const activeOrderCount = await Order.countDocuments({
+        'vendorItems.vendorId': vendor._id,
+        status: { $nin: ['cancelled', 'canceled'] },
+    });
+
+    if (activeOrderCount > 0) {
+        throw new ApiError(
+            409,
+            `Cannot hard-delete vendor with ${activeOrderCount} active or completed order(s). Suspend the vendor instead to preserve financial and customer order history.`
+        );
+    }
+
+    // 2. Capture immutable vendor snapshot for permanent audit logging
+    const vendorSnapshot = {
+        vendorId: String(vendor._id),
+        name: vendor.name,
+        email: vendor.email,
+        storeName: vendor.storeName,
+        phone: vendor.phone || vendor.phoneE164,
+        vendorType: vendor.vendorType,
+        isTestAccount: Boolean(vendor.isTestAccount),
+        registeredAt: vendor.createdAt,
+        deletedAt: new Date().toISOString(),
+        deletedByAdmin: req.user.id,
+        reason: req.body?.reason || req.query?.reason || 'Permanent hard deletion by admin',
+    };
+
+    // 3. Cascade delete vendor-specific assets and operational data
+    const productIds = (await Product.find({ vendorId: vendor._id }).select('_id').lean()).map((p) => p._id);
+
+    await Promise.all([
+        Vendor.deleteOne({ _id: vendor._id }),
+        Product.deleteMany({ vendorId: vendor._id }),
+        VendorDocument.deleteMany({ vendorId: vendor._id }),
+        VendorSubscription.deleteMany({ vendor: vendor._id }),
+        VendorShippingZone.deleteMany({ vendorId: vendor._id }),
+        VendorShippingRate.deleteMany({ vendorId: vendor._id }),
+        PickupLocation.deleteMany({ vendorId: vendor._id }),
+        BulkImportHistory.deleteMany({ vendorId: vendor._id }),
+        VendorChatThread.deleteMany({ vendorId: vendor._id }),
+        VendorChatMessage.deleteMany({ vendorId: vendor._id }),
+        InventoryReservation.deleteMany({ vendorId: vendor._id }),
+        Notification.deleteMany({ recipientId: vendor._id, recipientType: 'vendor' }),
+        productIds.length ? Review.deleteMany({ productId: { $in: productIds } }) : Promise.resolve(),
+    ]);
+
+    // 4. Record permanent destructive action in AdminActivityLog
+    await AdminActivityLog.create({
+        performedBy: req.user.id,
+        targetVendor: vendor._id,
+        action: 'vendor_hard_deleted',
+        details: vendorSnapshot,
+        ipAddress: req.ip || '',
+    });
+
+    res.status(200).json(
+        new ApiResponse(200, { deletedVendorId: String(vendor._id), snapshot: vendorSnapshot }, 'Vendor and associated data permanently deleted.')
+    );
 });
 
 // PATCH /api/admin/vendors/:id/channels/:channel/status

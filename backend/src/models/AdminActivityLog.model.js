@@ -44,6 +44,7 @@ const adminActivityLogSchema = new mongoose.Schema(
                 'vendor_channel_status_updated',
                 'vendor_classification_updated',
                 'vendor_quick_commerce_updated',
+                'vendor_hard_deleted',
             ],
         },
         details: {

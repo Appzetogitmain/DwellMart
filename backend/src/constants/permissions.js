@@ -15,7 +15,7 @@ export const PERMISSIONS = {
     VENDORS_VIEW: 'vendors.view',
     VENDORS_APPROVE: 'vendors.approve',
     VENDORS_EDIT: 'vendors.edit',
-    // `vendors.delete` removed — see RETIRED_PERMISSIONS below.
+    VENDORS_DELETE: 'vendors.delete',
 
     // Delivery Partners
     DELIVERY_VIEW: 'delivery.view',
@@ -106,7 +106,6 @@ export const ALL_PERMISSIONS = Object.values(PERMISSIONS);
 export const RETIRED_PERMISSIONS = [
     'wholesale.vendors.manage',
     'wholesale.products.manage',
-    'vendors.delete',
     'subadmin.view',
     'subadmin.create',
     'subadmin.edit',
@@ -122,6 +121,7 @@ export const PERMISSION_DEPENDENCIES = {
     'users.delete': 'users.view',
     'vendors.approve': 'vendors.view',
     'vendors.edit': 'vendors.view',
+    'vendors.delete': 'vendors.view',
     'delivery.approve': 'delivery.view',
     'delivery.edit': 'delivery.view',
     'products.add': 'products.view',

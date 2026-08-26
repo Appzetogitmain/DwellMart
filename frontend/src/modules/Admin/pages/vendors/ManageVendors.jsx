@@ -6,6 +6,7 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiDollarSign,
+  FiTrash2,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
@@ -15,24 +16,28 @@ import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { useVendorStore } from "../../store/vendorStore";
+import { useAdminAuthStore } from "../../store/adminStore";
+import { PERMISSIONS } from "../../config/permissions";
 import toast from "react-hot-toast";
 import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
 
 const ManageVendors = () => {
   const navigate = useNavigate();
-  const { vendors, initialize, updateVendorStatus, updateCommissionRate } =
+  const { admin, can } = useAdminAuthStore();
+  const { vendors, initialize, updateVendorStatus, updateCommissionRate, deleteVendor } =
     useVendorStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [actionModal, setActionModal] = useState({
     isOpen: false,
-    type: null, // 'approve', 'suspend', 'commission'
+    type: null, // 'approve', 'activate', 'suspend', 'commission', 'hard_delete'
     vendorId: null,
     vendorName: null,
   });
   const [commissionRate, setCommissionRate] = useState("");
   const [statusReason, setStatusReason] = useState("");
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
 
   useEffect(() => {
     initialize();
@@ -167,69 +172,110 @@ const ManageVendors = () => {
       key: "actions",
       label: "Actions",
       sortable: false,
-      render: (_, row) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/admin/vendors/${row.id}`);
-            }}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="View Details">
-            <FiEye />
-          </button>
-          {row.status === "pending" && (
+      render: (_, row) => {
+        const canDelete = admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_DELETE);
+        const canApprove = admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_APPROVE);
+        const canEdit = admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_EDIT);
+
+        return (
+          <div className="flex items-center gap-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setActionModal({
-                  isOpen: true,
-                  type: "approve",
-                  vendorId: row.id,
-                  vendorName: row.storeName || row.name,
-                });
+                navigate(`/admin/vendors/${row.id}`);
               }}
-              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-              title="Approve Vendor">
-              <FiCheckCircle />
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View Details">
+              <FiEye />
             </button>
-          )}
-          {row.status === "approved" && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setActionModal({
-                  isOpen: true,
-                  type: "suspend",
-                  vendorId: row.id,
-                  vendorName: row.storeName || row.name,
-                });
-              }}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Suspend Vendor">
-              <FiXCircle />
-            </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const vendor = vendors.find((v) => v.id === row.id);
-              setCommissionRate(
-                ((vendor?.commissionRate || 0) * 100).toFixed(1)
-              );
-              setActionModal({
-                isOpen: true,
-                type: "commission",
-                vendorId: row.id,
-                vendorName: row.storeName || row.name,
-              });
-            }}
-            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-            title="Update Commission Rate">
-            <FiDollarSign />
-          </button>
-        </div>
-      ),
+            {row.status === "pending" && canApprove && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActionModal({
+                    isOpen: true,
+                    type: "approve",
+                    vendorId: row.id,
+                    vendorName: row.storeName || row.name,
+                  });
+                }}
+                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                title="Approve Vendor">
+                <FiCheckCircle />
+              </button>
+            )}
+            {row.status === "approved" && canApprove && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActionModal({
+                    isOpen: true,
+                    type: "suspend",
+                    vendorId: row.id,
+                    vendorName: row.storeName || row.name,
+                  });
+                }}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Suspend Vendor">
+                <FiXCircle />
+              </button>
+            )}
+            {row.status === "suspended" && canApprove && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActionModal({
+                    isOpen: true,
+                    type: "activate",
+                    vendorId: row.id,
+                    vendorName: row.storeName || row.name,
+                  });
+                }}
+                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                title="Activate Vendor">
+                <FiCheckCircle />
+              </button>
+            )}
+            {canEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const vendor = vendors.find((v) => v.id === row.id);
+                  setCommissionRate(
+                    ((vendor?.commissionRate || 0) * 100).toFixed(1)
+                  );
+                  setActionModal({
+                    isOpen: true,
+                    type: "commission",
+                    vendorId: row.id,
+                    vendorName: row.storeName || row.name,
+                  });
+                }}
+                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                title="Update Commission Rate">
+                <FiDollarSign />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirmationInput("");
+                  setActionModal({
+                    isOpen: true,
+                    type: "hard_delete",
+                    vendorId: row.id,
+                    vendorName: row.storeName || row.name,
+                  });
+                }}
+                className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                title="Permanently Delete Test Vendor">
+                <FiTrash2 />
+              </button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -245,6 +291,21 @@ const ManageVendors = () => {
       });
     } else {
       toast.error("Failed to approve vendor");
+    }
+  };
+
+  const handleActivate = async () => {
+    const success = await updateVendorStatus(actionModal.vendorId, "approved");
+    if (success) {
+      toast.success("Vendor activated successfully");
+      setActionModal({
+        isOpen: false,
+        type: null,
+        vendorId: null,
+        vendorName: null,
+      });
+    } else {
+      toast.error("Failed to activate vendor");
     }
   };
 
@@ -265,6 +326,26 @@ const ManageVendors = () => {
       setStatusReason("");
     } else {
       toast.error("Failed to suspend vendor");
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (deleteConfirmationInput !== "DELETE") {
+      toast.error("Please type DELETE to confirm permanent deletion");
+      return;
+    }
+    try {
+      await deleteVendor(actionModal.vendorId);
+      toast.success("Vendor deleted permanently");
+      setActionModal({
+        isOpen: false,
+        type: null,
+        vendorId: null,
+        vendorName: null,
+      });
+      setDeleteConfirmationInput("");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to delete vendor");
     }
   };
 
@@ -299,6 +380,14 @@ const ManageVendors = () => {
           onConfirm: handleApprove,
           type: "success",
         };
+      case "activate":
+        return {
+          title: "Activate Vendor?",
+          message: `Are you sure you want to activate "${actionModal.vendorName}"? The vendor will be restored to approved status and allowed to operate on their configured selling channels.`,
+          confirmText: "Activate Vendor",
+          onConfirm: handleActivate,
+          type: "success",
+        };
       case "suspend":
         return {
           title: "Suspend Vendor?",
@@ -318,6 +407,36 @@ const ManageVendors = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Provide a reason for suspension..."
               />
+            </div>
+          ),
+        };
+      case "hard_delete":
+        return {
+          title: "Permanently Delete Vendor?",
+          message: `This will permanently remove "${actionModal.vendorName}" and all associated products, documents, and settings from the database. This action CANNOT be undone.`,
+          confirmText: "Permanently Delete",
+          onConfirm: handleHardDelete,
+          type: "danger",
+          confirmDisabled: deleteConfirmationInput !== "DELETE",
+          customContent: (
+            <div className="mt-4 space-y-3">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                <p className="font-semibold">Warning: Destructive Permanent Action</p>
+                <p className="mt-1">Vendors with active customer orders cannot be deleted. Use this only for test/QA vendors.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Type <span className="font-mono text-red-600 font-bold">DELETE</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmationInput}
+                  onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
+                  placeholder="DELETE"
+                  autoFocus
+                />
+              </div>
             </div>
           ),
         };
@@ -458,6 +577,7 @@ const ManageVendors = () => {
           cancelText="Cancel"
           type={modalContent.type}
           customContent={modalContent.customContent}
+          confirmDisabled={modalContent.confirmDisabled}
         />
       )}
     </motion.div>

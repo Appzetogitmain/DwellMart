@@ -15,9 +15,13 @@ import {
   FiTrendingUp,
   FiUser,
   FiFileText,
+  FiTrash2,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorStore } from "../../store/vendorStore";
+import { useAdminAuthStore } from "../../store/adminStore";
+import { PERMISSIONS } from "../../config/permissions";
+import ConfirmModal from "../../components/ConfirmModal";
 import { getAllOrders, getVendorCommissions, getVendorDocuments, updateVendorQuickCommerce, updateVendorChannelStatus } from "../../services/adminService";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
 import Badge from "../../../../shared/components/Badge";
@@ -30,7 +34,8 @@ import toast from "react-hot-toast";
 const VendorDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getVendor, updateVendorStatus, updateCommissionRate } =
+  const { admin, can } = useAdminAuthStore();
+  const { getVendor, updateVendorStatus, updateCommissionRate, deleteVendor } =
     useVendorStore();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -55,6 +60,12 @@ const VendorDetail = () => {
   const [isSavingQuickCommerce, setIsSavingQuickCommerce] = useState(false);
   const [isEditingCommission, setIsEditingCommission] = useState(false);
   const [commissionRate, setCommissionRate] = useState("");
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [statusReason, setStatusReason] = useState("");
+  const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const isSameVendorId = (a, b) => String(a) === String(b);
 
   useEffect(() => {
@@ -207,20 +218,23 @@ const VendorDetail = () => {
   };
 
   const handleStatusUpdate = async (newStatus, approvedChannelsOverride = null) => {
-    const requestedChannels = newStatus === 'approved' ? [
-      vendor.channels?.retail?.status === 'requested' && 'retail',
-      vendor.channels?.wholesale?.status === 'requested' && 'wholesale',
-      vendor.channels?.quickCommerce?.status === 'requested' && 'quick_commerce',
-    ].filter(Boolean) : null;
-    // A subset may be chosen at approval time. The server rejects every
-    // requested channel not in this list, with the supplied reason, so a
-    // partial approval is an answer rather than a request left pending.
-    const selected = newStatus === 'approved'
-      ? (approvedChannelsOverride ?? requestedChannels)
-      : null;
+    const isReactivation = vendor.status === 'suspended' && newStatus === 'approved';
+    let selected = null;
+    if (newStatus === 'approved') {
+      if (isReactivation) {
+        selected = approvedChannelsOverride ?? null;
+      } else {
+        const requestedChannels = [
+          vendor.channels?.retail?.status === 'requested' && 'retail',
+          vendor.channels?.wholesale?.status === 'requested' && 'wholesale',
+          vendor.channels?.quickCommerce?.status === 'requested' && 'quick_commerce',
+        ].filter(Boolean);
+        selected = approvedChannelsOverride ?? requestedChannels;
+      }
+    }
     const success = await updateVendorStatus(
-      vendor.id, newStatus, '', null,
-      selected?.length ? selected : (newStatus === 'approved' ? [vendor.vendorType || 'retail'] : null)
+      vendor.id, newStatus, statusReason.trim(), null,
+      selected?.length ? selected : (newStatus === 'approved' && !isReactivation ? [vendor.vendorType || 'retail'] : null)
     );
     if (success) {
       const refreshed = await getVendor(vendor.id);
@@ -229,9 +243,30 @@ const VendorDetail = () => {
       } else {
         setVendor({ ...vendor, status: newStatus });
       }
-      toast.success(`Vendor status updated to ${newStatus}`);
+      setShowSuspendModal(false);
+      setShowActivateModal(false);
+      setStatusReason("");
+      toast.success(isReactivation ? 'Vendor activated successfully' : `Vendor status updated to ${newStatus}`);
     } else {
       toast.error("Failed to update vendor status");
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (deleteConfirmationInput !== "DELETE") {
+      toast.error("Please type DELETE to confirm permanent deletion");
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteVendor(vendor.id);
+      toast.success("Vendor permanently deleted");
+      setShowDeleteModal(false);
+      navigate("/admin/vendors/manage-vendors");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to delete vendor");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -443,20 +478,43 @@ const VendorDetail = () => {
             }>
             {vendor.status?.toUpperCase()}
           </Badge>
-          {!hideActions && vendor.status === "pending" && (
+          {!hideActions && vendor.status === "pending" && (admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_APPROVE)) && (
             <button
               onClick={openApprovalDialog}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
               <FiCheckCircle />
               Approve
             </button>
           )}
-          {!hideActions && vendor.status === "approved" && (
+          {!hideActions && vendor.status === "approved" && (admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_APPROVE)) && (
             <button
-              onClick={() => handleStatusUpdate("suspended")}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+              onClick={() => {
+                setStatusReason("");
+                setShowSuspendModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium">
               <FiXCircle />
               Suspend
+            </button>
+          )}
+          {!hideActions && vendor.status === "suspended" && (admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_APPROVE)) && (
+            <button
+              onClick={() => setShowActivateModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium">
+              <FiCheckCircle />
+              Activate Vendor
+            </button>
+          )}
+          {!hideActions && (admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_DELETE)) && (
+            <button
+              onClick={() => {
+                setDeleteConfirmationInput("");
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium"
+              title="Permanently Delete Test Vendor">
+              <FiTrash2 />
+              Delete
             </button>
           )}
         </div>
@@ -954,6 +1012,82 @@ const VendorDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Activate Modal */}
+      <ConfirmModal
+        isOpen={showActivateModal}
+        onClose={() => setShowActivateModal(false)}
+        onConfirm={() => handleStatusUpdate("approved")}
+        title="Activate Vendor?"
+        message={`Are you sure you want to activate "${vendor?.storeName || vendor?.name}"? The vendor will be restored to approved status and allowed to operate on their configured selling channels.`}
+        confirmText="Activate Vendor"
+        type="success"
+      />
+
+      {/* Suspend Modal */}
+      <ConfirmModal
+        isOpen={showSuspendModal}
+        onClose={() => {
+          setShowSuspendModal(false);
+          setStatusReason("");
+        }}
+        onConfirm={() => handleStatusUpdate("suspended")}
+        title="Suspend Vendor?"
+        message={`Are you sure you want to suspend "${vendor?.storeName || vendor?.name}"? They will not be able to access their vendor dashboard.`}
+        confirmText="Suspend Vendor"
+        type="danger"
+        customContent={
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Suspension Reason (optional)
+            </label>
+            <textarea
+              value={statusReason}
+              onChange={(e) => setStatusReason(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="Provide a reason for suspension..."
+            />
+          </div>
+        }
+      />
+
+      {/* Hard Delete Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeleteConfirmationInput("");
+        }}
+        onConfirm={handleHardDelete}
+        title="Permanently Delete Vendor?"
+        message={`This will permanently remove "${vendor?.storeName || vendor?.name}" and all associated products, documents, and settings from the database. This action CANNOT be undone.`}
+        confirmText="Permanently Delete"
+        type="danger"
+        isLoading={isDeleting}
+        confirmDisabled={deleteConfirmationInput !== "DELETE"}
+        customContent={
+          <div className="mt-4 space-y-3">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+              <p className="font-semibold">Warning: Destructive Permanent Action</p>
+              <p className="mt-1">Vendors with active customer orders cannot be deleted. Use this only for test/QA vendors.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Type <span className="font-mono text-red-600 font-bold">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmationInput}
+                onChange={(e) => setDeleteConfirmationInput(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
+                placeholder="DELETE"
+                autoFocus
+              />
+            </div>
+          </div>
+        }
+      />
     </motion.div>
   );
 };

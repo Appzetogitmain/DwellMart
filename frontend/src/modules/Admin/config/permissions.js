@@ -14,7 +14,8 @@ export const PERMISSIONS = {
   // Vendors
   VENDORS_VIEW: 'vendors.view',
   VENDORS_APPROVE: 'vendors.approve',
-  VENDORS_EDIT: 'vendors.edit',
+  VENDORS_EDIT: 'vendors.edit',
+  VENDORS_DELETE: 'vendors.delete',
   // Delivery
   DELIVERY_VIEW: 'delivery.view',
   DELIVERY_APPROVE: 'delivery.approve',
@@ -239,7 +240,9 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: PERMISSIONS.VENDORS_VIEW, label: 'View Vendors' },
       { key: PERMISSIONS.VENDORS_APPROVE, label: 'Approve / Reject Vendors' },
-      { key: PERMISSIONS.VENDORS_EDIT, label: 'Edit Commissions & Details' },    ],
+      { key: PERMISSIONS.VENDORS_EDIT, label: 'Edit Commissions & Details' },
+      { key: PERMISSIONS.VENDORS_DELETE, label: 'Hard Delete Test Vendors' },
+    ],
   },
   {
     id: 'users',

@@ -278,6 +278,7 @@ router.patch('/vendors/:id/commission', ...perm(PERMISSIONS.VENDORS_EDIT), valid
 router.patch('/vendors/:id/quick-commerce', ...permAny(PERMISSIONS.QUICKCOMMERCE_VENDORS_MANAGE, PERMISSIONS.VENDORS_APPROVE), validate(vendorIdParamSchema, 'params'), validate(vendorQuickCommerceUpdateSchema), vendorController.updateVendorQuickCommerce);
 // Super Admin only — changes vendor business type and auto-syncs sellingChannels
 router.patch('/vendors/:id/vendor-type', ...adminAuth, requireSuperAdmin, validate(vendorIdParamSchema, 'params'), vendorController.updateVendorType);
+router.delete('/vendors/:id', ...perm(PERMISSIONS.VENDORS_DELETE), validate(vendorIdParamSchema, 'params'), vendorController.hardDeleteVendor);
 
 
 // ─── Customers ────────────────────────────────────────────────────────────────
