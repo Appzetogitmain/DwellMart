@@ -610,34 +610,34 @@ const VendorDetail = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                           <div>
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">GST Number</p>
-                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.gstNumber || "Not Provided"}</p>
+                            <p className="font-semibold text-gray-900">
+                              {vendor.wholesaleProfile?.gstNumber || vendor.documents?.gstNumber || vendor.documents?.gst || (registrationDocument?.url ? "Provided via Registration Document" : "Not Provided")}
+                            </p>
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Business Name</p>
-                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.businessName || "N/A"}</p>
+                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.businessName || vendor.storeName || "N/A"}</p>
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Wholesale Contact</p>
                             <p className="font-semibold text-gray-900">
-                              {vendor.wholesaleProfile?.wholesaleContactName || "N/A"}
-                              {vendor.wholesaleProfile?.wholesaleContactPhone ? ` (${vendor.wholesaleProfile.wholesaleContactPhone})` : ""}
+                              {vendor.wholesaleProfile?.wholesaleContactName || vendor.name || "N/A"}
+                              {(vendor.wholesaleProfile?.wholesaleContactPhone || vendor.phone) ? ` (${vendor.wholesaleProfile?.wholesaleContactPhone || vendor.phone})` : ""}
                             </p>
                           </div>
                           <div>
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Bulk Support Email</p>
-                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.bulkOrderSupportEmail || "N/A"}</p>
+                            <p className="font-semibold text-gray-900">{vendor.wholesaleProfile?.bulkOrderSupportEmail || vendor.email || "N/A"}</p>
                           </div>
                         </div>
 
-                        {vendor.wholesaleProfile?.businessAddress && (
+                        {(vendor.wholesaleProfile?.businessAddress?.street || vendor.address) && (
                           <div className="pt-2 border-t border-purple-100">
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Registered Business Address</p>
                             <p className="font-medium text-gray-800 text-xs mt-0.5">
-                              {vendor.wholesaleProfile.businessAddress.street || ""}
-                              {vendor.wholesaleProfile.businessAddress.city && `, ${vendor.wholesaleProfile.businessAddress.city}`}
-                              {vendor.wholesaleProfile.businessAddress.state && `, ${vendor.wholesaleProfile.businessAddress.state}`}
-                              {vendor.wholesaleProfile.businessAddress.zipCode && ` ${vendor.wholesaleProfile.businessAddress.zipCode}`}
-                              {vendor.wholesaleProfile.businessAddress.country && `, ${vendor.wholesaleProfile.businessAddress.country}`}
+                              {vendor.wholesaleProfile?.businessAddress?.street
+                                ? `${vendor.wholesaleProfile.businessAddress.street}${vendor.wholesaleProfile.businessAddress.city ? `, ${vendor.wholesaleProfile.businessAddress.city}` : ''}${vendor.wholesaleProfile.businessAddress.state ? `, ${vendor.wholesaleProfile.businessAddress.state}` : ''}${vendor.wholesaleProfile.businessAddress.zipCode ? ` ${vendor.wholesaleProfile.businessAddress.zipCode}` : ''}${vendor.wholesaleProfile.businessAddress.country ? `, ${vendor.wholesaleProfile.businessAddress.country}` : ''}`
+                                : `${vendor.address?.street || ""}${vendor.address?.city ? `, ${vendor.address.city}` : ""}${vendor.address?.state ? `, ${vendor.address.state}` : ""}${vendor.address?.zipCode ? ` ${vendor.address.zipCode}` : ""}`}
                             </p>
                           </div>
                         )}
