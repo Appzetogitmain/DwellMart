@@ -51,6 +51,15 @@ const generateCode = (otpOverride = null) => {
         : crypto.randomInt(100000, 999999).toString();
 };
 
+const persistPhoneVerification = async (phoneE164, otp) => {
+    const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS);
+    await PhoneVerification.findOneAndUpdate(
+        { phoneE164 },
+        { phoneE164, otp, otpExpiry, isVerified: false, attempts: 0 },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+};
+
 /**
  * Normalise a caller-supplied number, or reject it.
  * @throws {ApiError} 400 when the number cannot address a WhatsApp recipient
@@ -70,22 +79,23 @@ export const requireE164 = (phone) => {
  * @param   {object} [options]
  * @param   {string} [options.otpOverride] controlled code for a caller-owned
  *          non-production test login flow
+ * @param   {boolean} [options.skipDelivery=false] persist the code without
+ *          attempting WhatsApp delivery
  * @returns {Promise<{phoneE164: string, channel: 'whatsapp', expiresInMinutes: number}>}
  * @throws  {ApiError} 400 on an unusable number, 503 when WhatsApp cannot deliver
  */
 export const sendPhoneVerification = async (phone, options = {}) => {
     const phoneE164 = requireE164(phone);
     const otp = generateCode(options?.otpOverride);
-    const otpExpiry = new Date(Date.now() + OTP_EXPIRY_MS);
 
     // Persist BEFORE sending: a crash mid-send must never leave the user
     // holding a code that was never recorded. `attempts` resets with each new
     // code so a fresh request is a fresh budget.
-    await PhoneVerification.findOneAndUpdate(
-        { phoneE164 },
-        { phoneE164, otp, otpExpiry, isVerified: false, attempts: 0 },
-        { new: true, upsert: true, setDefaultsOnInsert: true },
-    );
+    await persistPhoneVerification(phoneE164, otp);
+
+    if (options?.skipDelivery === true) {
+        return { phoneE164, channel: 'manual', expiresInMinutes: OTP_EXPIRY_MINUTES };
+    }
 
     if (isMockEnabled()) {
         console.log(`[PhoneVerification] Mock OTP active for ${maskPhone(phoneE164)}.`);

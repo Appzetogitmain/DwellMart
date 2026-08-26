@@ -212,7 +212,10 @@ export const requestLoginOTP = asyncHandler(async (req, res) => {
     assertLoginEligible(deliveryBoy);
 
     const otpOverride = getDeliveryLoginOtpOverride(phoneE164);
-    await sendPhoneVerification(phoneE164, otpOverride ? { otpOverride } : undefined);
+    await sendPhoneVerification(
+        phoneE164,
+        otpOverride ? { otpOverride, skipDelivery: true } : undefined
+    );
     return res.status(200).json(generic);
 });
 

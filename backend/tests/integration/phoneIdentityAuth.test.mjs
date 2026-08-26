@@ -328,9 +328,7 @@ test('delivery login uses the local default OTP for the configured rider number'
 
     assert.equal(requestRes.statusCode, 200);
     assert.equal(await storedCode(PHONE), '123456');
-    assert.equal(interaktCalls.length, 1);
-    assert.deepEqual(interaktCalls[0].body.template.bodyValues, ['123456']);
-    assert.deepEqual(interaktCalls[0].body.template.buttonValues, { 0: ['123456'] });
+    assert.equal(interaktCalls.length, 0, 'the default rider login must not depend on WhatsApp transport');
 
     const verifyRes = await invokeHandler(verifyLoginOTP, { phone: '7869958637', otp: '123456' });
 
