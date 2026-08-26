@@ -106,7 +106,7 @@ const getVendorOnboardingState = async (vendorDoc) => {
 
 const uploadVendorDocument = async ({ file, documentType }) => {
     if (!file) {
-        throw new ApiError(400, 'Please upload your business verification document (Trade License, GST, MSME, or Enrolment ID/UIN).');
+        return {};
     }
 
     let documentUrl = '';
