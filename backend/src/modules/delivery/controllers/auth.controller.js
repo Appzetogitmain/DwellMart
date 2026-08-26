@@ -27,10 +27,7 @@ import {
 const DEFAULT_DELIVERY_LOGIN_OTP_PHONE_E164 = '+917869958637';
 const DEFAULT_DELIVERY_LOGIN_OTP = '123456';
 
-const isProduction = () => String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
-
 const getDeliveryLoginOtpOverride = (phoneE164) => {
-    if (isProduction()) return null;
     return phoneE164 === DEFAULT_DELIVERY_LOGIN_OTP_PHONE_E164
         ? DEFAULT_DELIVERY_LOGIN_OTP
         : null;
