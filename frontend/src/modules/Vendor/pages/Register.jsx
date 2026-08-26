@@ -310,10 +310,6 @@ const VendorRegister = () => {
       toast.error('Please select a subscription plan.');
       return;
     }
-    if (!registrationDocument) {
-      toast.error(`Please upload your ${documentType === 'gst' ? 'GST' : 'Trade Licence'} document.`);
-      return;
-    }
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match.');
       return;
@@ -345,7 +341,9 @@ const VendorRegister = () => {
       submitData.append('selectedPlanId', selectedPlan._id);
       submitData.append('documentType', documentType);
       submitData.append('agreedToTerms', true);
-      submitData.append('document', registrationDocument);
+      if (registrationDocument) {
+        submitData.append('document', registrationDocument);
+      }
       submitData.append('sellingChannels', JSON.stringify({
         retail: { enabled: formData.sellingChannels.retail },
         wholesale: { enabled: wholesaleRequested },
@@ -715,7 +713,7 @@ const VendorRegister = () => {
 
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        Document Type <span className="text-red-500">*</span>
+                        Document Type
                       </label>
                       <select
                         value={documentType}
@@ -731,13 +729,12 @@ const VendorRegister = () => {
 
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        {documentType === 'gst' ? 'GST Document' : documentType === 'msme' ? 'MSME Document' : documentType === 'uin' ? 'Enrolment ID/UIN Document' : 'Trade Licence Document'} <span className="text-red-500">*</span>
+                        {documentType === 'gst' ? 'GST Document' : documentType === 'msme' ? 'MSME Document' : documentType === 'uin' ? 'Enrolment ID/UIN Document' : 'Trade Licence Document'}
                       </label>
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,image/*"
                         onChange={(event) => setRegistrationDocument(event.target.files?.[0] || null)}
-                        required
                         className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 file:mr-4 file:rounded-full file:border-0 file:bg-[#fff4bf] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#8a5a00] hover:file:bg-[#ffe082]"
                       />
                     </div>
