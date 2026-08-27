@@ -209,12 +209,12 @@ const CommissionRates = () => {
         customContent={
           <div className="mt-4">
             <div className="mb-3">
-              <p className="text-sm text-gray-600 mb-1">Current Rate</p>
-              <p className="text-lg font-bold text-gray-800">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Current Rate</p>
+              <p className="text-lg font-bold text-gray-800 dark:text-white">
                 {commissionModal.currentRate}%
               </p>
             </div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
               New Commission Rate (%)
             </label>
             <input
@@ -224,10 +224,10 @@ const CommissionRates = () => {
               min="0"
               max="100"
               step="0.1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
               placeholder="10.0"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Enter a value between 0 and 100
             </p>
           </div>

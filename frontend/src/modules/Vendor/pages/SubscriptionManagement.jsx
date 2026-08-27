@@ -396,6 +396,8 @@ const SubscriptionManagement = () => {
                     </div>
                     {isCurrent ? (
                       <span className="rounded-full bg-teal-600 px-3 py-1 text-xs font-bold text-white">Current</span>
+                    ) : plan.isMostPopular ? (
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Popular</span>
                     ) : isUpgrade ? (
                       <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Upgrade</span>
                     ) : null}

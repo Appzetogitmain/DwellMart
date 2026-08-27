@@ -1038,14 +1038,14 @@ const VendorDetail = () => {
         type="danger"
         customContent={
           <div className="mt-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
               Suspension Reason (optional)
             </label>
             <textarea
               value={statusReason}
               onChange={(e) => setStatusReason(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
               placeholder="Provide a reason for suspension..."
             />
           </div>
@@ -1068,19 +1068,19 @@ const VendorDetail = () => {
         confirmDisabled={deleteConfirmationInput !== "DELETE"}
         customContent={
           <div className="mt-4 space-y-3">
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300">
               <p className="font-semibold">Warning: Destructive Permanent Action</p>
               <p className="mt-1">Vendors with active customer orders cannot be deleted. Use this only for test/QA vendors.</p>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Type <span className="font-mono text-red-600 font-bold">DELETE</span> to confirm:
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                Type <span className="font-mono text-red-600 dark:text-red-400 font-bold">DELETE</span> to confirm:
               </label>
               <input
                 type="text"
                 value={deleteConfirmationInput}
                 onChange={(e) => setDeleteConfirmationInput(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
                 placeholder="DELETE"
                 autoFocus
               />

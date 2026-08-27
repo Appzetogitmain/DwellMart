@@ -528,7 +528,7 @@ const CashCollection = () => {
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="Enter rejection reason..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
 
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200">

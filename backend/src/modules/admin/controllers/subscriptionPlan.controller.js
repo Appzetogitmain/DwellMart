@@ -3,6 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import SubscriptionPlan from '../../../models/SubscriptionPlan.model.js';
 import VendorSubscription from '../../../models/VendorSubscription.model.js';
+import { clearResponseCache } from '../../../middlewares/responseCache.js';
 import {
     buildPlanSlug,
     normalizePlanInterval,
@@ -52,6 +53,11 @@ export const createPlan = asyncHandler(async (req, res) => {
     const existing = await SubscriptionPlan.findOne({ slug });
     if (existing) throw new ApiError(409, 'A plan with a similar name already exists.');
 
+    const shouldBePopular = Boolean(isMostPopular);
+    if (shouldBePopular) {
+        await SubscriptionPlan.updateMany({}, { isMostPopular: false });
+    }
+
     const plan = await SubscriptionPlan.create({
         name: trimmedName,
         slug,
@@ -61,10 +67,12 @@ export const createPlan = asyncHandler(async (req, res) => {
         interval_count: planInterval.interval_count,
         description: String(description || '').trim(),
         features: normalizePlanFeatures(features),
-        isMostPopular: Boolean(isMostPopular),
+        isMostPopular: shouldBePopular,
         isActive: isActive !== false,
         sortOrder: Number(sortOrder) || 0,
     });
+
+    clearResponseCache();
 
     res.status(201).json(new ApiResponse(201, serializePlan(plan), 'Subscription plan created.'));
 });
@@ -107,11 +115,17 @@ export const updatePlan = asyncHandler(async (req, res) => {
     }
     if (description !== undefined) plan.description = String(description).trim();
     if (features !== undefined) plan.features = normalizePlanFeatures(features);
-    if (isMostPopular !== undefined) plan.isMostPopular = Boolean(isMostPopular);
+    if (isMostPopular !== undefined) {
+        plan.isMostPopular = Boolean(isMostPopular);
+        if (plan.isMostPopular) {
+            await SubscriptionPlan.updateMany({ _id: { $ne: plan._id } }, { isMostPopular: false });
+        }
+    }
     if (isActive !== undefined) plan.isActive = Boolean(isActive);
     if (sortOrder !== undefined) plan.sortOrder = Number(sortOrder);
 
     await plan.save();
+    clearResponseCache();
 
     res.status(200).json(new ApiResponse(200, serializePlan(plan), 'Subscription plan updated.'));
 });
@@ -129,6 +143,7 @@ export const deletePlan = asyncHandler(async (req, res) => {
     }
 
     await SubscriptionPlan.findByIdAndDelete(req.params.id);
+    clearResponseCache();
     res.status(200).json(new ApiResponse(200, null, 'Subscription plan deleted.'));
 });
 

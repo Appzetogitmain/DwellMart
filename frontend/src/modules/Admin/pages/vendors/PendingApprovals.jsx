@@ -434,16 +434,16 @@ const PendingApprovals = () => {
             <div className="mt-4 space-y-4">
               {renderDocumentLink()}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Rejection Reason (optional)
-              </label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Provide a reason for rejection..."
-              />
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                  Rejection Reason (optional)
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400"
+                  placeholder="Provide a reason for rejection..."
+                />
               </div>
             </div>
           ),

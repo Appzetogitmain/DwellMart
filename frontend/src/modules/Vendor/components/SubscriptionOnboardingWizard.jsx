@@ -570,63 +570,58 @@ const SubscriptionOnboardingWizard = ({
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3 items-stretch">
-                {(() => {
-                  const popularPlan = translatedPlans.find((p) => p.isMostPopular) || translatedPlans.find((p) => p.name?.toLowerCase().includes('yearly')) || translatedPlans[1];
-                  const popularPlanId = popularPlan?._id;
+                {translatedPlans.map((plan) => {
+                  const isPopular = Boolean(plan.isMostPopular);
+                  return (
+                    <div
+                      key={plan._id}
+                      className={`relative flex flex-col justify-between rounded-2xl sm:rounded-3xl border-2 p-5 sm:p-8 text-slate-900 shadow-xl backdrop-blur transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl h-full ${
+                        selectedPlan?._id === plan._id || isPopular
+                          ? 'border-[#D4AF37] bg-white ring-4 ring-[#ffc101]/20 shadow-amber-500/10'
+                          : 'border-slate-200 bg-white hover:border-amber-400'
+                      }`}
+                    >
+                      {isPopular ? (
+                        <div className="absolute right-0 top-0 flex items-center gap-1 rounded-tr-3xl rounded-bl-2xl bg-[#ffc101] px-4 py-1.5 text-xs font-extrabold text-black shadow-md">
+                          <FiStar className="fill-black text-xs" />
+                          {t('MOST POPULAR')}
+                        </div>
+                      ) : null}
 
-                  return translatedPlans.map((plan) => {
-                    const isPopular = plan._id === popularPlanId;
-                    return (
-                      <div
-                        key={plan._id}
-                        className={`relative flex flex-col justify-between rounded-2xl sm:rounded-3xl border-2 p-5 sm:p-8 text-slate-900 shadow-xl backdrop-blur transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl h-full ${
-                          selectedPlan?._id === plan._id || isPopular
-                            ? 'border-[#D4AF37] bg-white ring-4 ring-[#ffc101]/20 shadow-amber-500/10'
-                            : 'border-slate-200 bg-white hover:border-amber-400'
-                        }`}
-                      >
-                        {isPopular ? (
-                          <div className="absolute right-0 top-0 flex items-center gap-1 rounded-tr-3xl rounded-bl-2xl bg-[#ffc101] px-4 py-1.5 text-xs font-extrabold text-black shadow-md">
-                            <FiStar className="fill-black text-xs" />
-                            {t('MOST POPULAR')}
+                      <div className="flex-1 flex flex-col">
+                        <h3 className="text-xl font-extrabold text-slate-900">{plan.name}</h3>
+                        
+                        <div className="mt-4 flex flex-col gap-0 border-b border-slate-100 pb-5">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl sm:text-4xl font-black text-slate-900">
+                              {formatPrice(plan, t)}
+                            </span>
                           </div>
-                        ) : null}
-
-                        <div className="flex-1 flex flex-col">
-                          <h3 className="text-xl font-extrabold text-slate-900">{plan.name}</h3>
-                          
-                          <div className="mt-4 flex flex-col gap-0 border-b border-slate-100 pb-5">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-3xl sm:text-4xl font-black text-slate-900">
-                                {formatPrice(plan, t)}
-                              </span>
-                            </div>
-                            <span className="mt-1.5 text-xs font-semibold text-slate-500">{t('per')} {getIntervalLabel(plan, t)}</span>
-                          </div>
-
-                          <ul className="mt-6 space-y-3 flex-1">
-                            {getHighlights(plan).map((feature) => (
-                              <li key={`${plan._id}-${feature}`} className="flex items-start gap-2.5 text-xs font-medium text-slate-700">
-                                <FiCheck className="mt-0.5 flex-shrink-0 text-amber-500 font-bold text-base" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <span className="mt-1.5 text-xs font-semibold text-slate-500">{t('per')} {getIntervalLabel(plan, t)}</span>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPlan(plan)}
-                          disabled={isLoading}
-                          className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-extrabold bg-[#ffc101] text-black hover:bg-[#ffd042] hover:shadow-amber-500/20 shadow-md transition-all disabled:opacity-60"
-                        >
-                          {isLoading && selectedPlan?._id === plan._id ? <FiLoader className="animate-spin text-lg" /> : null}
-                          {selectedPlan?._id === plan._id ? t('Continue with Plan') : t('Choose Plan')}
-                        </button>
+                        <ul className="mt-6 space-y-3 flex-1">
+                          {getHighlights(plan).map((feature) => (
+                            <li key={`${plan._id}-${feature}`} className="flex items-start gap-2.5 text-xs font-medium text-slate-700">
+                              <FiCheck className="mt-0.5 flex-shrink-0 text-amber-500 font-bold text-base" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    );
-                  });
-                })()}
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPlan(plan)}
+                        disabled={isLoading}
+                        className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-extrabold bg-[#ffc101] text-black hover:bg-[#ffd042] hover:shadow-amber-500/20 shadow-md transition-all disabled:opacity-60"
+                      >
+                        {isLoading && selectedPlan?._id === plan._id ? <FiLoader className="animate-spin text-lg" /> : null}
+                        {selectedPlan?._id === plan._id ? t('Continue with Plan') : t('Choose Plan')}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           ) : null}

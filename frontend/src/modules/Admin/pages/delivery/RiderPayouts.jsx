@@ -676,7 +676,7 @@ const RiderPayouts = () => {
                 )}
 
                 <div className="space-y-1.5">
-                  <label htmlFor="reason" className="text-xs font-semibold text-gray-600">
+                  <label htmlFor="reason" className="text-xs font-semibold text-gray-600 dark:text-gray-300">
                     {modal.type === "approve" || modal.type === "paid" ? "Notes (optional)" : "Reason"}
                     {(modal.type === "reject" || modal.type === "failed") && <span className="text-rose-600"> *</span>}
                   </label>
@@ -690,7 +690,7 @@ const RiderPayouts = () => {
                         : modal.type === "failed" ? "What did the bank or rail report?"
                         : "Internal notes"
                     }
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 resize-none"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:outline-none focus:border-gray-400 resize-none"
                   />
                 </div>
 

@@ -107,6 +107,7 @@ export const serializePlan = (planDoc, country = '') => {
 
     return {
         ...plan,
+        isMostPopular: Boolean(plan.isMostPopular),
         features,
         featureHighlights: Array.isArray(features.highlights) ? features.highlights : [],
         gateway: 'internal',

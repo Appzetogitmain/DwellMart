@@ -566,7 +566,7 @@ const PayoutRequests = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-200 mb-1">
                     Rejection Reason <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -574,7 +574,7 @@ const PayoutRequests = () => {
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     placeholder="e.g. Incorrect bank account number or invalid IFSC code."
-                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-red-500 focus:outline-none resize-none"
+                    className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-red-500 focus:outline-none resize-none"
                   />
                 </div>
               </div>
