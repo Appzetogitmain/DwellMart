@@ -229,7 +229,11 @@ const ProfileSettings = () => {
                   </label>
                   <input
                     type="text"
-                    value={vendor?.commissionRate !== undefined ? `${(vendor.commissionRate).toFixed(1)}%` : "N/A"}
+                    value={
+                      vendor?.commissionRate !== undefined
+                        ? `${(vendor.commissionRate <= 1 ? vendor.commissionRate * 100 : vendor.commissionRate).toFixed(1)}%`
+                        : "N/A"
+                    }
                     readOnly
                     disabled
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
