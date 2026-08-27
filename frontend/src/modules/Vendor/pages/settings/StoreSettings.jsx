@@ -405,7 +405,11 @@ const StoreSettings = () => {
                     <input
                       type="text"
                       disabled
-                      value={vendor?.commissionRate !== undefined ? `${(vendor.commissionRate * 100).toFixed(1)}%` : "N/A"}
+                      value={
+                        vendor?.commissionRate !== undefined
+                          ? `${(vendor.commissionRate <= 1 ? vendor.commissionRate * 100 : vendor.commissionRate).toFixed(1)}%`
+                          : "N/A"
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 font-medium cursor-not-allowed"
                     />
                     <p className="mt-1 text-xs text-gray-500">Fee percentage deducted by the platform from your earnings.</p>
