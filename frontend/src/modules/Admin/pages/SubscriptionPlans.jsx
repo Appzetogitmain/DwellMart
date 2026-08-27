@@ -222,64 +222,223 @@ const SubscriptionPlans = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-sm"
             onClick={() => setShowModal(false)}
           >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="w-full max-w-2xl rounded-[28px] bg-white p-6 shadow-2xl"
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative flex flex-col w-full max-w-2xl max-h-[90vh] rounded-[24px] sm:rounded-[28px] bg-white shadow-2xl overflow-hidden border border-slate-100"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">{editingPlan ? 'Edit plan' : 'Create plan'}</h2>
-                <button type="button" onClick={() => setShowModal(false)} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-                  <FiX />
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 bg-white flex-shrink-0">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                    {editingPlan ? 'Edit Subscription Plan' : 'Create Subscription Plan'}
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Configure pricing, duration, highlights, and platform visibility.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <FiX className="text-lg" />
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <input value={formData.name} onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))} placeholder="Plan name" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <select value={formData.interval} onChange={(event) => setFormData((prev) => ({ ...prev, interval: event.target.value }))} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500">
-                    <option value="day">Days</option>
-                    <option value="week">Weeks</option>
-                    <option value="month">Month</option>
-                    <option value="year">Years</option>
-                  </select>
-                  <input value={formData.interval_count} onChange={(event) => setFormData((prev) => ({ ...prev, interval_count: event.target.value }))} type="number" min="1" step="1" placeholder="Billing interval number" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input value={formData.price_inr} onChange={(event) => setFormData((prev) => ({ ...prev, price_inr: event.target.value }))} type="number" min="0" step="0.01" placeholder="Price INR" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                  <input value={formData.price_usd} onChange={(event) => setFormData((prev) => ({ ...prev, price_usd: event.target.value }))} type="number" min="0" step="0.01" placeholder="Price USD" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
+
+              {/* Form Content */}
+              <form id="plan-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4 scrollbar-admin">
+                {/* Basic Details */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Basic Information</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Plan Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={formData.name}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                        placeholder="e.g., Monthly Plan, Yearly Plan"
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Billing Period Unit
+                      </label>
+                      <select
+                        value={formData.interval}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, interval: event.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                      >
+                        <option value="day">Days</option>
+                        <option value="week">Weeks</option>
+                        <option value="month">Months</option>
+                        <option value="year">Years</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Interval Count
+                      </label>
+                      <input
+                        value={formData.interval_count}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, interval_count: event.target.value }))}
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="e.g., 1 (for 1 month), 3 (for 3 months)"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <textarea value={formData.description} onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))} rows={2} placeholder="Description" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+
+                {/* Pricing Details */}
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Pricing</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Price (INR ₹) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={formData.price_inr}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, price_inr: event.target.value }))}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g., 1000 (0 for Free)"
+                        required
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Price (USD $)
+                      </label>
+                      <input
+                        value={formData.price_usd}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, price_usd: event.target.value }))}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g., 12.00 (0 for Free)"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                    rows={2}
+                    placeholder="Short description highlighting savings or benefits..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white transition"
+                  />
+                </div>
+
+                {/* Features Highlights */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-700">Plan features</p>
-                      <p className="text-xs text-slate-400">Add one feature per row.</p>
+                      <p className="text-xs font-bold text-slate-800">Plan Highlights & Features</p>
+                      <p className="text-[11px] text-slate-500">Each bullet item shown on the plan card</p>
                     </div>
-                    <button type="button" onClick={addFeature} className="rounded-xl bg-teal-100 px-3 py-2 text-sm font-semibold text-teal-700 transition hover:bg-teal-200">
-                      Add feature
+                    <button
+                      type="button"
+                      onClick={addFeature}
+                      className="rounded-xl bg-teal-100 px-3 py-1.5 text-xs font-bold text-teal-800 transition hover:bg-teal-200"
+                    >
+                      + Add feature
                     </button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {formData.featureHighlights.map((feature, index) => (
                       <div key={`feature-${index}`} className="flex gap-2">
-                        <input value={feature} onChange={(event) => updateFeature(index, event.target.value)} placeholder={`Feature ${index + 1}`} className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-teal-500" />
-                        <button type="button" onClick={() => removeFeature(index)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600">
+                        <input
+                          value={feature}
+                          onChange={(event) => updateFeature(index, event.target.value)}
+                          placeholder={`Feature ${index + 1} (e.g., Unlimited Products, Priority Support)`}
+                          className="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm outline-none focus:border-teal-500 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFeature(index)}
+                          className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200"
+                        >
                           Remove
                         </button>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={formData.isMostPopular} onChange={(event) => setFormData((prev) => ({ ...prev, isMostPopular: event.target.checked }))} /> Most popular</label>
-                  <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={formData.isActive} onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))} /> Active</label>
-                  <input value={formData.sortOrder} onChange={(event) => setFormData((prev) => ({ ...prev, sortOrder: event.target.value }))} type="number" placeholder="Sort order" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-teal-500" />
+
+                {/* Settings / Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isMostPopular}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, isMostPopular: event.target.checked }))}
+                      className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+                    />
+                    Most Popular Tag
+                  </label>
+                  <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, isActive: event.target.checked }))}
+                      className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300"
+                    />
+                    Active & Available
+                  </label>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+                      Display Sort Order
+                    </label>
+                    <input
+                      value={formData.sortOrder}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, sortOrder: event.target.value }))}
+                      type="number"
+                      placeholder="0"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-teal-500"
+                    />
+                  </div>
                 </div>
-                <button type="submit" className="w-full rounded-2xl bg-teal-600 px-4 py-3 font-semibold text-white transition hover:bg-teal-700">{editingPlan ? 'Update plan' : 'Create plan'}</button>
               </form>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="plan-form"
+                  className="rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 shadow-sm"
+                >
+                  {editingPlan ? 'Update Plan' : 'Create Plan'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

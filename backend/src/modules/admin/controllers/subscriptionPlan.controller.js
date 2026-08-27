@@ -53,11 +53,6 @@ export const createPlan = asyncHandler(async (req, res) => {
     const existing = await SubscriptionPlan.findOne({ slug });
     if (existing) throw new ApiError(409, 'A plan with a similar name already exists.');
 
-    const shouldBePopular = Boolean(isMostPopular);
-    if (shouldBePopular) {
-        await SubscriptionPlan.updateMany({}, { isMostPopular: false });
-    }
-
     const plan = await SubscriptionPlan.create({
         name: trimmedName,
         slug,
@@ -67,7 +62,7 @@ export const createPlan = asyncHandler(async (req, res) => {
         interval_count: planInterval.interval_count,
         description: String(description || '').trim(),
         features: normalizePlanFeatures(features),
-        isMostPopular: shouldBePopular,
+        isMostPopular: Boolean(isMostPopular),
         isActive: isActive !== false,
         sortOrder: Number(sortOrder) || 0,
     });
@@ -117,9 +112,6 @@ export const updatePlan = asyncHandler(async (req, res) => {
     if (features !== undefined) plan.features = normalizePlanFeatures(features);
     if (isMostPopular !== undefined) {
         plan.isMostPopular = Boolean(isMostPopular);
-        if (plan.isMostPopular) {
-            await SubscriptionPlan.updateMany({ _id: { $ne: plan._id } }, { isMostPopular: false });
-        }
     }
     if (isActive !== undefined) plan.isActive = Boolean(isActive);
     if (sortOrder !== undefined) plan.sortOrder = Number(sortOrder);
