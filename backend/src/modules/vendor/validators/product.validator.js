@@ -44,21 +44,14 @@ export const createProductSchema = Joi.object({
      * catch it in the form than at the carrier.
      */
     shipping: Joi.object({
-        weight:        Joi.number().min(0).max(100000).allow(null).optional(),
-        weightUnit:    Joi.string().valid('kg', 'g').optional(),
-        length:        Joi.number().min(0).max(1000).allow(null).optional(),
-        width:         Joi.number().min(0).max(1000).allow(null).optional(),
-        height:        Joi.number().min(0).max(1000).allow(null).optional(),
-        dimensionUnit: Joi.string().valid('cm', 'in').optional(),
-        /**
-         * Server-authored. Declared as forbidden rather than merely omitted so
-         * an attempt is REJECTED rather than silently stripped by the
-         * middleware's `stripUnknown` -- a client claiming 'vendor' on
-         * backfilled data would launder an estimate into a measurement, and
-         * that deserves a 400, not a shrug.
-         */
+        weight:        Joi.number().min(0).max(100000).allow(null, '').optional(),
+        weightUnit:    Joi.string().valid('kg', 'g').allow(null, '').optional(),
+        length:        Joi.number().min(0).max(1000).allow(null, '').optional(),
+        width:         Joi.number().min(0).max(1000).allow(null, '').optional(),
+        height:        Joi.number().min(0).max(1000).allow(null, '').optional(),
+        dimensionUnit: Joi.string().valid('cm', 'in').allow(null, '').optional(),
         source: Joi.any().forbidden(),
-    }).optional(),
+    }).allow(null, {}).optional(),
 
     taxRate: Joi.number().min(0).max(100).default(18),
     flashSale: Joi.boolean().default(false),
@@ -130,21 +123,14 @@ export const updateProductSchema = Joi.object({
      * catch it in the form than at the carrier.
      */
     shipping: Joi.object({
-        weight:        Joi.number().min(0).max(100000).allow(null).optional(),
-        weightUnit:    Joi.string().valid('kg', 'g').optional(),
-        length:        Joi.number().min(0).max(1000).allow(null).optional(),
-        width:         Joi.number().min(0).max(1000).allow(null).optional(),
-        height:        Joi.number().min(0).max(1000).allow(null).optional(),
-        dimensionUnit: Joi.string().valid('cm', 'in').optional(),
-        /**
-         * Server-authored. Declared as forbidden rather than merely omitted so
-         * an attempt is REJECTED rather than silently stripped by the
-         * middleware's `stripUnknown` -- a client claiming 'vendor' on
-         * backfilled data would launder an estimate into a measurement, and
-         * that deserves a 400, not a shrug.
-         */
+        weight:        Joi.number().min(0).max(100000).allow(null, '').optional(),
+        weightUnit:    Joi.string().valid('kg', 'g').allow(null, '').optional(),
+        length:        Joi.number().min(0).max(1000).allow(null, '').optional(),
+        width:         Joi.number().min(0).max(1000).allow(null, '').optional(),
+        height:        Joi.number().min(0).max(1000).allow(null, '').optional(),
+        dimensionUnit: Joi.string().valid('cm', 'in').allow(null, '').optional(),
         source: Joi.any().forbidden(),
-    }).optional(),
+    }).allow(null, {}).optional(),
 
     taxRate: Joi.number().min(0).max(100).optional(),
     flashSale: Joi.boolean().optional(),

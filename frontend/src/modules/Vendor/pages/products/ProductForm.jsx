@@ -509,26 +509,28 @@ const ProductForm = () => {
      * a backfilled estimate into a claimed measurement.
      */
     const buildShippingPayload = () => {
-      if (!sections.shipping) return {};
+      if (!sections.shipping) return null;
       const raw = formData.shipping || {};
       const numeric = {};
       for (const key of ['weight', 'length', 'width', 'height']) {
         const value = raw[key];
-        if (value !== '' && value !== null && value !== undefined) numeric[key] = Number(value);
+        if (value !== '' && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
+          numeric[key] = Number(value);
+        }
       }
-      if (Object.keys(numeric).length === 0) return { shipping: {} };
+      if (Object.keys(numeric).length === 0) return null;
       return {
-        shipping: {
-          ...numeric,
-          weightUnit: raw.weightUnit || 'kg',
-          dimensionUnit: raw.dimensionUnit || 'cm',
-        },
+        ...numeric,
+        weightUnit: raw.weightUnit || 'kg',
+        dimensionUnit: raw.dimensionUnit || 'cm',
       };
     };
 
+    const shippingData = buildShippingPayload();
+
     const payload = {
       ...formData,
-      ...buildShippingPayload(),
+      ...(shippingData ? { shipping: shippingData } : {}),
       ...(isEdit && getById(id)?.__v !== undefined
         ? { expectedVersion: getById(id).__v }
         : {}),
@@ -560,6 +562,10 @@ const ProductForm = () => {
           })
         : {}),
     };
+
+    if (!shippingData) {
+      delete payload.shipping;
+    }
 
     const result = isEdit ? await editProduct(id, payload) : await addProduct(payload);
     if (result) navigate("/vendor/products/manage-products");

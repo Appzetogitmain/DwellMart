@@ -693,21 +693,23 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       const numeric = {};
       for (const key of ["weight", "length", "width", "height"]) {
         const value = raw[key];
-        if (value !== "" && value !== null && value !== undefined) numeric[key] = Number(value);
+        if (value !== "" && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
+          numeric[key] = Number(value);
+        }
       }
-      if (Object.keys(numeric).length === 0) return {};
+      if (Object.keys(numeric).length === 0) return null;
       return {
-        shipping: {
-          ...numeric,
-          weightUnit: raw.weightUnit || "kg",
-          dimensionUnit: raw.dimensionUnit || "cm",
-        },
+        ...numeric,
+        weightUnit: raw.weightUnit || "kg",
+        dimensionUnit: raw.dimensionUnit || "cm",
       };
     };
 
+    const shippingData = buildShippingPayload();
+
     const submissionData = {
       ...formData,
-      ...buildShippingPayload(),
+      ...(shippingData ? { shipping: shippingData } : {}),
       price: parseFloat(formData.price),
       originalPrice: formData.originalPrice
         ? parseFloat(formData.originalPrice)
@@ -731,6 +733,10 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         .filter((faq) => faq.question && faq.answer),
       ...buildWholesalePayload(wholesaleState),
     };
+
+    if (!shippingData) {
+      delete submissionData.shipping;
+    }
 
     try {
       if (isEdit) {

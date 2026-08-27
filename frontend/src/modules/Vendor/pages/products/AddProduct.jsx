@@ -509,25 +509,28 @@ const AddProduct = () => {
      * never sent from the client.
      */
     const buildShippingPayload = () => {
-      if (!sections.shipping) return {};
+      if (!sections.shipping) return null;
       const raw = formData.shipping || {};
       const numeric = {};
       for (const key of ['weight', 'length', 'width', 'height']) {
         const value = raw[key];
-        if (value !== '' && value !== null && value !== undefined) numeric[key] = Number(value);
+        if (value !== '' && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
+          numeric[key] = Number(value);
+        }
       }
-      if (Object.keys(numeric).length === 0) return {};
+      if (Object.keys(numeric).length === 0) return null;
       return {
-        shipping: {
-          ...numeric,
-          weightUnit: raw.weightUnit || 'kg',
-          dimensionUnit: raw.dimensionUnit || 'cm',
-        },
+        ...numeric,
+        weightUnit: raw.weightUnit || 'kg',
+        dimensionUnit: raw.dimensionUnit || 'cm',
       };
     };
 
+    const shippingData = buildShippingPayload();
+
     const payload = {
       ...formData,
+      ...(shippingData ? { shipping: shippingData } : {}),
       price: parsedPrice,
       originalPrice: parsedOriginalPrice,
       stockQuantity: parsedStockQuantity,
@@ -546,7 +549,6 @@ const AddProduct = () => {
         }))
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
-      ...buildShippingPayload(),
       ...(caps.allowedFormSections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {}),
       ...(caps.allowedFormSections.quickCommerce
         ? buildQuickCommercePayload({
@@ -559,6 +561,10 @@ const AddProduct = () => {
           })
         : {}),
     };
+
+    if (!shippingData) {
+      delete payload.shipping;
+    }
 
     const result = await addProduct(payload);
     if (result) {
