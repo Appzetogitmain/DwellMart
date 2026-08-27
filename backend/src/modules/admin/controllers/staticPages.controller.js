@@ -3,6 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Settings from '../../../models/Settings.model.js';
 import sanitizeHtml from 'sanitize-html';
+import { clearResponseCache } from '../../../middlewares/responseCache.js';
 
 const ALLOWED_SLUGS = ['about', 'contact', 'terms', 'privacy', 'returns', 'shipping', 'faq', 'partner'];
 
@@ -81,6 +82,16 @@ export const updatePage = asyncHandler(async (req, res) => {
         { key, value: { title: String(title || '').trim(), content: sanitizedContent } },
         { upsert: true, new: true }
     );
+
+    if (slug === 'partner') {
+        await Settings.findOneAndUpdate(
+            { key: 'vendor_terms_and_conditions' },
+            { key: 'vendor_terms_and_conditions', value: { title: String(title || '').trim(), content: sanitizedContent } },
+            { upsert: true }
+        );
+    }
+
+    clearResponseCache();
 
     res.status(200).json(new ApiResponse(200, {
         slug,

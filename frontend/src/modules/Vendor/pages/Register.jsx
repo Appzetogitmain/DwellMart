@@ -97,10 +97,25 @@ const VendorRegister = () => {
     }
 
     if (data.nextStep === 'complete_payment') {
-      const plan = data.selectedPlan || availablePlans.find((item) => item._id === data.selectedPlanId) || null;
+      let fallbackPlan = null;
+      try {
+        const saved = sessionStorage.getItem('dwellmart_onboarding_plan');
+        if (saved) fallbackPlan = JSON.parse(saved);
+      } catch { /* ignore */ }
+
+      const plan = data.selectedPlan
+        || (data.selectedPlanId ? availablePlans.find((item) => String(item._id) === String(data.selectedPlanId)) : null)
+        || fallbackPlan
+        || selectedPlan
+        || availablePlans[0]
+        || null;
+
       sessionStorage.setItem(ONBOARDING_STORAGE_KEY, email);
       setOnboardingEmail(email);
-      setSelectedPlan(plan);
+      if (plan) {
+        setSelectedPlan(plan);
+        sessionStorage.setItem('dwellmart_onboarding_plan', JSON.stringify(plan));
+      }
       setCurrentStep(2);
       return false;
     }
@@ -168,6 +183,17 @@ const VendorRegister = () => {
         if (resumeEmail) {
           setOnboardingEmail(resumeEmail);
         }
+
+        try {
+          const savedPlan = sessionStorage.getItem('dwellmart_onboarding_plan');
+          if (savedPlan) {
+            const parsed = JSON.parse(savedPlan);
+            if (parsed?._id) {
+              const matched = fetchedPlans.find((p) => String(p._id) === String(parsed._id)) || parsed;
+              setSelectedPlan(matched);
+            }
+          }
+        } catch { /* ignore */ }
 
         const queryParams = new URLSearchParams(window.location.search);
         if (
@@ -265,17 +291,35 @@ const VendorRegister = () => {
     }
   };
 
+  const getActivePlan = (availablePlans = plans) => {
+    if (selectedPlan?._id) return selectedPlan;
+    try {
+      const saved = sessionStorage.getItem('dwellmart_onboarding_plan');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?._id) {
+          const matched = (availablePlans || []).find((p) => String(p._id) === String(parsed._id));
+          return matched || parsed;
+        }
+      }
+    } catch { /* ignore */ }
+    return availablePlans?.[0] || null;
+  };
+
   const handleSelectPlan = (plan) => {
     setSelectedPlan(plan);
+    sessionStorage.setItem('dwellmart_onboarding_plan', JSON.stringify(plan));
     setCurrentStep(1);
   };
 
-
-
   const handleFreePlanActivation = async () => {
-    if (!selectedPlan?._id) {
+    const planToUse = selectedPlan || getActivePlan(plans);
+    if (!planToUse?._id) {
       toast.error('Please select a subscription plan.');
       return;
+    }
+    if (!selectedPlan?._id) {
+      setSelectedPlan(planToUse);
     }
 
     setIsLoading(true);
@@ -283,7 +327,7 @@ const VendorRegister = () => {
     try {
       const response = await api.post('/subscription/initiate', {
         email: paymentEmail,
-        selectedPlanId: selectedPlan._id,
+        selectedPlanId: planToUse._id,
       });
       const data = response?.data || {};
       if (data.status === 'active' || data.alreadyActive) {
@@ -301,16 +345,20 @@ const VendorRegister = () => {
   };
 
   const handlePaidPlanCheckout = async () => {
-    if (!selectedPlan?._id) {
+    const planToUse = selectedPlan || getActivePlan(plans);
+    if (!planToUse?._id) {
       toast.error('Please select a subscription plan.');
       return;
+    }
+    if (!selectedPlan?._id) {
+      setSelectedPlan(planToUse);
     }
 
     setIsLoading(true);
     setPaymentState('idle');
     try {
       const sessionRes = await api.post('/payments/cashfree/session', {
-        subscriptionPlanId: selectedPlan._id,
+        subscriptionPlanId: planToUse._id,
         email: paymentEmail,
       });
       const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || sessionRes || {};
@@ -356,7 +404,8 @@ const VendorRegister = () => {
       toast.error('Please fill in all required fields.');
       return;
     }
-    if (!selectedPlan?._id) {
+    const planToSubmit = selectedPlan || getActivePlan(plans);
+    if (!planToSubmit?._id) {
       toast.error('Please select a subscription plan.');
       return;
     }
@@ -388,7 +437,7 @@ const VendorRegister = () => {
       submitData.append('password', formData.password);
       submitData.append('phone', formData.phone.trim());
       submitData.append('storeName', formData.storeName.trim());
-      submitData.append('selectedPlanId', selectedPlan._id);
+      submitData.append('selectedPlanId', planToSubmit._id);
       submitData.append('documentType', documentType);
       submitData.append('agreedToTerms', true);
       if (registrationDocument) {
@@ -414,12 +463,20 @@ const VendorRegister = () => {
 
       const nextStep = responseData.nextStep;
       if (nextStep === 'complete_payment') {
+        const resolvedPlan = responseData.selectedPlan
+          || (responseData.selectedPlanId ? plans.find((p) => String(p._id) === String(responseData.selectedPlanId)) : null)
+          || planToSubmit;
+
         sessionStorage.setItem(ONBOARDING_STORAGE_KEY, email);
-        setSelectedPlan(responseData.selectedPlan);
+        if (resolvedPlan) {
+          setSelectedPlan(resolvedPlan);
+          sessionStorage.setItem('dwellmart_onboarding_plan', JSON.stringify(resolvedPlan));
+        }
         setOnboardingEmail(email);
         setCurrentStep(2);
       } else if (nextStep === 'awaiting_admin_approval') {
         sessionStorage.removeItem(ONBOARDING_STORAGE_KEY);
+        sessionStorage.removeItem('dwellmart_onboarding_plan');
         toast.success('Registration complete. Awaiting admin approval.');
         navigate('/vendor/login');
       }
@@ -1038,20 +1095,20 @@ const VendorRegister = () => {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 24 }}
-              className="max-h-[80vh] w-full max-w-lg overflow-hidden rounded-3xl bg-white text-gray-900 shadow-2xl"
+              className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white text-gray-900 shadow-2xl flex flex-col"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b p-4">
                 <div className="flex items-center gap-2">
                   <FiFileText className="text-[#b77900]" />
-                  <h3 className="font-bold">Terms & Conditions</h3>
+                  <h3 className="font-bold">Terms & Conditions - Vendor Agreement</h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowTermsModal(false)}
                   className="text-xl text-gray-400 hover:text-gray-600"
                 >
-                  x
+                  ✕
                 </button>
               </div>
               <div className="max-h-[60vh] overflow-y-auto p-4">

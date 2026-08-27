@@ -205,6 +205,8 @@ export const register = asyncHandler(async (req, res) => {
                     {
                         email: existing.email,
                         resume: true,
+                        selectedPlanId: String(plan._id),
+                        selectedPlan: serializePlan(plan, existing.country),
                         onboardingStatus: 'plan_selected',
                         nextStep: 'complete_payment',
                     },
@@ -313,6 +315,7 @@ export const register = asyncHandler(async (req, res) => {
             201,
             {
                 email: vendor.email,
+                selectedPlanId: String(plan._id),
                 selectedPlan: serializePlan(plan, vendor.country),
                 onboardingStatus: 'plan_selected',
                 nextStep: 'complete_payment',

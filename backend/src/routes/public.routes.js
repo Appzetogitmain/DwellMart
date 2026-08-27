@@ -1259,10 +1259,13 @@ router.get('/subscription-plans', catalogCache, asyncHandler(async (req, res) =>
 
 // GET /api/public/vendor-terms — get T&C for vendor registration
 router.get('/vendor-terms', catalogCache, asyncHandler(async (req, res) => {
+    const partnerPage = await Settings.findOne({ key: 'page_partner' }).lean();
     const setting = await Settings.findOne({ key: 'vendor_terms_and_conditions' }).lean();
+    const content = partnerPage?.value?.content || setting?.value?.content || '';
+    const lastUpdated = partnerPage?.updatedAt || setting?.updatedAt || null;
     res.status(200).json(new ApiResponse(200, {
-        content: setting?.value?.content || '',
-        lastUpdated: setting?.updatedAt || null,
+        content,
+        lastUpdated,
     }, 'Vendor terms fetched.'));
 }));
 // ─── Public Static Pages ──────────────────────────────────────────────────────
