@@ -95,7 +95,15 @@ const ManageVendors = () => {
               <span className="font-medium text-gray-800">
                 {value || row.name}
               </span>
-              <VendorWholesaleBadge vendor={row} />
+              {(row.channels?.retail?.status === 'active' || row.sellingChannels?.retail?.enabled) && (
+                <Badge variant="neutral" size="sm">Retail</Badge>
+              )}
+              {(row.channels?.wholesale?.status === 'active' || row.sellingChannels?.wholesale?.enabled || row.vendorType === 'wholesale') && (
+                <Badge variant="success" size="sm">Wholesale</Badge>
+              )}
+              {(row.channels?.quickCommerce?.status === 'active' || row.sellingChannels?.quickCommerce?.enabled || row.vendorType === 'quick_commerce') && (
+                <Badge variant="info" size="sm">Quick Commerce</Badge>
+              )}
               {Object.values(row.channels || {}).some((c) => c?.status === 'requested') && (
                 <span
                   title="Vendor has pending selling channel requests"

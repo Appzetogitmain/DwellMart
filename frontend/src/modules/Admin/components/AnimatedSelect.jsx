@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { FiChevronDown, FiChevronUp, FiSearch } from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiSearch, FiX } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 
 const AnimatedSelect = ({
@@ -9,7 +9,7 @@ const AnimatedSelect = ({
   placeholder = "Select an option",
   className = "",
   disabled = false,
-  searchable = false,
+  searchable,
   required = false,
   name,
 }) => {
@@ -19,14 +19,18 @@ const AnimatedSelect = ({
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  // Auto-enable search for dropdowns with more than 5 options if not explicitly specified
+  const isSearchable = searchable !== undefined ? Boolean(searchable) : options.length > 5;
+
   // Filter options based on search query
   const filteredOptions = useMemo(() => {
-    if (!searchable || !searchQuery) return options;
+    if (!isSearchable || !searchQuery.trim()) return options;
+    const query = searchQuery.trim().toLowerCase();
     return options.filter((option) => {
-      const label = typeof option === "object" ? option.label : option;
-      return label.toLowerCase().includes(searchQuery.toLowerCase());
+      const label = typeof option === "object" ? String(option.label || "") : String(option || "");
+      return label.toLowerCase().includes(query);
     });
-  }, [options, searchQuery, searchable]);
+  }, [options, searchQuery, isSearchable]);
 
   // Get selected option label
   const selectedLabel = useMemo(() => {
@@ -63,12 +67,12 @@ const AnimatedSelect = ({
 
   // Focus search input when dropdown opens and searchable
   useEffect(() => {
-    if (isOpen && searchable && searchInputRef.current) {
+    if (isOpen && isSearchable && searchInputRef.current) {
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, searchable]);
+  }, [isOpen, isSearchable]);
 
   // Handle option selection
   const handleSelect = (optionValue) => {
@@ -144,13 +148,13 @@ const AnimatedSelect = ({
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       const estimatedHeight = Math.min(
-        filteredOptions.length * 48 + (searchable ? 60 : 0),
+        filteredOptions.length * 48 + (isSearchable ? 60 : 0),
         300
       );
 
       setOpenUpward(spaceBelow < estimatedHeight && spaceAbove > spaceBelow);
     }
-  }, [isOpen, filteredOptions.length, searchable]);
+  }, [isOpen, filteredOptions.length, isSearchable]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -222,7 +226,7 @@ const AnimatedSelect = ({
                 transformOrigin: openUpward ? "bottom center" : "top center",
               }}>
               {/* Search Input */}
-              {searchable && (
+              {isSearchable && (
                 <div className="p-2 border-b border-gray-200 bg-gray-50">
                   <div className="relative">
                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
@@ -232,9 +236,21 @@ const AnimatedSelect = ({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search options..."
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                      className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                       onClick={(e) => e.stopPropagation()}
                     />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSearchQuery("");
+                          searchInputRef.current?.focus();
+                        }}
+                        className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5">
+                        <FiX className="text-sm" />
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
