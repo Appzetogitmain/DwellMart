@@ -12,7 +12,6 @@ import {
   FiTruck,
   FiCheckCircle,
   FiArrowRight,
-  FiPlay,
   FiPackage,
   FiLayers,
   FiActivity,
@@ -31,7 +30,6 @@ const SellOnDwellmart = () => {
     'Start Selling on Dwell Mart',
     'Launch your online business across Marketplace, Quick Commerce, and Wholesale from one dashboard.',
     'Start Selling',
-    'Watch Demo',
     'Secure Payments',
     'PAN & GST Verification',
     'Fast Vendor Approval',
@@ -204,15 +202,6 @@ const SellOnDwellmart = () => {
                 >
                   <span>Start Selling Now</span>
                   <FiArrowRight className="text-lg transition-transform group-hover:translate-x-1 shrink-0" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowDemoModal(true)}
-                  className="inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-700 bg-slate-800/80 px-6 py-3.5 text-base font-bold text-slate-200 transition-all duration-200 hover:bg-slate-700 hover:text-white hover:border-slate-600 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer whitespace-nowrap"
-                >
-                  <FiPlay className="text-amber-400 fill-amber-400 text-xs shrink-0" />
-                  <span>Watch Demo</span>
                 </button>
               </div>
 
