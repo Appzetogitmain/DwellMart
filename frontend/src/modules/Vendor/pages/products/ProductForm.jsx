@@ -133,10 +133,12 @@ const ProductForm = () => {
     return value;
   };
 
+  const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
+
   useEffect(() => {
-    initCategories();
+    initCategories(currentExperience);
     initBrands();
-  }, [initCategories, initBrands]);
+  }, [currentExperience, initCategories, initBrands]);
 
   useEffect(() => {
     if (isEdit) return;
@@ -527,7 +529,16 @@ const ProductForm = () => {
       variants: buildVariantPayload(formData.variants || {}),
       // Only include wholesale/QC payloads if the section is active for this type
       ...wholesalePayload,
-      ...(sections.quickCommerce ? buildQuickCommercePayload(quickCommerceState) : {}),
+      ...(sections.quickCommerce
+        ? buildQuickCommercePayload({
+            ...quickCommerceState,
+            quickCommerceEnabled: workspace === 'quick_commerce' ? true : quickCommerceState.quickCommerceEnabled,
+            quickCommerceCategoryId:
+              workspace === 'quick_commerce'
+                ? (quickCommerceState.quickCommerceCategoryId || finalCategoryId)
+                : quickCommerceState.quickCommerceCategoryId,
+          })
+        : {}),
     };
 
     const result = isEdit ? await editProduct(id, payload) : await addProduct(payload);

@@ -464,10 +464,25 @@ const VendorDetail = () => {
             <p className="text-xs text-gray-500">Vendor ID: {vendor.id}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="info">
-            {VENDOR_TYPE_LABELS[vendor.vendorType] ?? (vendor.vendorType?.toUpperCase() || "RETAIL")}
-          </Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          {(vendor.channels?.retail?.status === 'active' || vendor.sellingChannels?.retail?.enabled) && (
+            <Badge variant="neutral">Retail</Badge>
+          )}
+          {(vendor.channels?.wholesale?.status === 'active' || vendor.sellingChannels?.wholesale?.enabled || vendor.vendorType === 'wholesale') && (
+            <Badge variant="success">Wholesale</Badge>
+          )}
+          {(vendor.channels?.quickCommerce?.status === 'active' || vendor.sellingChannels?.quickCommerce?.enabled || vendor.vendorType === 'quick_commerce') && (
+            <Badge variant="info">Quick Commerce</Badge>
+          )}
+          {Object.values(vendor.channels || {}).some((c) => c?.status === 'requested') && (
+            <Badge
+              variant="warning"
+              className="cursor-pointer"
+              onClick={() => setActiveTab('channels')}
+              title="Click to view and approve pending channel requests">
+              Channel Request Pending
+            </Badge>
+          )}
           <Badge
             variant={
               vendor.status === "approved"

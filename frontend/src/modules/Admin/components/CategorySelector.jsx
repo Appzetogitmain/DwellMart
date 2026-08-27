@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { FiChevronDown, FiChevronRight, FiSearch, FiX } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 
@@ -18,12 +18,87 @@ const CategorySelector = ({
     getCategoryById,
   } = useCategoryStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [hoveredCategoryId, setHoveredCategoryId] = useState(null);
   const [hoveredSubcategoryId, setHoveredSubcategoryId] = useState(null);
   const containerRef = useRef(null);
   const parentDropdownRef = useRef(null);
   const subcategoryDropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
   const closeTimeoutRef = useRef(null);
+
+  // Focus search input on open
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+    if (!isOpen) {
+      setSearchQuery("");
+    }
+  }, [isOpen]);
+
+  // Build a flat list of all searchable categories with full breadcrumb path
+  const searchableList = useMemo(() => {
+    const activeCategories = (categories || []).filter((cat) => cat.isActive !== false);
+    const categoryMap = new Map();
+    activeCategories.forEach((cat) => {
+      categoryMap.set(String(cat.id || cat._id), cat);
+    });
+
+    const getFullPath = (cat) => {
+      const path = [cat.name];
+      let current = cat;
+      const visited = new Set([String(current.id || current._id)]);
+      while (current.parentId && categoryMap.has(String(current.parentId))) {
+        const parent = categoryMap.get(String(current.parentId));
+        if (visited.has(String(parent.id || parent._id))) break;
+        visited.add(String(parent.id || parent._id));
+        path.unshift(parent.name);
+        current = parent;
+      }
+      return path;
+    };
+
+    const getRootParentId = (cat) => {
+      let current = cat;
+      const visited = new Set([String(current.id || current._id)]);
+      while (current.parentId && categoryMap.has(String(current.parentId))) {
+        const parent = categoryMap.get(String(current.parentId));
+        if (visited.has(String(parent.id || parent._id))) break;
+        visited.add(String(parent.id || parent._id));
+        current = parent;
+      }
+      return String(current.id || current._id);
+    };
+
+    return activeCategories.map((cat) => {
+      const pathArray = getFullPath(cat);
+      const isRoot = !cat.parentId;
+      const rootId = getRootParentId(cat);
+      return {
+        id: String(cat.id || cat._id),
+        name: cat.name,
+        isRoot,
+        rootId,
+        parentId: cat.parentId ? String(cat.parentId) : null,
+        fullPath: pathArray.join(" > "),
+        pathSegments: pathArray,
+      };
+    });
+  }, [categories]);
+
+  // Filtered search list
+  const searchResults = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return searchableList.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        item.fullPath.toLowerCase().includes(query)
+    );
+  }, [searchQuery, searchableList]);
 
   // Get root categories (parent categories)
   const rootCategories = useMemo(() => {
@@ -238,87 +313,157 @@ const CategorySelector = ({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-              <div className="py-1">
-                {rootCategories.length === 0 ? (
-                  <div className="px-4 py-2 text-sm text-gray-500 text-center">
-                    No categories available
-                  </div>
-                ) : (
-                  rootCategories.map((category) => {
-                    const subcategories = getCategoriesByParent(
-                      category.id
-                    ).filter((cat) => cat.isActive !== false);
-                    const hasSubcategories = subcategories.length > 0;
-                    const isSelected = value === category.id && !subcategoryId;
-                    const isHovered = hoveredCategoryId === category.id;
+              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-hidden flex flex-col">
+              
+              {/* Search Bar */}
+              <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setHoveredCategoryId(null);
+                    }}
+                    placeholder="Search category or subcategory..."
+                    className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSearchQuery("");
+                        searchInputRef.current?.focus();
+                      }}
+                      className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5">
+                      <FiX className="text-sm" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                    return (
-                      <div key={category.id} data-category-id={category.id}>
-                        <motion.div
-                          whileHover={{
-                            backgroundColor: isSelected
-                              ? "rgba(40, 116, 240, 0.1)"
-                              : "rgba(249, 250, 251, 1)",
-                          }}
-                          className={`px-4 py-2 cursor-pointer flex items-center justify-between transition-colors duration-150 ${
-                            isSelected
-                              ? "bg-primary-50 text-primary-600"
-                              : "text-gray-900"
-                          }`}
+              {/* Dropdown Content */}
+              <div className="overflow-y-auto max-h-56 py-1 scrollbar-admin">
+                {searchQuery.trim() ? (
+                  // Search Results View
+                  searchResults.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-500 text-center">
+                      No categories matching "{searchQuery}"
+                    </div>
+                  ) : (
+                    searchResults.map((item) => {
+                      const isSelected = subcategoryId
+                        ? String(subcategoryId) === String(item.id)
+                        : String(value) === String(item.id);
+
+                      return (
+                        <div
+                          key={item.id}
                           onClick={() => {
-                            handleCategorySelect(category.id);
+                            if (item.isRoot) {
+                              handleCategorySelect(item.id);
+                            } else {
+                              handleSubcategorySelect(item.id, item.rootId);
+                            }
+                            setSearchQuery("");
                           }}
-                          onMouseEnter={() => {
-                            if (hasSubcategories) {
-                              // Clear any pending close timeout
+                          className={`px-4 py-2 cursor-pointer transition-colors duration-150 flex flex-col justify-center border-b border-gray-50 last:border-0 ${
+                            isSelected
+                              ? "bg-primary-50 text-primary-600 font-semibold"
+                              : "text-gray-900 hover:bg-gray-50"
+                          }`}>
+                          <span className="text-sm">{item.name}</span>
+                          {item.pathSegments.length > 1 && (
+                            <span className="text-xs text-gray-500 truncate mt-0.5">
+                              {item.fullPath}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )
+                ) : (
+                  // Hierarchical View
+                  rootCategories.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                      No categories available
+                    </div>
+                  ) : (
+                    rootCategories.map((category) => {
+                      const subcategories = getCategoriesByParent(
+                        category.id
+                      ).filter((cat) => cat.isActive !== false);
+                      const hasSubcategories = subcategories.length > 0;
+                      const isSelected = value === category.id && !subcategoryId;
+
+                      return (
+                        <div key={category.id} data-category-id={category.id}>
+                          <motion.div
+                            whileHover={{
+                              backgroundColor: isSelected
+                                ? "rgba(40, 116, 240, 0.1)"
+                                : "rgba(249, 250, 251, 1)",
+                            }}
+                            className={`px-4 py-2 cursor-pointer flex items-center justify-between transition-colors duration-150 ${
+                              isSelected
+                                ? "bg-primary-50 text-primary-600"
+                                : "text-gray-900"
+                            }`}
+                            onClick={() => {
+                              handleCategorySelect(category.id);
+                            }}
+                            onMouseEnter={() => {
+                              if (hasSubcategories) {
+                                if (closeTimeoutRef.current) {
+                                  clearTimeout(closeTimeoutRef.current);
+                                  closeTimeoutRef.current = null;
+                                }
+                                setHoveredCategoryId(category.id);
+                              }
+                            }}
+                            onMouseLeave={(e) => {
                               if (closeTimeoutRef.current) {
                                 clearTimeout(closeTimeoutRef.current);
-                                closeTimeoutRef.current = null;
                               }
-                              setHoveredCategoryId(category.id);
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            // Clear any existing timeout
-                            if (closeTimeoutRef.current) {
-                              clearTimeout(closeTimeoutRef.current);
-                            }
-                            // 0.20 second delay before closing subcategory dropdown
-                            closeTimeoutRef.current = setTimeout(() => {
-                              if (subcategoryDropdownRef.current) {
-                                const rect =
-                                  subcategoryDropdownRef.current.getBoundingClientRect();
-                                const x = e.clientX;
-                                const y = e.clientY;
-                                const isHoveringSub =
-                                  x >= rect.left &&
-                                  x <= rect.right &&
-                                  y >= rect.top &&
-                                  y <= rect.bottom;
-                                if (!isHoveringSub) {
+                              closeTimeoutRef.current = setTimeout(() => {
+                                if (subcategoryDropdownRef.current) {
+                                  const rect =
+                                    subcategoryDropdownRef.current.getBoundingClientRect();
+                                  const x = e.clientX;
+                                  const y = e.clientY;
+                                  const isHoveringSub =
+                                    x >= rect.left &&
+                                    x <= rect.right &&
+                                    y >= rect.top &&
+                                    y <= rect.bottom;
+                                  if (!isHoveringSub) {
+                                    setHoveredCategoryId(null);
+                                  }
+                                } else {
                                   setHoveredCategoryId(null);
                                 }
-                              } else {
-                                setHoveredCategoryId(null);
-                              }
-                              closeTimeoutRef.current = null;
-                            }, 200); // 0.20 seconds = 200ms
-                          }}>
-                          <span className="flex-1">{category.name}</span>
-                          {hasSubcategories && (
-                            <FiChevronRight className="ml-2 text-gray-400" />
-                          )}
-                        </motion.div>
-                      </div>
-                    );
-                  })
+                                closeTimeoutRef.current = null;
+                              }, 200);
+                            }}>
+                            <span className="flex-1 text-sm">{category.name}</span>
+                            {hasSubcategories && (
+                              <FiChevronRight className="ml-2 text-gray-400 text-sm" />
+                            )}
+                          </motion.div>
+                        </div>
+                      );
+                    })
+                  )
                 )}
               </div>
             </motion.div>
 
             {/* Subcategories Dropdown - Positioned to the right of parent dropdown */}
-            {hoveredCategoryId && hoveredSubcategories.length > 0 && (
+            {!searchQuery.trim() && hoveredCategoryId && hoveredSubcategories.length > 0 && (
               <motion.div
                 ref={subcategoryDropdownRef}
                 initial={{ opacity: 0, x: -10, scale: 0.95 }}

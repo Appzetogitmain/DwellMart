@@ -60,13 +60,14 @@ const ManageProducts = () => {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, productId: null });
 
   const vendorId = vendor?.id;
+  const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
 
   useEffect(() => {
-    initCategories();
+    initCategories(currentExperience);
     if (vendorId) {
       fetchProducts({ fetchAll: true, limit: 200, includeUnpublished: true });
     }
-  }, [vendorId, workspace, initCategories, fetchProducts]);
+  }, [vendorId, currentExperience, initCategories, fetchProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = products;

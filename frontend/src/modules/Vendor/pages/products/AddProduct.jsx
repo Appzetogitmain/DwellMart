@@ -108,11 +108,12 @@ const AddProduct = () => {
       ),
     [formData.variants?.sizes, formData.variants?.colors, formData.variants?.attributes]
   );
+  const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
 
   useEffect(() => {
-    initCategories();
+    initCategories(currentExperience);
     initBrands();
-  }, [initCategories, initBrands]);
+  }, [currentExperience, initCategories, initBrands]);
 
   useEffect(() => {
     if (workspace === 'wholesale') {
@@ -527,7 +528,16 @@ const AddProduct = () => {
       variants: buildVariantPayload(formData.variants || {}),
       ...buildShippingPayload(),
       ...(caps.allowedFormSections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {}),
-      ...(caps.allowedFormSections.quickCommerce ? buildQuickCommercePayload(quickCommerceState) : {}),
+      ...(caps.allowedFormSections.quickCommerce
+        ? buildQuickCommercePayload({
+            ...quickCommerceState,
+            quickCommerceEnabled: workspace === 'quick_commerce' ? true : quickCommerceState.quickCommerceEnabled,
+            quickCommerceCategoryId:
+              workspace === 'quick_commerce'
+                ? (quickCommerceState.quickCommerceCategoryId || finalCategoryId)
+                : quickCommerceState.quickCommerceCategoryId,
+          })
+        : {}),
     };
 
     const result = await addProduct(payload);
