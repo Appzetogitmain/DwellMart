@@ -135,6 +135,13 @@ const ProductForm = () => {
 
   const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
 
+  const selectedCategoryName = useMemo(() => {
+    const targetId = formData.subcategoryId || formData.categoryId;
+    if (!targetId) return '';
+    const found = (categories || []).find((c) => String(c.id || c._id) === String(targetId));
+    return found ? found.name : '';
+  }, [formData.categoryId, formData.subcategoryId, categories]);
+
   useEffect(() => {
     initCategories(currentExperience);
     initBrands();
@@ -149,6 +156,19 @@ const ProductForm = () => {
       setQuickCommerceState((state) => ({ ...state, quickCommerceEnabled: true }));
     }
   }, [isEdit, workspace]);
+
+  // Auto-sync Quick Commerce category ID from top category selection in QC workspace
+  useEffect(() => {
+    if (workspace === 'quick_commerce') {
+      const targetId = formData.subcategoryId || formData.categoryId;
+      if (targetId && String(quickCommerceState.quickCommerceCategoryId) !== String(targetId)) {
+        setQuickCommerceState((prev) => ({
+          ...prev,
+          quickCommerceCategoryId: String(targetId),
+        }));
+      }
+    }
+  }, [workspace, formData.categoryId, formData.subcategoryId, quickCommerceState.quickCommerceCategoryId]);
 
   // Load QC categories only when this vendor type allows the QC section
   useEffect(() => {
@@ -627,6 +647,8 @@ const ProductForm = () => {
             value={quickCommerceState}
             onChange={setQuickCommerceState}
             categories={quickCommerceCategories}
+            isWorkspaceQuickCommerce={workspace === 'quick_commerce'}
+            syncedCategoryName={selectedCategoryName}
             vendorQuickCommerceEnabled={true}
             disabled={isSaving}
           />

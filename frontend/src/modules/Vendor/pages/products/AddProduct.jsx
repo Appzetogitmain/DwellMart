@@ -37,7 +37,7 @@ const AddProduct = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
   const { addProduct, isSaving } = useVendorProductStore();
-  const { initialize: initCategories } = useCategoryStore();
+  const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
 
   const vendorId = vendor?.id;
@@ -110,6 +110,13 @@ const AddProduct = () => {
   );
   const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
 
+  const selectedCategoryName = useMemo(() => {
+    const targetId = formData.subcategoryId || formData.categoryId;
+    if (!targetId) return '';
+    const found = (categories || []).find((c) => String(c.id || c._id) === String(targetId));
+    return found ? found.name : '';
+  }, [formData.categoryId, formData.subcategoryId, categories]);
+
   useEffect(() => {
     initCategories(currentExperience);
     initBrands();
@@ -123,6 +130,19 @@ const AddProduct = () => {
       setQuickCommerceState((state) => ({ ...state, quickCommerceEnabled: true }));
     }
   }, [workspace]);
+
+  // Auto-sync Quick Commerce category ID from top category selection in QC workspace
+  useEffect(() => {
+    if (workspace === 'quick_commerce') {
+      const targetId = formData.subcategoryId || formData.categoryId;
+      if (targetId && String(quickCommerceState.quickCommerceCategoryId) !== String(targetId)) {
+        setQuickCommerceState((prev) => ({
+          ...prev,
+          quickCommerceCategoryId: String(targetId),
+        }));
+      }
+    }
+  }, [workspace, formData.categoryId, formData.subcategoryId, quickCommerceState.quickCommerceCategoryId]);
 
   // Quick Commerce categories live in a separate tree from Marketplace.
   // Only load them if this vendor type supports Quick Commerce.
@@ -899,6 +919,8 @@ const AddProduct = () => {
             value={quickCommerceState}
             onChange={setQuickCommerceState}
             categories={quickCommerceCategories}
+            isWorkspaceQuickCommerce={workspace === 'quick_commerce'}
+            syncedCategoryName={selectedCategoryName}
             disabled={isSaving}
           />
         )}
