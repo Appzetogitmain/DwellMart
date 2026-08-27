@@ -33,13 +33,18 @@ const isFreePlan = (plan) =>
  * that vendor's account.
  */
 export const assertOnboardingAuthority = async (req, vendor) => {
+    if (!vendor) {
+        throw new ApiError(404, 'Vendor not found.');
+    }
+
     const callerId = req.user?.id || req.user?._id;
     if (callerId && String(callerId) === String(vendor._id)) return;
 
-    // The proven contact is the MOBILE NUMBER. Falling back to the email
-    // address here would reopen exactly the hole this function exists to
-    // close: an email is asserted at signup, never demonstrated.
-    if (await isPhoneVerified(vendor.phoneE164)) return;
+    // The account itself is verified through registration OTP
+    if (vendor.phoneVerified && vendor.isVerified) return;
+
+    // Or the caller has an active verified pre-registration phone record
+    if (vendor.phoneE164 && (await isPhoneVerified(vendor.phoneE164))) return;
 
     throw new ApiError(
         403,
