@@ -160,6 +160,11 @@ export const CHILD_PERMISSION_MAP = {
   "Shipping Policy": "settings.view",
   "FAQs": "settings.view",
   "Become a Partner": "settings.view",
+
+  // Sell on DwellMart
+  "Landing Page Statistics": "vendors.view",
+  "Subscription Plans": "vendors.view",
+  "Vendor Terms": "vendors.view",
 };
 
 // Helper function to convert child name to route path
@@ -259,6 +264,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Become a Partner": "/admin/policies/become-partner",
     },
     "/admin/sell-on-dwellmart": {
+      "Landing Page Statistics": "/admin/sell-on-dwellmart/stats",
       "Subscription Plans": "/admin/subscription-plans",
       "Vendor Terms": "/admin/vendor-terms",
     },

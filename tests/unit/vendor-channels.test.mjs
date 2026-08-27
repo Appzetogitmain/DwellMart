@@ -7,7 +7,7 @@ import {
     listVendorChannels,
     normalizeVendorChannel,
 } from '../../src/constants/vendorChannels.js';
-import { requestedChannelsFromSellingChannels } from '../../src/services/vendorChannel.service.js';
+import { requestedChannelsFromSellingChannels, channelSummary } from '../../src/services/vendorChannel.service.js';
 import { resolveVendorWorkspace, requireChannel } from '../../src/middlewares/vendorChannel.js';
 import { buildChannelsForLegacyVendor } from '../../src/migrations/0008_vendor_channels.js';
 
@@ -162,4 +162,57 @@ test('migration backfill: quick_commerce channel via sellingChannels', () => {
     assert.equal(channels.quickCommerce.status, 'active');
     assert.equal(channels.retail.status, 'disabled');
     assert.equal(channels.wholesale.status, 'disabled');
+});
+
+// ─── channelSummary & quickCommerceReadiness tests ───────────────────────────
+
+test('channelSummary returns quickCommerceReadiness indicating missing fields for unconfigured vendor', () => {
+    const vendorRecord = {
+        channels: {
+            retail: { status: 'active' },
+            quickCommerce: { status: 'requested' },
+        },
+        quickCommerceProfile: {},
+    };
+    const summary = channelSummary(vendorRecord);
+    assert.equal(summary.quickCommerceReadiness.ready, false);
+    assert.ok(summary.quickCommerceReadiness.missing.length > 0);
+    assert.ok(summary.quickCommerceReadiness.missing.includes('storeType'));
+    assert.ok(summary.quickCommerceReadiness.missing.includes('serviceRadiusKm'));
+    assert.ok(summary.quickCommerceReadiness.missing.includes('preparationTimeMins'));
+});
+
+test('channelSummary returns quickCommerceReadiness ready: true for fully configured store', () => {
+    const vendorRecord = {
+        channels: {
+            retail: { status: 'active' },
+            quickCommerce: { status: 'requested' },
+        },
+        quickCommerceProfile: {
+            storeType: 'dark_store',
+            location: { type: 'Point', coordinates: [75.8577, 22.7196] },
+            serviceRadiusKm: 5,
+            preparationTimeMins: 10,
+        },
+    };
+    const summary = channelSummary(vendorRecord);
+    assert.equal(summary.quickCommerceReadiness.ready, true);
+    assert.deepEqual(summary.quickCommerceReadiness.missing, []);
+});
+
+test('channelSummary returns quickCommerceReadiness ready: true when servicedPincodes replaces coordinates', () => {
+    const vendorRecord = {
+        channels: {
+            quickCommerce: { status: 'requested' },
+        },
+        quickCommerceProfile: {
+            storeType: 'retail_outlet',
+            servicedPincodes: ['452001'],
+            serviceRadiusKm: 3,
+            preparationTimeMins: 15,
+        },
+    };
+    const summary = channelSummary(vendorRecord);
+    assert.equal(summary.quickCommerceReadiness.ready, true);
+    assert.deepEqual(summary.quickCommerceReadiness.missing, []);
 });

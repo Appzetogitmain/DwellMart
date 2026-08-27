@@ -78,6 +78,7 @@
     "title": "Sell on DwellMart",
     "route": "/admin/sell-on-dwellmart",
     "children": [
+      "Landing Page Statistics",
       "Subscription Plans",
       "Vendor Terms"
     ]

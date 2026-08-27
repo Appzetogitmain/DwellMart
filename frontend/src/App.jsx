@@ -72,6 +72,7 @@ const AdminQuickCommerceAnalytics = lazy(() => import("./modules/Admin/pages/Qui
 const VendorSubscriptions = lazy(() => import("./modules/Admin/pages/vendors/VendorSubscriptions"));
 const AdminSubscriptionPlans = lazy(() => import("./modules/Admin/pages/SubscriptionPlans"));
 const AdminVendorTerms = lazy(() => import("./modules/Admin/pages/VendorTerms"));
+const AdminSellOnDwellmartStats = lazy(() => import("./modules/Admin/pages/SellOnDwellmartStats"));
 const PayoutRequests = lazy(() => import("./modules/Admin/pages/PayoutRequests"));
 // Offers & Sliders child pages
 const HomeSliders = lazy(() => import("./modules/Admin/pages/offers/HomeSliders"));
@@ -643,6 +644,8 @@ const AppRoutes = () => {
 
         <Route path="subscription-plans" element={<AdminRouteGuard permission="vendors.view"><AdminSubscriptionPlans /></AdminRouteGuard>} />
         <Route path="vendor-terms" element={<AdminRouteGuard permission="vendors.view"><AdminVendorTerms /></AdminRouteGuard>} />
+        <Route path="sell-on-dwellmart/stats" element={<AdminRouteGuard permission="vendors.view"><AdminSellOnDwellmartStats /></AdminRouteGuard>} />
+        <Route path="sell-on-dwellmart" element={<Navigate to="/admin/sell-on-dwellmart/stats" replace />} />
 
         <Route path="offers" element={<HomeSliders />} />
         <Route path="offers/home-sliders" element={<HomeSliders />} />

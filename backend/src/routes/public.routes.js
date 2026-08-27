@@ -61,6 +61,7 @@ const resolveQuickCommerceVendorIds = async (query) => {
     return undefined;
 };
 import { serializePlan } from '../services/billing/plan.service.js';
+import { getSellOnDwellmartStats } from '../services/sellOnDwellmartStats.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { couponValidateLimiter, publicWriteLimiter } from '../middlewares/rateLimiter.js';
 import { optionalAuth } from '../middlewares/authenticate.js';
@@ -1244,6 +1245,14 @@ router.get('/orders/track/:id', detailCache, asyncHandler(async (req, res) => {
 }));
 
 // ─── Sell on DwellMart (Public) ───────────────────────────────────────────────
+// GET /api/sell-on-dwellmart/stats (and /api/public/sell-on-dwellmart/stats)
+router.get('/sell-on-dwellmart/stats', catalogCache, asyncHandler(async (req, res) => {
+    const stats = await getSellOnDwellmartStats();
+    res.status(200).json(
+        new ApiResponse(200, stats, 'Sell On Dwell Mart statistics fetched successfully.')
+    );
+}));
+
 // GET /api/public/subscription-plans — list active plans for public display
 router.get('/subscription-plans', catalogCache, asyncHandler(async (req, res) => {
     const country = String(req.query.country || '').trim();

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   FiShoppingBag,
@@ -14,6 +16,7 @@ import {
 } from 'react-icons/fi';
 import api from '../../../shared/utils/api';
 import { WORKSPACE_LABELS } from '../hooks/useVendorWorkspace';
+import { useVendorAuthStore } from '../store/vendorAuthStore';
 import QuickCommerceSettingsForm from '../components/QuickCommerceSettingsForm';
 
 const CHANNEL_CONFIGS = {
@@ -79,6 +82,8 @@ const getStatusBadge = (status) => {
 };
 
 const SellingChannels = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { refreshProfile } = useVendorAuthStore();
   const [summary, setSummary] = useState(null);
   const [busy, setBusy] = useState('');
   const [isQcModalOpen, setIsQcModalOpen] = useState(false);
@@ -95,6 +100,25 @@ const SellingChannels = () => {
   useEffect(() => {
     load();
   }, []);
+
+  // Auto-open QC setup modal if ?setup=quick_commerce is present
+  useEffect(() => {
+    const setup = searchParams.get('setup');
+    if (setup === 'quick_commerce' || setup === 'quickCommerce' || setup === 'qc') {
+      setIsQcModalOpen(true);
+    }
+  }, [searchParams]);
+
+  const handleCloseQcModal = () => {
+    setIsQcModalOpen(false);
+    if (searchParams.get('setup')) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('setup');
+        return next;
+      }, { replace: true });
+    }
+  };
 
   const apply = async (channel) => {
     setBusy(channel);
@@ -125,10 +149,12 @@ const SellingChannels = () => {
     }
   };
 
-  const isQcConfigured = Boolean(
+  const isQcConfigured = summary?.quickCommerceReadiness?.ready ?? Boolean(
     summary?.quickCommerceProfile?.storeType &&
       (summary?.quickCommerceProfile?.location?.coordinates?.length === 2 ||
-        summary?.quickCommerceProfile?.servicedPincodes?.length)
+        summary?.quickCommerceProfile?.servicedPincodes?.length) &&
+      summary?.quickCommerceProfile?.serviceRadiusKm &&
+      summary?.quickCommerceProfile?.preparationTimeMins !== undefined
   );
 
   return (
@@ -275,43 +301,50 @@ const SellingChannels = () => {
       </div>
 
       {/* Quick Commerce Setup Modal */}
-      {isQcModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-6 sticky top-0 bg-white z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <FiZap className="text-xl text-amber-500" />
+      {isQcModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4">
+            <div className="relative w-full sm:max-w-3xl h-[100dvh] sm:h-auto sm:max-h-[90vh] bg-white rounded-t-3xl sm:rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+              {/* Sticky Header */}
+              <div className="sticky top-0 bg-white z-20 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 flex items-center justify-between shrink-0 shadow-xs">
+                <div className="flex items-center gap-3 min-w-0 pr-2">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                    <FiZap className="text-xl text-amber-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+                      Quick Commerce Operational Setup
+                    </h3>
+                    <p className="text-xs text-slate-500 truncate">
+                      Set fulfillment location, radius, store type & delivery parameters
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">
-                    Quick Commerce Operational Setup
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Set your store type, exact fulfillment location on Google Maps, and delivery parameters.
-                  </p>
-                </div>
+                <button
+                  onClick={handleCloseQcModal}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                  title="Close"
+                >
+                  <FiX className="text-xl" />
+                </button>
               </div>
-              <button
-                onClick={() => setIsQcModalOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                title="Close"
-              >
-                <FiX className="text-xl" />
-              </button>
-            </div>
 
-            <QuickCommerceSettingsForm
-              vendor={summary}
-              onSaved={async () => {
-                await load();
-                setIsQcModalOpen(false);
-                toast.success('Quick Commerce setup saved! Your settings are under review.');
-              }}
-            />
-          </div>
-        </div>
-      )}
+              {/* Scrollable Form Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 sm:p-8 overscroll-contain">
+                <QuickCommerceSettingsForm
+                  vendor={summary}
+                  onSaved={async () => {
+                    await load();
+                    await refreshProfile();
+                    handleCloseQcModal();
+                    toast.success('Quick Commerce setup saved! Your settings are under review.');
+                  }}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </section>
   );
 };

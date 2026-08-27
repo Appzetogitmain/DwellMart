@@ -41,7 +41,7 @@ import {
 } from '../../../services/quickCommerce.service.js';
 import { buildDeletedEmail, FINAL_ORDER_STATUSES } from '../../../utils/accountDeletion.js';
 import { requestedChannelsFromSellingChannels, channelSummary } from '../../../services/vendorChannel.service.js';
-import { applyChannelTransition } from '../../../services/vendorChannelTransition.service.js';
+import { applyChannelTransition, quickCommerceReadiness } from '../../../services/vendorChannelTransition.service.js';
 import { getVendorChannelState, normalizeVendorChannel, vendorChannelPath } from '../../../constants/vendorChannels.js';
 
 const hasCompleteWholesaleProfile = (profile) => Boolean(
@@ -498,6 +498,7 @@ export const login = asyncHandler(async (req, res) => {
                     name: vendor.name,
                     storeName: vendor.storeName,
                     email: vendor.email,
+                    status: vendor.status,
                     storeLogo: vendor.storeLogo,
                     commissionRate: vendor.commissionRate,
                     vendorType: vendor.vendorType,
@@ -668,6 +669,8 @@ export const updateQuickCommerceSettings = asyncHandler(async (req, res) => {
                 availability,
                 location: pointToLatLng(vendor.quickCommerceProfile?.location),
                 locationAddress: vendor.quickCommerceProfile?.locationAddress || null,
+                quickCommerceReadiness: quickCommerceReadiness(vendor),
+                ...channelSummary(vendor),
             },
             'Quick Commerce settings updated.'
         )

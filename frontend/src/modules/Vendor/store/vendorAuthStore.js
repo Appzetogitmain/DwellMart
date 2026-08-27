@@ -82,6 +82,10 @@ export const useVendorAuthStore = create(
           localStorage.setItem("vendor-token", accessToken);
           localStorage.setItem("vendor-refresh-token", refreshToken);
           sessionStorage.removeItem("vendor-last-workspace");
+          const vendorId = vendor._id || vendor.id;
+          if (vendorId) {
+            sessionStorage.removeItem(`qc_setup_reminder_dismissed_${vendorId}`);
+          }
 
           try {
             useNotificationStore.getState().registerDeviceToken();
@@ -164,6 +168,11 @@ export const useVendorAuthStore = create(
         const refreshToken = localStorage.getItem("vendor-refresh-token");
         if (refreshToken) {
           api.post("/vendor/auth/logout", { refreshToken }).catch(() => {});
+        }
+
+        const currentVendorId = get().vendor?._id || get().vendor?.id;
+        if (currentVendorId) {
+          sessionStorage.removeItem(`qc_setup_reminder_dismissed_${currentVendorId}`);
         }
 
         set({

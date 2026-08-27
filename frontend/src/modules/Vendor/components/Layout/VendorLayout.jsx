@@ -6,6 +6,7 @@ import VendorHeader from './VendorHeader';
 import VendorBottomNav from './VendorBottomNav';
 import SubscriptionExpiredOverlay from '../SubscriptionExpiredOverlay';
 import QuickCommerceOrderAlert from '../QuickCommerceOrderAlert';
+import QuickCommerceSetupReminderModal from '../QuickCommerceSetupReminderModal';
 import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 import api from '../../../../shared/utils/api';
 import { useVendorAuthStore } from '../../store/vendorAuthStore';
@@ -183,6 +184,9 @@ const VendorLayout = () => {
 
       {/* Urgent Quick Commerce order alerts. Renders only when one arrives. */}
       <QuickCommerceOrderAlert />
+
+      {/* Quick Commerce setup reminder modal for requested channels with incomplete operational setup */}
+      <QuickCommerceSetupReminderModal />
     </div>
   );
 };

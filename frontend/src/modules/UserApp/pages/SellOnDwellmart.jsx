@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiCheck,
@@ -23,6 +23,7 @@ import Footer from '../components/Layout/Footer';
 import SubscriptionOnboardingWizard from '../../Vendor/components/SubscriptionOnboardingWizard';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { Button, Badge } from '../../../shared/components/ui';
+import api from '../../../shared/utils/api';
 
 const SellOnDwellmart = () => {
   const { getTranslatedText: t } = usePageTranslation([
@@ -48,6 +49,37 @@ const SellOnDwellmart = () => {
     'Select your plan below to open the secure registration and billing workflow.',
   ]);
 
+  // Dynamic Admin-Managed Statistics
+  const [statsData, setStatsData] = useState(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadStats = async () => {
+      try {
+        const res = await api.get('/sell-on-dwellmart/stats');
+        const data = res?.data || res || {};
+        if (isMounted) {
+          setStatsData(data);
+        }
+      } catch (err) {
+        console.error('Failed to load Sell on DwellMart stats:', err);
+        if (isMounted) {
+          setStatsData(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsStatsLoading(false);
+        }
+      }
+    };
+
+    loadStats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Demo Modal State
   const [showDemoModal, setShowDemoModal] = useState(false);
 
@@ -58,12 +90,32 @@ const SellOnDwellmart = () => {
     }
   };
 
-  // Trust Statistics
-  const stats = [
-    { number: '500+', label: t('Active Vendors'), icon: FiUsers, highlight: 'Verified' },
-    { number: '100K+', label: t('Products Sold'), icon: FiPackage, highlight: 'Nationwide' },
-    { number: '50+', label: t('Cities Covered'), icon: FiTruck, highlight: 'Express Hubs' },
-    { number: '99.9%', label: t('On-Time Express Deliveries'), icon: FiShield, highlight: 'SLA Guaranteed' },
+  // Trust Statistics (Dynamic from MongoDB)
+  const trustMetrics = [
+    {
+      number: isStatsLoading ? '--' : (statsData?.activeVendors || '--'),
+      label: t('Active Vendors'),
+      icon: FiUsers,
+      highlight: 'Verified',
+    },
+    {
+      number: isStatsLoading ? '--' : (statsData?.productsSold || '--'),
+      label: t('Products Sold'),
+      icon: FiPackage,
+      highlight: 'Nationwide',
+    },
+    {
+      number: isStatsLoading ? '--' : (statsData?.citiesCovered || '--'),
+      label: t('Cities Covered'),
+      icon: FiTruck,
+      highlight: 'Express Hubs',
+    },
+    {
+      number: isStatsLoading ? '--' : (statsData?.onTimeDeliveryRate || '--'),
+      label: t('On-Time Express Deliveries'),
+      icon: FiShield,
+      highlight: 'SLA Guaranteed',
+    },
   ];
 
   // Selling Channels
@@ -107,16 +159,6 @@ const SellOnDwellmart = () => {
     { step: '03', title: 'Verification', desc: 'Upload GST or Trade License for instant 24h approval.', icon: FiCheckCircle },
     { step: '04', title: 'Payment & Activation', desc: 'Secure checkout via Cashfree PG (UPI, Cards, NetBanking).', icon: FiDollarSign },
     { step: '05', title: 'Go Live', desc: 'Upload catalog, manage stock, and receive payouts.', icon: FiTrendingUp },
-  ];
-
-  // Feature Matrix Comparison Table
-  const comparisonPlans = [
-    { name: '15 Days Trial', price: 'Free', limit: '10 Products', marketplace: true, wholesale: false, quickCommerce: false, analytics: 'Basic', support: 'Email' },
-    { name: 'Monthly Plan', price: '₹1,000 / $10', limit: '100 Products', marketplace: true, wholesale: true, quickCommerce: true, analytics: 'Standard', support: 'Priority Email' },
-    { name: 'Quarterly Plan', price: '₹2,000 / $20', limit: '500 Products', marketplace: true, wholesale: true, quickCommerce: true, analytics: 'Advanced', support: 'Phone & Chat' },
-    { name: 'Half-Yearly', price: '₹4,000 / $40', limit: '1,500 Products', marketplace: true, wholesale: true, quickCommerce: true, analytics: 'Advanced', support: 'Dedicated Agent' },
-    { name: 'Yearly Plan', price: '₹8,000 / $80', limit: 'Unlimited', marketplace: true, wholesale: true, quickCommerce: true, analytics: 'Pro Suite', support: '24/7 VIP Support', isPopular: true },
-    { name: 'Pro Plan', price: '₹10,000 / $100', limit: 'Unlimited', marketplace: true, wholesale: true, quickCommerce: true, analytics: 'Enterprise', support: 'Account Manager' },
   ];
 
   return (
@@ -205,7 +247,7 @@ const SellOnDwellmart = () => {
                     <div className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
                     <div className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
                     <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-                    <span className="ml-2 text-[11px] font-mono text-slate-500">seller.dwellmart.com</span>
+                    <span className="ml-2 text-[11px] font-mono text-slate-400">dwellmart.in</span>
                   </div>
                   <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">Seller Portal</span>
                 </div>
@@ -214,15 +256,23 @@ const SellOnDwellmart = () => {
                 <div className="mt-4 space-y-3.5">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3.5">
-                      <p className="text-[10px] font-bold uppercase text-slate-400">Today's Revenue</p>
-                      <p className="mt-1 text-2xl font-extrabold text-amber-400">₹4,85,200</p>
-                      <span className="text-[10px] text-emerald-400 font-bold">↑ +28.4% vs yesterday</span>
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Today&apos;s Revenue</p>
+                      <p className="mt-1 text-2xl font-extrabold text-amber-400">
+                        {isStatsLoading ? '--' : (statsData?.todaysRevenue || '--')}
+                      </p>
+                      <span className="text-[10px] text-emerald-400 font-bold">
+                        {isStatsLoading ? '...' : `↑ ${statsData?.revenueGrowthPercent || '--'} vs yesterday`}
+                      </span>
                     </div>
 
                     <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-3.5">
                       <p className="text-[10px] font-bold uppercase text-slate-400">Orders Today</p>
-                      <p className="mt-1 text-2xl font-extrabold text-white">389</p>
-                      <span className="text-[10px] text-slate-400 font-medium">142 Express Deliveries</span>
+                      <p className="mt-1 text-2xl font-extrabold text-white">
+                        {isStatsLoading ? '--' : (statsData?.ordersToday || '--')}
+                      </p>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {isStatsLoading ? '...' : `${statsData?.expressDeliveries || '--'} Express Deliveries`}
+                      </span>
                     </div>
                   </div>
 
@@ -251,7 +301,9 @@ const SellOnDwellmart = () => {
                       <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       <div>
                         <p className="font-semibold text-emerald-300">Automated Daily Settlement</p>
-                        <p className="text-[10px] text-emerald-400/70">₹1,48,250 transferred to bank account</p>
+                        <p className="text-[10px] text-emerald-400/70">
+                          {isStatsLoading ? '--' : `${statsData?.dailySettlementAmount || '--'} transferred to bank account`}
+                        </p>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Active</span>
@@ -266,7 +318,7 @@ const SellOnDwellmart = () => {
       {/* ── PHASE 2: Animated Trust Metrics Section ── */}
       <section className="relative z-10 -mt-12 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat, idx) => {
+          {trustMetrics.map((stat, idx) => {
             const Icon = stat.icon;
             return (
               <motion.div

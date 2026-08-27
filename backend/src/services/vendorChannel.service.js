@@ -7,6 +7,7 @@ import {
     normalizeVendorChannel,
     vendorChannelPath,
 } from '../constants/vendorChannels.js';
+import { quickCommerceReadiness } from './vendorChannelTransition.service.js';
 
 const requestedState = (requested, now = new Date()) => ({
     status: requested ? VendorChannelStatuses.REQUESTED : VendorChannelStatuses.DISABLED,
@@ -55,6 +56,7 @@ export const channelSummary = (vendor) => ({
     readableWorkspaces: effectiveReadableChannels(vendor),
     channels: vendor?.channels || {},
     quickCommerceProfile: vendor?.quickCommerceProfile || null,
+    quickCommerceReadiness: quickCommerceReadiness(vendor),
 });
 
 export const projectSellingChannels = (vendor) => ({

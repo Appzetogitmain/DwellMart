@@ -18,6 +18,7 @@ import * as customMessageController from '../controllers/customMessage.controlle
 import * as uploadController from '../controllers/upload.controller.js';
 import * as documentController from '../../vendor/controllers/document.controller.js';
 import * as subscriptionPlanController from '../controllers/subscriptionPlan.controller.js';
+import * as sellOnDwellmartStatsController from '../controllers/sellOnDwellmartStats.controller.js';
 import * as termsController from '../controllers/termsAndConditions.controller.js';
 import * as staticPagesController from '../controllers/staticPages.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
@@ -379,6 +380,8 @@ router.post('/subscription-plans', ...perm(PERMISSIONS.VENDORS_EDIT), subscripti
 router.put('/subscription-plans/:id', ...perm(PERMISSIONS.VENDORS_EDIT), subscriptionPlanController.updatePlan);
 router.delete('/subscription-plans/:id', ...perm(PERMISSIONS.VENDORS_EDIT), subscriptionPlanController.deletePlan);
 router.get('/vendor-subscriptions', ...perm(PERMISSIONS.VENDORS_VIEW), subscriptionPlanController.getVendorSubscriptions);
+router.get('/sell-on-dwellmart/stats', ...perm(PERMISSIONS.VENDORS_VIEW), sellOnDwellmartStatsController.getStats);
+router.put('/sell-on-dwellmart/stats', ...perm(PERMISSIONS.VENDORS_EDIT), sellOnDwellmartStatsController.updateStats);
 
 // ─── Settings & Policies ──────────────────────────────────────────────────────
 router.get('/settings/vendor-terms', ...perm(PERMISSIONS.SETTINGS_VIEW), termsController.getVendorTerms);
