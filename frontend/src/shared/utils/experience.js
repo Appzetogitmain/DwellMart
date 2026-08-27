@@ -9,6 +9,7 @@
 export const EXPERIENCES = {
   MARKETPLACE: "marketplace",
   QUICK_COMMERCE: "quick_commerce",
+  WHOLESALE: "wholesale",
 };
 
 export const EXPERIENCE_VALUES = Object.values(EXPERIENCES);

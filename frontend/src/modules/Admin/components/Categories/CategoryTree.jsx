@@ -45,22 +45,27 @@ const CategoryTree = ({ categories, onEdit, onDelete, onAddSubcategory, level = 
               {!hasChildren && <div className="w-6" />}
 
               {/* Category Image */}
-              {category.image ? (
-                <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-14 h-14 object-cover rounded-xl flex-shrink-0 border border-gray-100"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 border border-gray-100 flex items-center justify-center">
-                  <span className="text-gray-400 text-xs font-semibold">
-                    {category.name.charAt(0).toUpperCase()}
-                  </span>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 border border-gray-100 flex items-center justify-center overflow-hidden relative">
+                {category.image ? (
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.nextElementSibling) {
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                      }
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="w-full h-full flex items-center justify-center text-gray-500 font-bold text-base"
+                  style={{ display: category.image ? 'none' : 'flex' }}
+                >
+                  {category.icon || category.name?.charAt(0)?.toUpperCase() || '📁'}
                 </div>
-              )}
+              </div>
 
               {/* Category Info */}
               <div className="flex-1 min-w-0">
@@ -155,16 +160,27 @@ const CategoryTree = ({ categories, onEdit, onDelete, onAddSubcategory, level = 
           {!hasChildren && <div className="w-6" />}
 
           <div className="flex-1 flex items-center gap-3">
-            {category.image && (
-              <img
-                src={category.image}
-                alt={category.name}
-                className="w-10 h-10 object-cover rounded-lg"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
-            )}
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 border border-gray-100 flex items-center justify-center overflow-hidden relative">
+              {category.image ? (
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      e.currentTarget.nextElementSibling.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div
+                className="w-full h-full flex items-center justify-center text-gray-500 font-semibold text-xs"
+                style={{ display: category.image ? 'none' : 'flex' }}
+              >
+                {category.icon || category.name?.charAt(0)?.toUpperCase() || '📁'}
+              </div>
+            </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
               <p className="font-semibold text-gray-800">{category.name}</p>

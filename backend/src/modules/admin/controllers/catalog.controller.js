@@ -543,9 +543,14 @@ const sanitizeCategoryPayload = (payload = {}) => {
         sanitized.parentId = sanitized.parentId || null;
     }
 
-    // Convert legacy single experience to supportedExperiences array if provided
-    if (Array.isArray(sanitized.supportedExperiences) && sanitized.supportedExperiences.length > 0) {
-        sanitized.supportedExperiences = sanitized.supportedExperiences.map(normalizeExperience);
+    // Convert legacy single experience to supportedExperiences array if provided, filtering out non-strings/nulls
+    if (Array.isArray(sanitized.supportedExperiences)) {
+        const cleaned = sanitized.supportedExperiences
+            .filter((e) => typeof e === 'string' && e.trim().length > 0)
+            .map(normalizeExperience);
+        sanitized.supportedExperiences = cleaned.length > 0
+            ? [...new Set(cleaned)]
+            : [normalizeExperience(sanitized.experience || EXPERIENCES.MARKETPLACE)];
     } else if (sanitized.experience) {
         sanitized.supportedExperiences = [normalizeExperience(sanitized.experience)];
     }

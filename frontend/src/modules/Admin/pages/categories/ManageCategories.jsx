@@ -235,13 +235,27 @@ const ManageCategories = () => {
                   key={category.id}
                   className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  {category.image && (
-                    <img
-                      src={category.image}
-                      alt={category.name}
-                      className="w-10 h-10 object-cover rounded-lg"
-                    />
-                  )}
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 border border-gray-100 flex items-center justify-center overflow-hidden relative">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextElementSibling) {
+                            e.currentTarget.nextElementSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="w-full h-full flex items-center justify-center text-gray-500 font-semibold text-xs"
+                      style={{ display: category.image ? 'none' : 'flex' }}
+                    >
+                      {category.icon || category.name?.charAt(0)?.toUpperCase() || '📁'}
+                    </div>
+                  </div>
                   <div className="flex-1">
                     <p className="font-semibold text-gray-800">{category.name}</p>
                     {category.description && (

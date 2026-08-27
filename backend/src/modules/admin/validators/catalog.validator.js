@@ -49,12 +49,12 @@ const wholesaleSchema = Joi.object({
 
 const productBaseSchema = {
     name: Joi.string().trim().min(2).max(200),
-    description: Joi.string().allow('').optional(),
+    description: Joi.string().allow('', null).optional(),
     price: Joi.number().min(0),
     originalPrice: Joi.number().min(0).allow(null).optional(),
-    unit: Joi.string().trim().allow('').optional(),
-    images: Joi.array().items(Joi.string().trim()).optional(),
-    image: Joi.string().trim().allow('').optional(),
+    unit: Joi.string().trim().allow('', null).optional(),
+    images: Joi.array().items(Joi.string().trim()).allow(null).optional(),
+    image: Joi.string().trim().allow('', null).optional(),
     categoryId: objectId,
     brandId: objectId.allow(null, '').optional(),
     vendorId: objectId.allow(null, '').optional(),
@@ -73,9 +73,9 @@ const productBaseSchema = {
     cancelable: Joi.boolean().optional(),
     taxIncluded: Joi.boolean().optional(),
     taxRate: Joi.number().min(0).max(100).optional(),
-    warrantyPeriod: Joi.string().allow('').optional(),
-    guaranteePeriod: Joi.string().allow('').optional(),
-    hsnCode: Joi.string().allow('').optional(),
+    warrantyPeriod: Joi.string().allow('', null).optional(),
+    guaranteePeriod: Joi.string().allow('', null).optional(),
+    hsnCode: Joi.string().allow('', null).optional(),
     /**
      * Parcel characteristics. Bounds are deliberate: a vendor typing 1500 for
      * 1.5 kg is a real support cost, and DTDC rejects it anyway — better to
@@ -98,11 +98,11 @@ const productBaseSchema = {
         source: Joi.any().forbidden(),
     }).optional(),
 
-    tags: Joi.array().items(Joi.string().trim()).optional(),
-    seoTitle: Joi.string().allow('').optional(),
-    seoDescription: Joi.string().allow('').optional(),
-    relatedProducts: Joi.array().items(objectId).optional(),
-    faqs: Joi.array().items(faqSchema).optional(),
+    tags: Joi.array().items(Joi.string().trim()).allow(null).optional(),
+    seoTitle: Joi.string().allow('', null).optional(),
+    seoDescription: Joi.string().allow('', null).optional(),
+    relatedProducts: Joi.array().items(objectId).allow(null).optional(),
+    faqs: Joi.array().items(faqSchema).allow(null).optional(),
     retailEnabled: Joi.boolean().optional(),
     wholesaleEnabled: Joi.boolean().optional(),
     wholesale: wholesaleSchema,
@@ -138,7 +138,7 @@ const pricingRuleSchema = Joi.object({
     type: Joi.string().valid('discount', 'markup').required(),
     value: Joi.number().min(0).required(),
     minQuantity: Joi.number().integer().min(1).allow(null).optional(),
-    applicableTo: Joi.string().allow('').optional(),
+    applicableTo: Joi.string().allow('', null).optional(),
     status: ruleStatus,
 });
 
@@ -153,28 +153,28 @@ export const categoryIdParamSchema = Joi.object({
 
 export const createCategorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
-    description: Joi.string().trim().allow('').optional(),
-    image: Joi.string().trim().allow('').optional(),
-    icon: Joi.string().trim().allow('').optional(),
+    description: Joi.string().trim().allow('', null).optional(),
+    image: Joi.string().trim().allow('', null).optional(),
+    icon: Joi.string().trim().allow('', null).optional(),
     parentId: objectId.allow(null, '').optional(),
-    order: Joi.number().integer().min(0).optional(),
-    displayOrder: Joi.number().integer().min(0).optional(),
+    order: Joi.number().integer().min(0).allow(null).optional(),
+    displayOrder: Joi.number().integer().min(0).allow(null).optional(),
     isActive: Joi.boolean().optional(),
     experience: Joi.string().valid(...EXPERIENCE_VALUES).optional(),
-    supportedExperiences: Joi.array().items(Joi.string().valid(...EXPERIENCE_VALUES)).min(1).optional(),
+    supportedExperiences: Joi.array().items(Joi.string().valid(...EXPERIENCE_VALUES).allow(null, '')).min(1).optional(),
 });
 
 export const updateCategorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).optional(),
-    description: Joi.string().trim().allow('').optional(),
-    image: Joi.string().trim().allow('').optional(),
-    icon: Joi.string().trim().allow('').optional(),
+    description: Joi.string().trim().allow('', null).optional(),
+    image: Joi.string().trim().allow('', null).optional(),
+    icon: Joi.string().trim().allow('', null).optional(),
     parentId: objectId.allow(null, '').optional(),
-    order: Joi.number().integer().min(0).optional(),
-    displayOrder: Joi.number().integer().min(0).optional(),
+    order: Joi.number().integer().min(0).allow(null).optional(),
+    displayOrder: Joi.number().integer().min(0).allow(null).optional(),
     isActive: Joi.boolean().optional(),
     experience: Joi.string().valid(...EXPERIENCE_VALUES).optional(),
-    supportedExperiences: Joi.array().items(Joi.string().valid(...EXPERIENCE_VALUES)).min(1).optional(),
+    supportedExperiences: Joi.array().items(Joi.string().valid(...EXPERIENCE_VALUES).allow(null, '')).min(1).optional(),
 }).min(1);
 
 export const reorderCategoriesSchema = Joi.object({
@@ -187,16 +187,16 @@ export const brandIdParamSchema = Joi.object({
 
 export const createBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
-    logo: Joi.string().trim().uri().allow('').optional(),
-    description: Joi.string().trim().allow('').optional(),
-    website: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('', null).optional(),
+    description: Joi.string().trim().allow('', null).optional(),
+    website: Joi.string().trim().allow('', null).optional(),
     isActive: Joi.boolean().optional(),
 });
 
 export const updateBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).optional(),
-    logo: Joi.string().trim().uri().allow('').optional(),
-    description: Joi.string().trim().allow('').optional(),
-    website: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('', null).optional(),
+    description: Joi.string().trim().allow('', null).optional(),
+    website: Joi.string().trim().allow('', null).optional(),
     isActive: Joi.boolean().optional(),
 }).min(1);

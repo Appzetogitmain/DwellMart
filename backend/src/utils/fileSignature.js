@@ -92,22 +92,28 @@ export const detectFromFile = async (filePath) => {
  * The stored filename's extension comes from HERE, never from the uploaded
  * filename — that is what stops an arbitrary extension reaching disk.
  */
-export const canonicalExtension = (mime) => {
-    const match = SIGNATURES.find((s) => s.mime === mime);
-    return match ? match.ext : '';
-};
-
-/**
- * Some types are interchangeable enough that a strict equality check would
- * reject legitimate uploads: browsers label JPEGs as both `image/jpeg` and
- * `image/jpg`, and Office formats share container signatures.
- */
 const EQUIVALENT = {
     'image/jpg': 'image/jpeg',
+    'image/pjpeg': 'image/jpeg',
+    'image/x-png': 'image/png',
+    'image/svg': 'image/svg+xml',
+    'image/svg+xml': 'image/svg+xml',
     'application/msword': 'application/msword',
 };
 
-const normalizeMime = (mime) => EQUIVALENT[String(mime || '').toLowerCase()] || String(mime || '').toLowerCase();
+const normalizeMime = (mime) => EQUIVALENT[String(mime || '').toLowerCase().trim()] || String(mime || '').toLowerCase().trim();
+
+/**
+ * Canonical extension for an allowed MIME type.
+ *
+ * The stored filename's extension comes from HERE, never from the uploaded
+ * filename — that is what stops an arbitrary extension reaching disk.
+ */
+export const canonicalExtension = (mime) => {
+    const normalized = normalizeMime(mime);
+    const match = SIGNATURES.find((s) => s.mime === normalized);
+    return match ? match.ext : '';
+};
 
 /**
  * Verify a file on disk is genuinely one of the allowed types.

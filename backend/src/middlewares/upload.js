@@ -7,13 +7,27 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { canonicalExtension, verifyFileContent } from '../utils/fileSignature.js';
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_MIME_TYPES = [
+    'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
+    'image/png',
+    'image/x-png',
+    'image/webp',
+    'image/gif',
+    'image/avif',
+    'image/svg+xml',
+];
 const ALLOWED_DOCUMENT_MIME_TYPES = [
     'application/pdf',
     'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
     'image/png',
+    'image/x-png',
     'image/webp',
     'image/gif',
+    'image/avif',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
@@ -113,10 +127,11 @@ export const verifyUploadedFiles = (allowedMimeTypes) => async (req, res, next) 
 };
 
 const fileFilter = (req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    const mime = (file.mimetype || '').toLowerCase().trim();
+    if (ALLOWED_MIME_TYPES.includes(mime)) {
         cb(null, true);
     } else {
-        cb(new ApiError(400, 'Invalid file type. Only JPEG, PNG, WEBP, and GIF are allowed.'), false);
+        cb(new ApiError(400, 'Invalid file type. Only JPEG, PNG, WEBP, and GIF images are allowed.'), false);
     }
 };
 
