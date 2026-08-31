@@ -232,6 +232,14 @@ export const updateBrand = (id, data) =>
 export const deleteBrand = (id) =>
     api.delete(`/admin/brands/${id}`);
 
+export const downloadBrandTemplateApi = () =>
+    api.get('/admin/brands/bulk/template', { responseType: 'blob' });
+
+export const importBrandsApi = (formData) =>
+    api.post('/admin/brands/bulk/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export const getAllVendors = (params = {}) =>
     api.get('/admin/vendors', { params });

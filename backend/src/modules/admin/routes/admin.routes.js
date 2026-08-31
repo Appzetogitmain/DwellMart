@@ -264,6 +264,8 @@ router.delete('/categories/:id', ...perm(PERMISSIONS.CATEGORIES_DELETE), validat
 
 // ─── Brands ───────────────────────────────────────────────────────────────────
 router.get('/brands', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.getAllBrands);
+router.get('/brands/bulk/template', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.downloadBrandTemplate);
+router.post('/brands/bulk/import', ...perm(PERMISSIONS.CATEGORIES_ADD), uploadMiddleware, catalogController.importBrands);
 router.post('/brands', ...perm(PERMISSIONS.CATEGORIES_ADD), validate(createBrandSchema), catalogController.createBrand);
 router.put('/brands/:id', ...perm(PERMISSIONS.CATEGORIES_EDIT), validate(brandIdParamSchema, 'params'), validate(updateBrandSchema), catalogController.updateBrand);
 router.delete('/brands/:id', ...perm(PERMISSIONS.CATEGORIES_DELETE), validate(brandIdParamSchema, 'params'), catalogController.deleteBrand);

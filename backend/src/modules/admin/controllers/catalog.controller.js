@@ -18,6 +18,10 @@ import {
     generateCategoryTemplateBuffer,
     processCategoryImport,
 } from '../../../services/categoryImport.service.js';
+import {
+    generateBrandTemplateBuffer,
+    processBrandImport,
+} from '../../../services/brandImport.service.js';
 import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
@@ -739,6 +743,27 @@ export const seedMarketplaceCategories = asyncHandler(async (req, res) => {
     const categories = await Category.find({ supportedExperiences: EXPERIENCES.MARKETPLACE })
         .sort({ order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, { stats, categories }, 'Marketplace categories seeded successfully.'));
+});
+
+// GET /api/admin/brands/bulk/template
+export const downloadBrandTemplate = asyncHandler(async (req, res) => {
+    const buffer = generateBrandTemplateBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="brand_import_template.xlsx"');
+    res.status(200).send(buffer);
+});
+
+// POST /api/admin/brands/bulk/import
+export const importBrands = asyncHandler(async (req, res) => {
+    if (!req.file || !req.file.buffer) {
+        throw new ApiError(400, 'Please upload a valid Excel (.xlsx) or CSV file.');
+    }
+
+    const result = await processBrandImport(req.file.buffer);
+
+    res.status(200).json(
+        new ApiResponse(200, result, `Brand import complete: ${result.createdCount} created, ${result.updatedCount} updated.`)
+    );
 });
 
 // GET /api/admin/brands

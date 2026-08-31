@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiEyeOff, FiUploadCloud } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useBrandStore } from "../../../../shared/store/brandStore";
 import BrandForm from "../../components/Brands/BrandForm";
+import BrandImportModal from "../../components/Brands/BrandImportModal";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -13,6 +14,7 @@ const ManageBrands = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
 
@@ -124,12 +126,23 @@ const ManageBrands = () => {
             View and manage product brands
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm">
-          <FiPlus />
-          <span>Add Brand</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold text-sm shadow-sm"
+          >
+            <FiUploadCloud />
+            <span>Import Brands</span>
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
+          >
+            <FiPlus />
+            <span>Add Brand</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
@@ -157,7 +170,15 @@ const ManageBrands = () => {
           />
         </div>
 
-        <div className="mt-4 flex justify-start sm:justify-end">
+        <div className="mt-4 flex items-center justify-start sm:justify-end gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold shadow-sm transition-all"
+          >
+            <FiUploadCloud />
+            <span>Import</span>
+          </button>
           <ExportButton
             data={filteredBrands}
             headers={[
@@ -206,6 +227,14 @@ const ManageBrands = () => {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      <BrandImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          initialize();
+        }}
       />
     </motion.div>
   );
