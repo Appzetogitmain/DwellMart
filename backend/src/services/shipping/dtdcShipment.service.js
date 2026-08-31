@@ -234,7 +234,7 @@ export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId 
     else if (estimated.isEstimated && catalogueDims.isEstimated) weightSource = 'estimated';
     else weightSource = 'catalogue';
 
-    const billing = chargeableWeight(weightKg, dims);
+    const billing = chargeableWeight(weightKg, dims, serviceType);
 
     const origin = normalizeAddress(pickupLocation || {}, normalizeAddress(vendor || {}, {
         name: vendor?.storeName || vendor?.name,

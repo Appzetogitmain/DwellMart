@@ -20,14 +20,36 @@ export const MAX_WEIGHT_KG = 100000;
 export const MAX_DIMENSION_CM = 1000;
 
 /**
- * The courier's volumetric divisor for air freight.
+ * DTDC's volumetric divisors, from the signed rate card (Annexure II):
  *
- * DTDC bills on the higher of actual and volumetric weight, where volumetric
- * is (L × W × H) / 5000 with dimensions in centimetres. A large, light parcel
- * — a duvet, a lampshade — is charged on volume, which is exactly the case a
- * hardcoded fallback declares a fraction of.
+ *   "Volumetric weight: L*B*H (in cm)/4750 Surface & L*B*H (in cm)/5000 Air"
+ *
+ * The divisor depends on the SERVICE, and getting it wrong costs money in one
+ * direction only. Surface uses the SMALLER divisor, so a surface parcel's
+ * volumetric weight is ~5.3% HIGHER than the air figure — quoting the air
+ * divisor for a surface shipment under-states what DTDC will invoice.
+ *
+ *   PRIORITY (7X)       → air     → 5000
+ *   GROUND EXPRESS (7D) → surface → 4750
+ *   GROUND CARGO (7G)   → surface → 4750
  */
-export const VOLUMETRIC_DIVISOR = 5000;
+export const VOLUMETRIC_DIVISOR_AIR = 5000;
+export const VOLUMETRIC_DIVISOR_SURFACE = 4750;
+
+/** Retained as the air default for callers that do not name a service. */
+export const VOLUMETRIC_DIVISOR = VOLUMETRIC_DIVISOR_AIR;
+
+/** Services carried by surface rather than air. */
+const SURFACE_SERVICES = new Set(['GROUND EXPRESS', 'GROUND CARGO']);
+
+/**
+ * The divisor DTDC will bill this service on.
+ * @param {string} serviceType e.g. 'PRIORITY', 'GROUND EXPRESS'
+ */
+export const volumetricDivisorFor = (serviceType) =>
+    SURFACE_SERVICES.has(String(serviceType || '').trim().toUpperCase())
+        ? VOLUMETRIC_DIVISOR_SURFACE
+        : VOLUMETRIC_DIVISOR_AIR;
 
 /**
  * The fallback used when a product carries no measured weight.
@@ -102,11 +124,12 @@ export const normalizeProductShipping = (shipping) => {
  * Volumetric weight in kilograms for a set of dimensions in centimetres.
  * @returns {number} 0 when the dimensions are incomplete
  */
-export const volumetricWeight = (dims) => {
+export const volumetricWeight = (dims, serviceType = null) => {
     if (!dims) return 0;
     const { length, width, height } = dims;
     if (![length, width, height].every((v) => Number.isFinite(Number(v)) && Number(v) > 0)) return 0;
-    return Number(((Number(length) * Number(width) * Number(height)) / VOLUMETRIC_DIVISOR).toFixed(3));
+    const divisor = volumetricDivisorFor(serviceType);
+    return Number(((Number(length) * Number(width) * Number(height)) / divisor).toFixed(3));
 };
 
 /**
@@ -116,15 +139,16 @@ export const volumetricWeight = (dims) => {
  * @param {object} dims centimetres
  * @returns {{chargeable:number, actual:number, volumetric:number, basis:'actual'|'volumetric'}}
  */
-export const chargeableWeight = (actualKg, dims) => {
+export const chargeableWeight = (actualKg, dims, serviceType = null) => {
     const actual = Number.isFinite(Number(actualKg)) && Number(actualKg) > 0 ? Number(actualKg) : 0;
-    const volumetric = volumetricWeight(dims);
+    const volumetric = volumetricWeight(dims, serviceType);
     const chargeable = Math.max(actual, volumetric);
     return {
         chargeable: Number(chargeable.toFixed(3)),
         actual: Number(actual.toFixed(3)),
         volumetric,
         basis: volumetric > actual ? 'volumetric' : 'actual',
+        divisor: volumetricDivisorFor(serviceType),
     };
 };
 
@@ -190,6 +214,9 @@ export default {
     MAX_WEIGHT_KG,
     MAX_DIMENSION_CM,
     VOLUMETRIC_DIVISOR,
+    VOLUMETRIC_DIVISOR_AIR,
+    VOLUMETRIC_DIVISOR_SURFACE,
+    volumetricDivisorFor,
     FALLBACK_WEIGHT_KG,
     FALLBACK_DIMENSIONS_CM,
     toKilograms,
