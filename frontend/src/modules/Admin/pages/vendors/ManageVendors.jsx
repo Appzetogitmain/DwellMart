@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FiSearch,
   FiEye,
@@ -23,9 +23,14 @@ import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBad
 
 const ManageVendors = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { admin, can } = useAdminAuthStore();
   const { vendors, initialize, updateVendorStatus, updateCommissionRate, deleteVendor } =
     useVendorStore();
+
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const initialPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -38,6 +43,28 @@ const ManageVendors = () => {
   const [commissionRate, setCommissionRate] = useState("");
   const [statusReason, setStatusReason] = useState("");
   const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
+
+  // Sync state if URL changes (e.g. back/forward button)
+  useEffect(() => {
+    const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
+    const validPage = isNaN(pageFromUrl) || pageFromUrl < 1 ? 1 : pageFromUrl;
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
+    }
+  }, [searchParams]);
+
+  const handlePageChange = useCallback((newPage) => {
+    setCurrentPage(newPage);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newPage > 1) {
+        next.set("page", String(newPage));
+      } else {
+        next.delete("page");
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
   useEffect(() => {
     initialize();
@@ -508,7 +535,10 @@ const ManageVendors = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  handlePageChange(1);
+                }}
                 placeholder="Search vendors..."
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
               />
@@ -516,7 +546,11 @@ const ManageVendors = () => {
 
             <AnimatedSelect
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(val) => {
+                const newStatus = typeof val === 'object' && val?.target ? val.target.value : val;
+                setSelectedStatus(newStatus);
+                handlePageChange(1);
+              }}
               options={[
                 { value: "all", label: "All Status" },
                 { value: "approved", label: "Approved" },
@@ -560,6 +594,8 @@ const ManageVendors = () => {
           columns={columns}
           pagination={true}
           itemsPerPage={10}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
           onRowClick={(row) => navigate(`/admin/vendors/${row.id}`)}
         />
       </div>

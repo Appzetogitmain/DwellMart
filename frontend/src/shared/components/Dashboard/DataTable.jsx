@@ -13,10 +13,21 @@ export const DataTable = ({
   emptyDescription = 'There are no items to display in this table.',
   bulkActions = null,
   className = '',
+  currentPage: externalCurrentPage,
+  onPageChange: externalOnPageChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [internalPage, setInternalPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const currentPage = externalCurrentPage !== undefined ? externalCurrentPage : internalPage;
+
+  const handlePageChange = (page) => {
+    if (externalOnPageChange) {
+      externalOnPageChange(page);
+    }
+    setInternalPage(page);
+  };
 
   // Filter data by search query
   const filteredData = useMemo(() => {
@@ -68,7 +79,7 @@ export const DataTable = ({
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                  handlePageChange(1);
                 }}
               />
             </div>
@@ -139,7 +150,7 @@ export const DataTable = ({
             totalPages={Math.ceil(sortedData.length / pageSize)}
             totalItems={sortedData.length}
             pageSize={pageSize}
-            onPageChange={setCurrentPage}
+            onPageChange={handlePageChange}
           />
         </div>
       )}

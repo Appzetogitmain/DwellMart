@@ -48,6 +48,8 @@ const DataTable = ({
       emptyTitle="No data available"
       emptyDescription="There are no items to display."
       searchable={false}
+      currentPage={externalCurrentPage}
+      onPageChange={onPageChange}
     />
   );
 };
