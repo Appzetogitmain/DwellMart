@@ -597,3 +597,89 @@ test('Booking: commodity_id is a valid numeric DTDC commodity, not a string', as
     assert.equal(typeof payload.commodity_id, 'number');
     assert.equal(payload.commodity_id, 7, 'OTHERS');
 });
+
+test('Push format: the exact request DTDC support sent us is accepted', async () => {
+    // Verbatim from Himanshu Bhatt's test curl (31 Aug). Two things it revealed:
+    // the token arrives in a header called `token`, and strActionTime can be
+    // 4-digit HHMM rather than 6-digit HHMMSS.
+    const vendor = await makeVendor(M, 'DtdcSupportCurl', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+    const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+    const res = await request('/api/integrations/webhook/dtdc', {
+        method: 'POST',
+        headers: { token: process.env.DTDC_WEBHOOK_SECRET || 'test-webhook-secret' },
+        body: {
+            shipment: {
+                strShipmentNo: shipment.awbNumber,
+                strRefNo: '32566-R750', strCNProduct: 'STANDARD', strCNTypeCode: 'GL11379',
+                strOrigin: 'JAIPUR', strDestination: 'MUMBAI', strWeight: '2.661',
+                strBookedOn: '14072026', pieces: '1', strRtoNumber: '',
+                strExpectedDeliveryDate: '18072026', strRevExpectedDeliveryDate: '18072026',
+                strReceiverName: '',
+            },
+            shipmentStatus: [{
+                strAction: 'DLV', strActionDesc: 'Delivered',
+                strActionDate: '17072026', strActionTime: '2050',
+                strOrigin: 'LOWER PAREL BRANCH',
+                strLatitude: '19.00608180', strLongitude: '72.82602360',
+                strRemarks: 'sin', strManifestNo: '', strNDCOTP: 'N', strSCDOTP: 'N',
+            }],
+        },
+    });
+
+    assert.equal(res.status, 200, JSON.stringify(res.body).slice(0, 200));
+    const after = await M.Order.findById(order._id);
+    assert.equal(after.status, 'delivered');
+
+    const saved = await M.Shipment.findById(shipment._id);
+    // 4-digit HHMM must still parse as a time, not be discarded.
+    assert.equal(saved.deliveredAt.getHours(), 20);
+    assert.equal(saved.deliveredAt.getMinutes(), 50);
+    assert.equal(saved.deliveredAt.getDate(), 17);
+});
+
+test('Push auth: every header name DTDC might use is accepted', async () => {
+    const secret = process.env.DTDC_WEBHOOK_SECRET || 'test-webhook-secret';
+
+    for (const headers of [
+        { token: secret },
+        { 'x-webhook-secret': secret },
+        { 'x-api-key': secret },
+        { authorization: `Bearer ${secret}` },
+    ]) {
+        const vendor = await makeVendor(M, `Hdr${Object.keys(headers)[0].replace(/\W/g, '')}`, 'retail');
+        const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+        const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+        const res = await request('/api/integrations/webhook/dtdc', {
+            method: 'POST',
+            headers,
+            body: {
+                shipment: { strShipmentNo: shipment.awbNumber },
+                shipmentStatus: [{ strAction: 'DLV', strActionDate: '17072026', strActionTime: '2050' }],
+            },
+        });
+        assert.equal(res.status, 200, `header ${Object.keys(headers)[0]} was rejected`);
+    }
+});
+
+test('Push auth: a WRONG token in any accepted header is still refused', async () => {
+    // Widening the accepted header names must not widen what is accepted IN
+    // them — the secret itself is still the only thing that opens the door.
+    for (const headers of [
+        { token: 'wrong-value' },
+        { 'x-webhook-secret': 'wrong-value' },
+        { authorization: 'Bearer wrong-value' },
+    ]) {
+        const res = await request('/api/integrations/webhook/dtdc', {
+            method: 'POST',
+            headers,
+            body: {
+                shipment: { strShipmentNo: 'X001' },
+                shipmentStatus: [{ strAction: 'DLV', strActionDate: '17072026', strActionTime: '2050' }],
+            },
+        });
+        assert.equal(res.status, 401, `header ${Object.keys(headers)[0]} let a wrong token through`);
+    }
+});
