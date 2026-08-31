@@ -11,7 +11,7 @@ import {
 import { MdCurrencyRupee } from "react-icons/md";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
-import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans } from "../services/vendorService";
+import { getVendorOrders, getVendorEarnings, getPublicSubscriptionPlans, getVendorSubscription } from "../services/vendorService";
 import { formatPrice, getPlaceholderImage } from "../../../shared/utils/helpers";
 import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../shared/config/vendorCapabilities";
 import { useVendorWorkspace } from '../hooks/useVendorWorkspace';
@@ -36,6 +36,7 @@ const VendorDashboard = () => {
 
   const [recentOrders, setRecentOrders] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [plansLoading, setPlansLoading] = useState(true);
 
@@ -54,13 +55,14 @@ const VendorDashboard = () => {
     const loadDashboardData = async () => {
       setIsLoading(true);
       try {
-        // Fetch orders and earnings in parallel
-        const [ordersRes, earningsRes, pendingRes, processingRes, plansRes] = await Promise.all([
+        // Fetch orders, earnings, plans and subscription in parallel
+        const [ordersRes, earningsRes, pendingRes, processingRes, plansRes, subRes] = await Promise.all([
           getVendorOrders({ page: 1, limit: 5 }),
           getVendorEarnings(),
           getVendorOrders({ page: 1, limit: 1, status: "pending" }),
           getVendorOrders({ page: 1, limit: 1, status: "processing" }),
           getPublicSubscriptionPlans(),
+          getVendorSubscription().catch(() => null),
         ]);
 
         const ordersData = ordersRes?.data ?? ordersRes;
@@ -68,6 +70,7 @@ const VendorDashboard = () => {
         const pendingData = pendingRes?.data ?? pendingRes;
         const processingData = processingRes?.data ?? processingRes;
         const plansData = plansRes?.data ?? plansRes;
+        const subData = subRes?.data?.subscription || subRes?.subscription || null;
 
         const orders = ordersData?.orders ?? [];
         const summary = earningsData?.summary ?? {};
@@ -84,6 +87,7 @@ const VendorDashboard = () => {
 
         setRecentOrders(orders);
         setPlans(Array.isArray(plansData) ? plansData : []);
+        setCurrentSubscription(subData);
       } catch (err) {
         console.error("Dashboard error:", err);
       } finally {
@@ -266,58 +270,73 @@ const VendorDashboard = () => {
           </div>
         ) : plans.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <Card
-                key={plan._id}
-                variant={plan.isMostPopular ? "elevated" : "default"}
-                padding="md"
-                className={`flex flex-col justify-between border-2 transition-all hover:shadow-md ${
-                  plan.isMostPopular ? 'border-brand-primary bg-brand-primary/5' : 'border-borderToken-default'
-                }`}
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="text-base font-bold text-textColor-primary leading-tight">{plan.name}</h3>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {plan.isTrial && (
-                        <Badge variant="info" size="xs">
-                          TRIAL
-                        </Badge>
-                      )}
-                      {plan.isMostPopular && (
-                        <Badge variant="gold" size="xs">
-                          <FiCheck className="mr-1 inline stroke-[3]" /> POPULAR
-                        </Badge>
-                      )}
+            {plans.map((plan) => {
+              const isCurrent = Boolean(
+                currentSubscription?.isActive &&
+                String(currentSubscription?.plan?._id || currentSubscription?.plan?.id || currentSubscription?.plan) === String(plan._id || plan.id)
+              );
+              return (
+                <Card
+                  key={plan._id}
+                  variant={isCurrent ? "elevated" : (plan.isMostPopular ? "elevated" : "default")}
+                  padding="md"
+                  className={`flex flex-col justify-between border-2 transition-all hover:shadow-md ${
+                    isCurrent
+                      ? 'border-emerald-500 bg-emerald-50/20 shadow-sm'
+                      : plan.isMostPopular
+                      ? 'border-brand-primary bg-brand-primary/5'
+                      : 'border-borderToken-default'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="text-base font-bold text-textColor-primary leading-tight">{plan.name}</h3>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {isCurrent && (
+                          <Badge variant="success" size="xs">
+                            CURRENT
+                          </Badge>
+                        )}
+                        {plan.isTrial && !isCurrent && (
+                          <Badge variant="info" size="xs">
+                            TRIAL
+                          </Badge>
+                        )}
+                        {plan.isMostPopular && !isCurrent && (
+                          <Badge variant="gold" size="xs">
+                            <FiCheck className="mr-1 inline stroke-[3]" /> POPULAR
+                          </Badge>
+                        )}
+                      </div>
                     </div>
+
+                    <div className="flex items-baseline gap-1 mb-0.5">
+                      <span className="text-2xl font-black text-textColor-primary">{plan.price}</span>
+                      <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'USD'}</span>
+                    </div>
+                    <p className="text-xs text-textColor-muted mb-4">{plan.durationDays} days</p>
+
+                    {plan.features?.length > 0 && (
+                      <ul className="space-y-2 mb-4">
+                        {plan.features.slice(0, 4).map((feature, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs text-textColor-muted">
+                            <FiCheck className="text-brand-primary mt-0.5 flex-shrink-0" />
+                            <span className="line-clamp-1">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
-                  <div className="flex items-baseline gap-1 mb-0.5">
-                    <span className="text-2xl font-black text-textColor-primary">{plan.price}</span>
-                    <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'USD'}</span>
+                  <div className="flex items-center gap-2 pt-3 border-t border-borderToken-light mt-auto">
+                    <span className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-status-success' : 'bg-textColor-muted'}`}></span>
+                    <span className={`text-[10px] font-bold uppercase tracking-tight ${isCurrent ? 'text-status-success' : 'text-textColor-muted'}`}>
+                      {isCurrent ? 'Current Plan' : (plan.isActive ? 'Available' : 'Inactive')}
+                    </span>
                   </div>
-                  <p className="text-xs text-textColor-muted mb-4">{plan.durationDays} days</p>
-
-                  {plan.features?.length > 0 && (
-                    <ul className="space-y-2 mb-4">
-                      {plan.features.slice(0, 4).map((feature, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-textColor-muted">
-                          <FiCheck className="text-brand-primary mt-0.5 flex-shrink-0" />
-                          <span className="line-clamp-1">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 pt-3 border-t border-borderToken-light mt-auto">
-                  <span className={`w-2 h-2 rounded-full ${plan.isActive ? 'bg-status-success' : 'bg-textColor-muted'}`}></span>
-                  <span className="text-[10px] font-bold text-textColor-muted uppercase tracking-tight">
-                    {plan.isActive ? 'Active Plan' : 'Inactive'}
-                  </span>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-10 bg-surface-background rounded-card border border-dashed border-borderToken-default">

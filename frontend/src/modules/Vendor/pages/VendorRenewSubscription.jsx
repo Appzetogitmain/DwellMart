@@ -69,32 +69,42 @@ const VendorRenewSubscription = () => {
 
     setIsSubmitting(true);
     try {
-      if (!isFree && email) {
-        try {
-          const sessionRes = await api.post('/payments/cashfree/session', {
-            subscriptionPlanId: selectedPlanId,
-            email,
-          });
-          const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || {};
+      if (!isFree) {
+        // ── Paid Plan Flow: Cashfree Checkout ──────────────────────────────
+        const sessionRes = await api.post('/payments/cashfree/session', {
+          subscriptionPlanId: selectedPlanId,
+          ...(email ? { email } : {}),
+        });
+        const sessionData = sessionRes?.data?.data || sessionRes?.data || sessionRes || {};
+        const { paymentSessionId, orderId: cfOrderId, environment } = sessionData;
 
-          if (paymentSessionId) {
-            const cashfree = await getCashfreeInstance(environment || 'sandbox');
-            await cashfree.checkout({
-              paymentSessionId,
-              redirectTarget: "_modal",
-            });
-            await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-          }
-        } catch (cfErr) {
-          console.warn("Cashfree renewal notice:", cfErr);
+        if (!paymentSessionId) {
+          throw new Error('Could not initiate payment session. Please try again.');
         }
-      }
 
-      await changeVendorSubscriptionPlan(selectedPlanId);
-      toast.success('Subscription updated successfully.');
-      navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
+        const cashfree = await getCashfreeInstance(environment || 'sandbox');
+        await cashfree.checkout({
+          paymentSessionId,
+          redirectTarget: "_modal",
+        });
+
+        await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+        toast.success('Subscription renewed successfully.');
+        navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
+      } else {
+        // ── Free Plan Flow: Direct Activation ───────────────────────────────
+        await changeVendorSubscriptionPlan(selectedPlanId);
+        toast.success('Subscription updated successfully.');
+        navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
+      }
     } catch (error) {
-      toast.error(error.message || 'Could not update subscription.');
+      const status = error?.response?.status;
+      const body = error?.response?.data;
+      if (status === 402 || body?.data?.paymentRequired) {
+        toast.error('Payment was not completed. Your plan has not been changed.');
+      } else {
+        toast.error(body?.message || error.message || 'Could not update subscription.');
+      }
     } finally {
       setIsSubmitting(false);
     }

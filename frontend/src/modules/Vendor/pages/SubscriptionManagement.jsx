@@ -18,6 +18,7 @@ import {
 } from '../services/vendorService';
 import api from '../../../shared/utils/api';
 import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
+import { useVendorAuthStore } from '../store/vendorAuthStore';
 
 const intervalDays = {
   day: 1,
@@ -86,6 +87,7 @@ const getPlanFeatures = (plan) => {
 const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const SubscriptionManagement = () => {
+  const { vendor } = useVendorAuthStore();
   const [subscription, setSubscription] = useState(null);
   const [plans, setPlans] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
@@ -138,15 +140,6 @@ const SubscriptionManagement = () => {
   };
 
   const pollSubscription = async (attempt = 0) => {
-    const response = await getVendorSubscription();
-    const nextSubscription = response?.data?.subscription || null;
-    setSubscription(nextSubscription);
-
-    if (response?.data?.isActive) {
-      toast.success('Subscription updated successfully.');
-      return true;
-    }
-
     if (attempt >= 8) {
       toast.success('Payment submitted. Give the billing webhook a moment, then refresh this page.');
       return false;
@@ -160,8 +153,6 @@ const SubscriptionManagement = () => {
     loadSubscriptionData();
   }, []);
 
-
-
   const handlePlanChange = async (plan) => {
     const planId = String(plan?._id || plan?.id || '');
     if (!planId) return;
@@ -172,7 +163,7 @@ const SubscriptionManagement = () => {
     }
 
     const isFree = plan?.isFree || plan?.isTrial || (Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0) === 0 && Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0) === 0);
-    if (isFree && subscription) {
+    if (isFree && (subscription || vendor?.hasUsedTrial)) {
       toast.error('Free trial is only available once for new accounts. Please choose a paid plan.');
       return;
     }
@@ -180,43 +171,50 @@ const SubscriptionManagement = () => {
     setSelectedPlanId(planId);
     setIsSubmitting(true);
     try {
-      const email = subscription?.vendor?.email || localStorage.getItem('vendor-email');
+      const email = vendor?.email || subscription?.vendor?.email || localStorage.getItem('vendor-email');
 
-      if (!isFree && email) {
-        try {
-          const sessionRes = await api.post('/payments/cashfree/session', {
-            subscriptionPlanId: planId,
-            email,
-          });
-          const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || {};
+      if (!isFree) {
+        // ── Paid Plan Flow: Cashfree Checkout ──────────────────────────────
+        const sessionRes = await api.post('/payments/cashfree/session', {
+          subscriptionPlanId: planId,
+          ...(email ? { email } : {}),
+        });
+        const sessionData = sessionRes?.data?.data || sessionRes?.data || sessionRes || {};
+        const { paymentSessionId, orderId: cfOrderId, environment } = sessionData;
 
-          if (paymentSessionId) {
-            const cashfree = await getCashfreeInstance(environment || 'sandbox');
-            await cashfree.checkout({
-              paymentSessionId,
-              redirectTarget: "_modal",
-            });
-            await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-          }
-        } catch (cfErr) {
-          console.warn("Cashfree plan change notice:", cfErr);
+        if (!paymentSessionId) {
+          throw new Error('Could not initiate payment session. Please try again.');
         }
+
+        const cashfree = await getCashfreeInstance(environment || 'sandbox');
+        await cashfree.checkout({
+          paymentSessionId,
+          redirectTarget: "_modal",
+        });
+
+        // Verify payment and activate subscription directly
+        const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
+        const verifyData = verifyRes?.data?.data || verifyRes?.data || verifyRes || {};
+
+        if (verifyData.subscription) {
+          setSubscription(verifyData.subscription);
+        }
+
+        toast.success('Subscription plan updated successfully.');
+        await loadSubscriptionData({ quiet: true });
+      } else {
+        // ── Free Plan Flow: Direct Activation ───────────────────────────────
+        const response = await changeVendorSubscriptionPlan(planId);
+        const data = response?.data || {};
+
+        if (data.subscription) {
+          setSubscription(data.subscription);
+        }
+
+        toast.success(data.message || 'Subscription updated successfully.');
+        await loadSubscriptionData({ quiet: true });
       }
-
-      const response = await changeVendorSubscriptionPlan(planId);
-      const data = response?.data || {};
-
-      if (data.subscription) {
-        setSubscription(data.subscription);
-      }
-
-      toast.success(data.message || 'Subscription updated successfully.');
-      await loadSubscriptionData({ quiet: true });
     } catch (error) {
-      // A paid plan is only activated once the gateway confirms payment. When
-      // checkout is cancelled or fails, the server declines the change rather
-      // than upgrading for free — surface that as a payment prompt, not a
-      // generic failure.
       const status = error?.response?.status;
       const body = error?.response?.data;
       if (status === 402 || body?.data?.paymentRequired) {

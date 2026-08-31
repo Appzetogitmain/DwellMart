@@ -168,8 +168,15 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
     }
 
     // ── Source 3: Vendor Subscription ──────────────────────────────────────────
-    if (subscriptionPlanId && email) {
-        const vendor = await Vendor.findOne({ email: email.toLowerCase().trim() });
+    if (subscriptionPlanId) {
+        let vendorEmail = email ? email.toLowerCase().trim() : (req.user?.email ? req.user.email.toLowerCase().trim() : null);
+        let vendor = null;
+        if (vendorEmail) {
+            vendor = await Vendor.findOne({ email: vendorEmail });
+        }
+        if (!vendor && (req.user?._id || req.user?.id)) {
+            vendor = await Vendor.findById(req.user._id || req.user.id);
+        }
         if (!vendor) {
             throw new ApiError(404, 'Vendor not found.');
         }
