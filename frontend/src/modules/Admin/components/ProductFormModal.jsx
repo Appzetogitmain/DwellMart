@@ -684,22 +684,40 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return;
     }
 
-    /**
-     * Blank inputs are dropped rather than sent as "" — the validator types
-     * these as numbers. `source` is server-authored and never sent.
-     */
+    const isCourierEligible = formData.retailEnabled !== false || wholesaleState.wholesaleEnabled === true;
+    if (isCourierEligible) {
+      const raw = formData.shipping || {};
+      const weight = Number(raw.weight);
+      const length = Number(raw.length);
+      const width = Number(raw.width);
+      const height = Number(raw.height);
+
+      if (!Number.isFinite(weight) || weight <= 0) {
+        toast.error("Please enter a valid shipping weight (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(length) || length <= 0) {
+        toast.error("Please enter parcel length (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(width) || width <= 0) {
+        toast.error("Please enter parcel width (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(height) || height <= 0) {
+        toast.error("Please enter parcel height (greater than 0)");
+        return;
+      }
+    }
+
     const buildShippingPayload = () => {
       const raw = formData.shipping || {};
-      const numeric = {};
-      for (const key of ["weight", "length", "width", "height"]) {
-        const value = raw[key];
-        if (value !== "" && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
-          numeric[key] = Number(value);
-        }
-      }
-      if (Object.keys(numeric).length === 0) return null;
+      if (!isCourierEligible && !raw.weight) return null;
       return {
-        ...numeric,
+        weight: Number(raw.weight),
+        length: Number(raw.length),
+        width: Number(raw.width),
+        height: Number(raw.height),
         weightUnit: raw.weightUnit || "kg",
         dimensionUnit: raw.dimensionUnit || "cm",
       };
@@ -1330,21 +1348,25 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Shipping</h3>
                     <p className="text-xs text-gray-500 mb-3">
-                      Leave blank and consignments are booked at an estimated 0.5&nbsp;kg.
+                      Required for courier delivery. Enter accurate weight and dimensions to ensure correct rates.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Weight (per unit)</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Weight (per unit) <span className="text-red-500">*</span>
+                        </label>
                         <input
-                          type="number" min="0" step="0.001"
+                          type="number" min="0.001" step="0.001"
                           value={formData.shipping?.weight ?? ""}
                           onChange={(e) => handleShipping("weight", e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder="e.g., 2.4"
+                          placeholder="e.g., 0.5"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Weight Unit</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Weight Unit <span className="text-red-500">*</span>
+                        </label>
                         <select
                           value={formData.shipping?.weightUnit || "kg"}
                           onChange={(e) => handleShipping("weightUnit", e.target.value)}
@@ -1358,25 +1380,29 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                       {["length", "width", "height"].map((axis) => (
                         <div key={axis}>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">{axis}</label>
+                          <label className="block text-sm font-semibold text-gray-700 mb-2 capitalize">
+                            {axis} <span className="text-red-500">*</span>
+                          </label>
                           <input
-                            type="number" min="0" step="0.1"
+                            type="number" min="0.1" step="0.1"
                             value={formData.shipping?.[axis] ?? ""}
                             onChange={(e) => handleShipping(axis, e.target.value)}
                             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            placeholder="0"
+                            placeholder="e.g., 10"
                           />
                         </div>
                       ))}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Unit</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Dimension Unit <span className="text-red-500">*</span>
+                        </label>
                         <select
                           value={formData.shipping?.dimensionUnit || "cm"}
                           onChange={(e) => handleShipping("dimensionUnit", e.target.value)}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
-                          <option value="cm">Centimetres</option>
-                          <option value="in">Inches</option>
+                          <option value="cm">Centimetres (cm)</option>
+                          <option value="in">Inches (in)</option>
                         </select>
                       </div>
                     </div>

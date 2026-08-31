@@ -13,6 +13,7 @@ import {
     resolveWholesalePayload,
     resolveQuickCommercePayload,
 } from '../../../services/pricingValidation.service.js';
+import { assertShippingPolicy } from '../../../services/shipping/shippingPolicy.service.js';
 import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
@@ -328,6 +329,10 @@ export const createProduct = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
     }
 
+    if (rest.retailEnabled !== false || resolvedWholesale.wholesaleEnabled === true) {
+        await assertShippingPolicy(rest, 'retail');
+    }
+
     // Drop raw channel payloads; the resolvers are the only validated source.
     const {
         wholesale: _rawWholesale,
@@ -485,6 +490,15 @@ export const updateProduct = asyncHandler(async (req, res) => {
         if (effectiveRetail === false && effectiveWholesale !== true
             && resolvedQuickCommerce.quickCommerceEnabled !== true) {
             throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
+        }
+    }
+
+    if (payload.shipping) {
+        const existing = await Product.findById(req.params.id).select('retailEnabled wholesaleEnabled').lean();
+        const isRetailOrWholesale = (payload.retailEnabled !== false && existing?.retailEnabled !== false) ||
+                                   payload.wholesaleEnabled === true || existing?.wholesaleEnabled === true;
+        if (isRetailOrWholesale) {
+            await assertShippingPolicy(payload, 'retail');
         }
     }
 

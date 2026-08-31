@@ -487,6 +487,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
     }
 
+    await assertShippingPolicy(product, req.vendorWorkspace);
+
     product.increment();
     await product.save();
     res.status(200).json(new ApiResponse(200, product, 'Product updated.'));

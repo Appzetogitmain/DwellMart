@@ -48,27 +48,54 @@ export const isShippingRequiredForNewProducts = async () => {
 export const isCourierEligibleWorkspace = (workspace) =>
     workspace === VendorChannels.RETAIL || workspace === VendorChannels.WHOLESALE;
 
-/** Has a usable weight actually been supplied? */
-export const hasMeasuredShipping = (shipping) => Number(shipping?.weight) > 0;
+/** Has complete measured parcel data actually been supplied? */
+export const hasMeasuredShipping = (shipping) => {
+    const weight = Number(shipping?.weight);
+    const length = Number(shipping?.length);
+    const width = Number(shipping?.width);
+    const height = Number(shipping?.height);
+    return Number.isFinite(weight) && weight > 0 &&
+           Number.isFinite(length) && length > 0 &&
+           Number.isFinite(width) && width > 0 &&
+           Number.isFinite(height) && height > 0;
+};
 
 /**
- * Enforce the policy for one product creation.
+ * Enforce the policy for product creation and updates.
  *
- * @param {object} payload  the product being created
+ * @param {object} payload  the product being created or updated
  * @param {string} workspace the vendor workspace the request was made in
- * @throws {Error} when the policy is on and the data is absent
+ * @throws {Error} when courier parcel metrics are missing or non-positive
  */
 export const assertShippingPolicy = async (payload, workspace) => {
     if (!isCourierEligibleWorkspace(workspace)) return;
-    if (!(await isShippingRequiredForNewProducts())) return;
-    if (hasMeasuredShipping(payload?.shipping)) return;
 
-    const error = new Error(
-        'A shipping weight is required for new retail and wholesale products. ' +
-        'Enter the weight (and ideally the dimensions) in the Shipping section.'
-    );
-    error.statusCode = 400;
-    throw error;
+    const shipping = payload?.shipping;
+    const weight = Number(shipping?.weight);
+    const length = Number(shipping?.length);
+    const width = Number(shipping?.width);
+    const height = Number(shipping?.height);
+
+    if (!shipping || !Number.isFinite(weight) || weight <= 0) {
+        const error = new Error('Shipping weight is required and must be greater than 0.');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (!Number.isFinite(length) || length <= 0) {
+        const error = new Error('Parcel length is required and must be greater than 0.');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (!Number.isFinite(width) || width <= 0) {
+        const error = new Error('Parcel width is required and must be greater than 0.');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (!Number.isFinite(height) || height <= 0) {
+        const error = new Error('Parcel height is required and must be greater than 0.');
+        error.statusCode = 400;
+        throw error;
+    }
 };
 
 export default {

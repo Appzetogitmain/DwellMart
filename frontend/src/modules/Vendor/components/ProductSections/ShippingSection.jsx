@@ -61,29 +61,29 @@ const ShippingSection = ({ formData, handleShipping }) => {
         <div>
             <h2 className="text-base font-bold text-gray-800 mb-1">Shipping</h2>
             <p className="text-xs text-gray-500 mb-3">
-                Used to declare the parcel to the courier. Leave blank and consignments are
-                booked at an estimated 0.5&nbsp;kg, which can attract a weight discrepancy charge.
+                Required for courier delivery. Enter accurate parcel weight and box dimensions to calculate exact freight rates and prevent courier discrepancy charges.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Weight (per unit)
+                        Weight (per unit) <span className="text-red-500">*</span>
                     </label>
                     <input
                         type="number"
                         name="shippingWeight"
                         value={shipping.weight ?? ""}
                         onChange={onField("weight")}
-                        min="0"
+                        min="0.001"
                         step="0.001"
+                        required
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                        placeholder="e.g. 2.4"
+                        placeholder="e.g. 0.5"
                     />
                 </div>
 
                 <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Weight Unit</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Weight Unit <span className="text-red-500">*</span></label>
                     <AnimatedSelect
                         name="shippingWeightUnit"
                         value={shipping.weightUnit || "kg"}
@@ -100,36 +100,37 @@ const ShippingSection = ({ formData, handleShipping }) => {
                 {["length", "width", "height"].map((axis) => (
                     <div key={axis}>
                         <label className="block text-xs font-semibold text-gray-700 mb-1 capitalize">
-                            {axis}
+                            {axis} <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="number"
                             name={`shipping${axis}`}
                             value={shipping[axis] ?? ""}
                             onChange={onField(axis)}
-                            min="0"
+                            min="0.1"
                             step="0.1"
+                            required
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                            placeholder="0"
+                            placeholder="e.g. 10"
                         />
                     </div>
                 ))}
 
                 <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Unit</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Dimension Unit <span className="text-red-500">*</span></label>
                     <AnimatedSelect
                         name="shippingDimensionUnit"
                         value={shipping.dimensionUnit || "cm"}
                         onChange={onField("dimensionUnit")}
                         options={[
-                            { value: "cm", label: "Centimetres" },
-                            { value: "in", label: "Inches" },
+                            { value: "cm", label: "Centimetres (cm)" },
+                            { value: "in", label: "Inches (in)" },
                         ]}
                     />
                 </div>
             </div>
 
-            {metrics.hasAny && (
+            {metrics.hasAny ? (
                 <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2.5">
                     <p className="text-sm text-blue-900">
                         Chargeable weight:{" "}
@@ -144,11 +145,9 @@ const ShippingSection = ({ formData, handleShipping }) => {
                             : "The courier bills on actual weight for this parcel."}
                     </p>
                 </div>
-            )}
-
-            {!metrics.hasAny && (
+            ) : (
                 <p className="mt-3 text-xs text-amber-700">
-                    No shipping details yet — consignments for this product will be estimated.
+                    Please provide weight and dimensions for accurate courier booking.
                 </p>
             )}
         </div>

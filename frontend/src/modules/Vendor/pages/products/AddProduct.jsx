@@ -502,25 +502,39 @@ const AddProduct = () => {
       return;
     }
 
-    /**
-     * Blank inputs are dropped rather than sent as "". The validator types
-     * these as numbers, so a blank string would fail every save by a vendor
-     * who has not measured the product yet. `source` is server-authored and is
-     * never sent from the client.
-     */
+    if (sections.shipping) {
+      const raw = formData.shipping || {};
+      const weight = Number(raw.weight);
+      const length = Number(raw.length);
+      const width = Number(raw.width);
+      const height = Number(raw.height);
+
+      if (!Number.isFinite(weight) || weight <= 0) {
+        toast.error("Please enter a valid shipping weight (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(length) || length <= 0) {
+        toast.error("Please enter parcel length (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(width) || width <= 0) {
+        toast.error("Please enter parcel width (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(height) || height <= 0) {
+        toast.error("Please enter parcel height (greater than 0)");
+        return;
+      }
+    }
+
     const buildShippingPayload = () => {
       if (!sections.shipping) return null;
       const raw = formData.shipping || {};
-      const numeric = {};
-      for (const key of ['weight', 'length', 'width', 'height']) {
-        const value = raw[key];
-        if (value !== '' && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
-          numeric[key] = Number(value);
-        }
-      }
-      if (Object.keys(numeric).length === 0) return null;
       return {
-        ...numeric,
+        weight: Number(raw.weight),
+        length: Number(raw.length),
+        width: Number(raw.width),
+        height: Number(raw.height),
         weightUnit: raw.weightUnit || 'kg',
         dimensionUnit: raw.dimensionUnit || 'cm',
       };

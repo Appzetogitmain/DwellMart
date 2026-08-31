@@ -500,27 +500,39 @@ const ProductForm = () => {
     const wholesalePayload = sections.wholesalePricing ? buildWholesalePayload(wholesaleState) : {};
     // Publishing in Wholesale cannot mutate Retail ownership fields.
     if (workspace === 'wholesale') delete wholesalePayload.retailEnabled;
-    /**
-     * Empty inputs are dropped rather than sent as "". The validator types
-     * these as numbers, and a blank string would fail validation on every save
-     * for a vendor who simply has not measured the product yet.
-     *
-     * `source` is never sent: it is server-authored, so a client cannot launder
-     * a backfilled estimate into a claimed measurement.
-     */
+    if (sections.shipping) {
+      const raw = formData.shipping || {};
+      const weight = Number(raw.weight);
+      const length = Number(raw.length);
+      const width = Number(raw.width);
+      const height = Number(raw.height);
+
+      if (!Number.isFinite(weight) || weight <= 0) {
+        toast.error("Please enter a valid shipping weight (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(length) || length <= 0) {
+        toast.error("Please enter parcel length (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(width) || width <= 0) {
+        toast.error("Please enter parcel width (greater than 0)");
+        return;
+      }
+      if (!Number.isFinite(height) || height <= 0) {
+        toast.error("Please enter parcel height (greater than 0)");
+        return;
+      }
+    }
+
     const buildShippingPayload = () => {
       if (!sections.shipping) return null;
       const raw = formData.shipping || {};
-      const numeric = {};
-      for (const key of ['weight', 'length', 'width', 'height']) {
-        const value = raw[key];
-        if (value !== '' && value !== null && value !== undefined && !isNaN(Number(value)) && Number(value) > 0) {
-          numeric[key] = Number(value);
-        }
-      }
-      if (Object.keys(numeric).length === 0) return null;
       return {
-        ...numeric,
+        weight: Number(raw.weight),
+        length: Number(raw.length),
+        width: Number(raw.width),
+        height: Number(raw.height),
         weightUnit: raw.weightUnit || 'kg',
         dimensionUnit: raw.dimensionUnit || 'cm',
       };
