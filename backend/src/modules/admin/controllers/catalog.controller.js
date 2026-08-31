@@ -710,6 +710,9 @@ export const reorderCategories = asyncHandler(async (req, res) => {
         await Category.bulkWrite(bulkUpdates);
     }
 
+    res.status(200).json(new ApiResponse(200, null, 'Categories reordered.'));
+});
+
 // GET /api/admin/categories/bulk/template
 export const downloadCategoryTemplate = asyncHandler(async (req, res) => {
     const buffer = generateCategoryTemplateBuffer();
