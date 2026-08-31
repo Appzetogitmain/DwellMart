@@ -208,6 +208,14 @@ export const reorderCategories = (categoryIds) =>
 export const seedCategoriesApi = () =>
     api.post('/admin/categories/seed');
 
+export const downloadCategoryTemplateApi = () =>
+    api.get('/admin/categories/bulk/template', { responseType: 'blob' });
+
+export const importCategoriesApi = (formData) =>
+    api.post('/admin/categories/bulk/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
 // ─── Brands ───────────────────────────────────────────────────────────────────
 export const getAllBrands = () =>
     api.get('/admin/brands');

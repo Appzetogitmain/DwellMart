@@ -254,6 +254,8 @@ router.delete('/products/:id', ...perm(PERMISSIONS.PRODUCTS_DELETE), catalogCont
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 router.get('/categories', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.getAllCategories);
+router.get('/categories/bulk/template', ...perm(PERMISSIONS.CATEGORIES_VIEW), catalogController.downloadCategoryTemplate);
+router.post('/categories/bulk/import', ...perm(PERMISSIONS.CATEGORIES_ADD), uploadMiddleware, catalogController.importCategories);
 router.post('/categories', ...perm(PERMISSIONS.CATEGORIES_ADD), validate(createCategorySchema), catalogController.createCategory);
 router.post('/categories/seed', ...perm(PERMISSIONS.CATEGORIES_ADD), catalogController.seedMarketplaceCategories);
 router.patch('/categories/reorder', ...perm(PERMISSIONS.CATEGORIES_EDIT), validate(reorderCategoriesSchema), catalogController.reorderCategories);

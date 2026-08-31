@@ -14,6 +14,10 @@ import {
     resolveQuickCommercePayload,
 } from '../../../services/pricingValidation.service.js';
 import { assertShippingPolicy } from '../../../services/shipping/shippingPolicy.service.js';
+import {
+    generateCategoryTemplateBuffer,
+    processCategoryImport,
+} from '../../../services/categoryImport.service.js';
 import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
@@ -702,8 +706,29 @@ export const reorderCategories = asyncHandler(async (req, res) => {
         await Category.bulkWrite(bulkUpdates);
     }
 
-    const categories = await Category.find({}).sort({ displayOrder: 1, order: 1, name: 1 });
-    res.status(200).json(new ApiResponse(200, categories, 'Category order updated.'));
+// GET /api/admin/categories/bulk/template
+export const downloadCategoryTemplate = asyncHandler(async (req, res) => {
+    const buffer = generateCategoryTemplateBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="category_import_template.xlsx"');
+    res.status(200).send(buffer);
+});
+
+// POST /api/admin/categories/bulk/import
+export const importCategories = asyncHandler(async (req, res) => {
+    if (!req.file || !req.file.buffer) {
+        throw new ApiError(400, 'Please upload a valid Excel (.xlsx) or CSV file.');
+    }
+
+    const defaultExperience = req.body?.experience || EXPERIENCES.MARKETPLACE;
+    const result = await processCategoryImport({
+        buffer: req.file.buffer,
+        defaultExperience
+    });
+
+    res.status(200).json(
+        new ApiResponse(200, result, `Category import complete: ${result.createdCount} created, ${result.updatedCount} updated.`)
+    );
 });
 
 // POST /api/admin/categories/seed

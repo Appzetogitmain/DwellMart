@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiPlus, FiSearch, FiTrash2, FiEdit, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiTrash2, FiEdit, FiRefreshCw, FiUploadCloud } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useCategoryStore } from '../../../../shared/store/categoryStore';
 import { useSettingsStore } from '../../../../shared/store/settingsStore';
 import CategoryForm from '../../components/Categories/CategoryForm';
 import CategoryTree from '../../components/Categories/CategoryTree';
+import CategoryImportModal from '../../components/Categories/CategoryImportModal';
 import ExportButton from '../../components/ExportButton';
 import Pagination from '../../components/Pagination';
 import AnimatedSelect from '../../components/AnimatedSelect';
@@ -25,6 +26,7 @@ const ManageCategories = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [parentCategoryId, setParentCategoryId] = useState(null);
   const [viewMode, setViewMode] = useState('tree');
@@ -117,8 +119,15 @@ const ManageCategories = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Manage Categories</h1>
           <p className="text-sm sm:text-base text-gray-600">View and manage product categories</p>
         </div>
-        <div className="flex items-center gap-2">
-
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold text-sm shadow-sm"
+          >
+            <FiUploadCloud />
+            <span>Import Categories</span>
+          </button>
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
@@ -200,7 +209,15 @@ const ManageCategories = () => {
             </button>
           </div>
 
-          <div className="w-full sm:w-auto">
+          <div className="w-full sm:w-auto flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold shadow-sm transition-all"
+            >
+              <FiUploadCloud />
+              <span>Import</span>
+            </button>
             <ExportButton
               data={filteredCategories}
               headers={[
@@ -303,6 +320,15 @@ const ManageCategories = () => {
           }}
         />
       )}
+
+      <CategoryImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        currentExperience={experience}
+        onSuccess={(exp) => {
+          initialize(exp || experience);
+        }}
+      />
     </motion.div>
   );
 };
