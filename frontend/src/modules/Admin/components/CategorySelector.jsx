@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { FiChevronDown, FiChevronRight, FiSearch, FiX } from "react-icons/fi";
+import {
+  FiChevronDown,
+  FiChevronRight,
+  FiChevronLeft,
+  FiSearch,
+  FiX,
+  FiCheck,
+  FiLayers,
+  FiFolder,
+} from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 
@@ -17,77 +26,72 @@ const CategorySelector = ({
     getCategoriesByParent,
     getCategoryById,
   } = useCategoryStore();
+
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [hoveredCategoryId, setHoveredCategoryId] = useState(null);
-  const [hoveredSubcategoryId, setHoveredSubcategoryId] = useState(null);
-  const containerRef = useRef(null);
-  const parentDropdownRef = useRef(null);
-  const subcategoryDropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
-  const closeTimeoutRef = useRef(null);
+  const [activeLevel1Id, setActiveLevel1Id] = useState(null);
+  const [activeLevel2Id, setActiveLevel2Id] = useState(null);
+  
+  // Mobile drilldown navigation stack: [ { level: 1, parentId: null, title: 'All Categories' }, { level: 2, parentId: '...', title: '...' }, ... ]
+  const [mobileStack, setMobileStack] = useState([{ level: 1, parentId: null, title: 'All Categories' }]);
 
-  // Focus search input on open
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-    if (!isOpen) {
-      setSearchQuery("");
-    }
-  }, [isOpen]);
+  const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Map for fast category lookup
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    (categories || []).forEach((cat) => {
+      map.set(String(cat.id || cat._id), cat);
+    });
+    return map;
+  }, [categories]);
+
+  // Helper: compute full breadcrumb path array for any category
+  const getCategoryPath = useMemo(() => {
+    return (targetId) => {
+      if (!targetId || !categoryMap.has(String(targetId))) return [];
+      const path = [];
+      let current = categoryMap.get(String(targetId));
+      const visited = new Set();
+
+      while (current && !visited.has(String(current.id || current._id))) {
+        visited.add(String(current.id || current._id));
+        path.unshift(current);
+        if (current.parentId && categoryMap.has(String(current.parentId))) {
+          current = categoryMap.get(String(current.parentId));
+        } else {
+          break;
+        }
+      }
+      return path;
+    };
+  }, [categoryMap]);
 
   // Build a flat list of all searchable categories with full breadcrumb path
   const searchableList = useMemo(() => {
     const activeCategories = (categories || []).filter((cat) => cat.isActive !== false);
-    const categoryMap = new Map();
-    activeCategories.forEach((cat) => {
-      categoryMap.set(String(cat.id || cat._id), cat);
-    });
-
-    const getFullPath = (cat) => {
-      const path = [cat.name];
-      let current = cat;
-      const visited = new Set([String(current.id || current._id)]);
-      while (current.parentId && categoryMap.has(String(current.parentId))) {
-        const parent = categoryMap.get(String(current.parentId));
-        if (visited.has(String(parent.id || parent._id))) break;
-        visited.add(String(parent.id || parent._id));
-        path.unshift(parent.name);
-        current = parent;
-      }
-      return path;
-    };
-
-    const getRootParentId = (cat) => {
-      let current = cat;
-      const visited = new Set([String(current.id || current._id)]);
-      while (current.parentId && categoryMap.has(String(current.parentId))) {
-        const parent = categoryMap.get(String(current.parentId));
-        if (visited.has(String(parent.id || parent._id))) break;
-        visited.add(String(parent.id || parent._id));
-        current = parent;
-      }
-      return String(current.id || current._id);
-    };
 
     return activeCategories.map((cat) => {
-      const pathArray = getFullPath(cat);
+      const pathArray = getCategoryPath(cat.id || cat._id);
+      const rootCat = pathArray[0] || cat;
       const isRoot = !cat.parentId;
-      const rootId = getRootParentId(cat);
+      const isLeaf = getCategoriesByParent(cat.id || cat._id).filter((c) => c.isActive !== false).length === 0;
+
       return {
         id: String(cat.id || cat._id),
         name: cat.name,
         isRoot,
-        rootId,
+        isLeaf,
+        level: pathArray.length,
+        rootId: String(rootCat.id || rootCat._id),
         parentId: cat.parentId ? String(cat.parentId) : null,
-        fullPath: pathArray.join(" > "),
-        pathSegments: pathArray,
+        fullPath: pathArray.map((p) => p.name).join(" › "),
+        pathSegments: pathArray.map((p) => p.name),
       };
     });
-  }, [categories]);
+  }, [categories, getCategoryPath, getCategoriesByParent]);
 
   // Filtered search list
   const searchResults = useMemo(() => {
@@ -100,440 +104,578 @@ const CategorySelector = ({
     );
   }, [searchQuery, searchableList]);
 
-  // Get root categories (parent categories)
-  const rootCategories = useMemo(() => {
+  // Active categories for Level 1, Level 2, Level 3
+  const level1Categories = useMemo(() => {
     return getRootCategories().filter((cat) => cat.isActive !== false);
   }, [categories, getRootCategories]);
 
-  // Get selected category and subcategory info
-  const selectedCategory = value ? getCategoryById(value) : null;
-  const selectedSubcategory = subcategoryId
-    ? getCategoryById(subcategoryId)
-    : null;
-  const parentCategory = selectedSubcategory
-    ? getCategoryById(selectedSubcategory.parentId)
-    : selectedCategory;
+  const level2Categories = useMemo(() => {
+    if (!activeLevel1Id) return [];
+    return getCategoriesByParent(activeLevel1Id).filter((cat) => cat.isActive !== false);
+  }, [activeLevel1Id, categories, getCategoriesByParent]);
 
-  // Get subcategories for hovered category
-  const hoveredSubcategories = useMemo(() => {
-    if (!hoveredCategoryId) return [];
-    return getCategoriesByParent(hoveredCategoryId).filter(
-      (cat) => cat.isActive !== false
-    );
-  }, [hoveredCategoryId, categories, getCategoriesByParent]);
+  const level3Categories = useMemo(() => {
+    if (!activeLevel2Id) return [];
+    return getCategoriesByParent(activeLevel2Id).filter((cat) => cat.isActive !== false);
+  }, [activeLevel2Id, categories, getCategoriesByParent]);
 
-  // Close dropdown when clicking outside
+  // Resolve selected item path for display
+  const selectedPath = useMemo(() => {
+    const targetId = subcategoryId || value;
+    if (!targetId) return [];
+    return getCategoryPath(targetId);
+  }, [value, subcategoryId, getCategoryPath]);
+
+  const displayText = useMemo(() => {
+    if (selectedPath.length > 0) {
+      return selectedPath.map((p) => p.name).join(" › ");
+    }
+    return "Select Category";
+  }, [selectedPath]);
+
+  // Synchronize active level selections with currently selected value when opened
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target)
-      ) {
-        setIsOpen(false);
-        setHoveredCategoryId(null);
-        // Clear any pending timeout
-        if (closeTimeoutRef.current) {
-          clearTimeout(closeTimeoutRef.current);
-          closeTimeoutRef.current = null;
-        }
-      }
-    };
-
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        // Cleanup timeout on unmount
-        if (closeTimeoutRef.current) {
-          clearTimeout(closeTimeoutRef.current);
-          closeTimeoutRef.current = null;
-        }
-      };
+      if (selectedPath.length > 0) {
+        if (selectedPath[0]) setActiveLevel1Id(String(selectedPath[0].id || selectedPath[0]._id));
+        if (selectedPath[1]) setActiveLevel2Id(String(selectedPath[1].id || selectedPath[1]._id));
+      } else if (level1Categories.length > 0 && !activeLevel1Id) {
+        setActiveLevel1Id(String(level1Categories[0].id || level1Categories[0]._id));
+      }
+      setMobileStack([{ level: 1, parentId: null, title: 'All Categories' }]);
+      if (searchInputRef.current) {
+        setTimeout(() => searchInputRef.current?.focus(), 150);
+      }
+    } else {
+      setSearchQuery("");
     }
   }, [isOpen]);
 
-  // Cleanup timeout on unmount
+  // Close dropdown on outside click
   useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-        closeTimeoutRef.current = null;
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
     };
-  }, []);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
 
-  // Position subcategory dropdown to the right of parent dropdown
-  useEffect(() => {
-    if (
-      hoveredCategoryId &&
-      subcategoryDropdownRef.current &&
-      parentDropdownRef.current &&
-      containerRef.current
-    ) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const parentDropdownRect =
-        parentDropdownRef.current.getBoundingClientRect();
-      const hoveredElement = parentDropdownRef.current.querySelector(
-        `[data-category-id="${hoveredCategoryId}"]`
-      );
+  // Selection Handlers
+  const handleSelectRootOnly = (rootCatId) => {
+    onChange({ target: { name: "categoryId", value: String(rootCatId) } });
+    onChange({ target: { name: "subcategoryId", value: "" } });
+    setIsOpen(false);
+  };
 
-      if (hoveredElement) {
-        const elementRect = hoveredElement.getBoundingClientRect();
-        const dropdown = subcategoryDropdownRef.current;
-        const viewportWidth = window.innerWidth;
-        const dropdownWidth = 200; // min-w-[200px]
+  const handleSelectSubcategory = (subCatId, rootCatId) => {
+    onChange({ target: { name: "categoryId", value: String(rootCatId) } });
+    onChange({ target: { name: "subcategoryId", value: String(subCatId) } });
+    setIsOpen(false);
+  };
 
-        // Position to the right of the parent dropdown container
-        // Calculate left position relative to container
-        let left = parentDropdownRect.right - containerRect.left + 8; // Right edge of parent dropdown + gap
-        // Calculate top position to align with hovered item, relative to container
-        let top = elementRect.top - containerRect.top;
+  const handleSelectLeafFromSearch = (item) => {
+    if (item.isRoot) {
+      handleSelectRootOnly(item.id);
+    } else {
+      handleSelectSubcategory(item.id, item.rootId);
+    }
+    setSearchQuery("");
+    setIsOpen(false);
+  };
 
-        // Check if dropdown would overflow viewport, adjust if needed
-        const rightEdge = parentDropdownRect.right + dropdownWidth + 8;
-        if (rightEdge > viewportWidth - 20) {
-          // Position to the left of parent dropdown instead
-          left =
-            parentDropdownRect.left - containerRect.left - dropdownWidth - 8;
-        }
+  const handleClearSelection = (e) => {
+    e.stopPropagation();
+    onChange({ target: { name: "categoryId", value: "" } });
+    onChange({ target: { name: "subcategoryId", value: "" } });
+    setActiveLevel1Id(null);
+    setActiveLevel2Id(null);
+  };
 
-        // Ensure dropdown doesn't go above or below viewport
-        if (top < 0) {
-          top = 0;
-        }
+  // Mobile Drilldown Navigation
+  const currentMobileView = mobileStack[mobileStack.length - 1];
+  const currentMobileItems = useMemo(() => {
+    if (currentMobileView.level === 1) {
+      return level1Categories;
+    }
+    return getCategoriesByParent(currentMobileView.parentId).filter((cat) => cat.isActive !== false);
+  }, [currentMobileView, level1Categories, getCategoriesByParent]);
 
-        // Ensure dropdown doesn't go below the parent dropdown
-        const maxTop = parentDropdownRect.height - 40; // Leave some space
-        if (top > maxTop) {
-          top = maxTop;
-        }
-
-        dropdown.style.top = `${top}px`;
-        dropdown.style.left = `${left}px`;
+  const handleMobileDrillDown = (cat) => {
+    const catId = String(cat.id || cat._id);
+    const children = getCategoriesByParent(catId).filter((c) => c.isActive !== false);
+    if (children.length > 0) {
+      setMobileStack((prev) => [
+        ...prev,
+        {
+          level: prev.length + 1,
+          parentId: catId,
+          title: cat.name,
+          category: cat,
+        },
+      ]);
+    } else {
+      // Leaf reached -> select and finish
+      const path = getCategoryPath(catId);
+      const rootId = path[0] ? String(path[0].id || path[0]._id) : catId;
+      if (path.length <= 1) {
+        handleSelectRootOnly(catId);
+      } else {
+        handleSelectSubcategory(catId, rootId);
       }
     }
-  }, [hoveredCategoryId, isOpen]);
-
-  const handleCategorySelect = (categoryId) => {
-    // Clear subcategory when selecting a new parent
-    onChange({
-      target: {
-        name: "categoryId",
-        value: categoryId,
-      },
-    });
-    onChange({
-      target: {
-        name: "subcategoryId",
-        value: "",
-      },
-    });
-    setIsOpen(false);
-    setHoveredCategoryId(null);
   };
 
-  const handleSubcategorySelect = (subcategoryId, parentId) => {
-    onChange({
-      target: {
-        name: "categoryId",
-        value: parentId,
-      },
-    });
-    onChange({
-      target: {
-        name: "subcategoryId",
-        value: subcategoryId,
-      },
-    });
-    setIsOpen(false);
-    setHoveredCategoryId(null);
+  const handleMobileBack = () => {
+    if (mobileStack.length > 1) {
+      setMobileStack((prev) => prev.slice(0, -1));
+    }
   };
-
-  // Display text
-  const displayText = useMemo(() => {
-    if (selectedSubcategory && parentCategory) {
-      return `${parentCategory.name} (${selectedSubcategory.name})`;
-    }
-    if (selectedCategory) {
-      return selectedCategory.name;
-    }
-    return "Select Category";
-  }, [selectedCategory, selectedSubcategory, parentCategory]);
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Selected Value Display */}
+      {/* Selected Value Trigger Button */}
       <button
         type="button"
-        onClick={() => {
-          if (disabled) return;
-          setIsOpen(!isOpen);
-          // Clear any pending timeout when toggling
-          if (closeTimeoutRef.current) {
-            clearTimeout(closeTimeoutRef.current);
-            closeTimeoutRef.current = null;
-          }
-          if (!isOpen) {
-            setHoveredCategoryId(null);
-          }
-        }}
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
         disabled={disabled}
-        className={`w-full px-4 py-2.5 text-left border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center justify-between transition-all duration-200 hover:border-primary-400 ${
-          disabled ? "bg-gray-100 cursor-not-allowed text-gray-400" : "bg-white"
-        } ${!value ? "text-gray-500" : "text-gray-900"}`}>
-        <span className="truncate">{displayText}</span>
-        <FiChevronDown
-          className={`ml-2 text-gray-500 transition-transform ${
-            isOpen ? "transform rotate-180" : ""
-          }`}
-        />
+        className={`w-full min-h-[42px] px-3.5 py-2 text-left border rounded-xl flex items-center justify-between gap-2 transition-all shadow-sm ${
+          disabled
+            ? "bg-slate-100 border-slate-200 cursor-not-allowed text-slate-400"
+            : isOpen
+            ? "bg-white border-brand-primary ring-2 ring-brand-primary/20"
+            : "bg-white border-slate-300 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <FiLayers className={`w-4 h-4 flex-shrink-0 ${selectedPath.length > 0 ? "text-brand-primary" : "text-slate-400"}`} />
+          {selectedPath.length > 0 ? (
+            <div className="flex items-center flex-wrap gap-1 text-xs sm:text-sm font-medium text-slate-800 truncate">
+              {selectedPath.map((item, index) => (
+                <span key={item.id || item._id} className="inline-flex items-center gap-1">
+                  <span className={index === selectedPath.length - 1 ? "font-bold text-slate-900" : "text-slate-600"}>
+                    {item.name}
+                  </span>
+                  {index < selectedPath.length - 1 && (
+                    <span className="text-slate-300">›</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-slate-400">Select Category...</span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {selectedPath.length > 0 && !disabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleClearSelection}
+              className="p-1 text-slate-400 hover:text-rose-500 rounded-full hover:bg-slate-100 transition-colors"
+              title="Clear category"
+            >
+              <FiX className="w-3.5 h-3.5" />
+            </span>
+          )}
+          <FiChevronDown
+            className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${
+              isOpen ? "transform rotate-180 text-brand-primary" : ""
+            }`}
+          />
+        </div>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown Container */}
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop for mobile */}
+            {/* Backdrop for Mobile */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => {
-                setIsOpen(false);
-                setHoveredCategoryId(null);
-              }}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 sm:hidden"
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
             />
 
-            {/* Categories Dropdown */}
+            {/* Main Dropdown Panel */}
             <motion.div
-              ref={parentDropdownRef}
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              ref={dropdownRef}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-hidden flex flex-col">
-              
-              {/* Search Bar */}
-              <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                <div className="relative">
-                  <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="fixed inset-x-3 bottom-3 top-20 md:static md:inset-auto md:absolute md:top-full md:left-0 md:right-0 md:mt-2 z-50 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col md:max-w-4xl md:w-[720px] lg:w-[840px]"
+            >
+              {/* Header with Search */}
+              <div className="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setHoveredCategoryId(null);
-                    }}
-                    placeholder="Search category or subcategory..."
-                    className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
-                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search any category, subcategory, or item..."
+                    className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary placeholder:text-slate-400 shadow-sm"
                   />
                   {searchQuery && (
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSearchQuery("");
-                        searchInputRef.current?.focus();
-                      }}
-                      className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5">
-                      <FiX className="text-sm" />
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      <FiX className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="md:hidden p-2 text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-xl"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Dropdown Content */}
-              <div className="overflow-y-auto max-h-56 py-1 scrollbar-admin">
-                {searchQuery.trim() ? (
-                  // Search Results View
-                  searchResults.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-gray-500 text-center">
-                      No categories matching "{searchQuery}"
+              {/* BODY: Search Results View OR Multi-Level Browser */}
+              {searchQuery.trim() ? (
+                /* ── Search Results List ── */
+                <div className="overflow-y-auto max-h-[380px] p-2 divide-y divide-slate-50">
+                  {searchResults.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <FiFolder className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-slate-600">No categories found</p>
+                      <p className="text-xs text-slate-400 mt-0.5">No match for "{searchQuery}"</p>
                     </div>
                   ) : (
                     searchResults.map((item) => {
-                      const isSelected = subcategoryId
-                        ? String(subcategoryId) === String(item.id)
-                        : String(value) === String(item.id);
-
+                      const isSelected = String(subcategoryId || value) === String(item.id);
                       return (
                         <div
                           key={item.id}
-                          onClick={() => {
-                            if (item.isRoot) {
-                              handleCategorySelect(item.id);
-                            } else {
-                              handleSubcategorySelect(item.id, item.rootId);
-                            }
-                            setSearchQuery("");
-                          }}
-                          className={`px-4 py-2 cursor-pointer transition-colors duration-150 flex flex-col justify-center border-b border-gray-50 last:border-0 ${
+                          onClick={() => handleSelectLeafFromSearch(item)}
+                          className={`p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group ${
                             isSelected
-                              ? "bg-primary-50 text-primary-600 font-semibold"
-                              : "text-gray-900 hover:bg-gray-50"
-                          }`}>
-                          <span className="text-sm">{item.name}</span>
-                          {item.pathSegments.length > 1 && (
-                            <span className="text-xs text-gray-500 truncate mt-0.5">
+                              ? "bg-brand-primary/10 text-brand-primary font-semibold"
+                              : "hover:bg-slate-50 text-slate-800"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-900 group-hover:text-brand-primary">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate mt-0.5">
                               {item.fullPath}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })
-                  )
-                ) : (
-                  // Hierarchical View
-                  rootCategories.length === 0 ? (
-                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                      No categories available
-                    </div>
-                  ) : (
-                    rootCategories.map((category) => {
-                      const subcategories = getCategoriesByParent(
-                        category.id
-                      ).filter((cat) => cat.isActive !== false);
-                      const hasSubcategories = subcategories.length > 0;
-                      const isSelected = value === category.id && !subcategoryId;
-
-                      return (
-                        <div key={category.id} data-category-id={category.id}>
-                          <motion.div
-                            whileHover={{
-                              backgroundColor: isSelected
-                                ? "rgba(40, 116, 240, 0.1)"
-                                : "rgba(249, 250, 251, 1)",
-                            }}
-                            className={`px-4 py-2 cursor-pointer flex items-center justify-between transition-colors duration-150 ${
-                              isSelected
-                                ? "bg-primary-50 text-primary-600"
-                                : "text-gray-900"
-                            }`}
-                            onClick={() => {
-                              handleCategorySelect(category.id);
-                            }}
-                            onMouseEnter={() => {
-                              if (hasSubcategories) {
-                                if (closeTimeoutRef.current) {
-                                  clearTimeout(closeTimeoutRef.current);
-                                  closeTimeoutRef.current = null;
-                                }
-                                setHoveredCategoryId(category.id);
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (closeTimeoutRef.current) {
-                                clearTimeout(closeTimeoutRef.current);
-                              }
-                              closeTimeoutRef.current = setTimeout(() => {
-                                if (subcategoryDropdownRef.current) {
-                                  const rect =
-                                    subcategoryDropdownRef.current.getBoundingClientRect();
-                                  const x = e.clientX;
-                                  const y = e.clientY;
-                                  const isHoveringSub =
-                                    x >= rect.left &&
-                                    x <= rect.right &&
-                                    y >= rect.top &&
-                                    y <= rect.bottom;
-                                  if (!isHoveringSub) {
-                                    setHoveredCategoryId(null);
-                                  }
-                                } else {
-                                  setHoveredCategoryId(null);
-                                }
-                                closeTimeoutRef.current = null;
-                              }, 200);
-                            }}>
-                            <span className="flex-1 text-sm">{category.name}</span>
-                            {hasSubcategories && (
-                              <FiChevronRight className="ml-2 text-gray-400 text-sm" />
-                            )}
-                          </motion.div>
-                        </div>
-                      );
-                    })
-                  )
-                )}
-              </div>
-            </motion.div>
-
-            {/* Subcategories Dropdown - Positioned to the right of parent dropdown */}
-            {!searchQuery.trim() && hoveredCategoryId && hoveredSubcategories.length > 0 && (
-              <motion.div
-                ref={subcategoryDropdownRef}
-                initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                className="absolute bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] z-[60]"
-                onMouseEnter={() => {
-                  if (closeTimeoutRef.current) {
-                    clearTimeout(closeTimeoutRef.current);
-                    closeTimeoutRef.current = null;
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
-                  closeTimeoutRef.current = setTimeout(() => {
-                    setHoveredCategoryId(null);
-                    closeTimeoutRef.current = null;
-                  }, 200);
-                }}>
-                <div className="py-1 max-h-60 overflow-y-auto">
-                  {hoveredSubcategories.map((subcategory) => {
-                    const isSubSelected = subcategoryId === subcategory.id;
-                    const childSubs = getCategoriesByParent(subcategory.id).filter((c) => c.isActive !== false);
-                    const hasChildSubs = childSubs.length > 0;
-
-                    return (
-                      <div key={subcategory.id} className="relative group">
-                        <motion.div
-                          onClick={() => {
-                            if (!hasChildSubs) {
-                              handleSubcategorySelect(subcategory.id, hoveredCategoryId);
-                            }
-                          }}
-                          onMouseEnter={() => setHoveredSubcategoryId(subcategory.id)}
-                          whileHover={{
-                            backgroundColor: isSubSelected
-                              ? "rgba(40, 116, 240, 0.1)"
-                              : "rgba(249, 250, 251, 1)",
-                          }}
-                          className={`px-4 py-2 cursor-pointer transition-colors duration-150 flex items-center justify-between ${
-                            isSubSelected
-                              ? "bg-primary-50 text-primary-600 font-bold"
-                              : "text-gray-900"
-                          }`}>
-                          <span>{subcategory.name}</span>
-                          {hasChildSubs && <FiChevronRight className="ml-2 text-gray-400 text-xs" />}
-                        </motion.div>
-
-                        {/* Tier 3 Flyout for Sub-subcategories */}
-                        {hasChildSubs && hoveredSubcategoryId === subcategory.id && (
-                          <div className="absolute left-full top-0 ml-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[180px] z-[70] py-1 max-h-60 overflow-y-auto">
-                            {childSubs.map((leaf) => (
-                              <div
-                                key={leaf.id}
-                                onClick={() => handleSubcategorySelect(leaf.id, hoveredCategoryId)}
-                                className={`px-4 py-2 text-xs cursor-pointer hover:bg-gray-50 transition-colors ${
-                                  subcategoryId === leaf.id ? "bg-primary-50 text-primary-600 font-bold" : "text-gray-800"
-                                }`}>
-                                {leaf.name}
-                              </div>
-                            ))}
+                            </p>
                           </div>
+                          <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              Level {item.level}
+                            </span>
+                            {isSelected && <FiCheck className="w-4 h-4 text-brand-primary" />}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                /* ── Normal Cascading Navigation ── */
+                <>
+                  {/* DESKTOP 3-COLUMN VIEW (Hidden on Mobile) */}
+                  <div className="hidden md:grid md:grid-cols-3 divide-x divide-slate-100 min-h-[320px] max-h-[380px] overflow-hidden">
+                    
+                    {/* COLUMN 1: Root Categories */}
+                    <div className="flex flex-col overflow-hidden bg-slate-50/40">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          1. Main Category
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-semibold">{level1Categories.length}</span>
+                      </div>
+                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                        {level1Categories.map((cat) => {
+                          const catId = String(cat.id || cat._id);
+                          const isActive = activeLevel1Id === catId;
+                          const hasChildren = getCategoriesByParent(catId).filter((c) => c.isActive !== false).length > 0;
+                          const isFullySelected = String(value) === catId && !subcategoryId;
+
+                          return (
+                            <button
+                              key={catId}
+                              type="button"
+                              onClick={() => {
+                                setActiveLevel1Id(catId);
+                                setActiveLevel2Id(null);
+                                if (!hasChildren) {
+                                  handleSelectRootOnly(catId);
+                                }
+                              }}
+                              className={`w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between group ${
+                                isActive
+                                  ? "bg-brand-primary text-white shadow-sm font-semibold"
+                                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                              }`}
+                            >
+                              <span className="truncate">{cat.name}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {isFullySelected && (
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-500'}`} />
+                                )}
+                                {hasChildren ? (
+                                  <FiChevronRight className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-slate-400 group-hover:text-slate-600"}`} />
+                                ) : (
+                                  <span className="text-[10px] opacity-60">Select</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* COLUMN 2: Subcategories (Level 2) */}
+                    <div className="flex flex-col overflow-hidden bg-white">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          2. Subcategory
+                        </span>
+                        {activeLevel1Id && (
+                          <button
+                            type="button"
+                            onClick={() => handleSelectRootOnly(activeLevel1Id)}
+                            className="text-[10px] text-brand-primary hover:underline font-semibold"
+                          >
+                            ✓ Select Main
+                          </button>
                         )}
                       </div>
-                    );
-                  })}
+                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                        {!activeLevel1Id ? (
+                          <div className="py-12 text-center text-xs text-slate-400">
+                            Select a main category first
+                          </div>
+                        ) : level2Categories.length === 0 ? (
+                          <div className="py-12 text-center text-xs text-slate-400 px-4">
+                            No subcategories under this section.
+                            <button
+                              type="button"
+                              onClick={() => handleSelectRootOnly(activeLevel1Id)}
+                              className="mt-2 block mx-auto px-3 py-1 bg-brand-primary/10 text-brand-primary rounded-lg text-xs font-semibold hover:bg-brand-primary/20"
+                            >
+                              Choose Main Category
+                            </button>
+                          </div>
+                        ) : (
+                          level2Categories.map((subCat) => {
+                            const subCatId = String(subCat.id || subCat._id);
+                            const isActive = activeLevel2Id === subCatId;
+                            const children = getCategoriesByParent(subCatId).filter((c) => c.isActive !== false);
+                            const hasChildren = children.length > 0;
+                            const isSelected = String(subcategoryId) === subCatId;
+
+                            return (
+                              <button
+                                key={subCatId}
+                                type="button"
+                                onClick={() => {
+                                  if (hasChildren) {
+                                    setActiveLevel2Id(subCatId);
+                                  } else {
+                                    handleSelectSubcategory(subCatId, activeLevel1Id);
+                                  }
+                                }}
+                                className={`w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between group ${
+                                  isActive
+                                    ? "bg-slate-900 text-white shadow-sm font-semibold"
+                                    : isSelected
+                                    ? "bg-brand-primary/10 text-brand-primary font-bold"
+                                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                                }`}
+                              >
+                                <span className="truncate">{subCat.name}</span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {hasChildren ? (
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                      {children.length}
+                                    </span>
+                                  ) : null}
+                                  {hasChildren ? (
+                                    <FiChevronRight className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-slate-400"}`} />
+                                  ) : (
+                                    <FiCheck className={`w-3.5 h-3.5 ${isSelected ? "text-brand-primary" : "text-slate-300 opacity-0 group-hover:opacity-100"}`} />
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* COLUMN 3: Child Categories (Level 3) */}
+                    <div className="flex flex-col overflow-hidden bg-slate-50/20">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                          3. Specific Item Category
+                        </span>
+                        {activeLevel2Id && (
+                          <button
+                            type="button"
+                            onClick={() => handleSelectSubcategory(activeLevel2Id, activeLevel1Id)}
+                            className="text-[10px] text-brand-primary hover:underline font-semibold"
+                          >
+                            ✓ Select Level 2
+                          </button>
+                        )}
+                      </div>
+                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                        {!activeLevel2Id ? (
+                          <div className="py-12 text-center text-xs text-slate-400 px-4">
+                            Select a subcategory to see detailed item categories
+                          </div>
+                        ) : level3Categories.length === 0 ? (
+                          <div className="py-12 text-center text-xs text-slate-400 px-4">
+                            No 3rd level items.
+                            <button
+                              type="button"
+                              onClick={() => handleSelectSubcategory(activeLevel2Id, activeLevel1Id)}
+                              className="mt-2 block mx-auto px-3 py-1 bg-brand-primary text-white rounded-lg text-xs font-semibold hover:opacity-90"
+                            >
+                              Choose Selected Subcategory
+                            </button>
+                          </div>
+                        ) : (
+                          level3Categories.map((leaf) => {
+                            const leafId = String(leaf.id || leaf._id);
+                            const isSelected = String(subcategoryId) === leafId;
+
+                            return (
+                              <button
+                                key={leafId}
+                                type="button"
+                                onClick={() => handleSelectSubcategory(leafId, activeLevel1Id)}
+                                className={`w-full px-3 py-2 rounded-lg text-left text-xs font-medium transition-all flex items-center justify-between group ${
+                                  isSelected
+                                    ? "bg-brand-primary text-white shadow-sm font-semibold"
+                                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                                }`}
+                              >
+                                <span className="truncate">{leaf.name}</span>
+                                {isSelected ? (
+                                  <FiCheck className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 group-hover:text-brand-primary">Select</span>
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* MOBILE DRILL-DOWN VIEW (Visible only on mobile screens) */}
+                  <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+                    {/* Mobile Navigation Header */}
+                    <div className="px-3 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {mobileStack.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleMobileBack}
+                            className="p-1 -ml-1 text-slate-600 hover:text-slate-900 font-bold flex items-center gap-1 text-xs"
+                          >
+                            <FiChevronLeft className="w-4 h-4" /> Back
+                          </button>
+                        )}
+                        <span className="text-xs font-bold text-slate-800 truncate">
+                          {currentMobileView.title}
+                        </span>
+                      </div>
+                      
+                      {currentMobileView.category && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const path = getCategoryPath(currentMobileView.parentId);
+                            const rootId = path[0] ? String(path[0].id || path[0]._id) : currentMobileView.parentId;
+                            if (path.length <= 1) {
+                              handleSelectRootOnly(currentMobileView.parentId);
+                            } else {
+                              handleSelectSubcategory(currentMobileView.parentId, rootId);
+                            }
+                          }}
+                          className="px-2 py-1 bg-brand-primary text-white rounded-md text-[11px] font-bold"
+                        >
+                          Select This
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Mobile Item List */}
+                    <div className="overflow-y-auto flex-1 p-2 divide-y divide-slate-100">
+                      {currentMobileItems.map((item) => {
+                        const itemId = String(item.id || item._id);
+                        const children = getCategoriesByParent(itemId).filter((c) => c.isActive !== false);
+                        const hasChildren = children.length > 0;
+                        const isSelected = String(subcategoryId || value) === itemId;
+
+                        return (
+                          <div
+                            key={itemId}
+                            onClick={() => handleMobileDrillDown(item)}
+                            className="py-3 px-2 flex items-center justify-between active:bg-slate-50 cursor-pointer"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm ${isSelected ? 'font-bold text-brand-primary' : 'text-slate-800'}`}>
+                                {item.name}
+                              </p>
+                              {hasChildren && (
+                                <p className="text-[11px] text-slate-400">
+                                  {children.length} subcategories
+                                </p>
+                              )}
+                            </div>
+                            {hasChildren ? (
+                              <FiChevronRight className="w-4 h-4 text-slate-400" />
+                            ) : (
+                              <span className="text-xs font-bold text-brand-primary px-2 py-1 bg-brand-primary/10 rounded-md">
+                                Choose
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Bottom Breadcrumb Preview / Footer */}
+              <div className="p-2.5 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between text-xs text-slate-600">
+                <div className="flex items-center gap-1.5 truncate max-w-[75%]">
+                  <span className="font-semibold text-slate-500">Selected:</span>
+                  <span className="truncate font-bold text-slate-900">
+                    {displayText}
+                  </span>
                 </div>
-              </motion.div>
-            )}
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-3 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </motion.div>
           </>
         )}
       </AnimatePresence>
@@ -547,3 +689,4 @@ const CategorySelector = ({
 };
 
 export default CategorySelector;
+
