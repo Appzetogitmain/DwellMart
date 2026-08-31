@@ -50,11 +50,11 @@ subscriptionPlanSchema.virtual('featureHighlights').get(function featureHighligh
 });
 
 subscriptionPlanSchema.virtual('price').get(function price() {
-    return Number(this.price_usd || 0);
+    return Number((this.price_inr !== undefined && this.price_inr !== null && this.price_inr > 0) ? this.price_inr : (this.price_usd || 0));
 });
 
 subscriptionPlanSchema.virtual('currency').get(function currency() {
-    return 'USD';
+    return (this.price_inr !== undefined && this.price_inr !== null && this.price_inr > 0) ? 'INR' : 'USD';
 });
 
 subscriptionPlanSchema.virtual('durationDays').get(function durationDays() {

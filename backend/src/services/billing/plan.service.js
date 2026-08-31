@@ -47,15 +47,21 @@ export const normalizePlanFeatures = (features) => {
     return {};
 };
 
-export const resolvePlanAmount = (plan, country = '') =>
-    String(country).toLowerCase().includes('india') || String(country).toLowerCase() === 'in'
-        ? Number(plan?.price_inr || 0)
-        : Number(plan?.price_usd || 0);
+export const resolvePlanAmount = (plan, country = '') => {
+    const isExplicitlyForeign = country && !String(country).toLowerCase().includes('india') && String(country).toLowerCase() !== 'in';
+    if (isExplicitlyForeign) {
+        return Number(plan?.price_usd || 0);
+    }
+    return Number(plan?.price_inr || plan?.price || 0);
+};
 
-export const resolvePlanCurrency = (country = '') =>
-    String(country).toLowerCase().includes('india') || String(country).toLowerCase() === 'in'
-        ? 'INR'
-        : 'USD';
+export const resolvePlanCurrency = (country = '') => {
+    const isExplicitlyForeign = country && !String(country).toLowerCase().includes('india') && String(country).toLowerCase() !== 'in';
+    if (isExplicitlyForeign) {
+        return 'USD';
+    }
+    return 'INR';
+};
 
 export const normalizePlanInterval = ({ interval = 'month', intervalCount = 1 } = {}) => {
     const normalizedInterval = String(interval || 'month').trim().toLowerCase();

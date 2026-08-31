@@ -311,8 +311,12 @@ const VendorDashboard = () => {
                     </div>
 
                     <div className="flex items-baseline gap-1 mb-0.5">
-                      <span className="text-2xl font-black text-textColor-primary">{plan.price}</span>
-                      <span className="text-textColor-muted font-semibold text-sm">{plan.currency || 'USD'}</span>
+                      <span className="text-2xl font-black text-textColor-primary">
+                        {Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.price ?? 0) === 0 ? 'Free' : `₹${Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.price ?? 0).toLocaleString('en-IN')}`}
+                      </span>
+                      <span className="text-textColor-muted font-semibold text-sm">
+                        {Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.price ?? 0) === 0 ? '' : 'INR'}
+                      </span>
                     </div>
                     <p className="text-xs text-textColor-muted mb-4">{plan.durationDays} days</p>
 

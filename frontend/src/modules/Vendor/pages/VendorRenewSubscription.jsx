@@ -13,10 +13,13 @@ import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
 import { useVendorAuthStore } from '../store/vendorAuthStore';
 
 const formatPrice = (plan) => {
-  const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0);
+  const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.displayPrice ?? 0);
   const usd = Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0);
   if (inr === 0 && usd === 0) return 'Free';
-  return `Rs. ${inr.toFixed(0)} / $${usd.toFixed(2)}`;
+  if (inr > 0) {
+    return `₹${inr.toLocaleString('en-IN')}`;
+  }
+  return `$${usd.toFixed(2)}`;
 };
 
 const getIntervalLabel = (plan) => plan?.intervalLabel || (() => {

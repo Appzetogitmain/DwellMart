@@ -37,18 +37,21 @@ const formatDate = (value) => {
 };
 
 const formatPrice = (plan) => {
-  const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? 0);
+  const inr = Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.displayPrice ?? 0);
   const usd = Number(plan?.pricing?.usd ?? plan?.price_usd ?? 0);
   if (inr === 0 && usd === 0) return 'Free';
-  if (plan?.displayCurrency === 'INR' || (inr > 0 && usd === 0)) {
-    return `Rs. ${inr.toFixed(0)}`;
+  if (inr > 0) {
+    return `₹${inr.toLocaleString('en-IN')}`;
+  }
+  if (plan?.displayCurrency === 'INR') {
+    return `₹${Number(plan?.displayPrice || 0).toLocaleString('en-IN')}`;
   }
   return `$${usd.toFixed(2)}`;
 };
 
 const getPlanAmount = (plan) => {
-  if (typeof plan?.displayPrice === 'number') return Number(plan.displayPrice || 0);
-  return Number(plan?.pricing?.usd ?? plan?.price_usd ?? plan?.pricing?.inr ?? plan?.price_inr ?? 0);
+  if (typeof plan?.displayPrice === 'number' && plan.displayPrice > 0) return Number(plan.displayPrice);
+  return Number(plan?.pricing?.inr ?? plan?.price_inr ?? plan?.pricing?.usd ?? plan?.price_usd ?? 0);
 };
 
 const getPlanIntervalDays = (plan) => {
