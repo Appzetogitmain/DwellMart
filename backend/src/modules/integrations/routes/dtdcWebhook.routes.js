@@ -67,9 +67,29 @@ const verifyDtdcWebhook = (req, res, next) => {
         if (safeEqual(signature, expected)) return next();
     }
 
-    if (safeEqual(req.headers['x-webhook-secret'], secret)) return next();
+    /**
+     * Header names DTDC actually uses for the shared token.
+     *
+     * `token` is the one their integration team sends — confirmed from the test
+     * curl they ran against this endpoint. The others are accepted because the
+     * document only says "the Authentication Token if any" without naming a
+     * header, and refusing a correct secret over a header-name disagreement is
+     * a pointless outage.
+     *
+     * Every candidate is compared in constant time against the same secret, so
+     * accepting several names widens no attack surface: an attacker still has
+     * to produce the secret itself.
+     */
+    const tokenHeaders = ['x-webhook-secret', 'token', 'x-api-key', 'authorization'];
+    for (const header of tokenHeaders) {
+        const value = req.headers[header];
+        if (!value) continue;
+        // Tolerate "Bearer <token>" on the authorization header.
+        const candidate = String(value).replace(/^Bearer\s+/i, '').trim();
+        if (safeEqual(candidate, secret)) return next();
+    }
 
-    console.warn('[DTDC Webhook] Rejected: invalid or missing signature');
+    console.warn('[DTDC Webhook] Rejected: invalid or missing token');
     return res.status(401).json({ success: false, message: 'Unauthorized' });
 };
 
