@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiEdit, FiTrash2, FiAlertTriangle } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiAlertTriangle, FiDownload, FiUploadCloud, FiList, FiBox, FiTag } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { DashboardPage, DataTable, StatusBadge } from "../../../../shared/components/Dashboard";
-import { Button, Badge, Card, Select } from "../../../../shared/components/ui";
+import { Button, Badge, Card, Input, SkeletonLoader, EmptyState } from "../../../../shared/components/ui";
 import ExportButton from "../../../Admin/components/ExportButton";
 import ConfirmModal from "../../../Admin/components/ConfirmModal";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
@@ -18,8 +18,6 @@ import api from "../../../../shared/utils/api";
 
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
 import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
-import { FiDownload, FiUploadCloud, FiList } from "react-icons/fi";
-
 
 /**
  * True when this product would ship at an estimate.
@@ -35,7 +33,7 @@ const needsShippingData = (product) => {
 };
 
 const ManageProducts = () => {
-  const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
+  const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(60, 60, "Product");
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
@@ -134,11 +132,15 @@ const ManageProducts = () => {
       key: "_id",
       label: "ID",
       sortable: true,
-      render: (value) => String(value).slice(-6).toUpperCase(),
+      render: (value) => (
+        <span className="font-mono text-xs text-slate-500 font-semibold">
+          {String(value).slice(-6).toUpperCase()}
+        </span>
+      ),
     },
     {
       key: "name",
-      label: "Product Name",
+      label: "Product",
       sortable: true,
       render: (value, row) => {
         const imgSrc = getImageUrl(row.image || row.images?.[0], PRODUCT_IMAGE_PLACEHOLDER);
@@ -147,22 +149,22 @@ const ManageProducts = () => {
             <img
               src={imgSrc}
               alt={value}
-              className="w-10 h-10 object-cover rounded-lg"
+              className="w-10 h-10 object-cover rounded-lg border border-slate-100 flex-shrink-0"
               onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
               }}
             />
-            <span className="font-medium">{value}</span>
-            {/* Quick Commerce is rider-delivered and never declared to a
-                courier, so an unmeasured QC-only product is not a problem. */}
-            {needsShippingData(row) && (
-              <FiAlertTriangle
-                className="w-3.5 h-3.5 shrink-0 text-amber-500"
-                title="No shipping weight set — consignments for this product are estimated"
-                aria-label="No shipping weight set"
-              />
-            )}
+            <div className="min-w-0 flex items-center gap-1.5">
+              <span className="font-medium text-slate-900 truncate max-w-[220px]">{value}</span>
+              {needsShippingData(row) && (
+                <FiAlertTriangle
+                  className="w-3.5 h-3.5 shrink-0 text-amber-500 cursor-help"
+                  title="No shipping weight set — consignments for this product are estimated"
+                  aria-label="No shipping weight set"
+                />
+              )}
+            </div>
           </div>
         );
       },
@@ -171,31 +173,35 @@ const ManageProducts = () => {
       key: "price",
       label: "Price",
       sortable: true,
-      render: (value) => formatPrice(value),
+      render: (value) => <span className="font-bold text-slate-900">{formatPrice(value)}</span>,
     },
     {
       key: "stockQuantity",
       label: "Stock",
       sortable: true,
-      render: (value) => value?.toLocaleString() || 0,
+      render: (value) => (
+        <span className="font-medium text-slate-700">
+          {value?.toLocaleString() || 0}
+        </span>
+      ),
     },
     {
       key: "stock",
-      title: "Status",
+      label: "Stock Status",
       sortable: true,
       render: (value) => (
         <StatusBadge
-          status={value === "in_stock" ? "active" : value === "low_stock" ? "pending" : "out_of_stock"}
+          status={value === "in_stock" ? "in_stock" : value === "low_stock" ? "low_stock" : "out_of_stock"}
         />
       ),
     },
     {
       key: "publishing",
-      label: "Workspace",
+      label: "Publishing",
       sortable: false,
       render: (_, row) => {
         const flag = workspace === 'quick_commerce' ? 'quickCommerceEnabled' : `${workspace}Enabled`;
-        return <StatusBadge status={row[flag] === true ? 'active' : 'pending'} />;
+        return <StatusBadge status={row[flag] === true ? 'published' : 'unpublished'} />;
       },
     },
     {
@@ -203,22 +209,28 @@ const ManageProducts = () => {
       label: "Actions",
       sortable: false,
       render: (_, row) => (
-        <div className="flex items-center gap-2">
-          {(workspace === 'quick_commerce' ? row.quickCommerceEnabled : row[`${workspace}Enabled`]) === true && <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleActionClick(`/vendor/products/${row._id ?? row.id}`);
-            }}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-            <FiEdit />
-          </button>}
+        <div className="flex items-center gap-1.5">
+          {(workspace === 'quick_commerce' ? row.quickCommerceEnabled : row[`${workspace}Enabled`]) === true && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleActionClick(`/vendor/products/${row._id ?? row.id}`);
+              }}
+              className="p-1.5 text-slate-600 hover:text-brand-primary hover:bg-slate-100 rounded-lg transition-colors"
+              title="Edit Product"
+            >
+              <FiEdit className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setDeleteModal({ isOpen: true, productId: row._id ?? row.id });
             }}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <FiTrash2 />
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+            title="Delete Product"
+          >
+            <FiTrash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -262,14 +274,16 @@ const ManageProducts = () => {
           >
             History
           </Button>
-          {workspace !== 'quick_commerce' && <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsBulkModalOpen(true)}
-            leftIcon={<FiUploadCloud />}
-          >
-            Bulk Upload
-          </Button>}
+          {workspace !== 'quick_commerce' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsBulkModalOpen(true)}
+              leftIcon={<FiUploadCloud />}
+            >
+              Bulk Upload
+            </Button>
+          )}
           <Button
             variant="primary"
             size="sm"
@@ -280,98 +294,191 @@ const ManageProducts = () => {
         </div>
       }
     >
-      {/* Capability-driven filter bar — only shows filters relevant to this vendor type */}
-      {activeFilters.length > 0 && (
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-          {/* Stock Status — all types */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Status</label>
-            <div className="w-40">
-              <AnimatedSelect
-                name="status-filter"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                options={[
-                  { value: "all",          label: "All Status" },
-                  { value: "in_stock",     label: "In Stock" },
-                  { value: "low_stock",    label: "Low Stock" },
-                  { value: "out_of_stock", label: "Out of Stock" },
-                ]}
-              />
-            </div>
+      {/* Filters Bar */}
+      <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="relative w-full">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products by name..."
+              className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50/70 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:bg-white transition-all placeholder:text-slate-400"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Stock Status */}
+          <div className="w-36 sm:w-40">
+            <AnimatedSelect
+              name="status-filter"
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              options={[
+                { value: "all",          label: "All Stock" },
+                { value: "in_stock",     label: "In Stock" },
+                { value: "low_stock",    label: "Low Stock" },
+                { value: "out_of_stock", label: "Out of Stock" },
+              ]}
+            />
           </div>
 
-          {/* Category — all types */}
-          {activeFilters.includes("category") && categories.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Category</label>
-              <div className="w-48">
-                <AnimatedSelect
-                  name="category-filter"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  options={[
-                    { value: "all", label: "All Categories" },
-                    ...categories.map((cat) => ({
-                      value: String(cat._id ?? cat.id),
-                      label: cat.name,
-                    })),
-                  ]}
-                />
-              </div>
+          {/* Category */}
+          {categories.length > 0 && (
+            <div className="w-40 sm:w-44">
+              <AnimatedSelect
+                name="category-filter"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                options={[
+                  { value: "all", label: "All Categories" },
+                  ...categories.map((cat) => ({
+                    value: String(cat._id ?? cat.id),
+                    label: cat.name,
+                  })),
+                ]}
+              />
             </div>
           )}
 
           {/* QC: Perishable filter */}
           {activeFilters.includes("perishable") && (
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Perishable</label>
-              <div className="w-40">
-                <AnimatedSelect
-                  name="perishable-filter"
-                  value={filterPerishable}
-                  onChange={(e) => setFilterPerishable(e.target.value)}
-                  options={[
-                    { value: "all", label: "All Products" },
-                    { value: "yes", label: "Perishable" },
-                    { value: "no",  label: "Non-Perishable" },
-                  ]}
-                />
-              </div>
+            <div className="w-36">
+              <AnimatedSelect
+                name="perishable-filter"
+                value={filterPerishable}
+                onChange={(e) => setFilterPerishable(e.target.value)}
+                options={[
+                  { value: "all", label: "All Products" },
+                  { value: "yes", label: "Perishable" },
+                  { value: "no",  label: "Non-Perishable" },
+                ]}
+              />
             </div>
           )}
 
           {/* Wholesale: MOQ filter */}
           {activeFilters.includes("moq") && (
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">MOQ</label>
-              <div className="w-44">
-                <AnimatedSelect
-                  name="moq-filter"
-                  value={filterMoq}
-                  onChange={(e) => setFilterMoq(e.target.value)}
-                  options={[
-                    { value: "all",      label: "All Products" },
-                    { value: "enabled",  label: "MOQ Enabled" },
-                    { value: "disabled", label: "No MOQ" },
-                  ]}
-                />
-              </div>
+            <div className="w-36">
+              <AnimatedSelect
+                name="moq-filter"
+                value={filterMoq}
+                onChange={(e) => setFilterMoq(e.target.value)}
+                options={[
+                  { value: "all",      label: "All Products" },
+                  { value: "enabled",  label: "MOQ Enabled" },
+                  { value: "disabled", label: "No MOQ" },
+                ]}
+              />
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      <DataTable
+      {/* DESKTOP VIEW: Data Table (Hidden on Mobile) */}
+      <div className="hidden md:block">
+        <DataTable
+          columns={columns}
+          data={filteredProducts}
+          loading={isLoading}
+          searchable={false}
+          emptyTitle="No products found"
+          emptyDescription="Get started by adding your first product to your catalog."
+        />
+      </div>
 
-        columns={columns}
-        data={filteredProducts}
-        loading={isLoading}
-        searchable={true}
-        searchPlaceholder="Search products..."
-        emptyTitle="No products found"
-        emptyDescription="Get started by adding your first product to your catalog."
-      />
+      {/* MOBILE VIEW: Responsive Product Cards (Visible on Mobile) */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <div className="p-4 bg-white rounded-xl border border-slate-200">
+            <SkeletonLoader.Table rows={4} />
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <EmptyState
+            variant="no-data"
+            title="No products found"
+            description="Get started by adding your first product to your catalog."
+          />
+        ) : (
+          filteredProducts.map((product) => {
+            const imgSrc = getImageUrl(product.image || product.images?.[0], PRODUCT_IMAGE_PLACEHOLDER);
+            const flag = workspace === 'quick_commerce' ? 'quickCommerceEnabled' : `${workspace}Enabled`;
+            const isPublished = product[flag] === true;
+            const stockStatus = product.stock === "in_stock" ? "in_stock" : product.stock === "low_stock" ? "low_stock" : "out_of_stock";
+
+            return (
+              <Card key={product._id ?? product.id} variant="default" padding="sm" className="bg-white border-slate-200">
+                <div className="flex gap-3">
+                  <img
+                    src={imgSrc}
+                    alt={product.name}
+                    className="w-16 h-16 object-cover rounded-xl border border-slate-100 flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = PRODUCT_IMAGE_PLACEHOLDER;
+                    }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <h4 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                        {product.name}
+                      </h4>
+                      {needsShippingData(product) && (
+                        <FiAlertTriangle
+                          className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"
+                          title="No shipping weight set"
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-sm font-extrabold text-slate-900">
+                        {formatPrice(product.price)}
+                      </span>
+                      <span className="text-xs text-slate-400">•</span>
+                      <span className="text-xs font-semibold text-slate-600">
+                        Stock: {product.stockQuantity ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      <StatusBadge status={stockStatus} size="xs" />
+                      <StatusBadge status={isPublished ? "published" : "unpublished"} size="xs" />
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                        #{String(product._id ?? product.id).slice(-6).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile Card Action Buttons */}
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2">
+                  {isPublished && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => handleActionClick(`/vendor/products/${product._id ?? product.id}`)}
+                      leftIcon={<FiEdit />}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                  <Button
+                    variant="danger-outline"
+                    size="xs"
+                    onClick={() => setDeleteModal({ isOpen: true, productId: product._id ?? product.id })}
+                    leftIcon={<FiTrash2 />}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </div>
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

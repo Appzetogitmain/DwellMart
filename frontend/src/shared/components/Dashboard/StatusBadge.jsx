@@ -12,13 +12,17 @@ export const StatusBadge = ({ status = '', size = 'sm', className = '' }) => {
     completed: { variant: 'success', label: 'Completed' },
     approved: { variant: 'success', label: 'Approved' },
     active: { variant: 'success', label: 'Active' },
+    published: { variant: 'success', label: 'Published' },
+    unpublished: { variant: 'outline', label: 'Unpublished' },
+    in_stock: { variant: 'success', label: 'In Stock' },
+    low_stock: { variant: 'warning', label: 'Low Stock' },
+    out_of_stock: { variant: 'error', label: 'Out of Stock' },
     gold: { variant: 'gold', label: 'VIP' },
     verified: { variant: 'verified', label: 'Verified' },
     cancelled: { variant: 'error', label: 'Cancelled' },
     rejected: { variant: 'error', label: 'Rejected' },
     inactive: { variant: 'outline', label: 'Inactive' },
     draft: { variant: 'outline', label: 'Draft' },
-    out_of_stock: { variant: 'error', label: 'Out of Stock' },
   };
 
   const config = statusConfig[normalizedStatus] || {

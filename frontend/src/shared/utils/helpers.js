@@ -75,23 +75,30 @@ export const isValidPhone = (phone, countryCode = "+91") => {
 /**
  * Get image URL (with fallback)
  */
-export const getImageUrl = (image, fallback = "/placeholder.jpg") => {
-  if (!image || typeof image !== "string") return fallback;
+export const getImageUrl = (image, fallback = null) => {
+  const defaultPlaceholder = fallback || getPlaceholderImage(200, 200, "Product");
+  if (!image || typeof image !== "string" || !image.trim()) return defaultPlaceholder;
   
+  const trimmed = image.trim();
   // If it's already a full URL or a data URI, return as is
-  if (image.startsWith("data:") || image.startsWith("http")) return image;
+  if (trimmed.startsWith("data:") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
   
   // Skip prepending for local frontend assets (Vite dev server or public folder)
   // Check for common Vite patterns and relative paths
   if (
-    image.startsWith("/src/") || 
-    image.startsWith("/assets/") || 
-    image.startsWith("/@fs/") || 
-    image.startsWith("/@vite/") ||
-    image.startsWith("../") || 
-    image.startsWith("./")
+    trimmed.startsWith("/src/") || 
+    trimmed.startsWith("/assets/") || 
+    trimmed.startsWith("/@fs/") || 
+    trimmed.startsWith("/@vite/") ||
+    trimmed.startsWith("../") || 
+    trimmed.startsWith("./")
   ) {
-    return image;
+    return trimmed;
+  }
+
+  // Bare file names from mock seed data without upload paths (e.g., "cooker.jpg", "s24.jpg")
+  if (!trimmed.includes("/") && !trimmed.startsWith("upload")) {
+    return defaultPlaceholder;
   }
 
   const getBase = () => {
@@ -113,7 +120,7 @@ export const getImageUrl = (image, fallback = "/placeholder.jpg") => {
   };
   const baseUrl = getBase();
   // Clean up the image path - only prepend if it doesn't look like a frontend-only path
-  const cleanPath = image.startsWith("/") ? image.substring(1) : image;
+  const cleanPath = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
   return `${baseUrl}/${cleanPath}`;
 };
 
