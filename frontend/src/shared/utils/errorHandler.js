@@ -122,17 +122,21 @@ export const getUserFriendlyError = (error, defaultFallback = 'Something went wr
           retry: { retryable: false, action: null },
           debug,
         };
-      case ERROR_CODES.VALIDATION_ERROR:
+      case ERROR_CODES.VALIDATION_ERROR: {
+        const errorDetails = Array.isArray(error.response?.data?.errors)
+          ? error.response.data.errors.map((e) => e.message?.replace(/['"]/g, '')).filter(Boolean).join('; ')
+          : '';
         return {
           type: ERROR_TYPES.VALIDATION_ERROR,
           severity: ERROR_SEVERITY.WARNING,
           title: 'Validation Error',
-          message: backendMessage || 'Please review the highlighted fields and try again.',
+          message: errorDetails || backendMessage || 'Please review the highlighted fields and try again.',
           requestId,
           timestamp,
           retry: { retryable: false, action: null },
           debug,
         };
+      }
       case ERROR_CODES.RATE_LIMITED:
         return {
           type: ERROR_TYPES.BUSINESS_ERROR,
@@ -161,6 +165,21 @@ export const getUserFriendlyError = (error, defaultFallback = 'Something went wr
   }
 
   // 2. HTTP Status Code Resolution
+  if (status === 400) {
+    const errorDetails = Array.isArray(error.response?.data?.errors)
+      ? error.response.data.errors.map((e) => e.message?.replace(/['"]/g, '')).filter(Boolean).join('; ')
+      : '';
+    return {
+      type: ERROR_TYPES.VALIDATION_ERROR,
+      severity: ERROR_SEVERITY.WARNING,
+      title: 'Validation Error',
+      message: errorDetails || backendMessage || 'Please review the required fields and try again.',
+      requestId,
+      timestamp,
+      retry: { retryable: false, action: null },
+      debug,
+    };
+  }
   if (status === 401) {
     return {
       type: ERROR_TYPES.AUTH_ERROR,

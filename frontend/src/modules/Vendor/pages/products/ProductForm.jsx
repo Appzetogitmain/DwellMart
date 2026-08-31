@@ -547,13 +547,13 @@ const ProductForm = () => {
         ? { expectedVersion: getById(id).__v }
         : {}),
       price: parsedPrice,
-      originalPrice: parsedOriginalPrice,
+      originalPrice: Number.isFinite(parsedOriginalPrice) ? parsedOriginalPrice : null,
       stockQuantity: parsedStockQuantity,
       totalAllowedQuantity: parsedTotalAllowedQuantity,
       minimumOrderQuantity: parsedMinimumOrderQuantity,
       categoryId: finalCategoryId,
-      subcategoryId: formData.subcategoryId ?? null,
-      brandId: formData.brandId ?? null,
+      subcategoryId: formData.subcategoryId ? formData.subcategoryId : null,
+      brandId: formData.brandId ? formData.brandId : null,
       faqs: (formData.faqs || [])
         .map((faq) => ({
           question: String(faq?.question || "").trim(),

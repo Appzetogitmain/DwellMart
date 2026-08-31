@@ -546,7 +546,7 @@ const AddProduct = () => {
       ...formData,
       ...(shippingData ? { shipping: shippingData } : {}),
       price: parsedPrice,
-      originalPrice: parsedOriginalPrice,
+      originalPrice: Number.isFinite(parsedOriginalPrice) ? parsedOriginalPrice : null,
       stockQuantity: parsedStockQuantity,
       totalAllowedQuantity: parsedTotalAllowedQuantity,
       minimumOrderQuantity: parsedMinimumOrderQuantity,
@@ -555,7 +555,7 @@ const AddProduct = () => {
       hsnCode: formData.hsnCode || null,
       categoryId: finalCategoryId,
       subcategoryId: formData.subcategoryId ? formData.subcategoryId : null,
-      brandId: formData.brandId ?? null,
+      brandId: formData.brandId ? formData.brandId : null,
       faqs: (formData.faqs || [])
         .map((faq) => ({
           question: String(faq?.question || "").trim(),
