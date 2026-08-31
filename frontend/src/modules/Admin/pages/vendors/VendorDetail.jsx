@@ -688,8 +688,21 @@ const VendorDetail = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                           <div>
                             <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">GST Number</p>
-                            <p className="font-semibold text-gray-900">
-                              {vendor.wholesaleProfile?.gstNumber || vendor.documents?.gstNumber || vendor.documents?.gst || (registrationDocument?.url ? "Provided via Registration Document" : "Not Provided")}
+                            <p className="font-semibold text-gray-900 mt-0.5">
+                              {(() => {
+                                const explicitGst = String(vendor.wholesaleProfile?.gstNumber || vendor.documents?.gstNumber || vendor.gstNumber || '').trim();
+                                if (explicitGst && !explicitGst.startsWith('http://') && !explicitGst.startsWith('https://')) {
+                                  return explicitGst;
+                                }
+                                if (registrationDocument?.url || vendor.documents?.gst) {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md">
+                                      Provided via Registration Document
+                                    </span>
+                                  );
+                                }
+                                return "Not Provided";
+                              })()}
                             </p>
                           </div>
                           <div>
