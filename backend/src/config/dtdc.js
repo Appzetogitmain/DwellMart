@@ -50,6 +50,12 @@ const dtdcConfig = {
         },
     },
 
+    /**
+     * DTDC's commodity list is numeric; 7 is OTHERS, the correct generic
+     * default. Overridable so an operator can change it without a deploy.
+     */
+    get defaultCommodityId() { return parseInt(getEnv('DTDC_DEFAULT_COMMODITY_ID', '7'), 10); },
+
     get timeoutMs() { return parseInt(getEnv('DTDC_TIMEOUT_MS', '15000'), 10); },
     get retryAttempts() { return parseInt(getEnv('DTDC_RETRY_ATTEMPTS', '1'), 10); },
 

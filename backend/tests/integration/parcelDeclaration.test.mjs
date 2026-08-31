@@ -450,3 +450,150 @@ test('Quick Commerce: a weighed QC order still never reaches the carrier', async
     );
     assert.equal(dtdcCalls.length, 0);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DTDC's REAL push format
+//
+// Taken verbatim from DTDC's "Push API Document: Tracking Status". The
+// endpoint was originally written against a flat {awb, status, timestamp}
+// shape that DTDC never sends — so every genuine push was answered
+// "Ignored: missing AWB" with a 200, which DTDC reads as success while no
+// order ever moved.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const pushEnvelope = (awb, statuses) => ({
+    shipment: {
+        strRefNo: '', strOrigin: 'MUMBAI', strWeight: '1.301',
+        strBookedOn: '05022025', strCNProduct: 'STANDARD', strRtoNumber: '',
+        strCNTypeCode: 'GL018', strShipmentNo: awb,
+        strExpectedDeliveryDate: '07022025', strRevExpectedDeliveryDate: '07022025',
+    },
+    shipmentStatus: statuses,
+});
+
+const sendPush = (body) => request('/api/integrations/webhook/dtdc', {
+    method: 'POST',
+    headers: { 'x-webhook-secret': process.env.DTDC_WEBHOOK_SECRET || 'test-webhook-secret' },
+    body,
+});
+
+test('Push format: the real DTDC envelope delivers the order', async () => {
+    const vendor = await makeVendor(M, 'PushRealFormat', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+    const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+    const res = await sendPush(pushEnvelope(shipment.awbNumber, [{
+        strAction: 'DLV',
+        strOrigin: 'WHITE FIELD BRANCH , BANGALORE',
+        strSCDOTP: 'Y',
+        strRemarks: 'null',
+        strLatitude: '12.93902930',
+        strLongitude: '77.71974460',
+        strActionDate: '10022025',
+        strActionDesc: 'OTP Based Delivered',
+        strActionTime: '141424',
+        strManifestNo: '5067722173',
+    }]));
+
+    assert.equal(res.status, 200);
+    const after = await M.Order.findById(order._id);
+    assert.equal(after.status, 'delivered', 'the real push format must actually move the order');
+
+    const saved = await M.Shipment.findById(shipment._id);
+    assert.equal(saved.status, 'delivered');
+    // The scan's OWN time, not the moment we received it — DTDC batches pushes
+    // every 30 minutes.
+    assert.equal(saved.deliveredAt.getFullYear(), 2025);
+    assert.equal(saved.deliveredAt.getMonth(), 1, 'February');
+    assert.equal(saved.deliveredAt.getDate(), 10);
+});
+
+test('Push format: NONDLV is recognised as a failed delivery attempt', async () => {
+    // DTDC's own second example uses NONDLV, which the scan map did not have.
+    const vendor = await makeVendor(M, 'PushNonDlv', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+    const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+    await sendPush(pushEnvelope(shipment.awbNumber, [{
+        strAction: 'NONDLV',
+        strNDCOTP: 'Y',
+        strOrigin: 'THANE BRANCH , MUMBAI',
+        strRemarks: 'PRF|RECEIVER REFUSED DELIVERY(CIR)',
+        strActionDate: '10022025',
+        strActionDesc: 'Not Delivered',
+        strActionTime: '122933',
+    }]));
+
+    const saved = await M.Shipment.findById(shipment._id);
+    assert.equal(saved.status, 'ndr');
+    assert.equal(saved.ndrDetails.attempts, 1);
+    assert.match(saved.ndrDetails.reason, /REFUSED DELIVERY/);
+});
+
+test('Push format: a batch of events is applied oldest-first', async () => {
+    // A push is incremental since the last one, so several scans arrive at
+    // once — and not necessarily in order.
+    const vendor = await makeVendor(M, 'PushBatch', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+    const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+    const res = await sendPush(pushEnvelope(shipment.awbNumber, [
+        { strAction: 'DLV', strActionDate: '12022025', strActionTime: '100000', strActionDesc: 'Delivered' },
+        { strAction: 'PKD', strActionDate: '10022025', strActionTime: '090000', strActionDesc: 'Picked up' },
+        { strAction: 'OFD', strActionDate: '12022025', strActionTime: '080000', strActionDesc: 'Out for delivery' },
+    ]));
+
+    assert.equal(res.status, 200);
+    const saved = await M.Shipment.findById(shipment._id);
+    assert.equal(saved.status, 'delivered', 'the newest scan wins after replaying in order');
+    assert.ok(saved.pickedUpAt, 'and the intermediate milestones were stamped');
+    assert.ok(saved.outForDeliveryAt);
+    assert.equal(saved.pickedUpAt.getDate(), 10);
+    assert.equal(saved.outForDeliveryAt.getDate(), 12);
+
+    const after = await M.Order.findById(order._id);
+    assert.equal(after.status, 'delivered');
+});
+
+test('Push format: an envelope with an unknown AWB is acknowledged', async () => {
+    const res = await sendPush(pushEnvelope('NOT-A-REAL-AWB', [
+        { strAction: 'DLV', strActionDate: '10022025', strActionTime: '141424' },
+    ]));
+    assert.equal(res.status, 200);
+});
+
+test('Push format: an envelope with no scan events is acknowledged', async () => {
+    const res = await sendPush(pushEnvelope('X001', []));
+    assert.equal(res.status, 200);
+    assert.match(res.body.message, /no scan events/i);
+});
+
+test('Push format: an unsigned real envelope is still rejected', async () => {
+    const vendor = await makeVendor(M, 'PushUnsigned', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+    const shipment = await shipmentService.bookDtdcShipment(order, vendor);
+
+    const res = await request('/api/integrations/webhook/dtdc', {
+        method: 'POST',
+        body: pushEnvelope(shipment.awbNumber, [
+            { strAction: 'DLV', strActionDate: '10022025', strActionTime: '141424' },
+        ]),
+    });
+
+    assert.equal(res.status, 401);
+    const saved = await M.Shipment.findById(shipment._id);
+    assert.equal(saved.status, 'booked', 'untouched');
+});
+
+test('Booking: commodity_id is a valid numeric DTDC commodity, not a string', async () => {
+    // DTDC's commodity list is numeric (1 LAPTOP ... 7 OTHERS ... 38 CLOTHING).
+    // The previous literal 'GENERAL' appears nowhere in that list.
+    const vendor = await makeVendor(M, 'CommodityId', 'retail');
+    const order = await orderWith(vendor, [measuredLine(1, { length: 10, width: 10, height: 10 })]);
+
+    await shipmentService.bookDtdcShipment(order, vendor);
+    const payload = sentPayload();
+
+    assert.equal(typeof payload.commodity_id, 'number');
+    assert.equal(payload.commodity_id, 7, 'OTHERS');
+});

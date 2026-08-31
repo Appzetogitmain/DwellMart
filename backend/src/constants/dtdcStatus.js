@@ -108,9 +108,13 @@ const DTDC_SCAN_MAP = Object.freeze({
     DLV: ShipmentStatus.DELIVERED,
 
     // ─── NDR (Non-Delivery Report) ──────────────────────────────────────
-    UDL: ShipmentStatus.NDR,
-    NDR: ShipmentStatus.NDR,
-    RCL: ShipmentStatus.NDR,
+    UDL:    ShipmentStatus.NDR,
+    NDR:    ShipmentStatus.NDR,
+    RCL:    ShipmentStatus.NDR,
+    // The code DTDC's own Push API document uses in its worked example
+    // ("strAction": "NONDLV", "strActionDesc": "Not Delivered"). Its absence
+    // meant a failed delivery attempt arrived and changed nothing.
+    NONDLV: ShipmentStatus.NDR,
 
     // ─── RTO (Return to Origin) ─────────────────────────────────────────
     RTO: ShipmentStatus.RTO,
@@ -141,6 +145,39 @@ export const mapDtdcScanToShipmentStatus = (scanCode) => {
 /** True when the code is one we have an explicit mapping for. */
 export const isKnownDtdcScanCode = (scanCode) =>
     mapDtdcScanToShipmentStatus(scanCode) !== null;
+
+
+/**
+ * Parse DTDC's date and time format into a Date.
+ *
+ * The Push API sends `strActionDate` as DDMMYYYY and `strActionTime` as
+ * HHMMSS -- e.g. "10022025" + "141424" is 10 February 2025, 14:14:24. Neither
+ * is parseable by `new Date()`, which reads "10022025" as invalid and would
+ * have stamped every scan with the moment it was RECEIVED rather than the
+ * moment it happened.
+ *
+ * @param {string} ddmmyyyy
+ * @param {string} [hhmmss]
+ * @returns {Date|null} null when the input is unusable
+ */
+export const parseDtdcDateTime = (ddmmyyyy, hhmmss = '') => {
+    const date = String(ddmmyyyy == null ? '' : ddmmyyyy).trim();
+    if (!/^[0-9]{8}$/.test(date)) return null;
+
+    const day = Number(date.slice(0, 2));
+    const month = Number(date.slice(2, 4));
+    const year = Number(date.slice(4, 8));
+    if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+
+    const time = String(hhmmss == null ? '' : hhmmss).trim();
+    const usable = /^[0-9]{4,6}$/.test(time);
+    const hours = usable ? Number(time.slice(0, 2)) : 0;
+    const minutes = usable ? Number(time.slice(2, 4)) : 0;
+    const seconds = usable && time.length >= 6 ? Number(time.slice(4, 6)) : 0;
+
+    const parsed = new Date(year, month - 1, day, hours, minutes, seconds);
+    return Number.isNaN(parsed.valueOf()) ? null : parsed;
+};
 
 /**
  * Decide whether `next` is a legal move from `current`.
@@ -241,6 +278,7 @@ export default {
     TERMINAL_SHIPMENT_STATUSES,
     mapDtdcScanToShipmentStatus,
     isKnownDtdcScanCode,
+    parseDtdcDateTime,
     canAdvanceShipmentStatus,
     shipmentStatusToOrderStatus,
     shipmentStatusToPartnerStatus,

@@ -20,6 +20,7 @@ import {
     DeliveryProviders,
 } from './deliveryProvider.js';
 import {
+    parseDtdcDateTime,
     mapDtdcScanToShipmentStatus,
     shipmentStatusToOrderStatus,
     shipmentStatusToPartnerStatus,
@@ -298,7 +299,12 @@ export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId 
         customer_reference_number: order.orderId || String(order._id),
         cod_collection_mode:       cod ? 'CASH' : '',
         cod_amount:                cod ? declaredValue : 0,
-        commodity_id:              'GENERAL',
+        // DTDC's commodity list is NUMERIC (see "commodity or product id"):
+        // 1 LAPTOP, 2 MOBILE, ... 7 OTHERS, 38 CLOTHING, 67 SHOES ...
+        // 'GENERAL' is not a value in that list at all. 7 (OTHERS) is the
+        // correct generic default; per-category mapping is a follow-up, and
+        // the env var lets an operator change it without a deploy.
+        commodity_id:              dtdcConfig.defaultCommodityId,
         description:               'E-commerce goods',
         reference_number:          bookingKey(order._id, vendorId || vendor?._id),
 
@@ -867,6 +873,81 @@ export const getShipmentLabel = async (order, vendorId = null) => {
 
 // ─── Webhook ───────────────────────────────────────────────────────────────
 
+
+/**
+ * Flatten a DTDC Push API body into the scan events this service acts on.
+ *
+ * DTDC's real push shape (Push API Document, "Request Body") is an envelope
+ * with a nested shipment and an ARRAY of statuses:
+ *
+ *   { "shipment":       { "strShipmentNo": "7D110128963", ... },
+ *     "shipmentStatus": [ { "strAction": "DLV",
+ *                           "strActionDate": "10022025",   // DDMMYYYY
+ *                           "strActionTime": "141424",     // HHMMSS
+ *                           "strActionDesc": "OTP Based Delivered",
+ *                           "strOrigin": "WHITE FIELD BRANCH , BANGALORE",
+ *                           "strRemarks": "PRF|RECEIVER REFUSED DELIVERY" } ] }
+ *
+ * Nothing about that resembles the flat `{ awb, status, timestamp }` this
+ * endpoint was originally written against, so every real push would have been
+ * answered "Ignored: missing AWB" — a 200, which DTDC would treat as success
+ * while no order ever moved.
+ *
+ * A push carries MULTIPLE events (it is incremental since the last push), so
+ * this returns a list and the caller applies them in order.
+ *
+ * The flat shape is still accepted, because it is what our own tests and any
+ * manual curl use.
+ *
+ * @param {object} body
+ * @returns {{awbNumber: string|null, customerCode: string|null, events: Array}}
+ */
+export const parseDtdcPushPayload = (body = {}) => {
+    const shipment = body?.shipment ?? null;
+    const statuses = Array.isArray(body?.shipmentStatus) ? body.shipmentStatus : null;
+
+    if (shipment || statuses) {
+        const awbNumber = String(shipment?.strShipmentNo ?? '').trim() || null;
+        const events = (statuses ?? []).map((entry) => ({
+            scanCode: String(entry?.strAction ?? '').trim(),
+            description: String(entry?.strActionDesc ?? '').trim(),
+            location: String(entry?.strOrigin ?? '').trim(),
+            // "null" arrives as a literal string in DTDC's own example.
+            remarks: (() => {
+                const raw = String(entry?.strRemarks ?? '').trim();
+                return raw && raw.toLowerCase() !== 'null' ? raw : '';
+            })(),
+            occurredAt: parseDtdcDateTime(entry?.strActionDate, entry?.strActionTime),
+            raw: entry,
+        })).filter((event) => event.scanCode);
+
+        return {
+            awbNumber,
+            customerCode: String(shipment?.strCNTypeCode ?? '').trim() || null,
+            events,
+        };
+    }
+
+    // Flat fallback — our own tests and manual curl.
+    const awbNumber = String(
+        body?.awb ?? body?.awbNumber ?? body?.reference_number ?? ''
+    ).trim() || null;
+    const scanCode = String(body?.status ?? body?.scanCode ?? '').trim();
+
+    return {
+        awbNumber,
+        customerCode: null,
+        events: scanCode ? [{
+            scanCode,
+            description: String(body?.description ?? '').trim(),
+            location: String(body?.location ?? '').trim(),
+            remarks: String(body?.reason ?? '').trim(),
+            occurredAt: body?.timestamp ? new Date(body.timestamp) : null,
+            raw: body,
+        }] : [],
+    };
+};
+
 /**
  * Process a DTDC webhook payload and update the shipment and order.
  *
@@ -879,7 +960,7 @@ export const getShipmentLabel = async (order, vendorId = null) => {
  * @param {object} rawPayload — full webhook body, kept for audit
  * @returns {{ shipment, order, skipped: boolean, reason?: string }}
  */
-export const processDtdcWebhook = async (awbNumber, dtdcScanCode, rawPayload = {}) => {
+export const processDtdcWebhook = async (awbNumber, dtdcScanCode, rawPayload = {}, occurredAt = null) => {
     const shipment = await Shipment.findOne({
         awbNumber,
         deliveryProvider: DeliveryProviders.DTDC,
@@ -903,8 +984,13 @@ export const processDtdcWebhook = async (awbNumber, dtdcScanCode, rawPayload = {
     }
 
     const newStatus = mapDtdcScanToShipmentStatus(dtdcScanCode);
-    const scanAt = rawPayload.timestamp ? new Date(rawPayload.timestamp) : new Date();
-    const eventAt = Number.isNaN(scanAt.valueOf()) ? new Date() : scanAt;
+
+    // The scan's own timestamp, when the carrier gave us one. Falling back to
+    // "now" would record when we RECEIVED the event — and DTDC pushes in
+    // 30-minute batches, so that can be well after the parcel actually moved.
+    const candidate = occurredAt
+        ?? (rawPayload.timestamp ? new Date(rawPayload.timestamp) : null);
+    const eventAt = candidate && !Number.isNaN(candidate.valueOf()) ? candidate : new Date();
 
     // Record every scan in history, even one that moves no state — the audit
     // trail is the only place an unrecognised code is visible afterwards.
@@ -977,5 +1063,6 @@ export default {
     cancelDtdcShipment,
     syncTrackingStatus,
     getShipmentLabel,
+    parseDtdcPushPayload,
     processDtdcWebhook,
 };

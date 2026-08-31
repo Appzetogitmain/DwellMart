@@ -21,7 +21,7 @@ import rateLimit from 'express-rate-limit';
 import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import dtdcConfig from '../../../config/dtdc.js';
-import { processDtdcWebhook } from '../../../services/shipping/dtdcShipment.service.js';
+import { processDtdcWebhook, parseDtdcPushPayload } from '../../../services/shipping/dtdcShipment.service.js';
 
 const router = Router();
 
@@ -98,26 +98,48 @@ const webhookRateLimiter = rateLimit({
  *   }
  */
 router.post('/webhook/dtdc', webhookRateLimiter, verifyDtdcWebhook, asyncHandler(async (req, res) => {
-    const payload = req.body;
-
-    const awbNumber = String(payload?.awb ?? payload?.awbNumber ?? payload?.reference_number ?? '').trim();
-    const scanCode = String(payload?.status ?? payload?.scanCode ?? '').trim();
+    // DTDC pushes an envelope carrying a shipment and an ARRAY of incremental
+    // scan events, not a single flat event. See `parseDtdcPushPayload`.
+    const { awbNumber, events } = parseDtdcPushPayload(req.body);
 
     // Bad payloads are acknowledged, not retried — they will never improve.
     if (!awbNumber) {
         return res.status(200).json(new ApiResponse(200, null, 'Ignored: missing AWB'));
     }
-    if (!scanCode) {
-        return res.status(200).json(new ApiResponse(200, null, 'Ignored: missing status'));
+    if (events.length === 0) {
+        return res.status(200).json(new ApiResponse(200, null, 'Ignored: no scan events'));
     }
 
     try {
-        const { skipped, reason } = await processDtdcWebhook(awbNumber, scanCode, payload);
+        // Oldest first, so the shipment walks its ladder in the order the
+        // parcel actually moved rather than the order the array happened to
+        // arrive in.
+        const ordered = [...events].sort((a, b) => {
+            const at = a.occurredAt ? a.occurredAt.getTime() : 0;
+            const bt = b.occurredAt ? b.occurredAt.getTime() : 0;
+            return at - bt;
+        });
+
+        let applied = 0;
+        let lastReason = null;
+
+        for (const event of ordered) {
+            const { skipped, reason } = await processDtdcWebhook(
+                awbNumber,
+                event.scanCode,
+                { ...event.raw, description: event.description, location: event.location, reason: event.remarks },
+                event.occurredAt
+            );
+            if (skipped) lastReason = reason;
+            else applied += 1;
+        }
 
         return res.status(200).json(new ApiResponse(
             200,
             null,
-            skipped ? `Acknowledged: ${reason || 'no action required'}` : 'Webhook processed'
+            applied > 0
+                ? `Processed ${applied} of ${ordered.length} event(s)`
+                : `Acknowledged: ${lastReason || 'no action required'}`
         ));
     } catch (error) {
         // A genuine server-side fault. DTDC SHOULD retry this one, so say so.
