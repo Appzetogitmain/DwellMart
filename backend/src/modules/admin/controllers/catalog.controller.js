@@ -718,6 +718,7 @@ export const downloadCategoryTemplate = asyncHandler(async (req, res) => {
     const buffer = generateCategoryTemplateBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="category_import_template.xlsx"');
+    res.setHeader('Content-Length', buffer.length);
     res.status(200).send(buffer);
 });
 
@@ -753,6 +754,7 @@ export const downloadBrandTemplate = asyncHandler(async (req, res) => {
     const buffer = generateBrandTemplateBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="brand_import_template.xlsx"');
+    res.setHeader('Content-Length', buffer.length);
     res.status(200).send(buffer);
 });
 

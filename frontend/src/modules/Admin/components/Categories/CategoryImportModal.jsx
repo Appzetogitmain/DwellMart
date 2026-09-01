@@ -19,9 +19,11 @@ const CategoryImportModal = ({ isOpen, onClose, currentExperience = 'marketplace
     setIsDownloading(true);
     try {
       const response = await downloadCategoryTemplateApi();
-      const blob = new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
+      const blob = response instanceof Blob
+        ? response
+        : new Blob([response?.data || response], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
