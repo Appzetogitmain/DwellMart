@@ -31,7 +31,16 @@ export const DEFAULT_EXPERIENCE = EXPERIENCES.MARKETPLACE;
  * P2-CON-01: 'wholesale' is now a valid experience value.
  */
 export const normalizeExperience = (raw) => {
-    const value = String(raw ?? '').trim().toLowerCase();
+    const value = String(raw ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    if (value === 'quick_commerce' || value === 'quickcommerce' || value === 'qc') {
+        return EXPERIENCES.QUICK_COMMERCE;
+    }
+    if (value === 'wholesale' || value === 'b2b') {
+        return EXPERIENCES.WHOLESALE;
+    }
+    if (value === 'marketplace' || value === 'retail' || value === 'b2c') {
+        return EXPERIENCES.MARKETPLACE;
+    }
     return EXPERIENCE_VALUES.includes(value) ? value : DEFAULT_EXPERIENCE;
 };
 
