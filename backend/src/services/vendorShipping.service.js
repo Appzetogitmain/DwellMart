@@ -1,5 +1,6 @@
 import VendorShippingZone from '../models/VendorShippingZone.model.js';
 import VendorShippingRate from '../models/VendorShippingRate.model.js';
+import Settings from '../models/Settings.model.js';
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
@@ -46,6 +47,23 @@ export const calculateVendorShippingForGroups = async ({
         return { totalShipping: 0, shippingByVendor: freeMap };
     }
 
+    // Fetch platform-level admin shipping settings as single source of truth for platform defaults
+    let platformFreeThreshold = 1000;
+    let platformDefaultRate = 65;
+    try {
+        const platformSettingDoc = await Settings.findOne({ key: 'shipping' }).lean();
+        if (platformSettingDoc?.value) {
+            if (platformSettingDoc.value.freeShippingThreshold !== undefined && platformSettingDoc.value.freeShippingThreshold !== '') {
+                platformFreeThreshold = Math.max(0, toNumber(platformSettingDoc.value.freeShippingThreshold, 1000));
+            }
+            if (platformSettingDoc.value.defaultShippingRate !== undefined && platformSettingDoc.value.defaultShippingRate !== '') {
+                platformDefaultRate = Math.max(0, toNumber(platformSettingDoc.value.defaultShippingRate, 65));
+            }
+        }
+    } catch (err) {
+        // Safe fallback
+    }
+
     const vendorIds = [...new Set(groups.map((group) => String(group.vendorId || '')).filter(Boolean))];
     const [zones, rates] = await Promise.all([
         VendorShippingZone.find({ vendorId: { $in: vendorIds } }).select('vendorId countries').lean(),
@@ -73,8 +91,6 @@ export const calculateVendorShippingForGroups = async ({
         const vendorId = String(group.vendorId || '');
         const subtotal = Math.max(0, toNumber(group.subtotal, 0));
         const shippingEnabled = group.shippingEnabled !== false;
-        const defaultRate = Math.max(0, toNumber(group.defaultShippingRate, 0));
-        const defaultThreshold = Math.max(0, toNumber(group.freeShippingThreshold, 0));
 
         if (!shippingEnabled) {
             shippingByVendor[vendorId] = 0;
@@ -102,7 +118,7 @@ export const calculateVendorShippingForGroups = async ({
 
         if (chosenRate) {
             const rateThreshold = toNumber(chosenRate.freeShippingThreshold, 0);
-            const effectiveThreshold = rateThreshold > 0 ? rateThreshold : defaultThreshold;
+            const effectiveThreshold = rateThreshold > 0 ? rateThreshold : platformFreeThreshold;
             if (effectiveThreshold > 0 && subtotal >= effectiveThreshold) {
                 shippingByVendor[vendorId] = 0;
             } else {
@@ -111,14 +127,15 @@ export const calculateVendorShippingForGroups = async ({
             return;
         }
 
-        if (defaultThreshold > 0 && subtotal >= defaultThreshold) {
+        // Platform-level Admin rules govern standard marketplace shipping
+        if (platformFreeThreshold > 0 && subtotal >= platformFreeThreshold) {
             shippingByVendor[vendorId] = 0;
             return;
         }
 
-        const fallbackStandard = defaultRate > 0 ? defaultRate : 50;
+        const fallbackStandard = platformDefaultRate;
         shippingByVendor[vendorId] = normalizeText(shippingOption) === 'express'
-            ? (defaultRate > 0 ? defaultRate * 2 : 100)
+            ? (fallbackStandard * 2)
             : fallbackStandard;
     });
 

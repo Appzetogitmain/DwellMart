@@ -21,16 +21,23 @@ const defaultGeneralSettings = {
   defaultCommissionRate: 10,
 };
 
+const defaultShippingSettings = {
+  freeShippingThreshold: 1000,
+  defaultShippingRate: 65,
+  shippingMethods: ['standard'],
+};
+
 export const useSettingsStore = create((set, get) => ({
   settings: {
     general: defaultGeneralSettings,
+    shipping: defaultShippingSettings,
   },
   isLoading: false,
   isInitialized: false,
 
   // Initialize and fetch settings from API
   initialize: async () => {
-    if (get().isInitialized && get().settings?.general?.storeName) return;
+    if (get().isInitialized && get().settings?.general?.storeName && get().settings?.shipping?.freeShippingThreshold !== undefined) return;
     set({ isLoading: true });
     try {
       const isAdmin = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem('adminToken'));
@@ -48,6 +55,7 @@ export const useSettingsStore = create((set, get) => ({
 
       let features = {};
       let reviews = {};
+      let shipping = { ...defaultShippingSettings };
       try {
         const fRes = await api.get("/settings/features");
         features = fRes?.data || fRes || {};
@@ -58,12 +66,27 @@ export const useSettingsStore = create((set, get) => ({
         reviews = rRes?.data || rRes || {};
       } catch (e) {}
 
+      try {
+        const sEndpoint = isAdmin ? "/admin/settings/shipping" : "/settings/shipping";
+        const sRes = await api.get(sEndpoint);
+        const sData = sRes?.data?.value || sRes?.data?.data || sRes?.data || sRes || {};
+        if (sData && typeof sData === 'object' && Object.keys(sData).length > 0) {
+          shipping = {
+            ...shipping,
+            ...sData,
+            freeShippingThreshold: sData.freeShippingThreshold !== undefined ? Number(sData.freeShippingThreshold) : shipping.freeShippingThreshold,
+            defaultShippingRate: sData.defaultShippingRate !== undefined ? Number(sData.defaultShippingRate) : shipping.defaultShippingRate,
+          };
+        }
+      } catch (e) {}
+
       set({
         settings: {
           ...get().settings,
           general: mergedGeneral,
           features,
           reviews,
+          shipping,
         },
         isLoading: false,
         isInitialized: true,

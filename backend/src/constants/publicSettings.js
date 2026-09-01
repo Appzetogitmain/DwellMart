@@ -73,6 +73,15 @@ export const PUBLIC_SETTINGS_POLICY = {
         booleansOnly: false,
         allowFields: ['maxCodCashLimit'],
     },
+    /**
+     * Standard Marketplace Shipping settings.
+     * Publicly readable so cart and checkout can dynamically evaluate
+     * Admin-configured free shipping thresholds and base rates.
+     */
+    shipping: {
+        booleansOnly: false,
+        allowFields: ['freeShippingThreshold', 'defaultShippingRate', 'shippingMethods'],
+    },
 };
 
 /** @param {string} category */

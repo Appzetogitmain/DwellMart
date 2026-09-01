@@ -426,11 +426,19 @@ export const useCartStore = create(
             let defaultEtaWindow = '4–6 Days';
 
             if (ft === 'quick_commerce') {
-              defaultDeliveryFee = 25;
-              defaultPackagingFee = 5;
+              const qcSettings = useSettingsStore?.getState?.()?.settings?.quick_commerce || {};
+              defaultDeliveryFee = Number.isFinite(Number(qcSettings.baseDeliveryFee)) ? Number(qcSettings.baseDeliveryFee) : 25;
+              defaultPackagingFee = Number.isFinite(Number(qcSettings.packagingFee)) ? Number(qcSettings.packagingFee) : 5;
               defaultEtaWindow = '15–25 min';
             } else if (ft === 'retail') {
-              defaultDeliveryFee = subtotal >= 100 ? 0 : 70;
+              const shippingSettings = useSettingsStore?.getState?.()?.settings?.shipping || {};
+              const freeThreshold = Number.isFinite(Number(shippingSettings.freeShippingThreshold))
+                ? Number(shippingSettings.freeShippingThreshold)
+                : 1000;
+              const defaultRate = Number.isFinite(Number(shippingSettings.defaultShippingRate))
+                ? Number(shippingSettings.defaultShippingRate)
+                : 65;
+              defaultDeliveryFee = (freeThreshold > 0 && subtotal >= freeThreshold) ? 0 : defaultRate;
               defaultPackagingFee = 0;
               defaultEtaWindow = '4–6 Days';
             } else if (ft === 'wholesale') {

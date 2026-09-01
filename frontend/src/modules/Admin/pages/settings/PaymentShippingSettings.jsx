@@ -9,8 +9,8 @@ const PaymentShippingSettings = () => {
   const { settings, updateSettings, fetchCategorySettings } = useSettingsStore();
   const [paymentData, setPaymentData] = useState({});
   const [shippingData, setShippingData] = useState({
-    freeShippingThreshold: 100,
-    defaultShippingRate: 5,
+    freeShippingThreshold: 1000,
+    defaultShippingRate: 65,
     shippingMethods: ['standard'],
   });
   const [activeSection, setActiveSection] = useState('payment');
@@ -30,8 +30,8 @@ const PaymentShippingSettings = () => {
         }
         if (shipData && Object.keys(shipData).length > 0) {
           setShippingData({
-            freeShippingThreshold: shipData.freeShippingThreshold !== undefined ? shipData.freeShippingThreshold : 100,
-            defaultShippingRate: shipData.defaultShippingRate !== undefined ? shipData.defaultShippingRate : 5,
+            freeShippingThreshold: shipData.freeShippingThreshold !== undefined ? shipData.freeShippingThreshold : 1000,
+            defaultShippingRate: shipData.defaultShippingRate !== undefined ? shipData.defaultShippingRate : 65,
             shippingMethods: shipData.shippingMethods || ['standard'],
             ...shipData,
           });

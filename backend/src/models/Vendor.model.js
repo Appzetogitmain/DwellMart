@@ -82,8 +82,8 @@ const vendorSchema = new mongoose.Schema(
         bestSellerScore: { type: Number, default: 0, index: true },
         followersCount: { type: Number, default: 0 },
         shippingEnabled: { type: Boolean, default: true },
-        freeShippingThreshold: { type: Number, default: 100, min: 0 },
-        defaultShippingRate: { type: Number, default: 5, min: 0 },
+        freeShippingThreshold: { type: Number, default: 1000, min: 0 },
+        defaultShippingRate: { type: Number, default: 65, min: 0 },
         shippingMethods: {
             type: [{ type: String, enum: ['standard', 'express', 'overnight'] }],
             default: ['standard'],

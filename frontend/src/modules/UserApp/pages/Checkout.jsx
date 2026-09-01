@@ -15,13 +15,14 @@ import {
   FiAlertCircle,
   FiAlertTriangle,
   FiLoader,
+  FiLock,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiLock } from "react-icons/fi";
 import { useCartStore } from "../../../shared/store/useStore";
 import { useAuthStore } from "../../../shared/store/authStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useOrderStore } from "../../../shared/store/orderStore";
+import { useSettingsStore } from "../../../shared/store/settingsStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cartTotals";
@@ -272,13 +273,21 @@ const MobileCheckout = () => {
     if (appliedCoupon?.type === "freeship") {
       return 0;
     }
-    if (total >= 100) {
+    const shippingSettings = useSettingsStore?.getState?.()?.settings?.shipping || {};
+    const freeThreshold = Number.isFinite(Number(shippingSettings.freeShippingThreshold))
+      ? Number(shippingSettings.freeShippingThreshold)
+      : 1000;
+    const defaultRate = Number.isFinite(Number(shippingSettings.defaultShippingRate))
+      ? Number(shippingSettings.defaultShippingRate)
+      : 65;
+
+    if (freeThreshold > 0 && total >= freeThreshold) {
       return 0;
     }
     if (shippingOption === "express") {
-      return 100;
+      return defaultRate * 2;
     }
-    return 50;
+    return defaultRate;
   };
 
   const total = getTotal();
