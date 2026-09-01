@@ -39,4 +39,5 @@ Thumbs.db
 *.log
 *.pdf
 *.postman_collection.json
+**/currency_cache.json
 
