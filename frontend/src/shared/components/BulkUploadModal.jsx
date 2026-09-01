@@ -27,7 +27,7 @@ import {
     downloadVendorProductTemplate,
 } from '../../modules/Vendor/services/vendorService';
 
-const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors = [] }) => {
+const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors = [], workspace = null }) => {
     const [step, setStep] = useState(1);
     const [selectedVendorId, setSelectedVendorId] = useState('');
     const [autoCreateBrands, setAutoCreateBrands] = useState(false);
@@ -103,9 +103,9 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
     const handleDownloadTemplate = async (format) => {
         try {
             if (mode === 'admin') {
-                await downloadProductTemplate(format);
+                await downloadProductTemplate(format, workspace);
             } else {
-                await downloadVendorProductTemplate(format);
+                await downloadVendorProductTemplate(format, workspace);
             }
             toastService.success(`Downloaded sample ${format.toUpperCase()} template.`);
         } catch (err) {
@@ -126,6 +126,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
             if (zipFile) formData.append('imagesZip', zipFile);
             if (selectedVendorId) formData.append('targetVendorId', selectedVendorId);
             formData.append('autoCreateBrands', autoCreateBrands);
+            if (workspace) formData.append('workspace', workspace);
 
             const response = mode === 'admin'
                 ? await validateBulkProductUpload(formData)
@@ -166,6 +167,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                 autoCreateBrands,
                 fileName: excelFile?.name || 'import.xlsx',
                 fileSize: excelFile?.size || 0,
+                workspace,
             };
 
             const response = mode === 'admin'
@@ -253,7 +255,11 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 <div>
                                     <p className="font-semibold">Step 1: Download Official Template</p>
                                     <p className="text-xs text-blue-600 mt-1">
-                                        Use our pre-formatted spreadsheet template with predefined columns for Category, Brand, Price, Variants, Multi-Images, and Wholesale bulk pricing (tiers use the format 10:950|25:900).
+                                        {workspace === 'quick_commerce'
+                                            ? 'Download our Quick Commerce template with pre-configured columns for Pack Size, Perishable status, Shelf Life, and Max Order Limits.'
+                                            : workspace === 'wholesale'
+                                            ? 'Download our Wholesale template with pre-configured columns for MOQ, Volume Pricing Tiers (10:950|25:900), and Courier parcel dimensions.'
+                                            : 'Use our pre-formatted spreadsheet template with predefined columns for Category, Brand, Price, Variants, Multi-Images, and Channel settings.'}
                                     </p>
                                 </div>
                             </div>
@@ -442,7 +448,21 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                                         : ''
                                                 }`}>
                                                 <td className="p-2.5 font-medium">{r.rowNumber}</td>
-                                                <td className="p-2.5 font-semibold text-content">{r.name}</td>
+                                                <td className="p-2.5 font-semibold text-content">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span>{r.name}</span>
+                                                        {r.packSize && (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                {r.packSize}
+                                                            </span>
+                                                        )}
+                                                        {r.isPerishable && (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                                Perishable
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="p-2.5">{r.categoryName}</td>
                                                 <td className="p-2.5 font-mono text-[11px]">{r.sku}</td>
                                                 <td className="p-2.5 font-medium">₹{r.price}</td>

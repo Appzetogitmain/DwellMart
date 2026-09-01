@@ -51,10 +51,17 @@ export const uploadMiddleware = multer({
  */
 export const downloadExcelTemplate = asyncHandler(async (req, res) => {
     const isAdmin = req.user?.role === 'superadmin' || req.user?.role === 'subadmin';
-    const buffer = await generateTemplate('xlsx', isAdmin);
+    const workspace = req.vendorWorkspace || req.query?.workspace || 'retail';
+    const buffer = await generateTemplate('xlsx', isAdmin, workspace);
+
+    const filename = workspace === 'quick_commerce'
+        ? 'DwellMart_Quick_Commerce_Bulk_Template.xlsx'
+        : workspace === 'wholesale'
+            ? 'DwellMart_Wholesale_Bulk_Template.xlsx'
+            : 'DwellMart_Retail_Bulk_Template.xlsx';
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=DwellMart_Bulk_Product_Template.xlsx');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.status(200).send(buffer);
 });
 
@@ -63,10 +70,17 @@ export const downloadExcelTemplate = asyncHandler(async (req, res) => {
  */
 export const downloadCsvTemplate = asyncHandler(async (req, res) => {
     const isAdmin = req.user?.role === 'superadmin' || req.user?.role === 'subadmin';
-    const buffer = await generateTemplate('csv', isAdmin);
+    const workspace = req.vendorWorkspace || req.query?.workspace || 'retail';
+    const buffer = await generateTemplate('csv', isAdmin, workspace);
+
+    const filename = workspace === 'quick_commerce'
+        ? 'DwellMart_Quick_Commerce_Bulk_Template.csv'
+        : workspace === 'wholesale'
+            ? 'DwellMart_Wholesale_Bulk_Template.csv'
+            : 'DwellMart_Retail_Bulk_Template.csv';
 
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=DwellMart_Bulk_Product_Template.csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.status(200).send(buffer);
 });
 
@@ -88,6 +102,7 @@ export const validateUpload = asyncHandler(async (req, res) => {
     const fileType = excelFileObj.originalname.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx';
     const targetVendorId = req.body?.targetVendorId || req.body?.vendorId || null;
     const autoCreateBrands = req.body?.autoCreateBrands === 'true' || req.body?.autoCreateBrands === true;
+    const workspace = req.vendorWorkspace || req.body?.workspace || null;
 
     const validationResult = await validateBulkUpload({
         fileBuffer: excelFileObj.buffer,
@@ -96,6 +111,7 @@ export const validateUpload = asyncHandler(async (req, res) => {
         targetVendorId,
         autoCreateBrands,
         skuImageMap,
+        workspace,
     });
 
     res.status(200).json(new ApiResponse(200, validationResult, 'Validation complete (Dry Run).'));
@@ -110,9 +126,6 @@ export const processUpload = asyncHandler(async (req, res) => {
     if (!Array.isArray(rows) || rows.length === 0) {
         throw new ApiError(400, 'No product rows provided for import.');
     }
-    if (req.vendorWorkspace === 'quick_commerce') {
-        throw new ApiError(400, 'Quick Commerce bulk import requires category mapping and is not available yet. Use the product form.');
-    }
 
     const jobData = await startBulkUploadJob({
         validatedRows: rows,
@@ -122,7 +135,7 @@ export const processUpload = asyncHandler(async (req, res) => {
         autoCreateBrands: Boolean(autoCreateBrands),
         fileName: fileName || 'bulk_products_import.xlsx',
         fileSize: fileSize || 0,
-        workspace: req.vendorWorkspace || null,
+        workspace: req.vendorWorkspace || req.body?.workspace || null,
     });
 
     res.status(202).json(new ApiResponse(202, jobData, 'Bulk upload background job started.'));

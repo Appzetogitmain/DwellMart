@@ -274,16 +274,14 @@ const ManageProducts = () => {
           >
             History
           </Button>
-          {workspace !== 'quick_commerce' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsBulkModalOpen(true)}
-              leftIcon={<FiUploadCloud />}
-            >
-              Bulk Upload
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsBulkModalOpen(true)}
+            leftIcon={<FiUploadCloud />}
+          >
+            Bulk Upload
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -495,6 +493,7 @@ const ManageProducts = () => {
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
         mode="vendor"
+        workspace={workspace}
         onSuccess={() => fetchProducts({ fetchAll: true, limit: 200 })}
       />
 

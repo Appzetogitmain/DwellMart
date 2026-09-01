@@ -126,7 +126,7 @@ router.get('/products/tax-pricing-rules', ...vendorAuth, ...requireReadableChann
 router.get('/products/template/excel', ...vendorAuth, ...requireReadableChannel, downloadExcelTemplate);
 router.get('/products/template/csv', ...vendorAuth, ...requireReadableChannel, downloadCsvTemplate);
 router.post('/products/bulk-upload/validate', ...vendorAuth, ...requireWritableChannel, uploadMiddleware, validateUpload);
-router.post('/products/bulk-upload/process', ...vendorAuth, ...requireWritableChannel, productCapabilityGuard, processUpload);
+router.post('/products/bulk-upload/process', ...vendorAuth, ...requireWritableChannel, processUpload);
 router.get('/products/bulk-upload/job/:jobId', ...vendorAuth, ...requireReadableChannel, checkJobStatus);
 router.post('/products/bulk-upload/job/:jobId/cancel', ...vendorAuth, ...requireReadableChannel, cancelJobHandler);
 router.get('/products/bulk-upload/history', ...vendorAuth, ...requireReadableChannel, getImportHistory);

@@ -168,14 +168,20 @@ export const cancelVendorBulkProductJob = (jobId) =>
 export const getVendorBulkProductImportHistory = (params = {}) =>
     api.get('/vendor/products/bulk-upload/history', { params });
 
-export const downloadVendorProductTemplate = async (format = 'excel') => {
-    const response = await api.get(`/vendor/products/template/${format}`, { responseType: 'blob' });
+export const downloadVendorProductTemplate = async (format = 'excel', workspace = null) => {
+    const params = workspace ? { workspace } : {};
+    const response = await api.get(`/vendor/products/template/${format}`, { params, responseType: 'blob' });
     const mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const blob = new Blob([response], { type: mimeType });
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.setAttribute('download', `DwellMart_Vendor_Product_Template.${format === 'csv' ? 'csv' : 'xlsx'}`);
+    const prefix = workspace === 'quick_commerce'
+        ? 'Quick_Commerce'
+        : workspace === 'wholesale'
+            ? 'Wholesale'
+            : 'Vendor';
+    link.setAttribute('download', `DwellMart_${prefix}_Product_Template.${format === 'csv' ? 'csv' : 'xlsx'}`);
     document.body.appendChild(link);
     link.click();
     link.remove();

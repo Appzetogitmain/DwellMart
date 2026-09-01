@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { FiSearch, FiDollarSign } from "react-icons/fi";
+import { FiSearch } from "react-icons/fi";
+import { FaCoins } from "react-icons/fa6";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import Pagination from "../../components/Pagination";
@@ -139,15 +140,15 @@ const Transactions = () => {
       label: "Amount",
       sortable: true,
       render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <FiDollarSign
-            className={`text-sm ${
-              row.type === "refund" ? "text-red-600" : "text-green-600"
+        <div className="flex items-center gap-1.5">
+          <FaCoins
+            className={`text-xs ${
+              row.type === "refund" ? "text-red-500" : "text-emerald-500"
             }`}
           />
           <span
             className={`font-bold ${
-              row.type === "refund" ? "text-red-600" : "text-green-600"
+              row.type === "refund" ? "text-red-600" : "text-emerald-600"
             }`}
           >
             {row.type === "refund" ? "-" : "+"}

@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  FiDollarSign,
   FiClock,
   FiCheckCircle,
   FiAlertCircle,
@@ -15,6 +14,7 @@ import {
   FiFilter,
   FiDownload,
 } from "react-icons/fi";
+import { FaCoins } from "react-icons/fa6";
 import { motion, AnimatePresence } from "framer-motion";
 import ExportButton from "../../Admin/components/ExportButton";
 import { formatPrice } from "../../../shared/utils/helpers";
@@ -234,7 +234,7 @@ const WalletHistory = () => {
               Total Revenue
             </span>
             <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
-              <FiDollarSign className="text-xl text-indigo-100" />
+              <FaCoins className="text-xl text-indigo-100" />
             </div>
           </div>
           <p className="text-3xl font-extrabold tracking-tight">{formatPrice(walletBalance)}</p>

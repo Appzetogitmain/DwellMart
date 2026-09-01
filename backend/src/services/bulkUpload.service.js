@@ -111,147 +111,364 @@ export const parseShippingColumns = ({
 /**
  * Generate sample Excel or CSV template with headers, instructions, and sample rows
  */
-export const generateTemplate = async (format = 'xlsx', isAdmin = false) => {
-    const headers = [
-        'Product Name',
-        'Description',
-        'Category',
-        'Subcategory',
-        'Brand',
-        'SKU',
-        'HSN Code',
-        'Unit',
-        'Price',
-        'MRP',
-        'Cost Price',
-        'Stock',
-        'Minimum Stock',
-        'Weight',
-        'Weight Unit',
-        'Length',
-        'Width',
-        'Height',
-        'Dimension Unit',
-        'GST %',
-        'Tax Included',
-        'Status',
-        'Tags',
-        'Images',
-        'Image1',
-        'Image2',
-        'Image3',
-        'Image4',
-        'Image5',
-        'Is Variant',
-        'Parent SKU',
-        'Variant Name',
-        'Variant SKU',
-        'Variant Price',
-        'Variant Stock',
-        'Variant Attributes',
-        // Wholesale / bulk pricing. "Bulk Pricing Tiers" uses quantity:price
-        // pairs separated by | (e.g. 10:950|25:900|50:850).
-        'Retail Enabled',
-        'Wholesale Enabled',
-        'MOQ Enabled',
-        'MOQ',
-        'Bulk Pricing Tiers',
-    ];
+export const generateTemplate = async (format = 'xlsx', isAdmin = false, workspace = 'retail') => {
+    let headers;
+    let sampleRow1;
+    let sampleRow2;
 
-    if (isAdmin) {
-        headers.push('Vendor Email');
-    }
+    if (workspace === 'quick_commerce') {
+        headers = [
+            'Product Name',
+            'Description',
+            'Category',
+            'Subcategory',
+            'Brand',
+            'SKU',
+            'HSN Code',
+            'Unit',
+            'Pack Size',
+            'Price',
+            'MRP',
+            'Cost Price',
+            'Stock',
+            'Minimum Stock',
+            'Is Perishable',
+            'Shelf Life (Days)',
+            'Max Order Qty',
+            'Handling Note',
+            'GST %',
+            'Tax Included',
+            'Status',
+            'Tags',
+            'Images',
+            'Image1',
+            'Image2',
+            'Image3',
+            'Image4',
+            'Image5',
+        ];
+        if (isAdmin) headers.push('Vendor Email');
 
-    const sampleRow1 = [
-        'Premium Cotton T-Shirt',
-        'High quality breathable 100% cotton t-shirt',
-        'Fashion',
-        'Men Clothing',
-        'DwellMart Essentials',
-        'TSHIRT-COTTON-001',
-        '61091000',
-        'Piece',
-        799,
-        1299,
-        450,
-        150,
-        10,
-        '0.25 kg',
-        '30 cm',
-        '20 cm',
-        '2 cm',
-        18,
-        'Yes',
-        'Active',
-        'tshirt, cotton, fashion, summer',
-        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-        'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
-        '',
-        '',
-        '',
-        '',
-        'No',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'Yes',
-        'Yes',
-        'Yes',
-        20,
-        '10:750|25:700|50:650',
-    ];
+        sampleRow1 = [
+            'Farm Fresh Cow Milk 1L',
+            'Pasteurized full cream fresh cow milk',
+            'Dairy & Bread',
+            'Milk & Cream',
+            'Amul',
+            'MILK-COW-1L',
+            '04012000',
+            'Bottle',
+            '1 L',
+            68,
+            72,
+            55,
+            100,
+            10,
+            'Yes',
+            3,
+            6,
+            'Store refrigerated at 2-4°C',
+            5,
+            'Yes',
+            'Active',
+            'milk, dairy, fresh, breakfast',
+            'https://images.unsplash.com/photo-1550583724-b2692b85b150',
+            'https://images.unsplash.com/photo-1550583724-b2692b85b150',
+            '',
+            '',
+            '',
+            '',
+        ];
+        if (isAdmin) sampleRow1.push('support.test.vendor@dwell.com');
 
-    if (isAdmin) {
-        sampleRow1.push('support.test.vendor@dwell.com');
-    }
+        sampleRow2 = [
+            'Organic Whole Wheat Bread',
+            'Freshly baked 100% whole wheat bread loaf',
+            'Dairy & Bread',
+            'Fresh Bread',
+            'Britannia',
+            'BREAD-WHEAT-400G',
+            '19059010',
+            'Pack',
+            '400 g',
+            45,
+            50,
+            35,
+            80,
+            5,
+            'Yes',
+            5,
+            4,
+            'Store in a cool dry place',
+            0,
+            'Yes',
+            'Active',
+            'bread, wheat, bakery, breakfast',
+            'https://images.unsplash.com/photo-1509440159596-0249088772ff',
+            'https://images.unsplash.com/photo-1509440159596-0249088772ff',
+            '',
+            '',
+            '',
+            '',
+        ];
+        if (isAdmin) sampleRow2.push('support.test.vendor@dwell.com');
+    } else if (workspace === 'wholesale') {
+        headers = [
+            'Product Name',
+            'Description',
+            'Category',
+            'Subcategory',
+            'Brand',
+            'SKU',
+            'HSN Code',
+            'Unit',
+            'Price',
+            'MRP',
+            'Cost Price',
+            'Stock',
+            'Minimum Stock',
+            'Weight',
+            'Weight Unit',
+            'Length',
+            'Width',
+            'Height',
+            'Dimension Unit',
+            'GST %',
+            'Tax Included',
+            'Status',
+            'Tags',
+            'Images',
+            'Image1',
+            'Image2',
+            'Image3',
+            'Image4',
+            'Image5',
+            'Wholesale Enabled',
+            'MOQ Enabled',
+            'MOQ',
+            'Bulk Pricing Tiers',
+        ];
+        if (isAdmin) headers.push('Vendor Email');
 
-    const sampleRow2 = [
-        'Premium Cotton T-Shirt - Red Large',
-        'Red color large size variant',
-        'Fashion',
-        'Men Clothing',
-        'DwellMart Essentials',
-        'TSHIRT-COTTON-001-RED-L',
-        '61091000',
-        'Piece',
-        849,
-        1299,
-        470,
-        50,
-        5,
-        '0.25 kg',
-        '30 cm',
-        '20 cm',
-        '2 cm',
-        18,
-        'Yes',
-        'Active',
-        'tshirt, red, large',
-        '',
-        '',
-        '',
-        '',
-        '',
-        '',
-        'Yes',
-        'TSHIRT-COTTON-001',
-        'Size: L / Color: Red',
-        'TSHIRT-COTTON-001-RED-L',
-        849,
-        50,
-        'Size=L;Color=Red;Material=Cotton',
-        'Yes',
-        'No',
-        'No',
-        '',
-        '',
-    ];
+        sampleRow1 = [
+            'Wholesale Premium Cotton T-Shirts (Bundle)',
+            'Bulk lot high quality 100% cotton t-shirts',
+            'Fashion',
+            'Men Clothing',
+            'DwellMart Essentials',
+            'TSHIRT-BULK-001',
+            '61091000',
+            'Piece',
+            799,
+            1299,
+            450,
+            500,
+            20,
+            '0.25 kg',
+            '30 cm',
+            '20 cm',
+            '2 cm',
+            18,
+            'Yes',
+            'Active',
+            'tshirt, wholesale, bulk, cotton',
+            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+            '',
+            '',
+            '',
+            '',
+            'Yes',
+            'Yes',
+            20,
+            '10:750|25:700|50:650',
+        ];
+        if (isAdmin) sampleRow1.push('support.test.vendor@dwell.com');
 
-    if (isAdmin) {
-        sampleRow2.push('support.test.vendor@dwell.com');
+        sampleRow2 = [
+            'Wholesale Denim Jeans (Bundle)',
+            'Bulk denim jeans 100% cotton durable',
+            'Fashion',
+            'Men Clothing',
+            'DwellMart Essentials',
+            'JEANS-BULK-001',
+            '62034200',
+            'Piece',
+            1199,
+            1999,
+            750,
+            300,
+            10,
+            '0.6 kg',
+            '35 cm',
+            '25 cm',
+            '4 cm',
+            18,
+            'Yes',
+            'Active',
+            'jeans, denim, wholesale',
+            'https://images.unsplash.com/photo-1542272604-780c96856592',
+            'https://images.unsplash.com/photo-1542272604-780c96856592',
+            '',
+            '',
+            '',
+            '',
+            'Yes',
+            'Yes',
+            10,
+            '10:1100|20:1000|50:900',
+        ];
+        if (isAdmin) sampleRow2.push('support.test.vendor@dwell.com');
+    } else {
+        // Standard Retail / Default template
+        headers = [
+            'Product Name',
+            'Description',
+            'Category',
+            'Subcategory',
+            'Brand',
+            'SKU',
+            'HSN Code',
+            'Unit',
+            'Price',
+            'MRP',
+            'Cost Price',
+            'Stock',
+            'Minimum Stock',
+            'Weight',
+            'Weight Unit',
+            'Length',
+            'Width',
+            'Height',
+            'Dimension Unit',
+            'GST %',
+            'Tax Included',
+            'Status',
+            'Tags',
+            'Images',
+            'Image1',
+            'Image2',
+            'Image3',
+            'Image4',
+            'Image5',
+            'Is Variant',
+            'Parent SKU',
+            'Variant Name',
+            'Variant SKU',
+            'Variant Price',
+            'Variant Stock',
+            'Variant Attributes',
+            'Retail Enabled',
+            'Wholesale Enabled',
+            'Quick Commerce Enabled',
+            'MOQ Enabled',
+            'MOQ',
+            'Bulk Pricing Tiers',
+            'Is Perishable',
+            'Pack Size',
+            'Shelf Life (Days)',
+            'Max Order Qty',
+            'Handling Note',
+        ];
+        if (isAdmin) headers.push('Vendor Email');
+
+        sampleRow1 = [
+            'Premium Cotton T-Shirt',
+            'High quality breathable 100% cotton t-shirt',
+            'Fashion',
+            'Men Clothing',
+            'DwellMart Essentials',
+            'TSHIRT-COTTON-001',
+            '61091000',
+            'Piece',
+            799,
+            1299,
+            450,
+            150,
+            10,
+            '0.25 kg',
+            '30 cm',
+            '20 cm',
+            '2 cm',
+            18,
+            'Yes',
+            'Active',
+            'tshirt, cotton, fashion, summer',
+            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+            'https://images.unsplash.com/photo-1521572267360-ee0c2909d518',
+            '',
+            '',
+            '',
+            '',
+            'No',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            'Yes',
+            'No',
+            'No',
+            'No',
+            '',
+            '',
+            'No',
+            '',
+            '',
+            '',
+            '',
+        ];
+        if (isAdmin) sampleRow1.push('support.test.vendor@dwell.com');
+
+        sampleRow2 = [
+            'Premium Cotton T-Shirt - Red Large',
+            'Red color large size variant',
+            'Fashion',
+            'Men Clothing',
+            'DwellMart Essentials',
+            'TSHIRT-COTTON-001-RED-L',
+            '61091000',
+            'Piece',
+            849,
+            1299,
+            470,
+            50,
+            5,
+            '0.25 kg',
+            '30 cm',
+            '20 cm',
+            '2 cm',
+            18,
+            'Yes',
+            'Active',
+            'tshirt, red, large',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            'Yes',
+            'TSHIRT-COTTON-001',
+            'Size: L / Color: Red',
+            'TSHIRT-COTTON-001-RED-L',
+            849,
+            50,
+            'Size=L;Color=Red;Material=Cotton',
+            'Yes',
+            'No',
+            'No',
+            'No',
+            '',
+            '',
+            'No',
+            '',
+            '',
+            '',
+            '',
+        ];
+        if (isAdmin) sampleRow2.push('support.test.vendor@dwell.com');
     }
 
     const data = [headers, sampleRow1, sampleRow2];
@@ -328,6 +545,7 @@ export const validateBulkUpload = async ({
     targetVendorId = null,
     autoCreateBrands = false,
     skuImageMap = {},
+    workspace = null,
 }) => {
     let workbook;
     if (fileType === 'csv') {
@@ -471,6 +689,19 @@ export const validateBulkUpload = async ({
         const moqEnabled = moqEnabledStr === '' ? false : isTruthyCell(moqEnabledStr);
         const isVariantRow = isVariantStr === 'yes' || isVariantStr === 'true' || Boolean(parentSku);
 
+        // Quick Commerce columns
+        const qcEnabledStr = String(raw['Quick Commerce Enabled'] ?? '').trim().toLowerCase();
+        const isPerishableStr = String(raw['Is Perishable'] ?? raw['Perishable'] ?? '').trim().toLowerCase();
+        const packSize = String(raw['Pack Size'] ?? '').trim();
+        const shelfLifeDays = raw['Shelf Life (Days)'] !== '' && raw['Shelf Life (Days)'] !== undefined ? parseInt(raw['Shelf Life (Days)'], 10) : null;
+        const maxOrderQty = raw['Max Order Qty'] !== '' && raw['Max Order Qty'] !== undefined ? parseInt(raw['Max Order Qty'], 10) : null;
+        const handlingNote = String(raw['Handling Note'] ?? '').trim();
+
+        const quickCommerceEnabled = workspace === 'quick_commerce'
+            ? true
+            : (qcEnabledStr !== '' ? isTruthyCell(qcEnabledStr) : false);
+        const isPerishable = isTruthyCell(isPerishableStr);
+
         const errors = [];
         const warnings = [];
 
@@ -505,8 +736,8 @@ export const validateBulkUpload = async ({
         // 2b. Wholesale / Bulk Pricing Rules
         let wholesaleTiers = [];
         let wholesaleMoq = null;
-        if (!retailEnabled && !wholesaleEnabled) {
-            errors.push('At least one selling channel (Retail Enabled or Wholesale Enabled) must be Yes.');
+        if (!retailEnabled && !wholesaleEnabled && !quickCommerceEnabled) {
+            errors.push('At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled.');
         }
         if (wholesaleEnabled) {
             // V1 scope: wholesale bulk-import is limited to non-variant products.
@@ -541,11 +772,22 @@ export const validateBulkUpload = async ({
             warnings.push('Bulk Pricing Tiers provided but Wholesale Enabled is not Yes — tiers will be ignored.');
         }
 
+        // 2c. Quick Commerce Validation Rules
+        if (quickCommerceEnabled) {
+            if (maxOrderQty !== null && (!Number.isInteger(maxOrderQty) || maxOrderQty < 1)) {
+                errors.push('Max Order Qty must be a positive integer (1 or more).');
+            }
+            if (shelfLifeDays !== null && (!Number.isInteger(shelfLifeDays) || shelfLifeDays < 0)) {
+                errors.push('Shelf Life (Days) must be 0 or greater.');
+            }
+        }
+
         // 3. Category Lookup
         let categoryObj = categoryMap.get(categoryInput) || categoryMap.get(categoryInput.toLowerCase());
         if (!categoryObj) {
             errors.push(`Category "${categoryInput}" not found in database. Please create this category first or select an existing category.`);
         }
+        const quickCommerceCategoryId = (quickCommerceEnabled && categoryObj) ? categoryObj._id : null;
 
         // 4. Brand Lookup & Auto-Creation
         let brandObj = brandInput ? (brandMap.get(brandInput) || brandMap.get(brandInput.toLowerCase())) : null;
@@ -664,6 +906,13 @@ export const validateBulkUpload = async ({
             wholesaleMoqEnabled: wholesaleEnabled ? moqEnabled : false,
             wholesaleMoq: wholesaleEnabled && moqEnabled ? wholesaleMoq : null,
             wholesalePriceTiers: wholesaleEnabled ? wholesaleTiers : [],
+            quickCommerceEnabled,
+            isPerishable,
+            packSize,
+            shelfLifeDays,
+            maxOrderQty,
+            handlingNote,
+            quickCommerceCategoryId,
             errors,
             warnings,
             validationStatus,
@@ -783,7 +1032,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
 
         for (const row of batch) {
             try {
-                // Wholesale fields, shared by every duplicate-mode branch below.
+                // Wholesale & Quick Commerce fields, shared by every duplicate-mode branch below.
                 // Built once so insert and update paths cannot diverge.
                 const wholesaleFields = {
                     retailEnabled: row.retailEnabled !== false,
@@ -796,16 +1045,40 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                         priceTiers: Array.isArray(row.wholesalePriceTiers) ? row.wholesalePriceTiers : [],
                     },
                 };
+
+                const qcData = {
+                    isPerishable: row.isPerishable === true,
+                    ...(row.packSize ? { packSize: row.packSize } : {}),
+                    ...(Number.isInteger(row.shelfLifeDays) && row.shelfLifeDays >= 0 ? { shelfLifeDays: row.shelfLifeDays } : {}),
+                    ...(Number.isInteger(row.maxOrderQty) && row.maxOrderQty >= 1 ? { maxOrderQty: row.maxOrderQty } : {}),
+                    ...(row.handlingNote ? { handlingNote: row.handlingNote } : {}),
+                };
+
+                const isQcActive = jobState.workspace === 'quick_commerce' || row.quickCommerceEnabled === true;
+                const qcCategoryId = isQcActive ? (row.quickCommerceCategoryId || row.categoryId) : null;
+
                 const updateChannelFields = jobState.workspace === 'retail'
                     ? { retailEnabled: true }
                     : jobState.workspace === 'wholesale'
                         ? { wholesaleEnabled: true, wholesale: wholesaleFields.wholesale }
-                        : wholesaleFields;
+                        : jobState.workspace === 'quick_commerce'
+                            ? { quickCommerceEnabled: true, ...(qcCategoryId ? { quickCommerceCategoryId: qcCategoryId } : {}), quickCommerce: qcData }
+                            : {
+                                ...wholesaleFields,
+                                ...(isQcActive ? { quickCommerceEnabled: true, ...(qcCategoryId ? { quickCommerceCategoryId: qcCategoryId } : {}), quickCommerce: qcData } : {}),
+                            };
+
                 const insertChannelFields = jobState.workspace === 'retail'
                     ? { retailEnabled: true, wholesaleEnabled: false, quickCommerceEnabled: false }
                     : jobState.workspace === 'wholesale'
                         ? { retailEnabled: false, wholesaleEnabled: true, quickCommerceEnabled: false, wholesale: wholesaleFields.wholesale }
-                        : wholesaleFields;
+                        : jobState.workspace === 'quick_commerce'
+                            ? { retailEnabled: false, wholesaleEnabled: false, quickCommerceEnabled: true, ...(qcCategoryId ? { quickCommerceCategoryId: qcCategoryId } : {}), quickCommerce: qcData }
+                            : {
+                                ...wholesaleFields,
+                                quickCommerceEnabled: isQcActive,
+                                ...(isQcActive ? { ...(qcCategoryId ? { quickCommerceCategoryId: qcCategoryId } : {}), quickCommerce: qcData } : {}),
+                            };
 
                 // Auto create brand if requested
                 let finalBrandId = row.brandId;
