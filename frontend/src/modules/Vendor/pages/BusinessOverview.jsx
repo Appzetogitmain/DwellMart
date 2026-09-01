@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { FiShoppingBag, FiUsers, FiDollarSign } from 'react-icons/fi';
+import { FiShoppingBag, FiUsers } from 'react-icons/fi';
+import { FaCoins } from 'react-icons/fa6';
 import api from '../../../shared/utils/api';
 import { WORKSPACE_LABELS } from '../hooks/useVendorWorkspace';
 
@@ -17,7 +18,7 @@ const BusinessOverview = () => {
     <section className="space-y-6">
       <div><h1 className="text-2xl font-bold text-slate-900">Business Overview</h1><p className="text-slate-500">Read-only performance across all approved channels.</p></div>
       <div className="grid gap-4 sm:grid-cols-3">
-        {[[FiDollarSign, 'Total revenue', formatCurrency(totals.revenue)], [FiShoppingBag, 'Total orders', totals.orders || 0], [FiUsers, 'Unique customers', totals.customers || 0]].map(([Icon, label, value]) => (
+        {[[FaCoins, 'Total revenue', formatCurrency(totals.revenue)], [FiShoppingBag, 'Total orders', totals.orders || 0], [FiUsers, 'Unique customers', totals.customers || 0]].map(([Icon, label, value]) => (
           <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><Icon className="text-2xl text-amber-500"/><p className="mt-3 text-sm text-slate-500">{label}</p><p className="text-2xl font-bold text-slate-900">{value}</p></article>
         ))}
       </div>
