@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { FiArrowLeft, FiClock } from 'react-icons/fi';
 import api from '../../../shared/utils/api';
 import PublicPageLayout from '../components/Layout/PublicPageLayout';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 // Map slug → display title (fallback if admin left title blank)
 const DEFAULT_TITLES = {
@@ -37,9 +38,9 @@ const DEFAULT_PRIVACY_CONTENT = `
 <h2>3. Data Protection & Privacy Officer</h2>
 <p>For any privacy inquiries, data access requests, or policy feedback, please contact our designated Privacy Officer:</p>
 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
-  <p style="margin: 0 0 6px 0;"><strong>Name:</strong> Devesh Lal</p>
-  <p style="margin: 0 0 6px 0;"><strong>Mobile:</strong> 9999188143</p>
-  <p style="margin: 0;"><strong>Email:</strong> <a href="mailto:davesh0007@gmail.com" style="color: #2563eb;">davesh0007@gmail.com</a></p>
+  <p style="margin: 0 0 6px 0;"><strong>Team:</strong> DwellMart Privacy & Compliance Team</p>
+  <p style="margin: 0 0 6px 0;"><strong>Mobile:</strong> +91 9999188143</p>
+  <p style="margin: 0;"><strong>Email:</strong> <a href="mailto:contact.dwellmartindia@gmail.com" style="color: #2563eb;">contact.dwellmartindia@gmail.com</a></p>
 </div>
 
 <h2>4. How We Use Your Data</h2>
@@ -53,6 +54,17 @@ const StaticPage = ({ slug: slugProp }) => {
   // Accept slug either from props (used in App.jsx) or from URL params
   const params = useParams();
   const slug = slugProp || params.slug;
+
+  const { settings, initialize } = useSettingsStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  const general = settings?.general || {};
+  const storeName = general.storeName || 'DwellMart';
+  const email = general.contactEmail || 'contact.dwellmartindia@gmail.com';
+  const phone = general.contactPhone || '+919999188143';
 
   const [page, setPage] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,9 +153,9 @@ const StaticPage = ({ slug: slugProp }) => {
                 <h3 className="text-lg font-bold text-slate-900 mb-2">Privacy & Data Officer Contact</h3>
                 <p className="text-sm text-slate-600 mb-3">For any privacy questions or data requests, contact:</p>
                 <div className="space-y-1 text-sm font-medium text-slate-800">
-                  <p><strong>Name:</strong> Devesh Lal</p>
-                  <p><strong>Mobile:</strong> 9999188143</p>
-                  <p><strong>Email:</strong> <a href="mailto:davesh0007@gmail.com" className="text-brand-primary hover:underline">davesh0007@gmail.com</a></p>
+                  <p><strong>Team:</strong> {storeName} Privacy & Compliance Team</p>
+                  <p><strong>Mobile:</strong> <a href={`tel:${phone.replace(/\s+/g, '')}`} className="text-brand-primary hover:underline">{phone}</a></p>
+                  <p><strong>Email:</strong> <a href={`mailto:${email}`} className="text-brand-primary hover:underline">{email}</a></p>
                 </div>
               </div>
             )}

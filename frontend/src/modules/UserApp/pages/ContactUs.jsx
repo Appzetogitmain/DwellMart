@@ -113,9 +113,9 @@ const ContactUs = () => {
                         <FiUser />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold text-content-secondary">Contact Person</h4>
-                        <p className="text-content font-bold text-base mt-0.5">Devesh Lal</p>
-                        <p className="text-xs text-content-muted mt-0.5">Support & Operations Lead</p>
+                        <h4 className="text-sm font-semibold text-content-secondary">Contact Team</h4>
+                        <p className="text-content font-bold text-base mt-0.5">{storeName} Support Team</p>
+                        <p className="text-xs text-content-muted mt-0.5">Help Desk & Operations</p>
                       </div>
                     </div>
 
@@ -125,7 +125,9 @@ const ContactUs = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold text-content-secondary">Email Us</h4>
-                        <p className="text-content font-medium text-base mt-0.5">davesh0007@gmail.com</p>
+                        <a href={`mailto:${email}`} className="text-content font-medium text-base mt-0.5 hover:text-brand-primary transition-colors block">
+                          {email}
+                        </a>
                         <p className="text-xs text-content-muted mt-1">Our support team responds promptly.</p>
                       </div>
                     </div>
@@ -136,7 +138,9 @@ const ContactUs = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold text-content-secondary">Call / Mobile</h4>
-                        <p className="text-content font-medium text-base mt-0.5">9999188143</p>
+                        <a href={`tel:${phone.replace(/\s+/g, '')}`} className="text-content font-medium text-base mt-0.5 hover:text-brand-primary transition-colors block">
+                          {phone}
+                        </a>
                         <p className="text-xs text-content-muted mt-1">{hours}</p>
                       </div>
                     </div>

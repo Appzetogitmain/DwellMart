@@ -1,7 +1,19 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiShield, FiUser, FiPhone, FiMail, FiCheckCircle, FiLock } from 'react-icons/fi';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const VendorPrivacyPolicy = () => {
+  const { settings, initialize } = useSettingsStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  const general = settings?.general || {};
+  const storeName = general.storeName || 'DwellMart';
+  const email = general.contactEmail || 'contact.dwellmartindia@gmail.com';
+  const phone = general.contactPhone || '+919999188143';
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -85,7 +97,7 @@ const VendorPrivacyPolicy = () => {
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block font-medium">Contact Person</span>
-                  <span className="text-sm font-bold text-slate-900">Devesh Lal</span>
+                  <span className="text-sm font-bold text-slate-900">{storeName} Compliance Officer</span>
                 </div>
               </div>
 
@@ -95,8 +107,8 @@ const VendorPrivacyPolicy = () => {
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block font-medium">Mobile / Call</span>
-                  <a href="tel:9999188143" className="text-sm font-bold text-slate-900 hover:text-emerald-600">
-                    9999188143
+                  <a href={`tel:${phone.replace(/\s+/g, '')}`} className="text-sm font-bold text-slate-900 hover:text-emerald-600">
+                    {phone}
                   </a>
                 </div>
               </div>
@@ -107,8 +119,8 @@ const VendorPrivacyPolicy = () => {
                 </div>
                 <div>
                   <span className="text-xs text-slate-500 block font-medium">Email Address</span>
-                  <a href="mailto:davesh0007@gmail.com" className="text-sm font-bold text-slate-900 hover:text-emerald-600 truncate block">
-                    davesh0007@gmail.com
+                  <a href={`mailto:${email}`} className="text-sm font-bold text-slate-900 hover:text-emerald-600 truncate block">
+                    {email}
                   </a>
                 </div>
               </div>
@@ -117,7 +129,7 @@ const VendorPrivacyPolicy = () => {
 
           {/* Footer note */}
           <div className="pt-4 text-xs text-slate-400 text-center border-t border-slate-100">
-            © {new Date().getFullYear()} DwellMart Merchant Services. All rights reserved.
+            © {new Date().getFullYear()} {storeName} Merchant Services. All rights reserved.
           </div>
         </div>
       </div>

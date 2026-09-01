@@ -703,7 +703,7 @@ const AppRoutes = () => {
         <Route path="policies/refund-policy" element={<RefundPolicy />} />
         <Route path="policies/terms-conditions" element={<TermsConditions />} />
         <Route path="policies/about-us" element={<AboutUs />} />
-        <Route path="policies/contact-us" element={<ContactUs />} />
+        <Route path="policies/contact-us" element={<Navigate to="/admin/settings/general" replace />} />
         <Route path="policies/shipping-policy" element={<ShippingPolicy />} />
         <Route path="policies/faqs" element={<FAQs />} />
         <Route path="policies/become-partner" element={<BecomePartner />} />

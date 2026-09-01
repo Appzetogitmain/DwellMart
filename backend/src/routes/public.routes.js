@@ -1308,7 +1308,9 @@ router.post('/contact', publicWriteLimiter, asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Message content is required.');
     }
 
-    const recipientEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'support@dwellmart.com';
+    const setting = await Settings.findOne({ key: 'general' });
+    const configuredContactEmail = setting?.value?.contactEmail;
+    const recipientEmail = configuredContactEmail || process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'support@dwellmart.com';
     const emailSubject = `[DwellMart Inquiry] ${subject || 'New Contact Us Message'} from ${name.trim()}`;
 
     const textContent = `

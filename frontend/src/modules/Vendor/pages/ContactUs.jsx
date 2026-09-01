@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft, FiMail, FiPhone, FiUser, FiSend, FiCheckCircle, FiHelpCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
+import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const VendorContactUs = () => {
+  const { settings, initialize } = useSettingsStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  const general = settings?.general || {};
+  const storeName = general.storeName || 'DwellMart';
+  const email = general.contactEmail || 'support@dwellmart.com';
+  const phone = general.contactPhone || '+91 98765 43210';
+  const hours = general.businessHours || 'Mon - Sat, 9:00 AM - 7:00 PM';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -88,8 +101,8 @@ const VendorContactUs = () => {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact Officer</h3>
-                    <p className="text-base font-bold text-slate-900 mt-0.5">Devesh Lal</p>
-                    <p className="text-xs text-slate-500">Vendor Relations & Merchant Operations</p>
+                    <p className="text-base font-bold text-slate-900 mt-0.5">{storeName} Merchant Operations</p>
+                    <p className="text-xs text-slate-500">Vendor Relations & Onboarding</p>
                   </div>
                 </div>
 
@@ -99,10 +112,10 @@ const VendorContactUs = () => {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Direct Phone / Mobile</h3>
-                    <a href="tel:9999188143" className="text-base font-bold text-slate-900 hover:text-emerald-600 mt-0.5 block">
-                      9999188143
+                    <a href={`tel:${phone.replace(/\s+/g, '')}`} className="text-base font-bold text-slate-900 hover:text-emerald-600 mt-0.5 block">
+                      {phone}
                     </a>
-                    <p className="text-xs text-slate-500 mt-0.5">Mon - Sat, 9:00 AM - 7:00 PM</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{hours}</p>
                   </div>
                 </div>
 
@@ -112,8 +125,8 @@ const VendorContactUs = () => {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Address</h3>
-                    <a href="mailto:davesh0007@gmail.com" className="text-base font-bold text-slate-900 hover:text-emerald-600 mt-0.5 block">
-                      davesh0007@gmail.com
+                    <a href={`mailto:${email}`} className="text-base font-bold text-slate-900 hover:text-emerald-600 mt-0.5 block">
+                      {email}
                     </a>
                     <p className="text-xs text-slate-500 mt-0.5">Response within 24 business hours</p>
                   </div>
@@ -124,7 +137,7 @@ const VendorContactUs = () => {
             <div className="bg-emerald-600 text-white rounded-2xl p-6 shadow-md">
               <h3 className="font-bold text-base mb-1">Quick Commerce & Wholesale</h3>
               <p className="text-xs text-emerald-100 leading-relaxed">
-                List your products for instant local delivery or multi-location B2B distribution through DwellMart vendor services.
+                List your products for instant local delivery or multi-location B2B distribution through {storeName} vendor services.
               </p>
             </div>
           </div>
@@ -139,7 +152,7 @@ const VendorContactUs = () => {
                   </div>
                   <h3 className="text-xl font-bold text-slate-900">Inquiry Submitted!</h3>
                   <p className="text-slate-600 text-sm max-w-sm mx-auto">
-                    Thank you. Devesh Lal and our merchant operations team will reach out to you shortly.
+                    Thank you. Our merchant operations team will reach out to you shortly.
                   </p>
                   <button
                     onClick={() => setIsSubmitted(false)}
