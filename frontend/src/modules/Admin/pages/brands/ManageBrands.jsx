@@ -171,14 +171,6 @@ const ManageBrands = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-start sm:justify-end gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-semibold shadow-sm transition-all"
-          >
-            <FiUploadCloud />
-            <span>Import</span>
-          </button>
           <ExportButton
             data={filteredBrands}
             headers={[
