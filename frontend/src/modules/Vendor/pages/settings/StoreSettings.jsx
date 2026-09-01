@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   FiSave, FiGlobe, FiShoppingBag, FiUpload, FiTrash2,
   FiLoader, FiZap, FiInfo, FiTruck, FiFileText, FiBriefcase, FiMapPin,
+  FiNavigation, FiCheck,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
@@ -10,6 +11,9 @@ import { uploadVendorImage } from "../../services/vendorService";
 import QuickCommerceSettingsForm from "../../components/QuickCommerceSettingsForm";
 import { getVendorCapabilities, VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
 import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
+import PlaceAutocompleteInput from "../../../../shared/maps/PlaceAutocompleteInput";
+import GoogleMapPicker from "../../../../shared/maps/GoogleMapPicker";
+import { reverseGeocode } from "../../../../shared/maps/googleMaps";
 import toast from "react-hot-toast";
 
 /**
@@ -44,6 +48,9 @@ const StoreSettings = () => {
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState(settingsSections[0]?.id ?? "identity");
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isLocatingAddress, setIsLocatingAddress] = useState(false);
+  const [showAddressMap, setShowAddressMap] = useState(false);
+  const [addressCoords, setAddressCoords] = useState(null);
 
   useEffect(() => {
     if (vendor) {
@@ -62,8 +69,66 @@ const StoreSettings = () => {
         phone:            vendor.phone || "",
         address:          formatAddressString(vendor.address),
       });
+
+      if (vendor.address?.latitude && vendor.address?.longitude) {
+        setAddressCoords({
+          latitude: Number(vendor.address.latitude),
+          longitude: Number(vendor.address.longitude),
+        });
+      }
     }
   }, [vendor]);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsLocatingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          setAddressCoords({ latitude: lat, longitude: lng });
+          const geo = await reverseGeocode({ latitude: lat, longitude: lng });
+          const fullAddress = geo.formattedAddress || [geo.address, geo.city, geo.state, geo.zipCode].filter(Boolean).join(", ");
+          setFormData((prev) => ({ ...prev, address: fullAddress }));
+          toast.success("Store address filled from your current location!");
+        } catch {
+          toast.error("Could not determine address from location");
+        } finally {
+          setIsLocatingAddress(false);
+        }
+      },
+      () => {
+        setIsLocatingAddress(false);
+        toast.error("Location permission denied. Please allow location access in your browser.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
+  const handlePlaceSelect = (place) => {
+    if (!place) return;
+    const fullAddress = place.formattedAddress || [place.address, place.city, place.state, place.zipCode].filter(Boolean).join(", ");
+    setFormData((prev) => ({ ...prev, address: fullAddress }));
+    if (place.location) {
+      setAddressCoords(place.location);
+    }
+    toast.success("Address selected!");
+  };
+
+  const handleMapPinChange = async (point) => {
+    setAddressCoords(point);
+    try {
+      const geo = await reverseGeocode(point);
+      const fullAddress = geo.formattedAddress || [geo.address, geo.city, geo.state, geo.zipCode].filter(Boolean).join(", ");
+      setFormData((prev) => ({ ...prev, address: fullAddress }));
+    } catch {
+      // Keep existing manual text if geocode fails
+    }
+  };
 
   // Reset activeSection when vendor type changes (caps may expose different sections)
   useEffect(() => {
@@ -114,6 +179,8 @@ const StoreSettings = () => {
           zipCode: parts[2] && parts[2].split(" ")[1] ? parts[2].split(" ")[1] : (parts[3] || vendor.address?.zipCode || ""),
           country: vendor.address?.country || "India",
           formattedAddress: raw,
+          latitude: addressCoords?.latitude ?? vendor.address?.latitude,
+          longitude: addressCoords?.longitude ?? vendor.address?.longitude,
         };
       }
       await updateProfile({
@@ -436,16 +503,63 @@ const StoreSettings = () => {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Public Store Address</label>
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Public Store Address
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleUseCurrentLocation}
+                          disabled={isLocatingAddress}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-900 bg-amber-100/80 hover:bg-amber-200/80 border border-amber-300 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
+                        >
+                          <FiNavigation className={isLocatingAddress ? "animate-spin text-amber-700" : "text-amber-700"} />
+                          <span>{isLocatingAddress ? "Detecting location..." : "Use current location"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddressMap((prev) => !prev)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 border border-gray-300 px-2.5 py-1 rounded-lg transition-all"
+                        >
+                          <FiMapPin className="text-gray-600" />
+                          <span>{showAddressMap ? "Hide map" : "Choose on map"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <PlaceAutocompleteInput
+                      onSelect={handlePlaceSelect}
+                      className="mb-2"
+                      placeholder="Search store address, building, or landmark"
+                    />
+
+                    {showAddressMap && (
+                      <GoogleMapPicker
+                        className="mb-3"
+                        value={addressCoords}
+                        height={220}
+                        onChange={handleMapPinChange}
+                      />
+                    )}
+
                     <textarea
                       name="address"
                       value={formData.address || ""}
                       onChange={handleChange}
                       rows={2}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                       placeholder="Street, City, State ZIP"
                     />
-                    <p className="mt-1 text-xs text-gray-500">This address is shown on your public storefront and customer invoices.</p>
+                    {addressCoords?.latitude != null && addressCoords?.longitude != null && (
+                      <p className="mt-1 text-xs text-emerald-700 font-medium flex items-center gap-1">
+                        <FiCheck className="text-emerald-600" />
+                        <span>GPS Coordinates: {Number(addressCoords.latitude).toFixed(5)}, {Number(addressCoords.longitude).toFixed(5)}</span>
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Search above, use current location, drag the map pin, or type manually. Shown on your public storefront and invoices.
+                    </p>
                   </div>
 
                   <div className="md:col-span-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-3">

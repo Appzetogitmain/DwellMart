@@ -29,9 +29,9 @@ const pickupLocationSchema = new mongoose.Schema(
             city: { type: String, trim: true, default: '' },
             state: { type: String, trim: true, default: '' },
             zipCode: { type: String, trim: true, default: '' },
-            // India, not "USA" — the previous client-side default was wrong for
-            // an INR platform and was never validated by anything.
             country: { type: String, trim: true, default: 'India' },
+            latitude: { type: Number, default: null },
+            longitude: { type: Number, default: null },
         },
         phone: { type: String, trim: true, default: '' },
         email: { type: String, trim: true, lowercase: true, default: '' },

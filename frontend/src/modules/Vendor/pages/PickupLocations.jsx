@@ -7,11 +7,16 @@ import {
   FiSearch,
   FiCheckCircle,
   FiX,
+  FiNavigation,
+  FiCheck,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import DataTable from "../../Admin/components/DataTable";
 import ConfirmModal from "../../Admin/components/ConfirmModal";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
+import PlaceAutocompleteInput from "../../../shared/maps/PlaceAutocompleteInput";
+import GoogleMapPicker from "../../../shared/maps/GoogleMapPicker";
+import { reverseGeocode } from "../../../shared/maps/googleMaps";
 import toast from "react-hot-toast";
 import api from "../../../shared/utils/api";
 
@@ -333,9 +338,21 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
     },
   });
 
+  const [isLocating, setIsLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [coords, setCoords] = useState(null);
+
   useEffect(() => {
     if (location) {
       setFormData(location);
+      if (location.address?.latitude && location.address?.longitude) {
+        setCoords({
+          latitude: Number(location.address.latitude),
+          longitude: Number(location.address.longitude),
+        });
+      } else {
+        setCoords(null);
+      }
     } else {
       setFormData({
         name: "",
@@ -344,7 +361,7 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
           city: "",
           state: "",
           zipCode: "",
-          country: "USA",
+          country: "India",
         },
         phone: "",
         email: "",
@@ -360,8 +377,96 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
           sunday: { open: "10:00", close: "16:00", closed: true },
         },
       });
+      setCoords(null);
     }
   }, [location, isOpen]);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          const point = { latitude: lat, longitude: lng };
+          setCoords(point);
+          const geo = await reverseGeocode(point);
+          setFormData((prev) => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              street: geo.address || prev.address.street,
+              city: geo.city || prev.address.city,
+              state: geo.state || prev.address.state,
+              zipCode: geo.zipCode || prev.address.zipCode,
+              country: geo.country || "India",
+              latitude: lat,
+              longitude: lng,
+            },
+          }));
+          toast.success("Pickup address filled from current location!");
+        } catch {
+          toast.error("Could not determine address from location");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        setIsLocating(false);
+        toast.error("Location permission denied. Please allow location access in your browser.");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
+  const handlePlaceSelect = (place) => {
+    if (!place) return;
+    const lat = place.location?.latitude;
+    const lng = place.location?.longitude;
+    if (lat && lng) {
+      setCoords({ latitude: lat, longitude: lng });
+    }
+    setFormData((prev) => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        street: place.address || prev.address.street,
+        city: place.city || prev.address.city,
+        state: place.state || prev.address.state,
+        zipCode: place.zipCode || prev.address.zipCode,
+        country: place.country || "India",
+        latitude: lat ?? prev.address.latitude,
+        longitude: lng ?? prev.address.longitude,
+      },
+    }));
+    toast.success("Pickup address filled from selection!");
+  };
+
+  const handleMapPinChange = async (point) => {
+    setCoords(point);
+    try {
+      const geo = await reverseGeocode(point);
+      setFormData((prev) => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          street: geo.address || prev.address.street,
+          city: geo.city || prev.address.city,
+          state: geo.state || prev.address.state,
+          zipCode: geo.zipCode || prev.address.zipCode,
+          country: geo.country || "India",
+          latitude: point.latitude,
+          longitude: point.longitude,
+        },
+      }));
+    } catch {
+      // ignore
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -431,6 +536,55 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="e.g., Main Store, Warehouse"
                   />
+                </div>
+
+                {/* Location API & GPS Toolbar */}
+                <div className="rounded-xl border border-primary-200 bg-primary-50/60 p-3.5 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                      <FiMapPin className="text-primary-600" />
+                      <span>Search or Auto-Detect Address</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={isLocating}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800 bg-white border border-primary-300 px-2.5 py-1 rounded-lg transition-all shadow-xs disabled:opacity-50"
+                      >
+                        <FiNavigation className={isLocating ? "animate-spin text-primary-600" : "text-primary-600"} />
+                        <span>{isLocating ? "Detecting location..." : "Use current location"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowMap((prev) => !prev)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 bg-white border border-gray-300 px-2.5 py-1 rounded-lg transition-all shadow-xs"
+                      >
+                        <FiMapPin className="text-gray-600" />
+                        <span>{showMap ? "Hide map" : "Choose on map"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <PlaceAutocompleteInput
+                    onSelect={handlePlaceSelect}
+                    placeholder="Search warehouse, store, or pickup address"
+                  />
+
+                  {showMap && (
+                    <GoogleMapPicker
+                      value={coords}
+                      height={200}
+                      onChange={handleMapPinChange}
+                    />
+                  )}
+
+                  {coords?.latitude != null && coords?.longitude != null && (
+                    <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
+                      <FiCheck className="text-emerald-600" />
+                      <span>GPS Pin: {Number(coords.latitude).toFixed(5)}, {Number(coords.longitude).toFixed(5)}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
