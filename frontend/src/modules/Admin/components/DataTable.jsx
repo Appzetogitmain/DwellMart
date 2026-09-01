@@ -24,7 +24,7 @@ const DataTable = ({
   className = '',
   serverSidePagination = false,
   totalItems = 0,
-  currentPage: externalCurrentPage = 1,
+  currentPage: externalCurrentPage,
   onPageChange,
 }) => {
   // Map Admin column format (label) → DS column format (title)
@@ -37,7 +37,7 @@ const DataTable = ({
 
   // For server-side pagination, pass data as-is (already paginated by caller)
   // For client-side, let DS DataTable handle it
-  const tableData = serverSidePagination ? data : data;
+  const tableData = data;
 
   return (
     <DSDataTable
@@ -48,8 +48,8 @@ const DataTable = ({
       emptyTitle="No data available"
       emptyDescription="There are no items to display."
       searchable={false}
-      currentPage={externalCurrentPage}
-      onPageChange={onPageChange}
+      currentPage={serverSidePagination ? externalCurrentPage : undefined}
+      onPageChange={serverSidePagination ? onPageChange : undefined}
     />
   );
 };

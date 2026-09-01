@@ -313,7 +313,7 @@ const CategorySelector = ({
               className="fixed inset-x-3 bottom-3 top-20 md:static md:inset-auto md:absolute md:top-full md:left-0 md:right-0 md:mt-2 z-50 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col md:max-w-4xl md:w-[720px] lg:w-[840px]"
             >
               {/* Header with Search */}
-              <div className="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2">
+              <div className="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 shrink-0">
                 <div className="relative flex-1">
                   <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <input
@@ -347,7 +347,7 @@ const CategorySelector = ({
               {/* BODY: Search Results View OR Multi-Level Browser */}
               {searchQuery.trim() ? (
                 /* ── Search Results List ── */
-                <div className="overflow-y-auto max-h-[380px] p-2 divide-y divide-slate-50">
+                <div className="overflow-y-auto max-h-[380px] p-2 divide-y divide-slate-50 scrollbar-category">
                   {searchResults.length === 0 ? (
                     <div className="py-12 text-center">
                       <FiFolder className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -390,17 +390,17 @@ const CategorySelector = ({
                 /* ── Normal Cascading Navigation ── */
                 <>
                   {/* DESKTOP 3-COLUMN VIEW (Hidden on Mobile) */}
-                  <div className="hidden md:grid md:grid-cols-3 divide-x divide-slate-100 min-h-[320px] max-h-[380px] overflow-hidden">
+                  <div className="hidden md:grid md:grid-cols-3 divide-x divide-slate-100 h-[360px] min-h-[320px] max-h-[400px] overflow-hidden">
                     
                     {/* COLUMN 1: Root Categories */}
-                    <div className="flex flex-col overflow-hidden bg-slate-50/40">
-                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50/40">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                           1. Main Category
                         </span>
                         <span className="text-[10px] text-slate-400 font-semibold">{level1Categories.length}</span>
                       </div>
-                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                      <div className="overflow-y-auto flex-1 min-h-0 p-1.5 space-y-0.5 scrollbar-category">
                         {level1Categories.map((cat) => {
                           const catId = String(cat.id || cat._id);
                           const isActive = activeLevel1Id === catId;
@@ -442,8 +442,8 @@ const CategorySelector = ({
                     </div>
 
                     {/* COLUMN 2: Subcategories (Level 2) */}
-                    <div className="flex flex-col overflow-hidden bg-white">
-                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-white">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                           2. Subcategory
                         </span>
@@ -457,7 +457,7 @@ const CategorySelector = ({
                           </button>
                         )}
                       </div>
-                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                      <div className="overflow-y-auto flex-1 min-h-0 p-1.5 space-y-0.5 scrollbar-category">
                         {!activeLevel1Id ? (
                           <div className="py-12 text-center text-xs text-slate-400">
                             Select a main category first
@@ -521,8 +521,8 @@ const CategorySelector = ({
                     </div>
 
                     {/* COLUMN 3: Child Categories (Level 3) */}
-                    <div className="flex flex-col overflow-hidden bg-slate-50/20">
-                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50/20">
+                      <div className="px-3.5 py-2 bg-slate-100/70 border-b border-slate-100 flex items-center justify-between shrink-0">
                         <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                           3. Specific Item Category
                         </span>
@@ -536,7 +536,7 @@ const CategorySelector = ({
                           </button>
                         )}
                       </div>
-                      <div className="overflow-y-auto flex-1 p-1.5 space-y-0.5">
+                      <div className="overflow-y-auto flex-1 min-h-0 p-1.5 space-y-0.5 scrollbar-category">
                         {!activeLevel2Id ? (
                           <div className="py-12 text-center text-xs text-slate-400 px-4">
                             Select a subcategory to see detailed item categories
@@ -583,9 +583,9 @@ const CategorySelector = ({
                   </div>
 
                   {/* MOBILE DRILL-DOWN VIEW (Visible only on mobile screens) */}
-                  <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+                  <div className="md:hidden flex flex-col flex-1 min-h-0 overflow-hidden">
                     {/* Mobile Navigation Header */}
-                    <div className="px-3 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-3 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between shrink-0">
                       <div className="flex items-center gap-2 min-w-0">
                         {mobileStack.length > 1 && (
                           <button
@@ -621,7 +621,7 @@ const CategorySelector = ({
                     </div>
 
                     {/* Mobile Item List */}
-                    <div className="overflow-y-auto flex-1 p-2 divide-y divide-slate-100">
+                    <div className="overflow-y-auto flex-1 min-h-0 p-2 divide-y divide-slate-100 scrollbar-category">
                       {currentMobileItems.map((item) => {
                         const itemId = String(item.id || item._id);
                         const children = getCategoriesByParent(itemId).filter((c) => c.isActive !== false);
@@ -660,7 +660,7 @@ const CategorySelector = ({
               )}
 
               {/* Bottom Breadcrumb Preview / Footer */}
-              <div className="p-2.5 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between text-xs text-slate-600">
+              <div className="p-2.5 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between text-xs text-slate-600 shrink-0">
                 <div className="flex items-center gap-1.5 truncate max-w-[75%]">
                   <span className="font-semibold text-slate-500">Selected:</span>
                   <span className="truncate font-bold text-slate-900">

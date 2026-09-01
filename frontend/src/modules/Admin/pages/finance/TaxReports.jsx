@@ -99,15 +99,21 @@ const TaxReports = () => {
       });
     });
 
-    return {
-      chartData: Object.values(dailyData).map((day) => ({
+    const sortedChartData = Object.values(dailyData)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map((day) => ({
         date: day.date,
-        taxAmount: day.taxAmount,
-        total: day.total,
-        taxRate: day.total > 0 ? (day.taxAmount / day.total) * 100 : 0,
+        taxAmount: Number(day.taxAmount.toFixed(2)),
+        total: Number(day.total.toFixed(2)),
+        taxRate: day.total > 0 ? Number(((day.taxAmount / day.total) * 100).toFixed(2)) : 0,
         count: day.count,
-      })),
-      tableData,
+      }));
+
+    const sortedTableData = tableData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return {
+      chartData: sortedChartData,
+      tableData: sortedTableData,
     };
   }, [orders]);
 
@@ -274,7 +280,7 @@ const TaxReports = () => {
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <TaxTrendsChart taxData={taxData.chartData} period="month" />
+        <TaxTrendsChart taxData={taxData.chartData} dateRange={dateRange} />
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
