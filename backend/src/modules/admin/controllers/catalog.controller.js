@@ -724,13 +724,14 @@ export const downloadCategoryTemplate = asyncHandler(async (req, res) => {
 
 // POST /api/admin/categories/bulk/import
 export const importCategories = asyncHandler(async (req, res) => {
-    if (!req.file || !req.file.buffer) {
+    const file = req.file || req.files?.file?.[0] || req.files?.excelFile?.[0];
+    if (!file || !file.buffer) {
         throw new ApiError(400, 'Please upload a valid Excel (.xlsx) or CSV file.');
     }
 
     const defaultExperience = req.body?.experience || EXPERIENCES.MARKETPLACE;
     const result = await processCategoryImport({
-        buffer: req.file.buffer,
+        buffer: file.buffer,
         defaultExperience
     });
 
@@ -760,11 +761,12 @@ export const downloadBrandTemplate = asyncHandler(async (req, res) => {
 
 // POST /api/admin/brands/bulk/import
 export const importBrands = asyncHandler(async (req, res) => {
-    if (!req.file || !req.file.buffer) {
+    const file = req.file || req.files?.file?.[0] || req.files?.excelFile?.[0];
+    if (!file || !file.buffer) {
         throw new ApiError(400, 'Please upload a valid Excel (.xlsx) or CSV file.');
     }
 
-    const result = await processBrandImport(req.file.buffer);
+    const result = await processBrandImport(file.buffer);
 
     res.status(200).json(
         new ApiResponse(200, result, `Brand import complete: ${result.createdCount} created, ${result.updatedCount} updated.`)
