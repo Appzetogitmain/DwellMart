@@ -168,7 +168,10 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
         const displayOrder = parseInt(row['Display Order'] || row['Order'], 10) || 0;
         const statusRaw = String(row['Status'] || '').trim().toLowerCase();
         const isActive = statusRaw === 'inactive' || statusRaw === 'false' ? false : true;
-        const imageUrl = String(row['Image URL'] || row['Image'] || '').trim();
+        const generalImageUrl = String(row['Image URL'] || row['Image'] || '').trim();
+        const mainCatImageUrl = String(row['Main Category Image'] || row['Category Image'] || generalImageUrl || '').trim();
+        const subCatImageUrl = String(row['Subcategory Image'] || row['Subcategory (Level 2) Image'] || generalImageUrl || '').trim();
+        const childCatImageUrl = String(row['Child Category Image'] || row['Child Category (Level 3) Image'] || generalImageUrl || '').trim();
 
         if (!mainCatName) {
             errors.push({ row: rowNumber, message: 'Main Category name is missing.' });
@@ -184,20 +187,24 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                     name: mainCatName,
                     slug,
                     parentId: null,
-                    description: subCatName ? '' : description,
-                    displayOrder: subCatName ? 0 : displayOrder,
+                    description: description || '',
+                    displayOrder: displayOrder || 0,
                     isActive,
-                    image: subCatName ? '' : imageUrl,
+                    image: mainCatImageUrl,
                     supportedExperiences: [experience]
                 });
                 saveCategoryToCache(mainCat, experience);
                 createdCount++;
-            } else if (!subCatName && !childCatName) {
-                // Update leaf main category details if specified
+            } else {
                 let touched = false;
-                if (description && mainCat.description !== description) { mainCat.description = description; touched = true; }
-                if (imageUrl && mainCat.image !== imageUrl) { mainCat.image = imageUrl; touched = true; }
-                if (displayOrder && mainCat.displayOrder !== displayOrder) { mainCat.displayOrder = displayOrder; touched = true; }
+                if (!mainCat.image && mainCatImageUrl) {
+                    mainCat.image = mainCatImageUrl;
+                    touched = true;
+                }
+                if (!mainCat.description && description) {
+                    mainCat.description = description;
+                    touched = true;
+                }
                 if (touched) {
                     await mainCat.save();
                     updatedCount++;
@@ -214,20 +221,24 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                         name: subCatName,
                         slug,
                         parentId: mainCat._id,
-                        description: childCatName ? '' : description,
-                        displayOrder: childCatName ? 0 : displayOrder,
+                        description: description || '',
+                        displayOrder: displayOrder || 0,
                         isActive,
-                        image: childCatName ? '' : imageUrl,
+                        image: subCatImageUrl,
                         supportedExperiences: [experience]
                     });
                     saveCategoryToCache(subCat, experience);
                     createdCount++;
-                } else if (!childCatName) {
-                    // Update leaf subcategory details
+                } else {
                     let touched = false;
-                    if (description && subCat.description !== description) { subCat.description = description; touched = true; }
-                    if (imageUrl && subCat.image !== imageUrl) { subCat.image = imageUrl; touched = true; }
-                    if (displayOrder && subCat.displayOrder !== displayOrder) { subCat.displayOrder = displayOrder; touched = true; }
+                    if (!subCat.image && subCatImageUrl) {
+                        subCat.image = subCatImageUrl;
+                        touched = true;
+                    }
+                    if (!subCat.description && description) {
+                        subCat.description = description;
+                        touched = true;
+                    }
                     if (touched) {
                         await subCat.save();
                         updatedCount++;
@@ -244,19 +255,28 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                         name: childCatName,
                         slug,
                         parentId: subCat._id,
-                        description,
-                        displayOrder,
+                        description: description || '',
+                        displayOrder: displayOrder || 0,
                         isActive,
-                        image: imageUrl,
+                        image: childCatImageUrl,
                         supportedExperiences: [experience]
                     });
                     saveCategoryToCache(childCat, experience);
                     createdCount++;
                 } else {
                     let touched = false;
-                    if (description && childCat.description !== description) { childCat.description = description; touched = true; }
-                    if (imageUrl && childCat.image !== imageUrl) { childCat.image = imageUrl; touched = true; }
-                    if (displayOrder && childCat.displayOrder !== displayOrder) { childCat.displayOrder = displayOrder; touched = true; }
+                    if (childCatImageUrl && childCat.image !== childCatImageUrl) {
+                        childCat.image = childCatImageUrl;
+                        touched = true;
+                    }
+                    if (description && childCat.description !== description) {
+                        childCat.description = description;
+                        touched = true;
+                    }
+                    if (displayOrder && childCat.displayOrder !== displayOrder) {
+                        childCat.displayOrder = displayOrder;
+                        touched = true;
+                    }
                     if (touched) {
                         await childCat.save();
                         updatedCount++;
