@@ -165,6 +165,12 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       stockQuantity: product.stockQuantity,
       vendorId: product.vendorId,
       vendorName: product.vendorName,
+      quickCommerceEnabled: product.quickCommerceEnabled,
+      wholesaleEnabled: product.wholesaleEnabled,
+      retailEnabled: product.retailEnabled,
+      fulfillmentType: product.fulfillmentType || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
+      experience: product.experience || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
+      wholesale: product.wholesale,
     });
     if (!addedToCart) return;
     triggerCartAnimation();

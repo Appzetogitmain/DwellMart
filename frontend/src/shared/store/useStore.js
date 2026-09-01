@@ -133,9 +133,8 @@ export const useCartStore = create(
         }
 
         // Derive fulfillment type from product channel flags (authoritative after migration).
-        // Prefer explicit fulfillmentType or experience from caller, then product flags.
-        // vendorType and name heuristics removed — they are unreliable post-migration
-        // and the backend re-validates at checkout regardless.
+        // Prefer explicit fulfillmentType or experience from caller, then product flags,
+        // then active experience store and vendor metadata heuristics.
         const fulfillmentType = (() => {
           // 1. Explicit caller-supplied type takes priority
           const ft = String(item?.fulfillmentType || item?.experience || '').toLowerCase();
@@ -145,8 +144,16 @@ export const useCartStore = create(
 
           // 2. Product-level channel flags (canonical source of truth)
           if (item?.quickCommerceEnabled === true) return 'quick_commerce';
-          // Wholesale-only product (retailEnabled: false means it is not available on retail)
           if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
+
+          // 3. Heuristic fallback: check active experience store or vendor name
+          const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
+          if (activeExp === 'quick_commerce') return 'quick_commerce';
+          if (activeExp === 'wholesale') return 'wholesale';
+
+          const vName = String(item?.vendorName || item?.vendor?.storeName || item?.storeName || '').toLowerCase();
+          if (vName.includes('quick commerce') || vName.includes('express daily')) return 'quick_commerce';
+          if (vName.includes('wholesale') || vName.includes('mega bulk')) return 'wholesale';
 
           return 'retail';
         })();
@@ -380,8 +387,16 @@ export const useCartStore = create(
 
           // 2. Product-level channel flags (canonical source of truth post-migration)
           if (item?.quickCommerceEnabled === true) return 'quick_commerce';
-          // Wholesale-only product (retailEnabled: false means it is not available on retail)
           if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
+
+          // 3. Heuristic fallback: check active experience store or vendor name
+          const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
+          if (activeExp === 'quick_commerce') return 'quick_commerce';
+          if (activeExp === 'wholesale') return 'wholesale';
+
+          const vName = String(item?.vendorName || item?.vendor?.storeName || item?.storeName || '').toLowerCase();
+          if (vName.includes('quick commerce') || vName.includes('express daily')) return 'quick_commerce';
+          if (vName.includes('wholesale') || vName.includes('mega bulk')) return 'wholesale';
 
           return 'retail';
         };

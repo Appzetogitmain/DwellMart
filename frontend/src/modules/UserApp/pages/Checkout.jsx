@@ -16,6 +16,7 @@ import {
   FiAlertTriangle,
   FiLoader,
   FiLock,
+  FiNavigation,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "../../../shared/store/useStore";
@@ -891,47 +892,53 @@ const MobileCheckout = () => {
                       {t('Shipping Information')}
                     </h2>
 
-                    {isQuickCommerce && (
-                      <div className="mb-4 rounded-xl border border-brand-primary/30 bg-brand-primary/5 p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <h3 className="text-sm font-bold text-content">Exact delivery location</h3>
-                            <p className="text-xs text-content-secondary">Required to calculate your Quick Commerce delivery fee and ETA.</p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={handleCheckoutGps}
-                              disabled={isLocatingCheckout}
-                              className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-3 py-2 text-sm font-semibold text-black disabled:opacity-60"
-                            >
-                              <FiMapPin />
-                              {isLocatingCheckout ? "Getting location..." : "Use current location"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowCheckoutMap((current) => !current)}
-                              className="rounded-lg border border-brand-primary px-3 py-2 text-sm font-semibold text-content"
-                            >
-                              {showCheckoutMap ? "Hide map" : "Choose on map"}
-                            </button>
-                          </div>
-                        </div>
-                        {quickLocation?.latitude != null && quickLocation?.longitude != null && (
-                          <p className="mt-2 text-xs text-content-secondary">
-                            Pin: {Number(quickLocation.latitude).toFixed(5)}, {Number(quickLocation.longitude).toFixed(5)}
+                    <div className="mb-4 rounded-xl border border-brand-primary/30 bg-brand-primary/5 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-content flex items-center gap-1.5">
+                            <FiNavigation className="text-brand-primary" />
+                            {isQuickCommerce ? t("Exact Delivery Location") : t("Automatic Address Autofill")}
+                          </h3>
+                          <p className="text-xs text-content-secondary">
+                            {isQuickCommerce
+                              ? t("Required to calculate your Quick Commerce delivery fee and ETA.")
+                              : t("Use GPS or select on map to autofill your full delivery address and pincode instantly.")}
                           </p>
-                        )}
-                        {showCheckoutMap && (
-                          <GoogleMapPicker
-                            className="mt-3"
-                            value={quickLocation}
-                            height={240}
-                            onChange={(point) => applyCheckoutLocation(point, "map")}
-                          />
-                        )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={handleCheckoutGps}
+                            disabled={isLocatingCheckout}
+                            className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-3.5 py-2 text-sm font-semibold text-black hover:bg-brand-primaryHover transition-all disabled:opacity-60 shadow-sm"
+                          >
+                            <FiMapPin className={isLocatingCheckout ? "animate-spin" : ""} />
+                            {isLocatingCheckout ? t("Getting location...") : t("Use current location")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowCheckoutMap((current) => !current)}
+                            className="rounded-lg border border-brand-primary/60 bg-surface px-3 py-2 text-sm font-semibold text-content hover:bg-surface-muted transition-all"
+                          >
+                            {showCheckoutMap ? t("Hide map") : t("Choose on map")}
+                          </button>
+                        </div>
                       </div>
-                    )}
+                      {quickLocation?.latitude != null && quickLocation?.longitude != null && (
+                        <p className="mt-2 text-xs text-content-secondary flex items-center gap-1 font-medium">
+                          <FiCheck className="text-emerald-500" />
+                          {t("GPS Pin")}: {Number(quickLocation.latitude).toFixed(5)}, {Number(quickLocation.longitude).toFixed(5)}
+                        </p>
+                      )}
+                      {showCheckoutMap && (
+                        <GoogleMapPicker
+                          className="mt-3"
+                          value={quickLocation}
+                          height={240}
+                          onChange={(point) => applyCheckoutLocation(point, "map")}
+                        />
+                      )}
+                    </div>
 
                     {/* Saved Addresses */}
                     {isAuthenticated && addresses.length > 0 && (
@@ -1028,9 +1035,20 @@ const MobileCheckout = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-content-secondary mb-2">
-                          {t('Address')}
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-semibold text-content-secondary">
+                            {t('Address')}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleCheckoutGps}
+                            disabled={isLocatingCheckout}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-primary hover:text-brand-primaryHover transition-colors disabled:opacity-50"
+                          >
+                            <FiNavigation className={isLocatingCheckout ? "animate-spin" : ""} />
+                            {isLocatingCheckout ? t("Detecting location...") : t("Use current location")}
+                          </button>
+                        </div>
                         <PlaceAutocompleteInput
                           onSelect={handleAddressPlaceSelect}
                           className="mb-2"
@@ -1046,7 +1064,7 @@ const MobileCheckout = () => {
                           className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
                         />
                         <p className="mt-1 text-xs text-content-muted">
-                          Search for an address above, or enter it manually.
+                          Search for an address above, click &quot;Use current location&quot;, or enter it manually.
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">

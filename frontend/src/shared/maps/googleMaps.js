@@ -69,13 +69,17 @@ export const reverseGeocode = async ({ latitude, longitude }) => {
   if (!result) throw new Error("No address was found for this location.");
 
   const components = result.address_components || [];
-  const street = [
+  const premise = componentText(components, ["premise", "subpremise"]);
+  const streetParts = [
     componentText(components, ["street_number"]),
     componentText(components, ["route"]),
   ].filter(Boolean).join(" ");
+  const sublocality = componentText(components, ["sublocality_level_2", "sublocality_level_1", "sublocality", "neighborhood"]);
+
+  const street = [premise, streetParts, sublocality].filter(Boolean).join(", ") || streetParts || result.formatted_address || "";
 
   return {
-    address: street || result.formatted_address || "",
+    address: street,
     city: componentText(components, ["locality", "postal_town", "administrative_area_level_3", "administrative_area_level_2"]),
     state: componentText(components, ["administrative_area_level_1"]),
     zipCode: componentText(components, ["postal_code"]),
