@@ -206,7 +206,9 @@ export const isCodOrder = (order) => {
  */
 export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId = null, packageOverride = null) => {
     const channel = resolveOrderChannel(order, vendorId || vendor?._id);
-    const serviceType = channel === VendorChannels.WHOLESALE ? 'GROUND EXPRESS' : 'PRIORITY';
+    const serviceType = channel === VendorChannels.WHOLESALE
+        ? dtdcConfig.wholesaleServiceType
+        : dtdcConfig.retailServiceType;
 
     const items = itemsForVendor(order, vendorId || vendor?._id);
     const numPieces = Math.max(

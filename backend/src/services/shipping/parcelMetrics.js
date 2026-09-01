@@ -40,7 +40,14 @@ export const VOLUMETRIC_DIVISOR_SURFACE = 4750;
 export const VOLUMETRIC_DIVISOR = VOLUMETRIC_DIVISOR_AIR;
 
 /** Services carried by surface rather than air. */
-const SURFACE_SERVICES = new Set(['GROUND EXPRESS', 'GROUND CARGO']);
+const SURFACE_SERVICES = new Set([
+    'GROUND EXPRESS',
+    'GROUND CARGO',
+    'B2C SMART EXPRESS',
+    'SMART EXPRESS',
+    'SMART EXPRESS B2C',
+    'B2B SMART EXPRESS',
+]);
 
 /**
  * The divisor DTDC will bill this service on.

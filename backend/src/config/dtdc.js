@@ -56,6 +56,18 @@ const dtdcConfig = {
      */
     get defaultCommodityId() { return parseInt(getEnv('DTDC_DEFAULT_COMMODITY_ID', '7'), 10); },
 
+    /**
+     * Service types for DTDC order booking.
+     * Production uses DTDC contracted service IDs ('B2C PRIORITY' and 'B2C SMART EXPRESS').
+     * Sandbox defaults to ('PRIORITY' and 'GROUND EXPRESS').
+     */
+    get retailServiceType() {
+        return getEnv('DTDC_RETAIL_SERVICE_TYPE', this.environment === 'production' ? 'B2C PRIORITY' : 'PRIORITY');
+    },
+    get wholesaleServiceType() {
+        return getEnv('DTDC_WHOLESALE_SERVICE_TYPE', this.environment === 'production' ? 'B2C SMART EXPRESS' : 'GROUND EXPRESS');
+    },
+
     get timeoutMs() { return parseInt(getEnv('DTDC_TIMEOUT_MS', '15000'), 10); },
     get retryAttempts() { return parseInt(getEnv('DTDC_RETRY_ATTEMPTS', '1'), 10); },
 
