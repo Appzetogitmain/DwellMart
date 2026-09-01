@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiUploadCloud, FiDownload, FiCheckCircle, FiAlertCircle, FiX, FiFileText } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { downloadCategoryTemplateApi, importCategoriesApi } from '../../services/adminService';
@@ -12,6 +12,12 @@ const CategoryImportModal = ({ isOpen, onClose, currentExperience = 'marketplace
   const [importResult, setImportResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedExperience(currentExperience || 'marketplace');
+    }
+  }, [isOpen, currentExperience]);
 
   if (!isOpen) return null;
 
