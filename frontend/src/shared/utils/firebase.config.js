@@ -96,7 +96,7 @@ export const setupFcmForegroundListener = async () => {
 
         const { onMessage } = await import('firebase/messaging');
         onMessage(messaging, async (payload) => {
-            const title = payload?.notification?.title || payload?.data?.title || 'DwellMart Notification';
+            const title = payload?.notification?.title || payload?.data?.title || 'Dwell Mart Notification';
             const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || '';
             const image = payload?.notification?.imageUrl || payload?.notification?.image || payload?.data?.image || '';
             const rawIcon = payload?.notification?.icon || payload?.notification?.imageUrl || payload?.data?.image || '/logo.png';
