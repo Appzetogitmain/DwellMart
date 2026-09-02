@@ -128,3 +128,36 @@ export const getProfile = asyncHandler(async (req, res) => {
         )
     );
 });
+
+// PUT /api/admin/auth/change-password
+export const changePassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const adminId = req.user.id;
+
+    const admin = await Admin.findById(adminId).select('+password +refreshTokenHash +refreshTokenExpiresAt');
+    if (!admin) throw new ApiError(404, 'Admin not found.');
+
+    if (admin.status === 'inactive' || !admin.isActive) {
+        throw new ApiError(403, 'Your account has been disabled.');
+    }
+
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+        throw new ApiError(400, 'Current password is incorrect.');
+    }
+
+    const isSame = await admin.comparePassword(newPassword);
+    if (isSame) {
+        throw new ApiError(400, 'New password must be different from your current password.');
+    }
+
+    admin.password = newPassword;
+    await admin.save();
+
+    // Invalidate existing refresh tokens so other stale sessions expire
+    await clearRefreshSession(admin);
+
+    res.status(200).json(
+        new ApiResponse(200, null, 'Password changed successfully.')
+    );
+});

@@ -11,7 +11,7 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 messaging.onBackgroundMessage((payload) => {
-    const title = payload?.notification?.title || payload?.data?.title || 'DwellMart Notification';
+    const title = payload?.notification?.title || payload?.data?.title || 'Dwell Mart Notification';
     const body = payload?.notification?.body || payload?.data?.body || payload?.data?.message || '';
     const rawIcon = payload?.notification?.icon || payload?.notification?.imageUrl || payload?.data?.image || '/logo.png';
     const icon = rawIcon.startsWith('http') ? rawIcon : new URL(rawIcon, self.location.origin).href;

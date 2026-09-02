@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiSettings, FiCreditCard, FiShoppingBag, FiFileText } from 'react-icons/fi';
+import { FiSettings, FiCreditCard, FiFileText, FiKey } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 import GeneralSettings from './settings/GeneralSettings';
 import PaymentShippingSettings from './settings/PaymentShippingSettings';
 import ContentFeaturesSettings from './settings/ContentFeaturesSettings';
+import ChangePasswordSettings from './settings/ChangePasswordSettings';
 
 const Settings = () => {
   const { initialize } = useSettingsStore();
@@ -17,6 +18,7 @@ const Settings = () => {
     const path = location.pathname;
     if (path.includes('/payment-shipping')) return 'payment-shipping';
     if (path.includes('/content-features')) return 'content-features';
+    if (path.includes('/change-password')) return 'change-password';
     return 'general';
   };
 
@@ -36,6 +38,7 @@ const Settings = () => {
     { id: 'general', label: 'General', icon: FiSettings, component: GeneralSettings, route: '/admin/settings/general' },
     { id: 'payment-shipping', label: 'Payment & Shipping', icon: FiCreditCard, component: PaymentShippingSettings, route: '/admin/settings/payment-shipping' },
     { id: 'content-features', label: 'Content & Features', icon: FiFileText, component: ContentFeaturesSettings, route: '/admin/settings/content-features' },
+    { id: 'change-password', label: 'Change Password', icon: FiKey, component: ChangePasswordSettings, route: '/admin/settings/change-password' },
   ];
 
   const ActiveComponent = tabs.find((tab) => tab.id === activeTab)?.component || GeneralSettings;
@@ -49,7 +52,7 @@ const Settings = () => {
       {/* Header */}
       <div className="lg:hidden">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Settings</h1>
-        <p className="text-sm sm:text-base text-gray-600">Configure your store settings</p>
+        <p className="text-sm sm:text-base text-gray-600">Configure your store settings & security</p>
       </div>
 
       {/* Tabs */}
@@ -87,4 +90,3 @@ const Settings = () => {
 };
 
 export default Settings;
-

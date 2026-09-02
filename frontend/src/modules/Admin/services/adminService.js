@@ -15,6 +15,9 @@ export const adminLogin = (email, password) =>
 export const getAdminProfile = () =>
     api.get('/admin/auth/profile');
 
+export const changeAdminPassword = (currentPassword, newPassword) =>
+    api.put('/admin/auth/change-password', { currentPassword, newPassword });
+
 // ─── Analytics / Dashboard ────────────────────────────────────────────────────
 export const getDashboardStats = () =>
     api.get('/admin/analytics/dashboard');

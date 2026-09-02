@@ -43,10 +43,10 @@ const CustomerSupport = () => {
                         </div>
                         <div>
                             <h1 className="text-xl sm:text-2xl font-bold text-content">
-                                DwellMart Support Center
+                                Dwell Mart Support Center
                             </h1>
                             <p className="text-xs sm:text-sm text-content-secondary">
-                                Contact DwellMart Customer Support Desk & track your queries in real-time
+                                Contact Dwell Mart Customer Support Desk & track your queries in real-time
                             </p>
                         </div>
                     </div>

@@ -16,7 +16,7 @@ const ContactUs = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'support@dwellmart.com';
   const phone = general.contactPhone || '+91 98765 43210';
   const address = general.address || '123 Commerce Street, Tech Park, New Delhi, India';
@@ -171,7 +171,7 @@ const ContactUs = () => {
                 <div className="bg-surface-elevated border border-brand-primary/30 rounded-2xl p-6">
                   <h4 className="text-lg font-bold text-content">Are you a merchant or brand?</h4>
                   <p className="text-sm text-content-secondary mt-1">
-                    Sell your products nationwide on DwellMart with automated onboarding and billing.
+                    Sell your products nationwide on Dwell Mart with automated onboarding and billing.
                   </p>
                   <Link
                     to="/sell-on-dwellmart"
@@ -196,7 +196,7 @@ const ContactUs = () => {
                       </div>
                       <h3 className="text-2xl font-bold text-content">Message Sent Successfully!</h3>
                       <p className="text-content-secondary max-w-md mx-auto text-sm leading-relaxed">
-                        Thank you for reaching out to DwellMart. Your inquiry has been routed directly to our support email inbox. We will get back to you shortly.
+                        Thank you for reaching out to Dwell Mart. Your inquiry has been routed directly to our support email inbox. We will get back to you shortly.
                       </p>
                       <button
                         onClick={() => setIsSubmitted(false)}

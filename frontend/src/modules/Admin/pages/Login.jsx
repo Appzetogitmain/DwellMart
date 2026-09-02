@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiShield, FiArrowRight, FiCheck } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiShield, FiArrowRight } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useAdminAuthStore } from '../store/adminStore';
 import toast from 'react-hot-toast';
@@ -71,7 +71,6 @@ const AdminLogin = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [copiedField, setCopiedField] = useState(null);
 
   // Clear stale persisted auth state that no longer has a valid token session.
   useEffect(() => {
@@ -113,14 +112,6 @@ const AdminLogin = () => {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setFormData({
-      email: 'admin@admin.com',
-      password: 'admin123',
-    });
-    toast.success('Demo credentials loaded!');
-  };
-
   return (
     <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex items-center justify-center p-4 relative overflow-hidden select-none">
       {/* Background Ambient Glows & Mesh Grid */}
@@ -150,7 +141,7 @@ const AdminLogin = () => {
               <div className="bg-slate-950 px-7 py-3.5 rounded-2xl border border-amber-500/30 shadow-[0_0_30px_rgba(212,175,55,0.15)] inline-flex items-center justify-center">
                 <img
                   src={loginLogo}
-                  alt="DwellMart Logo"
+                  alt="Dwell Mart Logo"
                   className="h-12 sm:h-14 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                 />
               </div>
@@ -249,28 +240,6 @@ const AdminLogin = () => {
               )}
             </motion.button>
           </form>
-
-          {/* Demo Credentials Box */}
-          <div className="mt-6 pt-5 border-t border-slate-800/80">
-            <div className="p-4 rounded-2xl bg-slate-950/70 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">
-                  Demo Credentials
-                </p>
-                <p className="text-xs text-slate-300 font-mono">
-                  admin@admin.com / admin123
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-semibold transition-colors flex items-center gap-1.5 flex-shrink-0"
-              >
-                <FiCheck className="text-xs" />
-                Auto Fill
-              </button>
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>

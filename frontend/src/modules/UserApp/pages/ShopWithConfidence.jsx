@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiGlobe, FiCreditCard, FiPercent, FiPackage, FiAward } from 'react-icons/fi';
+import { FiArrowLeft, FiGlobe, FiCreditCard, FiTag, FiPackage, FiAward } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
 const ShopWithConfidence = () => {
@@ -20,7 +20,7 @@ const ShopWithConfidence = () => {
     {
       title: "Daily Deals",
       description: "Items you love at prices that fit your budget",
-      icon: FiPercent,
+      icon: FiTag,
     },
     {
       title: "7-day Return Policy",

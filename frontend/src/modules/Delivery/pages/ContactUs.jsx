@@ -13,7 +13,7 @@ const DeliveryContactUs = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'support@dwellmart.com';
   const phone = general.contactPhone || '+91 98765 43210';
   const hours = general.businessHours || 'Available 24/7 for active delivery support';

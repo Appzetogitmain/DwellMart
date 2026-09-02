@@ -22,6 +22,7 @@ import * as sellOnDwellmartStatsController from '../controllers/sellOnDwellmartS
 import * as termsController from '../controllers/termsAndConditions.controller.js';
 import * as staticPagesController from '../controllers/staticPages.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
+import * as trustAssuranceController from '../controllers/trustAssurance.controller.js';
 import * as subadminController from '../controllers/subadmin.controller.js';
 import * as settlementController from '../controllers/settlement.controller.js';
 import * as feedbackController from '../controllers/feedback.controller.js';
@@ -50,7 +51,7 @@ import { requireAdmin, requireSuperAdmin, checkPermission, checkAnyPermission, c
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
-import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
+import { refreshTokenSchema, logoutSchema, changePasswordSchema } from '../validators/auth.validator.js';
 import { PERMISSIONS } from '../../../constants/permissions.js';
 import {
     createSubAdminSchema,
@@ -138,6 +139,8 @@ router.post('/auth/login', authLimiter, authController.login);
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...adminAuth, authController.getProfile);
+router.put('/auth/change-password', ...adminAuth, validate(changePasswordSchema), authController.changePassword);
+router.put('/change-password', ...adminAuth, validate(changePasswordSchema), authController.changePassword);
 
 // ─── Sub Admin Management (Super Admin Only) ──────────────────────────────────
 router.get('/subadmins', ...adminAuth, requireSuperAdmin, subadminController.getAllSubAdmins);
@@ -390,6 +393,8 @@ router.put('/sell-on-dwellmart/stats', ...perm(PERMISSIONS.VENDORS_EDIT), sellOn
 // ─── Settings & Policies ──────────────────────────────────────────────────────
 router.get('/settings/vendor-terms', ...perm(PERMISSIONS.SETTINGS_VIEW), termsController.getVendorTerms);
 router.put('/settings/vendor-terms', ...perm(PERMISSIONS.SETTINGS_EDIT), termsController.updateVendorTerms);
+router.get('/trust-assurance', ...perm(PERMISSIONS.SETTINGS_VIEW), trustAssuranceController.getAdminTrustAssurance);
+router.put('/trust-assurance', ...perm(PERMISSIONS.SETTINGS_EDIT), trustAssuranceController.updateAdminTrustAssurance);
 router.get('/pages/:slug', ...perm(PERMISSIONS.SETTINGS_VIEW), staticPagesController.getPage);
 router.put('/pages/:slug', ...perm(PERMISSIONS.SETTINGS_EDIT), staticPagesController.updatePage);
 router.get('/settings/general', ...perm(PERMISSIONS.SETTINGS_VIEW), settingsController.getGeneralSettings);

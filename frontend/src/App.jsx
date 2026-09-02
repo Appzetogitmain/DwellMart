@@ -73,6 +73,7 @@ const VendorSubscriptions = lazy(() => import("./modules/Admin/pages/vendors/Ven
 const AdminSubscriptionPlans = lazy(() => import("./modules/Admin/pages/SubscriptionPlans"));
 const AdminVendorTerms = lazy(() => import("./modules/Admin/pages/VendorTerms"));
 const AdminSellOnDwellmartStats = lazy(() => import("./modules/Admin/pages/SellOnDwellmartStats"));
+const TrustAssuranceManagement = lazy(() => import("./modules/Admin/pages/TrustAssuranceManagement"));
 const PayoutRequests = lazy(() => import("./modules/Admin/pages/PayoutRequests"));
 // Offers & Sliders child pages
 const HomeSliders = lazy(() => import("./modules/Admin/pages/offers/HomeSliders"));
@@ -698,6 +699,7 @@ const AppRoutes = () => {
         <Route path="settings/general" element={<Settings />} />
         <Route path="settings/payment-shipping" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
+        <Route path="settings/change-password" element={<Settings />} />
         <Route path="policies" element={<PrivacyPolicy />} />
         <Route path="policies/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="policies/refund-policy" element={<RefundPolicy />} />
@@ -710,6 +712,7 @@ const AppRoutes = () => {
         <Route path="campaigns" element={<Campaigns />} />
         <Route path="banners" element={<Banners />} />
         <Route path="testimonials" element={<Testimonials />} />
+        <Route path="trust-assurance" element={<AdminRouteGuard permission="offers.view"><TrustAssuranceManagement /></AdminRouteGuard>} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="content" element={<Content />} />
       </Route>

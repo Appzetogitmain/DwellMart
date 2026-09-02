@@ -164,7 +164,7 @@ const SellOnDwellmartStats = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-800">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-            Sell on DwellMart Statistics
+            Sell on Dwell Mart Statistics
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Manage the live marketing counters and promotional seller dashboard numbers displayed on{' '}
@@ -191,7 +191,7 @@ const SellOnDwellmartStats = () => {
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Loading Sell on DwellMart statistics...
+            Loading Sell on Dwell Mart statistics...
           </p>
         </div>
       ) : (

@@ -80,10 +80,10 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
                     <FiMessageSquare className="w-8 h-8" />
                 </div>
                 <h3 className={`text-xl font-extrabold mb-2 ${isDark ? 'text-white' : 'text-content'}`}>
-                    DwellMart Support Desk
+                    Dwell Mart Support Desk
                 </h3>
                 <p className={`text-xs sm:text-sm max-w-sm ${isDark ? 'text-slate-400' : 'text-content-muted'}`}>
-                    Select an active support conversation from the list or click "New Ticket" to contact DwellMart Support.
+                    Select an active support conversation from the list or click "New Ticket" to contact Dwell Mart Support.
                 </p>
             </div>
         );
@@ -265,7 +265,7 @@ const SupportChatWindow = ({ isAdmin = false, currentUserId, theme = 'light', on
                             <div key={msg._id || index} className="flex flex-col items-start my-2">
                                 <div className="flex items-center gap-1.5 mb-1 px-1">
                                     <span className={`text-[11px] font-semibold ${isDark ? 'text-amber-400' : 'text-blue-700'}`}>
-                                        DwellMart Support
+                                        Dwell Mart Support
                                     </span>
                                 </div>
                                 <div className={`max-w-xs md:max-w-md px-4 py-3 rounded-2xl shadow-xs text-sm leading-relaxed border rounded-bl-none ${

@@ -26,10 +26,12 @@ import {
   FiUser,
   FiLock,
   FiLayers,
+  FiKey,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
 import { usePermission } from "../../hooks/usePermission";
 import adminMenuRaw from "../../config/adminMenu.json";
+import ChangePasswordModal from "../ChangePasswordModal";
 
 // Icon mapping for menu items
 const iconMap = {
@@ -47,6 +49,7 @@ const iconMap = {
   "Offers & Sliders": FiImage,
   Banners: FiImage,
   Testimonials: FiStar,
+  "Trust & Assurance": FiShield,
   "Promo Codes": FiPercent,
   Notifications: FiBell,
   "Support Desk": FiMessageCircle,
@@ -54,6 +57,7 @@ const iconMap = {
   "Analytics & Finance": FiBarChart2,
   Settings: FiSettings,
   Policies: FiShield,
+  "Sell on Dwell Mart": FiShoppingBag,
   "Sell on DwellMart": FiShoppingBag,
 };
 
@@ -71,6 +75,7 @@ const MENU_PERMISSION_MAP = {
   "Offers & Sliders": "offers.view",
   Banners: "banners.view",
   Testimonials: "offers.view",
+  "Trust & Assurance": "offers.view",
   "Promo Codes": "promocodes.view",
   Notifications: "dashboard.view",
   "Support Desk": "support.view",
@@ -79,6 +84,7 @@ const MENU_PERMISSION_MAP = {
   "Analytics & Finance": "wallet.view",
   Settings: "settings.view",
   Policies: "settings.view",
+  "Sell on Dwell Mart": "vendors.view",
   "Sell on DwellMart": "vendors.view",
 };
 
@@ -252,6 +258,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Payment & Shipping": "/admin/settings/payment-shipping",
       "Content & Features": "/admin/settings/content-features",
       "Quick Commerce Settings": "/admin/settings/quick-commerce",
+      "Change Password": "/admin/settings/change-password",
     },
     "/admin/policies": {
       "Privacy Policy": "/admin/policies/privacy-policy",
@@ -360,6 +367,7 @@ const AdminSidebar = ({ isOpen, isOpenMobile, isOpenDesktop, onClose }) => {
   const prevPathRef = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [, setIsMobile] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Construct complete admin menu inserting Admin Management after Dashboard for Super Admin
   const completeMenu = [];

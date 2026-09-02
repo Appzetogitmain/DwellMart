@@ -11,7 +11,7 @@ const DeliveryPrivacyPolicy = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'contact.dwellmartindia@gmail.com';
   const phone = general.contactPhone || '+919999188143';
   return (
@@ -41,12 +41,12 @@ const DeliveryPrivacyPolicy = () => {
                 Delivery Partner Privacy Policy
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Effective Date: August 2026 • DwellMart Delivery Fleet
+                Effective Date: August 2026 • Dwell Mart Delivery Fleet
               </p>
             </div>
           </div>
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-            DwellMart values the privacy and security of our delivery partners. This policy details how location tracking, personal credentials, delivery logs, and cash settlement records are safeguarded.
+            Dwell Mart values the privacy and security of our delivery partners. This policy details how location tracking, personal credentials, delivery logs, and cash settlement records are safeguarded.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiGlobe, FiCreditCard, FiPercent, FiPackage, FiAward } from 'react-icons/fi';
+import { FiGlobe, FiCreditCard, FiTag, FiPackage, FiAward } from 'react-icons/fi';
 import { usePageTranslation } from '../../../../hooks/usePageTranslation';
 
 const features = [
@@ -17,7 +17,7 @@ const features = [
   {
     title: "Daily Deals",
     description: "Items you love at prices that fit your budget",
-    icon: FiPercent,
+    icon: FiTag,
   },
   {
     title: "7-day Return Policy",

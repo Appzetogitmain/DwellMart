@@ -11,7 +11,7 @@ const VendorPrivacyPolicy = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'contact.dwellmartindia@gmail.com';
   const phone = general.contactPhone || '+919999188143';
   return (
@@ -41,12 +41,12 @@ const VendorPrivacyPolicy = () => {
                 Vendor Privacy Policy
               </h1>
               <p className="text-sm text-slate-500 mt-1">
-                Effective Date: August 2026 • DwellMart Merchant Partner Network
+                Effective Date: August 2026 • Dwell Mart Merchant Partner Network
               </p>
             </div>
           </div>
           <p className="text-slate-600 text-sm sm:text-base leading-relaxed">
-            DwellMart is committed to maintaining the confidentiality, integrity, and security of all business information, catalog data, financial transactions, and account details submitted by vendor partners.
+            Dwell Mart is committed to maintaining the confidentiality, integrity, and security of all business information, catalog data, financial transactions, and account details submitted by vendor partners.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ const VendorPrivacyPolicy = () => {
               <FiCheckCircle className="text-emerald-600" /> 1. Merchant Data Collection
             </h2>
             <p>
-              When you register as a vendor on DwellMart, we collect essential merchant details including store name, business registration, Tax/GST numbers, identity verification documents, business address, and contact information.
+              When you register as a vendor on Dwell Mart, we collect essential merchant details including store name, business registration, Tax/GST numbers, identity verification documents, business address, and contact information.
             </p>
           </section>
 

@@ -58,32 +58,63 @@ const componentText = (components, types) => {
  * secret is exposed.
  */
 export const reverseGeocode = async ({ latitude, longitude }) => {
-  const maps = await loadGoogleMaps();
   const lat = Number(latitude);
   const lng = Number(longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Invalid coordinates.");
 
-  const { Geocoder } = await maps.importLibrary("geocoding");
-  const response = await new Geocoder().geocode({ location: { lat, lng } });
-  const result = response?.results?.[0];
-  if (!result) throw new Error("No address was found for this location.");
+  try {
+    const maps = await loadGoogleMaps();
+    const { Geocoder } = await maps.importLibrary("geocoding");
+    const response = await new Geocoder().geocode({ location: { lat, lng } });
+    const result = response?.results?.[0];
+    if (result) {
+      const components = result.address_components || [];
+      const premise = componentText(components, ["premise", "subpremise"]);
+      const streetParts = [
+        componentText(components, ["street_number"]),
+        componentText(components, ["route"]),
+      ].filter(Boolean).join(" ");
+      const sublocality = componentText(components, ["sublocality_level_2", "sublocality_level_1", "sublocality", "neighborhood"]);
 
-  const components = result.address_components || [];
-  const premise = componentText(components, ["premise", "subpremise"]);
-  const streetParts = [
-    componentText(components, ["street_number"]),
-    componentText(components, ["route"]),
-  ].filter(Boolean).join(" ");
-  const sublocality = componentText(components, ["sublocality_level_2", "sublocality_level_1", "sublocality", "neighborhood"]);
+      const street = [premise, streetParts, sublocality].filter(Boolean).join(", ") || streetParts || result.formatted_address || "";
 
-  const street = [premise, streetParts, sublocality].filter(Boolean).join(", ") || streetParts || result.formatted_address || "";
+      return {
+        address: street,
+        city: componentText(components, ["locality", "postal_town", "administrative_area_level_3", "administrative_area_level_2"]),
+        state: componentText(components, ["administrative_area_level_1"]),
+        zipCode: componentText(components, ["postal_code"]),
+        country: componentText(components, ["country"]),
+        formattedAddress: result.formatted_address || "",
+      };
+    }
+  } catch (err) {
+    // Fallback to OSM Nominatim if Google Maps is not available or fails
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      if (res.ok) {
+        const data = await res.json();
+        const a = data.address || {};
+        const road = [a.road, a.suburb, a.neighbourhood].filter(Boolean).join(", ");
+        return {
+          address: road || data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          city: a.city || a.town || a.village || a.county || a.state_district || "",
+          state: a.state || "",
+          zipCode: a.postcode || "",
+          country: a.country || "",
+          formattedAddress: data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        };
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   return {
-    address: street,
-    city: componentText(components, ["locality", "postal_town", "administrative_area_level_3", "administrative_area_level_2"]),
-    state: componentText(components, ["administrative_area_level_1"]),
-    zipCode: componentText(components, ["postal_code"]),
-    country: componentText(components, ["country"]),
-    formattedAddress: result.formatted_address || "",
+    address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "",
+    formattedAddress: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
   };
 };

@@ -41,6 +41,11 @@ process.env.CLOUDINARY_CLOUD_NAME    = 'test';
 process.env.CLOUDINARY_API_KEY       = 'test';
 process.env.CLOUDINARY_API_SECRET    = 'test';
 process.env.DTDC_ENVIRONMENT         = 'sandbox';
+// Pinned explicitly: dotenv fills these from the developer's .env otherwise, so
+// the suite would assert against whatever service types happen to be configured
+// locally rather than the sandbox contract it is testing.
+process.env.DTDC_RETAIL_SERVICE_TYPE    = 'PRIORITY';
+process.env.DTDC_WHOLESALE_SERVICE_TYPE = 'GROUND EXPRESS';
 process.env.DTDC_CUSTOMER_CODE       = 'TEST_CUSTOMER';
 process.env.DTDC_API_KEY             = 'test-api-key';
 process.env.DTDC_TRACKING_USERNAME   = 'test-user';

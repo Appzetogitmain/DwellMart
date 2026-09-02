@@ -13,7 +13,7 @@ const VendorContactUs = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'support@dwellmart.com';
   const phone = general.contactPhone || '+91 98765 43210';
   const hours = general.businessHours || 'Mon - Sat, 9:00 AM - 7:00 PM';
@@ -75,7 +75,7 @@ const VendorContactUs = () => {
               Contact Vendor Support & Onboarding
             </h1>
             <p className="text-slate-500 text-sm mt-1 max-w-xl">
-              Are you an active vendor or interested in selling on DwellMart? Connect with our merchant onboarding and operations team directly.
+              Are you an active vendor or interested in selling on Dwell Mart? Connect with our merchant onboarding and operations team directly.
             </p>
           </div>
           <Link

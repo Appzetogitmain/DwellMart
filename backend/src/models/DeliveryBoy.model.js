@@ -4,7 +4,7 @@ import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
 const deliveryBoySchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true },
-        email: { type: String, required: true, unique: true, lowercase: true },
+        email: { type: String, required: false, trim: true, lowercase: true, index: true, sparse: true, default: null },
         phone: { type: String, required: true },
 
         /**

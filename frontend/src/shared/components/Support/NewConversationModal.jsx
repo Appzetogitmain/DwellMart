@@ -97,7 +97,7 @@ const NewConversationModal = ({ isOpen, onClose, role = 'customer', theme = 'lig
                         </div>
                         <div>
                             <h3 className={`text-lg font-extrabold ${isDark ? 'text-white' : 'text-gray-900'}`}>New Support Request</h3>
-                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Contact DwellMart Support Desk</p>
+                            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Contact Dwell Mart Support Desk</p>
                         </div>
                     </div>
                     <button

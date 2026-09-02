@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
-import { FiSave, FiSettings, FiGlobe, FiPercent } from "react-icons/fi";
+import { FiSave, FiSettings, FiGlobe, FiPercent, FiLock, FiKey, FiShield } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useSettingsStore } from "../../../../shared/store/settingsStore";
+import { useAdminAuthStore } from "../../store/adminStore";
 import AnimatedSelect from "../../components/AnimatedSelect";
+import ChangePasswordModal from "../../components/ChangePasswordModal";
 import toast from "react-hot-toast";
 
 const GeneralSettings = () => {
   const { settings, updateGeneralSettings, initialize, isLoading } = useSettingsStore();
+  const { admin } = useAdminAuthStore();
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     initialize();
@@ -50,6 +54,7 @@ const GeneralSettings = () => {
     { id: "identity", label: "Store Identity", icon: FiSettings },
     { id: "contact", label: "Contact Info", icon: FiGlobe },
     { id: "vendors", label: "Vendor Settings", icon: FiPercent },
+    { id: "security", label: "Admin Security", icon: FiLock },
   ];
 
   return (
@@ -311,17 +316,56 @@ const GeneralSettings = () => {
             </div>
           )}
 
-          <div className="flex justify-end pt-4 sm:pt-6 border-t border-gray-200 mt-4 sm:mt-6">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center gap-2 px-4 sm:px-6 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm sm:text-base w-full sm:w-auto disabled:opacity-50">
-              <FiSave />
-              <span>{isLoading ? "Saving..." : "Save Settings"}</span>
-            </button>
-          </div>
+          {/* Admin Security Section */}
+          {activeSection === "security" && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-700 text-xl font-bold shrink-0">
+                    <FiKey />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">Admin Account Password</h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      Logged in as <strong>{admin?.email || "admin@admin.com"}</strong> ({admin?.role || "Admin"})
+                    </p>
+                    <p className="text-xs text-amber-800 mt-0.5">
+                      Ensure your account is protected with a secure, unique password.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(true)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center gap-2 shrink-0"
+                >
+                  <FiKey className="text-base" />
+                  <span>Change Password</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeSection !== "security" && (
+            <div className="flex justify-end pt-4 sm:pt-6 border-t border-gray-200 mt-4 sm:mt-6">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex items-center gap-2 px-4 sm:px-6 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm sm:text-base w-full sm:w-auto disabled:opacity-50">
+                <FiSave />
+                <span>{isLoading ? "Saving..." : "Save Settings"}</span>
+              </button>
+            </div>
+          )}
         </form>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </motion.div>
   );
 };

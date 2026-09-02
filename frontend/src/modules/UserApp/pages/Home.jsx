@@ -12,6 +12,7 @@ import FeaturedVendorsSection from "../components/Mobile/FeaturedVendorsSection"
 import BrandLogosScroll from "../components/Mobile/BrandLogosScroll";
 import MobileCategoryGrid from "../components/Mobile/MobileCategoryGrid";
 import ConfidenceSection from "../components/Mobile/ConfidenceSection";
+import MarketplaceTrustSection from "../components/Mobile/MarketplaceTrustSection";
 import TestimonialsSection from "../components/Mobile/TestimonialsSection";
 import LazyImage from "../../../shared/components/LazyImage";
 import {
@@ -806,140 +807,10 @@ const MobileHome = () => {
           <RecommendedSection products={computedRecommended} />
 
           {/* Marketplace Trust & Assurance Section */}
-          <section className="py-8 sm:py-12 px-4 sm:px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="max-w-6xl mx-auto bg-surface rounded-3xl sm:rounded-[36px] border border-border p-6 sm:p-10 md:p-12 shadow-xl text-center"
-            >
-              {/* Top Pill Badge */}
-              <div className="inline-block px-4 py-1.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/30 text-[11px] sm:text-xs font-bold tracking-[0.2em] uppercase mb-4">
-                {t("MARKETPLACE TRUST & ASSURANCE")}
-              </div>
-
-              {/* Title */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-content tracking-tight mb-3">
-                {t("Why Shop With Dwell Mart?")}
-              </h2>
-
-              {/* Subtitle */}
-              <p className="text-content-secondary text-sm sm:text-base font-medium max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10">
-                {t("We partner with top-rated sellers to guarantee authentic products, transparent pricing, and instant support.")}
-              </p>
-
-              {/* Feature Cards Grid (4 Columns) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8 text-left">
-                {/* Feature 1 */}
-                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-status-info/10 text-status-info flex items-center justify-center shrink-0">
-                    <FiTruck className="text-2xl" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
-                      {t("Free Express Shipping")}
-                    </h3>
-                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
-                      {t("On all orders over ₹499 nationwide")}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Feature 2 */}
-                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-status-success/10 text-status-success flex items-center justify-center shrink-0">
-                    <FiRotateCcw className="text-2xl" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
-                      {t("7-Day Easy Returns")}
-                    </h3>
-                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
-                      {t("Hassle-free 100% money back guarantee")}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Feature 3 */}
-                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center shrink-0">
-                    <FiShield className="text-2xl" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
-                      {t("100% Secure Payments")}
-                    </h3>
-                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
-                      {t("Encrypted checkout via UPI, Cards & NetBanking")}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Feature 4 */}
-                <div className="bg-surface-muted border border-border rounded-2xl p-5 flex items-start gap-4 hover:shadow-md transition-all duration-300">
-                  <div className="h-12 w-12 rounded-2xl bg-status-warning/10 text-status-warning flex items-center justify-center shrink-0">
-                    <FiCheckCircle className="text-2xl" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-content leading-tight mb-1">
-                      {t("Verified Marketplace Sellers")}
-                    </h3>
-                    <p className="text-xs text-content-secondary font-medium leading-relaxed">
-                      {t("Quality-vetted vendors across India")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dark Stat Cards Grid (4 Columns) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Stat 1 */}
-                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
-                  <FiUsers className="text-brand-primary text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
-                    {computedVendors.length ? `${computedVendors.length}+` : "10+"}
-                  </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
-                    {t("VERIFIED STORES")}
-                  </span>
-                </div>
-
-                {/* Stat 2 */}
-                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
-                  <FiBox className="text-brand-primary text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
-                    {catalogProducts.length ? `${catalogProducts.length}+` : "97+"}
-                  </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
-                    {t("CURATED PRODUCTS")}
-                  </span>
-                </div>
-
-                {/* Stat 3 */}
-                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
-                  <FiGrid className="text-brand-primary text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
-                    10+
-                  </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
-                    {t("CATEGORIES")}
-                  </span>
-                </div>
-
-                {/* Stat 4 */}
-                <div className="bg-surface-header rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-lg transition-transform hover:-translate-y-1 border border-border">
-                  <FiLock className="text-brand-primary text-2xl sm:text-3xl mb-3" />
-                  <span className="text-3xl sm:text-4xl font-black text-brand-primary tracking-tight mb-1">
-                    100%
-                  </span>
-                  <span className="text-[11px] sm:text-xs font-bold text-content-secondary tracking-wider uppercase">
-                    {t("SECURE PAYMENTS")}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </section>
+          <MarketplaceTrustSection
+            vendorCount={computedVendors.length}
+            productCount={catalogProducts.length}
+          />
 
           <TestimonialsSection testimonials={homeTestimonials} />
 

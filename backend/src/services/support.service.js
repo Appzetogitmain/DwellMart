@@ -10,7 +10,7 @@ const ROLE_MODEL_MAP = {
     delivery: 'DeliveryBoy',
 };
 
-const SYSTEM_THANK_YOU_MESSAGE = `Thank you for contacting DwellMart Support.
+const SYSTEM_THANK_YOU_MESSAGE = `Thank you for contacting Dwell Mart Support.
 
 Your support request has been received successfully.
 
@@ -201,14 +201,14 @@ export const sendMessageService = async ({
         await notifySupportActivity({
             recipientId: conversation.user,
             recipientType,
-            title: 'DwellMart Support Reply',
+            title: 'Dwell Mart Support Reply',
             message: `Support team replied: "${previewText}"`,
             type: 'support',
             data: {
                 conversationId: String(conversation._id),
                 actionUrl: targetUrl,
                 type: 'support',
-                title: 'DwellMart Support Reply',
+                title: 'Dwell Mart Support Reply',
                 message: `Support team replied: "${previewText}"`,
             },
             socketEvent: 'notification',

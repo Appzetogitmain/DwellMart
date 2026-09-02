@@ -17,7 +17,7 @@ const Feedback = () => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
 
   const [formData, setFormData] = useState({
     name: user?.name || '',

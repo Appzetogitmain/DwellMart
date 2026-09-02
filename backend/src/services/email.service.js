@@ -75,7 +75,7 @@ const createVendorInvoiceAttachment = (vendor, plan, payment = null) => {
     const pdfLines = [
         'BT',
         '/F1 20 Tf',
-        `1 0 0 1 50 760 Tm (${escapePdfText('DwellMart Vendor Invoice')}) Tj`,
+        `1 0 0 1 50 760 Tm (${escapePdfText('Dwell Mart Vendor Invoice')}) Tj`,
         'ET',
     ];
 
@@ -105,7 +105,7 @@ const createVendorInvoiceAttachment = (vendor, plan, payment = null) => {
 
     pdfLines.push('BT');
     pdfLines.push('/F1 10 Tf');
-    pdfLines.push(`1 0 0 1 50 ${Math.max(yPosition - 12, 80)} Tm (${escapePdfText('This invoice confirms your vendor subscription onboarding payment with DwellMart.')}) Tj`);
+    pdfLines.push(`1 0 0 1 50 ${Math.max(yPosition - 12, 80)} Tm (${escapePdfText('This invoice confirms your vendor subscription onboarding payment with Dwell Mart.')}) Tj`);
     pdfLines.push('ET');
 
     return {
@@ -148,9 +148,9 @@ export const sendVendorOnboardingSuccessEmail = async (vendor, plan, payment = n
 
     await sendEmail({
         to: vendor.email,
-        subject: 'Welcome to DwellMart! Your Registration is Complete',
+        subject: 'Welcome to Dwell Mart! Your Registration is Complete',
         text: [
-            `Welcome to DwellMart, ${vendor.name}!`,
+            `Welcome to Dwell Mart, ${vendor.name}!`,
             'Your vendor registration and subscription process is now complete.',
             `Plan: ${plan?.name || 'Standard'}`,
             `Store Name: ${vendor.storeName}`,
@@ -164,7 +164,7 @@ export const sendVendorOnboardingSuccessEmail = async (vendor, plan, payment = n
         ].filter(Boolean).join('\n'),
         html: `
             <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
-                <h2 style="color: #0f766e;">Welcome to DwellMart, ${vendor.name}!</h2>
+                <h2 style="color: #0f766e;">Welcome to Dwell Mart, ${vendor.name}!</h2>
                 <p>We are excited to have you on board. Your vendor registration and subscription process is now complete.</p>
                 
                 <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 20px 0;">
@@ -184,7 +184,7 @@ export const sendVendorOnboardingSuccessEmail = async (vendor, plan, payment = n
                 </div>
 
                 <p style="margin-top: 30px;">If you have any questions, feel free to reply to this email.</p>
-                <p>Best regards,<br>The DwellMart Team</p>
+                <p>Best regards,<br>The Dwell Mart Team</p>
             </div>
         `,
         attachments: [invoiceAttachment],

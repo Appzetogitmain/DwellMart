@@ -439,3 +439,42 @@ test('Config: no credential is hard-coded in the source', () => {
         Object.assign(process.env, original);
     }
 });
+
+test('Config: production uses the contracted B2C service types', () => {
+    // DTDC issued 'B2C SMART EXPRESS' and 'B2C PRIORITY' for GL20107. The
+    // sandbox names ('GROUND EXPRESS' / 'PRIORITY') are NOT valid there, and
+    // sending one is rejected at booking — after the customer has paid.
+    const original = { ...process.env };
+    try {
+        for (const key of ['DTDC_RETAIL_SERVICE_TYPE', 'DTDC_WHOLESALE_SERVICE_TYPE']) {
+            delete process.env[key];
+        }
+
+        process.env.DTDC_ENVIRONMENT = 'production';
+        assert.equal(dtdcConfig.retailServiceType, 'B2C PRIORITY');
+        assert.equal(dtdcConfig.wholesaleServiceType, 'B2C SMART EXPRESS');
+
+        process.env.DTDC_ENVIRONMENT = 'sandbox';
+        assert.equal(dtdcConfig.retailServiceType, 'PRIORITY');
+        assert.equal(dtdcConfig.wholesaleServiceType, 'GROUND EXPRESS');
+    } finally {
+        for (const key of Object.keys(process.env)) {
+            if (!(key in original)) delete process.env[key];
+        }
+        Object.assign(process.env, original);
+    }
+});
+
+test('Config: the B2C service names carry the right volumetric divisor', async () => {
+    // B2C SMART EXPRESS is 7D (surface, /4750); B2C PRIORITY is 7X (air, /5000).
+    // Reading a surface parcel on the air divisor under-states the chargeable
+    // weight by ~5%, which shows up as a discrepancy charge on the invoice.
+    const { volumetricDivisorFor } = await import('../../src/services/shipping/parcelMetrics.js');
+
+    assert.equal(volumetricDivisorFor('B2C PRIORITY'), 5000);
+    assert.equal(volumetricDivisorFor('B2C SMART EXPRESS'), 4750);
+    assert.equal(volumetricDivisorFor('PRIORITY'), 5000);
+    assert.equal(volumetricDivisorFor('GROUND EXPRESS'), 4750);
+    // An unrecognised service must not silently pick the cheaper divisor.
+    assert.equal(volumetricDivisorFor('SOMETHING NEW'), 5000);
+});

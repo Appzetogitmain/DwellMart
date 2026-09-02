@@ -154,7 +154,7 @@ const MobileLogin = () => {
                   <div className="bg-slate-950 px-7 py-3.5 rounded-2xl border border-amber-500/30 shadow-[0_0_30px_rgba(212,175,55,0.15)] inline-flex items-center justify-center">
                     <img
                       src={loginLogo}
-                      alt="DwellMart Logo"
+                      alt="Dwell Mart Logo"
                       className="h-12 sm:h-14 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
                     />
                   </div>

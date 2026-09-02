@@ -121,9 +121,17 @@ export const useDeliveryAuthStore = create(
         try {
           const formData = new FormData();
           formData.append('name', registrationData.name || '');
-          formData.append('email', registrationData.email || '');
+          if (registrationData.email) {
+            formData.append('email', registrationData.email);
+          }
           formData.append('phone', registrationData.phone || '');
           formData.append('address', registrationData.address || '');
+          if (registrationData.latitude !== undefined && registrationData.latitude !== null && registrationData.latitude !== '') {
+            formData.append('latitude', registrationData.latitude);
+          }
+          if (registrationData.longitude !== undefined && registrationData.longitude !== null && registrationData.longitude !== '') {
+            formData.append('longitude', registrationData.longitude);
+          }
           formData.append('vehicleType', registrationData.vehicleType || '');
           formData.append('vehicleNumber', registrationData.vehicleNumber || '');
           if (registrationData.drivingLicense) {

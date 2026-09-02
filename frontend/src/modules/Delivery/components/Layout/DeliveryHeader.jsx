@@ -101,7 +101,7 @@ const DeliveryHeader = ({ onMenuClick }) => {
             <div className="hidden sm:flex bg-slate-950 px-3 py-1 rounded-xl border border-amber-500/30 shadow-[0_0_12px_rgba(212,175,55,0.15)] items-center justify-center">
               <img
                 src={loginLogo}
-                alt="DwellMart"
+                alt="Dwell Mart"
                 className="h-7 w-auto object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
               />
             </div>

@@ -285,7 +285,7 @@ const SubscriptionManagement = () => {
               <p className="mt-2 text-sm text-slate-500">
                 {currentPlan
                   ? `${formatPrice(currentPlan, gateway)} per ${currentPlan.intervalLabel || currentPlan.interval || 'billing cycle'}`
-                  : 'Choose a plan to continue selling on DwellMart.'}
+                  : 'Choose a plan to continue selling on Dwell Mart.'}
               </p>
             </div>
 

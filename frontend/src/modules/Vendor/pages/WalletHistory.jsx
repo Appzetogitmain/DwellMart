@@ -529,7 +529,7 @@ const WalletHistory = () => {
                     Request Payout
                   </h3>
                   <p className="text-xs text-gray-500">
-                    Submit withdrawal request to DwellMart Admin
+                    Submit withdrawal request to Dwell Mart Admin
                   </p>
                 </div>
               </div>

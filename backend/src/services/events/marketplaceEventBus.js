@@ -195,7 +195,7 @@ export const registerMarketplaceEventHandlers = () => {
             type:          'vendor_approval',
             priority:      'CRITICAL',
             title:         '🎉 Vendor Account Approved',
-            message:       `Congratulations! Your DwellMart Vendor Account has been approved for ${displayType}. You can now log in and start selling.`,
+            message:       `Congratulations! Your Dwell Mart Vendor Account has been approved for ${displayType}. You can now log in and start selling.`,
             actionUrl:     '/vendor/dashboard',
             actionType:    'vendor_dashboard',
             data:          { vendorId: String(vendor._id || vendor.id), channels, legacyVendorType: String(vendorType || vendor.vendorType) },

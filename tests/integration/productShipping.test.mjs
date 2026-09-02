@@ -173,14 +173,17 @@ test('Retail vendor: updates shipping data on an existing product', async () => 
     assert.equal(saved.shipping.weightUnit, 'g', 'the unit the vendor entered is what is stored');
 });
 
-test('Vendor: a product without shipping data is still creatable', async () => {
-    // Optional by design — requiring it would make every pre-existing product
-    // uneditable until someone measured it.
+test('Vendor: a courier product without shipping data is refused', async () => {
+    // Parcel data is MANDATORY for retail and wholesale: without it every
+    // consignment is declared at an estimate and attracts weight-discrepancy
+    // charges. The catalogue is the only place the number can be entered once
+    // and reused, so the create path is where it is demanded.
     const vendor = await makeVendor(M, 'NoShipData', 'retail');
     const res = await request('/api/vendor/products', {
         method: 'POST', headers: vendorAuth(vendor), body: productPayload(),
     });
-    assert.equal(res.status, 201);
+    assert.equal(res.status, 400);
+    assert.match(JSON.stringify(res.body), /shipping weight is required/i);
 });
 
 test('Vendor: grams and inches survive the round trip unconverted', async () => {
@@ -477,14 +480,26 @@ const setShippingPolicy = (required) => Settings.findOneAndUpdate(
     { upsert: true }
 );
 
-test('Policy: OFF by default — a product without shipping data is creatable', async () => {
-    // The default matters more than the switch: turning this on before the
-    // catalogue is measured would make every existing product uneditable.
+test('Policy: each parcel dimension is demanded individually', async () => {
+    // A partial set cannot describe a box, and a missing axis silently collapses
+    // volumetric weight to zero — which is the number DTDC bills on.
     const vendor = await makeVendor(M, 'PolicyDefault', 'retail');
-    const res = await request('/api/vendor/products', {
-        method: 'POST', headers: vendorAuth(vendor), body: productPayload(),
-    });
-    assert.equal(res.status, 201);
+
+    for (const [omit, pattern] of [
+        ['weight', /weight is required/i],
+        ['length', /length is required/i],
+        ['width',  /width is required/i],
+        ['height', /height is required/i],
+    ]) {
+        const shipping = { ...FULL_SHIPPING };
+        delete shipping[omit];
+
+        const res = await request('/api/vendor/products', {
+            method: 'POST', headers: vendorAuth(vendor), body: productPayload({ shipping }),
+        });
+        assert.equal(res.status, 400, `omitting ${omit} should be refused`);
+        assert.match(JSON.stringify(res.body), pattern);
+    }
 });
 
 test('Policy: ON — a new retail product without a weight is refused', async () => {
@@ -527,19 +542,55 @@ test('Policy: ON — Quick Commerce is exempt', async () => {
     assert.equal(res.status, 201, JSON.stringify(res.body).slice(0, 300));
 });
 
-test('Policy: ON — EXISTING products stay editable without re-entering shipping', async () => {
-    // The whole reason the policy is scoped to creation. A vendor changing a
-    // price must not be blocked by a measurement nobody ever took.
+test('Policy: a product that HAS shipping data stays editable', async () => {
     const vendor = await makeVendor(M, 'PolicyExisting', 'retail');
     const created = await request('/api/vendor/products', {
-        method: 'POST', headers: vendorAuth(vendor), body: productPayload(),
+        method: 'POST', headers: vendorAuth(vendor),
+        body: productPayload({ shipping: FULL_SHIPPING }),
     });
     const id = created.body.data?._id || created.body.data?.product?._id;
-
-    await setShippingPolicy(true);
 
     const res = await request(`/api/vendor/products/${id}`, {
         method: 'PUT', headers: vendorAuth(vendor), body: { price: 777 },
     });
     assert.equal(res.status, 200, JSON.stringify(res.body).slice(0, 300));
+});
+
+test('DEPLOY ORDER: an unbackfilled product cannot be edited — migration 0014 must run FIRST', async () => {
+    /**
+     * The operational consequence of making parcel data mandatory on the UPDATE
+     * path as well as create.
+     *
+     * A product with no shipping data cannot be saved at all — not even to
+     * change its price. Every product in a pre-existing catalogue is in exactly
+     * that state, so deploying this policy BEFORE migration 0014 has seeded them
+     * breaks product editing platform-wide.
+     *
+     * Migration 0014 seeds weight AND all three dimensions, which is precisely
+     * what this policy demands. Run it first and nothing breaks; run it second
+     * and every vendor is locked out of their own catalogue until it completes.
+     */
+    const vendor = await makeVendor(M, 'UnbackfilledProduct', 'retail');
+
+    // A legacy product, written straight to the database as it would have
+    // existed before the shipping field was introduced.
+    const legacy = await Product.create({
+        name: `Legacy ${Date.now()}`, slug: `legacy-${Date.now()}`, price: 500,
+        categoryId: category._id, vendorId: vendor._id,
+        stock: 'in_stock', stockQuantity: 10, retailEnabled: true,
+    });
+
+    const blocked = await request(`/api/vendor/products/${legacy._id}`, {
+        method: 'PUT', headers: vendorAuth(vendor), body: { price: 777 },
+    });
+    assert.equal(blocked.status, 400, 'unbackfilled products are locked until seeded');
+
+    // Now seed it exactly as migration 0014 would.
+    const migration = (await import('../../src/migrations/0014_product_shipping_backfill.js')).default;
+    await migration.up();
+
+    const allowed = await request(`/api/vendor/products/${legacy._id}`, {
+        method: 'PUT', headers: vendorAuth(vendor), body: { price: 777 },
+    });
+    assert.equal(allowed.status, 200, 'after the backfill the same edit succeeds');
 });

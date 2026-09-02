@@ -75,7 +75,7 @@
     ]
   },
   {
-    "title": "Sell on DwellMart",
+    "title": "Sell on Dwell Mart",
     "route": "/admin/sell-on-dwellmart",
     "children": [
       "Landing Page Statistics",
@@ -103,6 +103,11 @@
       {
         "title": "Testimonials",
         "route": "/admin/testimonials",
+        "children": []
+      },
+      {
+        "title": "Trust & Assurance",
+        "route": "/admin/trust-assurance",
         "children": []
       },
       {
@@ -178,7 +183,8 @@
       "General",
       "Payment & Shipping",
       "Content & Features",
-      "Quick Commerce Settings"
+      "Quick Commerce Settings",
+      "Change Password"
     ]
   }
 ]

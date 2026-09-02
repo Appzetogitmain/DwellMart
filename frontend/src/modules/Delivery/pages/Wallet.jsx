@@ -328,7 +328,7 @@ const Wallet = () => {
             <FiInfo className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-400">
               You are holding <strong className="text-slate-200">{formatPrice(summary.codCashInHand)}</strong> in
-              COD cash that belongs to DwellMart. This is separate from your earnings and must be settled
+              COD cash that belongs to Dwell Mart. This is separate from your earnings and must be settled
               from the Cash &amp; Settlement screen.
             </p>
           </div>

@@ -73,7 +73,7 @@ export const verifyRegistrationOTP = asyncHandler(async (req, res) => {
 
 // POST /api/delivery/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, phone, address, vehicleType, vehicleNumber } = req.body;
+    const { name, email, phone, address, vehicleType, vehicleNumber, latitude, longitude } = req.body;
 
     const drivingLicenseFile = req.files?.drivingLicense?.[0];
     const aadharCardFile = req.files?.aadharCard?.[0];
@@ -82,7 +82,7 @@ export const register = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Aadhar card is required.');
     }
 
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmail = email ? String(email).trim().toLowerCase() : null;
     const phoneE164 = requireE164(phone);
     let deliveryBoy = null;
 
@@ -101,12 +101,14 @@ export const register = asyncHandler(async (req, res) => {
         const existingPhone = await DeliveryBoy.findOne({ phoneE164 });
         if (existingPhone) throw new ApiError(409, 'This mobile number is already registered.');
 
-        const existing = await DeliveryBoy.findOne({ email: normalizedEmail });
-        if (existing) throw new ApiError(409, 'Email already registered.');
+        if (normalizedEmail) {
+            const existing = await DeliveryBoy.findOne({ email: normalizedEmail });
+            if (existing) throw new ApiError(409, 'Email already registered.');
+        }
 
-        deliveryBoy = await DeliveryBoy.create({
+        const createData = {
             name: String(name || '').trim(),
-            email: normalizedEmail,
+            email: normalizedEmail || undefined,
             phone: String(phone || '').trim(),
             phoneE164,
             // Proven by the WhatsApp code that gated this registration.
@@ -122,7 +124,19 @@ export const register = asyncHandler(async (req, res) => {
             isActive: false,
             isAvailable: false,
             status: 'offline',
-        });
+        };
+
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+        const isValidLat = Number.isFinite(lat) && lat >= LATITUDE_BOUNDS.min && lat <= LATITUDE_BOUNDS.max;
+        const isValidLng = Number.isFinite(lng) && lng >= LONGITUDE_BOUNDS.min && lng <= LONGITUDE_BOUNDS.max;
+        if (isValidLat && isValidLng) {
+            createData.currentLocation = { lat, lng };
+            createData.location = { type: 'Point', coordinates: [lng, lat] };
+            createData.lastLocationAt = new Date();
+        }
+
+        deliveryBoy = await DeliveryBoy.create(createData);
 
         const admins = await Admin.find({ isActive: true }).select('_id');
         await Promise.all(

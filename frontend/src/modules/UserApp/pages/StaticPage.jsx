@@ -30,7 +30,7 @@ const formatContent = (content) => {
 
 const DEFAULT_PRIVACY_CONTENT = `
 <h2>1. Introduction</h2>
-<p>Welcome to DwellMart. Your privacy is of utmost importance to us. This Privacy Policy outlines how we collect, process, store, and safeguard your personal information across our website and mobile applications.</p>
+<p>Welcome to Dwell Mart. Your privacy is of utmost importance to us. This Privacy Policy outlines how we collect, process, store, and safeguard your personal information across our website and mobile applications.</p>
 
 <h2>2. Information We Collect</h2>
 <p>We collect information that you voluntarily provide when creating an account, browsing products, placing orders, or contacting customer support. This includes your full name, email address, contact number, delivery addresses, and transactional information.</p>
@@ -38,7 +38,7 @@ const DEFAULT_PRIVACY_CONTENT = `
 <h2>3. Data Protection & Privacy Officer</h2>
 <p>For any privacy inquiries, data access requests, or policy feedback, please contact our designated Privacy Officer:</p>
 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
-  <p style="margin: 0 0 6px 0;"><strong>Team:</strong> DwellMart Privacy & Compliance Team</p>
+  <p style="margin: 0 0 6px 0;"><strong>Team:</strong> Dwell Mart Privacy & Compliance Team</p>
   <p style="margin: 0 0 6px 0;"><strong>Mobile:</strong> +91 9999188143</p>
   <p style="margin: 0;"><strong>Email:</strong> <a href="mailto:contact.dwellmartindia@gmail.com" style="color: #2563eb;">contact.dwellmartindia@gmail.com</a></p>
 </div>
@@ -62,7 +62,7 @@ const StaticPage = ({ slug: slugProp }) => {
   }, [initialize]);
 
   const general = settings?.general || {};
-  const storeName = general.storeName || 'DwellMart';
+  const storeName = general.storeName || 'Dwell Mart';
   const email = general.contactEmail || 'contact.dwellmartindia@gmail.com';
   const phone = general.contactPhone || '+919999188143';
 

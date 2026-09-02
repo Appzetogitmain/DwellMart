@@ -28,11 +28,11 @@ export const verifyLoginOtpSchema = Joi.object({
 
 export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
-    // Collected for correspondence and admin lookup. Never verified — the
-    // mobile number is the proven contact.
-    email: Joi.string().email().lowercase().required(),
+    email: Joi.string().email().lowercase().allow('', null).optional(),
     phone,
     address: Joi.string().trim().allow('').optional(),
+    latitude: Joi.number().allow(null).optional(),
+    longitude: Joi.number().allow(null).optional(),
     vehicleType: Joi.string().trim().allow('').optional(),
     vehicleNumber: Joi.string().trim().allow('').optional(),
 });

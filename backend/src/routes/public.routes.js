@@ -62,6 +62,7 @@ const resolveQuickCommerceVendorIds = async (query) => {
 };
 import { serializePlan } from '../services/billing/plan.service.js';
 import { getSellOnDwellmartStats } from '../services/sellOnDwellmartStats.service.js';
+import { getTrustAssuranceData } from '../services/trustAssurance.service.js';
 import { cacheResponse } from '../middlewares/responseCache.js';
 import { couponValidateLimiter, publicWriteLimiter } from '../middlewares/rateLimiter.js';
 import { optionalAuth } from '../middlewares/authenticate.js';
@@ -1250,6 +1251,15 @@ router.get('/sell-on-dwellmart/stats', catalogCache, asyncHandler(async (req, re
     const stats = await getSellOnDwellmartStats();
     res.status(200).json(
         new ApiResponse(200, stats, 'Sell On Dwell Mart statistics fetched successfully.')
+    );
+}));
+
+// ─── Trust & Assurance (Public Storefront) ────────────────────────────────────
+// GET /api/trust-assurance (and /api/public/trust-assurance)
+router.get('/trust-assurance', catalogCache, asyncHandler(async (req, res) => {
+    const data = await getTrustAssuranceData();
+    res.status(200).json(
+        new ApiResponse(200, data, 'Trust & Assurance data fetched successfully.')
     );
 }));
 

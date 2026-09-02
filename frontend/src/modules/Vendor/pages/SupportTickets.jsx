@@ -37,7 +37,7 @@ const SupportTickets = () => {
                             Vendor Support Center
                         </h1>
                         <p className="text-xs sm:text-sm text-gray-500">
-                            Contact DwellMart Admin & Support Team for store verification, subscriptions, or settlements
+                            Contact Dwell Mart Admin & Support Team for store verification, subscriptions, or settlements
                         </p>
                     </div>
                 </div>

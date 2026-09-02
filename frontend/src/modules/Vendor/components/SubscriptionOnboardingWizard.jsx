@@ -75,7 +75,7 @@ const SubscriptionOnboardingWizard = ({
     'Start secure payment', 'Activate free plan', 'Activating...', 'Back to registration',
     'Subscription submitted successfully',
     'Your billing is synced from the gateway and your vendor account is now awaiting admin approval.',
-    'Go to vendor login', 'DwellMart Vendor Billing', 'No terms are configured yet.',
+    'Go to vendor login', 'Dwell Mart Vendor Billing', 'No terms are configured yet.',
     'Please upload your', 'document.', 'Passwords do not match.',
     'You must agree to the Terms & Conditions.', 'Unable to load vendor onboarding.',
     'Your vendor account is already active. Please login.',
