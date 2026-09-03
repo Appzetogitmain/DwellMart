@@ -150,15 +150,32 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     const previousStatus = vendor.status;
     const isReactivation = previousStatus === 'suspended' && status === 'approved';
 
-    // Clients must supply approvedChannels (new contract) or legacy vendorType during initial approval.
-    // When reactivating a previously suspended vendor, existing channels are retained if approvedChannels is omitted.
+    // Clients may supply approvedChannels (new contract) or legacy vendorType during initial approval.
+    // When omitted during initial approval, automatically resolve requested channels from the vendor document.
+    let resolvedApprovedChannels = approvedChannels;
     if (status === 'approved' && !isReactivation) {
-        if (!approvedChannels?.length && !vendorType) {
-            throw new ApiError(400, 'At least one approved channel is required (use approvedChannels array).');
+        if (!resolvedApprovedChannels?.length && !vendorType) {
+            const vendorRequested = [
+                vendor.channels?.retail?.status === 'requested' && 'retail',
+                vendor.channels?.wholesale?.status === 'requested' && 'wholesale',
+                vendor.channels?.quickCommerce?.status === 'requested' && 'quick_commerce',
+            ].filter(Boolean);
+
+            if (vendorRequested.length > 0) {
+                resolvedApprovedChannels = vendorRequested;
+            } else if (vendor.vendorType && VENDOR_TYPE_VALUES.includes(vendor.vendorType)) {
+                resolvedApprovedChannels = [vendor.vendorType];
+            } else {
+                resolvedApprovedChannels = ['retail'];
+            }
+        }
+
+        if (!resolvedApprovedChannels?.length && !vendorType) {
+            throw new ApiError(400, 'Please select at least one sales channel to approve for this vendor.');
         }
         // Validate explicit channel values when provided
-        if (approvedChannels?.length) {
-            const invalidChannels = approvedChannels.filter((c) => !VENDOR_CHANNEL_VALUES.includes(normalizeVendorChannel(c)));
+        if (resolvedApprovedChannels?.length) {
+            const invalidChannels = resolvedApprovedChannels.filter((c) => !VENDOR_CHANNEL_VALUES.includes(normalizeVendorChannel(c)));
             if (invalidChannels.length) {
                 throw new ApiError(400, `Invalid channels: ${invalidChannels.join(', ')}. Must be one of: ${VENDOR_CHANNEL_VALUES.join(', ')}`);
             }
@@ -173,8 +190,8 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     let approvedChannelList = [];
     const rejectedChannelList = [];
     if (status === 'approved') {
-        if (!isReactivation || approvedChannels?.length || vendorType) {
-            const selected = approvedChannels?.length ? approvedChannels : [vendorType].filter(Boolean);
+        if (!isReactivation || resolvedApprovedChannels?.length || vendorType) {
+            const selected = resolvedApprovedChannels?.length ? resolvedApprovedChannels : [vendorType].filter(Boolean);
             if (selected.length > 0) {
                 if (selected.includes('wholesale')) {
                     if (!(await isWholesaleMarketplaceEnabled())) throw new ApiError(403, 'Wholesale Marketplace is disabled platform-wide.');
