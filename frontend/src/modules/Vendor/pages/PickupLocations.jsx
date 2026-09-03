@@ -314,6 +314,10 @@ const PickupLocations = () => {
 
 // Location Modal Component
 const LocationModal = ({ isOpen, location, onClose, onSave }) => {
+  const { vendor } = useVendorAuthStore();
+  const defaultPhone = vendor?.phone || vendor?.phoneE164 || vendor?.contactPhone || vendor?.mobile || "";
+  const defaultEmail = vendor?.email || "";
+
   const [formData, setFormData] = useState({
     name: "",
     address: {
@@ -321,10 +325,10 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
       city: "",
       state: "",
       zipCode: "",
-      country: "USA",
+      country: "India",
     },
-    phone: "",
-    email: "",
+    phone: defaultPhone,
+    email: defaultEmail,
     isActive: true,
     isDefault: false,
     operatingHours: {
@@ -363,8 +367,8 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
           zipCode: "",
           country: "India",
         },
-        phone: "",
-        email: "",
+        phone: defaultPhone,
+        email: defaultEmail,
         isActive: true,
         isDefault: false,
         operatingHours: {
@@ -379,7 +383,7 @@ const LocationModal = ({ isOpen, location, onClose, onSave }) => {
       });
       setCoords(null);
     }
-  }, [location, isOpen]);
+  }, [location, isOpen, defaultPhone, defaultEmail]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {

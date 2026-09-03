@@ -160,24 +160,26 @@ const CartDrawer = () => {
                       className="rounded-2xl border border-slate-700/60 overflow-hidden bg-slate-900/60 shadow-md"
                     >
                       {/* ── Fulfillment Section Header ── */}
-                      <div className={`flex items-center justify-between px-4 py-3 ${cfg.headerClass} border-b border-slate-700/50`}>
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cfg.iconClass}`}>
+                      <div className={`flex items-center justify-between gap-2 px-3.5 py-2.5 ${cfg.headerClass} border-b border-slate-700/50`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${cfg.iconClass}`}>
                             <Icon className="w-4 h-4" />
                           </div>
-                          <div>
-                            <span className={`text-xs uppercase tracking-wider ${cfg.accentClass}`}>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <span className={`text-xs uppercase tracking-wider whitespace-nowrap ${cfg.accentClass}`}>
                               {cfg.label}
                             </span>
-                            <span className="text-[11px] text-slate-400 font-medium ml-2">{cfg.subLabel}</span>
-                          </div>
-                          {isMixedCart && (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-1 ${cfg.badgeClass}`}>
-                              {fg.itemCount} item{fg.itemCount !== 1 ? "s" : ""}
+                            <span className="text-[10px] text-slate-300 font-semibold bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700/60 whitespace-nowrap">
+                              {cfg.subLabel}
                             </span>
-                          )}
+                            {isMixedCart && (
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${cfg.badgeClass}`}>
+                                {fg.itemCount} item{fg.itemCount !== 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs font-black text-[#ffc101] bg-slate-950/80 px-2.5 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1">
+                        <span className="text-xs font-black text-[#ffc101] bg-slate-950/80 px-2.5 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1 shrink-0">
                           <span className="text-[10px] text-slate-400 font-semibold uppercase">Item Subtotal:</span>
                           <Price amount={fg.subtotal} />
                         </span>

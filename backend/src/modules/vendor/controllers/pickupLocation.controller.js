@@ -3,6 +3,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import PickupLocation from '../../../models/PickupLocation.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 
 /**
  * Vendor pickup locations.
@@ -46,6 +47,16 @@ export const createPickupLocation = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'City and postal code are required for a pickup location.');
     }
 
+    let finalPhone = phone;
+    let finalEmail = email;
+    if (!finalPhone || !finalEmail) {
+        const vendorDoc = await Vendor.findById(req.user.id).lean();
+        if (vendorDoc) {
+            if (!finalPhone) finalPhone = vendorDoc.phone || vendorDoc.phoneE164 || '';
+            if (!finalEmail) finalEmail = vendorDoc.email || '';
+        }
+    }
+
     const existingCount = await PickupLocation.countDocuments({ vendorId: req.user.id });
     // The first location a vendor creates is their default — otherwise nothing
     // is deliverable-from until they remember to set one.
@@ -65,8 +76,8 @@ export const createPickupLocation = asyncHandler(async (req, res) => {
                     zipCode: address.zipCode || '',
                     country: address.country || 'India',
                 },
-                phone: phone || '',
-                email: email || '',
+                phone: finalPhone || '',
+                email: finalEmail || '',
                 isActive: true,
                 isDefault: false, // promoted below so the index is never violated
                 ...(operatingHours ? { operatingHours } : {}),

@@ -77,7 +77,12 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
         filter.$and = [orderChannelFilter(targetOrderType)];
     } else if (fulfillmentType) filter.fulfillmentType = fulfillmentType;
 
-    const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit).lean();
+    const rawOrders = await Order.find(filter)
+        .populate('userId', 'name email phone')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(numericLimit)
+        .lean();
     const total = await Order.countDocuments(filter);
 
     // Sanitize: ensure vendor only sees their own vendorItems slice and items
@@ -88,8 +93,14 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
         const myItems = (order.items || []).filter(
             (item) => String(item.vendorId) === String(vendorId)
         );
+        const customer = {
+            name: order.userId?.name || order.shippingAddress?.name || order.guestInfo?.name || 'Guest',
+            email: order.userId?.email || order.shippingAddress?.email || order.guestInfo?.email || 'N/A',
+            phone: order.userId?.phone || order.shippingAddress?.phone || order.guestInfo?.phone || '',
+        };
         return {
             ...order,
+            customer,
             vendorItems: myVendorItems,
             items: myItems.length > 0 ? myItems : (myVendorItems[0]?.items || order.items),
         };
@@ -116,6 +127,7 @@ export const getVendorOrderById = asyncHandler(async (req, res) => {
             ],
         }, orderChannelFilter(req.vendorWorkspace)],
     })
+        .populate('userId', 'name email phone')
         .populate('deliveryBoyId', 'name phone vehicleType vehicleNumber status')
         .lean();
 
@@ -129,8 +141,15 @@ export const getVendorOrderById = asyncHandler(async (req, res) => {
         (item) => String(item.vendorId) === String(vendorId)
     );
 
+    const customer = {
+        name: rawOrder.userId?.name || rawOrder.shippingAddress?.name || rawOrder.guestInfo?.name || 'Guest',
+        email: rawOrder.userId?.email || rawOrder.shippingAddress?.email || rawOrder.guestInfo?.email || 'N/A',
+        phone: rawOrder.userId?.phone || rawOrder.shippingAddress?.phone || rawOrder.guestInfo?.phone || '',
+    };
+
     const sanitizedOrder = {
         ...rawOrder,
+        customer,
         vendorItems: myVendorItems,
         items: myItems.length > 0 ? myItems : (myVendorItems[0]?.items || rawOrder.items),
     };

@@ -992,9 +992,9 @@ const MobileCheckout = () => {
                     )}
 
                     {/* Address Form */}
-                    <div className="space-y-4 bg-surface p-4 rounded-xl border border-border-light shadow-sm lg:p-6">
+                    <div className="space-y-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs lg:p-6">
                       <div>
-                        <label className="block text-sm font-semibold text-content-secondary mb-2">
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
                           {t('Full Name')}
                         </label>
                         <input
@@ -1003,12 +1003,13 @@ const MobileCheckout = () => {
                           value={formData.name}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                          placeholder="Your full name"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                         />
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('Email')}
                           </label>
                           <input
@@ -1017,11 +1018,12 @@ const MobileCheckout = () => {
                             value={formData.email}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            placeholder="you@example.com"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('Phone Number')}
                           </label>
                           <input
@@ -1030,13 +1032,14 @@ const MobileCheckout = () => {
                             value={formData.phone}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            placeholder="10-digit mobile number"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                           />
                         </div>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="block text-sm font-semibold text-content-secondary">
+                          <label className="block text-sm font-bold text-slate-700">
                             {t('Address')}
                           </label>
                           <button
@@ -1061,15 +1064,15 @@ const MobileCheckout = () => {
                           required
                           rows={3}
                           placeholder="Flat / house number, street, landmark"
-                          className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                         />
-                        <p className="mt-1 text-xs text-content-muted">
+                        <p className="mt-1 text-xs text-slate-500">
                           Search for an address above, click &quot;Use current location&quot;, or enter it manually.
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('City')}
                           </label>
                           <input
@@ -1078,11 +1081,12 @@ const MobileCheckout = () => {
                             value={formData.city}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            placeholder="City"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('State')}
                           </label>
                           <input
@@ -1091,13 +1095,14 @@ const MobileCheckout = () => {
                             value={formData.state}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            placeholder="State"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('ZIP Code')}
                           </label>
                           <input
@@ -1112,13 +1117,13 @@ const MobileCheckout = () => {
                               setFormData((prev) => ({ ...prev, zipCode: clean }));
                             }}
                             required
-                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            className={`w-full px-4 py-3 rounded-xl border ${
                               deliverabilityVerdict?.blocking
-                                ? 'border-status-error bg-red-50/20'
+                                ? 'border-red-500 bg-red-50/20'
                                 : deliverabilityVerdict?.deliverable
-                                ? 'border-status-success'
-                                : 'border-border'
-                            } focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content`}
+                                ? 'border-emerald-500 bg-emerald-50/10'
+                                : 'border-slate-300 bg-white'
+                            } focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base text-slate-900 shadow-2xs placeholder:text-slate-400`}
                           />
                           {!isQuickCommerce && isCheckingDeliverability && (
                             <p className="mt-1.5 text-xs text-blue-600 animate-pulse flex items-center gap-1.5">
@@ -1151,7 +1156,7 @@ const MobileCheckout = () => {
                           )}
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-content-secondary mb-2">
+                          <label className="block text-sm font-bold text-slate-700 mb-2">
                             {t('Country')}
                           </label>
                           <input
@@ -1160,7 +1165,8 @@ const MobileCheckout = () => {
                             value={formData.country}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-border focus:outline-none focus:ring-2 focus:ring-brand-primary text-base bg-surface text-content"
+                            placeholder="Country"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary text-base bg-white text-slate-900 shadow-2xs placeholder:text-slate-400"
                           />
                         </div>
                       </div>
@@ -1174,7 +1180,7 @@ const MobileCheckout = () => {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     className="px-4 py-4 lg:p-0">
-                    <h2 className="text-lg font-bold text-content mb-4 flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                       <FiCreditCard className="text-brand-primary" />
                       {t('Payment Method')}
                     </h2>
@@ -1189,9 +1195,9 @@ const MobileCheckout = () => {
                       }).map((method) => (
                         <label
                           key={method}
-                          className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
-                            ? "border-brand-primary bg-surface-muted"
-                            : "border-border"
+                          className={`flex items-center gap-3.5 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
+                            ? "border-brand-primary bg-amber-500/10 shadow-xs"
+                            : "border-slate-200 bg-white hover:border-slate-300 shadow-2xs"
                             }`}>
                           <input
                             type="radio"
@@ -1199,9 +1205,9 @@ const MobileCheckout = () => {
                             value={method}
                             checked={formData.paymentMethod === method}
                             onChange={handleInputChange}
-                            className="w-5 h-5 text-brand-primary"
+                            className="w-5 h-5 text-brand-primary focus:ring-brand-primary"
                           />
-                          <span className="font-semibold text-content capitalize text-base">
+                          <span className="font-bold text-slate-900 capitalize text-base">
                             {method === "card"
                               ? t("Credit/Debit Card")
                               : method === "cash"
@@ -1216,7 +1222,7 @@ const MobileCheckout = () => {
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}
                     <div className="mb-6 space-y-3">
-                      <h3 className="text-base font-bold text-content flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                         <FiTruck className="text-brand-primary" />
                         <span>Delivery & Logistics Promises</span>
                       </h3>
@@ -1228,39 +1234,39 @@ const MobileCheckout = () => {
                             const etaLabel = isEstimatingQuick && !quickEstimate ? 'Calculating...' : (quickEstimate?.available ? formatEtaRange(quickEstimate?.eta?.etaMinutes) : fg.etaWindow || '15–25 min');
 
                             return (
-                              <div key="quick_commerce" className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/40 space-y-2">
+                              <div key="quick_commerce" className="p-4 rounded-xl border border-emerald-200 bg-white shadow-xs space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
                                       <FiZap className="text-lg" />
                                     </div>
                                     <div>
-                                      <h4 className="font-extrabold text-emerald-900 dark:text-emerald-300 text-sm">⚡ Quick Commerce (Express Delivery)</h4>
-                                      <p className="text-xs text-content-secondary font-medium">Express Daily Store</p>
+                                      <h4 className="font-extrabold text-slate-900 text-sm">⚡ Quick Commerce (Express Delivery)</h4>
+                                      <p className="text-xs text-slate-500 font-medium">Express Daily Store</p>
                                     </div>
                                   </div>
-                                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/30">
+                                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                                     {etaLabel}
                                   </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-emerald-500/20">
-                                  <div className="flex justify-between text-content-secondary font-medium">
+                                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                                  <div className="flex justify-between text-slate-600 font-medium">
                                     <span>Delivery Fee:</span>
-                                    <span className="font-bold text-content">
-                                      {qcFee === 0 ? 'FREE' : formatPrice(qcFee)}
+                                    <span className="font-bold text-slate-900">
+                                      {qcFee === 0 ? <span className="text-emerald-600 font-extrabold">FREE</span> : formatPrice(qcFee)}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between text-content-secondary font-medium">
+                                  <div className="flex justify-between text-slate-600 font-medium">
                                     <span>Packaging:</span>
-                                    <span className="font-bold text-content">
+                                    <span className="font-bold text-slate-900">
                                       {formatPrice(qcPkg)}
                                     </span>
                                   </div>
                                 </div>
 
                                 {quickBlockReason && (
-                                  <p className="text-xs text-status-error pt-1">{quickBlockReason}</p>
+                                  <p className="text-xs text-red-600 font-semibold pt-1">{quickBlockReason}</p>
                                 )}
                               </div>
                             );
@@ -1270,32 +1276,32 @@ const MobileCheckout = () => {
                             const wholesaleFee = Number(fg.deliveryFee || 0);
 
                             return (
-                              <div key="wholesale" className="p-4 rounded-2xl border border-purple-500/30 bg-purple-50/60 dark:bg-purple-950/40 space-y-2">
+                              <div key="wholesale" className="p-4 rounded-xl border border-purple-200 bg-white shadow-xs space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-lg bg-purple-100 text-purple-700">
                                       <FiTruck className="text-lg" />
                                     </div>
                                     <div>
-                                      <h4 className="font-extrabold text-purple-900 dark:text-purple-300 text-sm">🏭 Wholesale (B2B Bulk Freight)</h4>
-                                      <p className="text-xs text-content-secondary font-medium">Mega Bulk Depot</p>
+                                      <h4 className="font-extrabold text-slate-900 text-sm">🏭 Wholesale (B2B Bulk Freight)</h4>
+                                      <p className="text-xs text-slate-500 font-medium">Mega Bulk Depot</p>
                                     </div>
                                   </div>
-                                  <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-purple-500/15 text-purple-800 dark:text-purple-200 border border-purple-500/30">
+                                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
                                     {fg.etaWindow || 'Lead Time: 5–7 Business Days'}
                                   </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-purple-500/20">
-                                  <div className="flex justify-between text-content-secondary font-medium">
+                                <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                                  <div className="flex justify-between text-slate-600 font-medium">
                                     <span>Freight Shipping:</span>
-                                    <span className="font-bold text-content">
-                                      {wholesaleFee === 0 ? 'FREE' : formatPrice(wholesaleFee)}
+                                    <span className="font-bold text-slate-900">
+                                      {wholesaleFee === 0 ? <span className="text-emerald-600 font-extrabold">FREE</span> : formatPrice(wholesaleFee)}
                                     </span>
                                   </div>
-                                  <div className="flex justify-between text-content-secondary font-medium">
+                                  <div className="flex justify-between text-slate-600 font-medium">
                                     <span>GST Tax Invoice:</span>
-                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Included ✓</span>
+                                    <span className="font-bold text-emerald-600">Included ✓</span>
                                   </div>
                                 </div>
                               </div>
@@ -1306,32 +1312,32 @@ const MobileCheckout = () => {
                           const retailFee = Number(fg.deliveryFee || 0);
 
                           return (
-                            <div key="retail" className="p-4 rounded-2xl border border-blue-500/30 bg-blue-50/60 dark:bg-blue-950/40 space-y-2">
+                            <div key="retail" className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
                                     <FiPackage className="text-lg" />
                                   </div>
                                   <div>
-                                    <h4 className="font-extrabold text-blue-900 dark:text-blue-300 text-sm">📦 Standard Retail (Shipment)</h4>
-                                    <p className="text-xs text-content-secondary font-medium">Marketplace Vendors</p>
+                                    <h4 className="font-extrabold text-slate-900 text-sm">📦 Standard Retail (Shipment)</h4>
+                                    <p className="text-xs text-slate-500 font-medium">Marketplace Vendors</p>
                                   </div>
                                 </div>
-                                <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-800 dark:text-blue-200 border border-blue-500/30">
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
                                   {fg.etaWindow || 'Delivery: 4–6 Days'}
                                 </span>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-2 text-xs pt-1.5 border-t border-blue-500/20">
-                                <div className="flex justify-between text-content-secondary font-medium">
+                              <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                                <div className="flex justify-between text-slate-600 font-medium">
                                   <span>Standard Shipping:</span>
-                                  <span className="font-bold text-content">
-                                    {retailFee === 0 ? 'FREE' : formatPrice(retailFee)}
+                                  <span className="font-bold text-slate-900">
+                                    {retailFee === 0 ? <span className="text-emerald-600 font-extrabold">FREE</span> : formatPrice(retailFee)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between text-content-secondary font-medium">
+                                <div className="flex justify-between text-slate-600 font-medium">
                                   <span>Tracking:</span>
-                                  <span className="font-bold text-content">Live Tracking</span>
+                                  <span className="font-bold text-slate-900">Live Tracking</span>
                                 </div>
                               </div>
                             </div>
@@ -1510,7 +1516,7 @@ const MobileCheckout = () => {
               {/* Right Column - Desktop Order Summary */}
               <div className="hidden lg:block lg:col-span-4">
                 <div className="sticky top-24 space-y-4">
-                  <div className="bg-surface rounded-xl shadow-sm border border-border overflow-hidden">
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <OrderSummary
                       fulfillmentGroups={fulfillmentGroups}
                       itemsByVendor={itemsByVendor}
@@ -1524,7 +1530,7 @@ const MobileCheckout = () => {
                       quickEstimate={quickEstimate}
                       formatPrice={formatPrice}
                     />
-                    <div className="p-4 border-t border-border bg-surface-muted space-y-3">
+                    <div className="p-4 border-t border-slate-200 bg-slate-50/70 space-y-3">
                       {step === 2 && fulfillmentGroups.length > 1 && (
                         <div className="p-3.5 rounded-xl bg-slate-900 border border-amber-500/40 text-xs space-y-2">
                           <div className="flex items-center gap-2 font-extrabold text-amber-400">

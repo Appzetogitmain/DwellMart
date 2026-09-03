@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   FiSearch,
@@ -33,7 +34,7 @@ import toast from "react-hot-toast";
 // OrderItemsDropdown component
 const OrderItemsDropdown = ({ items, orderTotal }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, bottom: 0, left: 0, openUpward: false });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
 
@@ -56,19 +57,35 @@ const OrderItemsDropdown = ({ items, orderTotal }) => {
     return [];
   }, [items, orderTotal]);
 
-  // Check available space and determine dropdown direction
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
       const buttonRect = buttonRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
       const spaceBelow = windowHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
-      const dropdownHeight = 400; // max-h-[400px]
+      const dropdownHeight = 360;
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
-      // Open upward if not enough space below but enough space above
-      setOpenUpward(spaceBelow < dropdownHeight && spaceAbove > spaceBelow);
+      setCoords({
+        top: buttonRect.bottom + 4,
+        bottom: windowHeight - buttonRect.top + 4,
+        left: Math.max(8, Math.min(buttonRect.left, window.innerWidth - 520)),
+        openUpward,
+      });
     }
-  }, [isOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [isOpen, updatePosition]);
 
   // Click outside detection
   useEffect(() => {
@@ -102,7 +119,7 @@ const OrderItemsDropdown = ({ items, orderTotal }) => {
   const itemCount = normalizedItems.length;
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       <button
         ref={buttonRef}
         onClick={(e) => {
@@ -120,94 +137,96 @@ const OrderItemsDropdown = ({ items, orderTotal }) => {
         )}
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={dropdownRef}
-            initial={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-            }}
-            exit={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            transition={{
-              duration: 0.25,
-              ease: [0.4, 0, 0.2, 1],
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-            }}
-            className={`absolute left-0 z-50 bg-white rounded-xl shadow-2xl border border-gray-200 w-[85vw] sm:w-[500px] max-w-[600px] max-h-[400px] overflow-hidden ${openUpward ? "bottom-full mb-2" : "top-full mt-2"
-              }`}
-            style={{
-              transformOrigin: openUpward ? "bottom left" : "top left",
-            }}>
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h3 className="font-semibold text-gray-800 text-sm">
-                Order Items
-              </h3>
-            </div>
-            <div className="overflow-y-auto overflow-x-auto max-h-[320px] scrollbar-admin">
-              <table className="w-full min-w-[600px] sm:min-w-0">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="px-2 sm:px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                      Item ID
-                    </th>
-                    <th className="px-2 sm:px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                      Item Name
-                    </th>
-                    <th className="px-2 sm:px-4 py-2 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                      Quantity
-                    </th>
-                    <th className="px-2 sm:px-4 py-2 text-right text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                      Unit Price
-                    </th>
-                    <th className="px-2 sm:px-4 py-2 text-right text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {normalizedItems.map((item, index) => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 1);
-                    const itemId =
-                      item.id || item.itemId || `ITEM-${index + 1}`;
-                    return (
-                      <tr key={item.id || index} className="hover:bg-gray-50">
-                        <td className="px-2 sm:px-4 py-2 text-sm text-gray-800 font-medium whitespace-nowrap">
-                          {itemId}
-                        </td>
-                        <td className="px-2 sm:px-4 py-2 text-sm text-gray-800 whitespace-nowrap">
-                          {item.name || `Item ${index + 1}`}
-                        </td>
-                        <td className="px-2 sm:px-4 py-2 text-sm text-gray-700 text-center whitespace-nowrap">
-                          {item.quantity || 1}
-                        </td>
-                        <td className="px-2 sm:px-4 py-2 text-sm text-gray-700 text-right whitespace-nowrap">
-                          {formatPrice(item.price || 0)}
-                        </td>
-                        <td className="px-2 sm:px-4 py-2 text-sm font-semibold text-gray-800 text-right whitespace-nowrap">
-                          {formatPrice(itemTotal)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
+      {typeof document !== "undefined" &&
+        isOpen &&
+        createPortal(
+          <AnimatePresence>
+            <motion.div
+              ref={dropdownRef}
+              initial={{
+                opacity: 0,
+                y: coords.openUpward ? 6 : -6,
+                scale: 0.95,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: coords.openUpward ? 6 : -6,
+                scale: 0.95,
+              }}
+              transition={{
+                duration: 0.2,
+                ease: [0.4, 0, 0.2, 1],
+              }}
+              className="fixed z-[9999] bg-white rounded-xl shadow-2xl border border-gray-200 w-[85vw] sm:w-[500px] max-w-[600px] max-h-[400px] overflow-hidden"
+              style={{
+                top: coords.openUpward ? undefined : `${coords.top}px`,
+                bottom: coords.openUpward ? `${coords.bottom}px` : undefined,
+                left: `${coords.left}px`,
+                transformOrigin: coords.openUpward ? "bottom left" : "top left",
+              }}>
+              <div className="p-4 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  Order Items
+                </h3>
+              </div>
+              <div className="overflow-y-auto overflow-x-auto max-h-[320px] scrollbar-admin">
+                <table className="w-full min-w-[600px] sm:min-w-0">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-2 sm:px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                        Item ID
+                      </th>
+                      <th className="px-2 sm:px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                        Item Name
+                      </th>
+                      <th className="px-2 sm:px-4 py-2 text-center text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                        Quantity
+                      </th>
+                      <th className="px-2 sm:px-4 py-2 text-right text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                        Unit Price
+                      </th>
+                      <th className="px-2 sm:px-4 py-2 text-right text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {normalizedItems.map((item, index) => {
+                      const itemTotal = (item.price || 0) * (item.quantity || 1);
+                      const itemId =
+                        item.id || item.itemId || `ITEM-${index + 1}`;
+                      return (
+                        <tr key={item.id || index} className="hover:bg-gray-50">
+                          <td className="px-2 sm:px-4 py-2 text-sm text-gray-800 font-medium whitespace-nowrap">
+                            {itemId}
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 text-sm text-gray-800 whitespace-nowrap">
+                            {item.name || `Item ${index + 1}`}
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 text-sm text-gray-700 text-center whitespace-nowrap">
+                            {item.quantity || 1}
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 text-sm text-gray-700 text-right whitespace-nowrap">
+                            {formatPrice(item.price || 0)}
+                          </td>
+                          <td className="px-2 sm:px-4 py-2 text-sm font-semibold text-gray-800 text-right whitespace-nowrap">
+                            {formatPrice(itemTotal)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 };
@@ -223,23 +242,39 @@ const OrderActionsDropdown = ({
   onToggle,
   onClose,
 }) => {
-  const [openUpward, setOpenUpward] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, bottom: 0, right: 0, openUpward: false });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
 
-  // Check available space and determine dropdown direction
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
+  const updatePosition = useCallback(() => {
+    if (buttonRef.current) {
       const buttonRect = buttonRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
       const spaceBelow = windowHeight - buttonRect.bottom;
       const spaceAbove = buttonRect.top;
-      const dropdownHeight = 200; // Estimated dropdown height
+      const dropdownHeight = 200;
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
-      // Open upward if not enough space below but enough space above
-      setOpenUpward(spaceBelow < dropdownHeight && spaceAbove > spaceBelow);
+      setCoords({
+        top: buttonRect.bottom + 4,
+        bottom: windowHeight - buttonRect.top + 4,
+        right: Math.max(8, window.innerWidth - buttonRect.right),
+        openUpward,
+      });
     }
-  }, [isOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [isOpen, updatePosition]);
 
   // Click outside detection
   useEffect(() => {
@@ -310,7 +345,7 @@ const OrderActionsDropdown = ({
   ];
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       <button
         ref={buttonRef}
         onClick={(e) => {
@@ -322,51 +357,56 @@ const OrderActionsDropdown = ({
         <FiMoreVertical />
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={dropdownRef}
-            initial={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-            }}
-            exit={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            transition={{ duration: 0.2 }}
-            className={`absolute right-0 z-50 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[180px] overflow-hidden ${openUpward ? "bottom-full mb-2" : "top-full mt-2"
-              }`}
-            style={{
-              transformOrigin: openUpward ? "bottom right" : "top right",
-            }}>
-            <div className="py-1">
-              {menuItems.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      item.onClick();
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${item.color} ${item.hoverBg}`}>
-                    <Icon className="text-base" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
+      {typeof document !== "undefined" &&
+        isOpen &&
+        createPortal(
+          <AnimatePresence>
+            <motion.div
+              ref={dropdownRef}
+              initial={{
+                opacity: 0,
+                y: coords.openUpward ? 6 : -6,
+                scale: 0.95,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: coords.openUpward ? 6 : -6,
+                scale: 0.95,
+              }}
+              transition={{ duration: 0.15 }}
+              className="fixed z-[9999] bg-white rounded-xl shadow-2xl border border-gray-200 min-w-[180px] overflow-hidden"
+              style={{
+                top: coords.openUpward ? undefined : `${coords.top}px`,
+                bottom: coords.openUpward ? `${coords.bottom}px` : undefined,
+                right: `${coords.right}px`,
+                transformOrigin: coords.openUpward ? "bottom right" : "top right",
+              }}>
+              <div className="py-1">
+                {menuItems.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onClick();
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${item.color} ${item.hoverBg}`}>
+                      <Icon className="text-base" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </div>
   );
 };

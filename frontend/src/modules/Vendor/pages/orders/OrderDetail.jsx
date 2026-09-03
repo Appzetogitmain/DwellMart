@@ -39,13 +39,21 @@ const OrderDetail = () => {
     const customerName =
         order?.customer?.name ??
         order?.userId?.name ??
+        order?.shippingAddress?.name ??
         order?.guestInfo?.name ??
         'Guest';
     const customerEmail =
         order?.customer?.email ??
         order?.userId?.email ??
+        order?.shippingAddress?.email ??
         order?.guestInfo?.email ??
         'N/A';
+    const customerPhone =
+        order?.customer?.phone ??
+        order?.userId?.phone ??
+        order?.shippingAddress?.phone ??
+        order?.guestInfo?.phone ??
+        null;
 
     useEffect(() => {
         let cancelled = false;
@@ -460,12 +468,18 @@ const OrderDetail = () => {
                         <div className="space-y-3">
                             <div>
                                 <p className="text-sm text-gray-500">Name</p>
-                                <p className="font-medium">{customerName}</p>
+                                <p className="font-medium text-gray-800">{customerName}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">Email</p>
-                                <p className="font-medium">{customerEmail}</p>
+                                <p className="font-medium text-gray-800">{customerEmail}</p>
                             </div>
+                            {customerPhone && (
+                                <div>
+                                    <p className="text-sm text-gray-500">Phone</p>
+                                    <p className="font-medium text-gray-800">{customerPhone}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

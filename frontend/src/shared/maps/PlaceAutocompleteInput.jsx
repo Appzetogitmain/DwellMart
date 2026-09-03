@@ -91,8 +91,8 @@ const PlaceAutocompleteInput = ({ onSelect, placeholder = "Search your address",
   if (status === "unavailable") return null;
   return (
     <div className={className}>
-      <div ref={hostRef} className="min-h-11 rounded-xl border-2 border-border bg-surface px-1 text-content" style={{ colorScheme: "light" }} />
-      {status === "loading" && <p className="mt-1 text-xs text-content-muted">Loading address search…</p>}
+      <div ref={hostRef} className="min-h-11 rounded-xl border border-slate-300 bg-white px-1 text-slate-900 shadow-2xs" style={{ colorScheme: "light" }} />
+      {status === "loading" && <p className="mt-1 text-xs text-slate-500">Loading address search…</p>}
     </div>
   );
 };
