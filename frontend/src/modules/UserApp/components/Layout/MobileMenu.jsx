@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiX, FiHome, FiGrid, FiTag, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiHelpCircle, FiBell } from "react-icons/fi";
+import { FiX, FiHome, FiGrid, FiTag, FiUser, FiShoppingBag, FiHeart, FiLogOut, FiHelpCircle, FiBell, FiZap } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useUserNotificationStore } from "../../store/userNotificationStore";
+import { useExperienceStore } from "../../../../shared/store/experienceStore";
+import { EXPERIENCES } from "../../../../shared/utils/experience";
 import { appLogo } from "../../../../data/logos";
 import LanguageSelector from "../../../../shared/components/LanguageSelector";
 import CurrencySelector from "../../../../shared/components/CurrencySelector";
@@ -14,6 +16,7 @@ import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 const MobileMenu = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { experience, setExperience } = useExperienceStore();
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const unreadCount = useUserNotificationStore((state) => state.unreadCount);
   const { getTranslatedText: t } = usePageTranslation(["Home", "Shop", "Categories", "Exclusive Offers", "Track Order", "My Profile", "My Orders", "Wishlist", "Notifications", "Become a Seller", "Help Center", "Sign In / Register", "Logout", "Personal Space", "Support", "Member", "Dwell Mart Pro"]);
@@ -125,6 +128,43 @@ const MobileMenu = ({ isOpen, onClose }) => {
 
             {/* Scrollable Nav - Fixed scroll bleed */}
             <div className="flex-1 overflow-y-auto pt-2 pb-10 scrollbar-hide px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {/* Shopping Experience Mode */}
+              <div className="pb-4 px-4">
+                <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-2 scale-95 origin-left">Shopping Mode</p>
+                <div className="grid grid-cols-2 gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExperience(EXPERIENCES.MARKETPLACE);
+                      onClose();
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                      experience === EXPERIENCES.MARKETPLACE
+                        ? "bg-[#ffc101] text-black shadow-md"
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    <FiShoppingBag className="text-sm" />
+                    <span>Marketplace</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExperience(EXPERIENCES.QUICK_COMMERCE);
+                      onClose();
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                      experience === EXPERIENCES.QUICK_COMMERCE
+                        ? "bg-amber-500 text-black shadow-md"
+                        : "text-white/60 hover:text-white"
+                    }`}
+                  >
+                    <FiZap className="text-sm fill-current" />
+                    <span>Express</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Language Settings Drawer/Section */}
               <div className="pb-2">
                 <p className="px-4 text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-2 scale-95 origin-left">Language</p>

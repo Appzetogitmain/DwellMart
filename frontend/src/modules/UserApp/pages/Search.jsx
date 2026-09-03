@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight, FiRefreshCw, FiGlobe, FiZap } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from '../../../shared/components/ProductCard';
@@ -102,7 +102,13 @@ const MobileSearch = ({ isShopPage = false }) => {
     "of",
     "products",
     "Previous",
-    "Next"
+    "Next",
+    "All Products",
+    "Marketplace",
+    "Dwell Mart Express (10-30 Mins)",
+    "No Dwell Mart Express Items Found",
+    "Dwell Mart Express is expanding to your location soon. In the meantime, explore all standard delivery items in our Marketplace catalog!",
+    "Show All Products"
   ]);
 
   const { translateObject, translateArray } = useDynamicTranslation();
@@ -122,10 +128,46 @@ const MobileSearch = ({ isShopPage = false }) => {
   });
   const [approvedVendors, setApprovedVendors] = useState([]);
   const { settings, initialize: initializeSettings } = useSettingsStore();
-  const { experience, location: customerLocation } = useExperienceStore();
+  const { experience, setExperience, location: customerLocation } = useExperienceStore();
   const isQuickCommerce = experience === EXPERIENCES.QUICK_COMMERCE;
   const wholesaleMarketplaceEnabled =
     settings?.features?.wholesaleMarketplaceEnabled === true;
+
+  const initialDeliveryMode = useMemo(() => {
+    const urlDelivery = searchParams.get('delivery');
+    if (urlDelivery && ['all', 'marketplace', 'express'].includes(urlDelivery)) {
+      return urlDelivery;
+    }
+    if (isShopPage && !urlDelivery) {
+      return 'all';
+    }
+    return experience === EXPERIENCES.QUICK_COMMERCE ? 'express' : 'all';
+  }, [searchParams, isShopPage, experience]);
+
+  const [deliveryMode, setDeliveryMode] = useState(initialDeliveryMode);
+
+  // Keep deliveryMode synchronized with URL
+  useEffect(() => {
+    const urlDelivery = searchParams.get('delivery');
+    if (urlDelivery && ['all', 'marketplace', 'express'].includes(urlDelivery)) {
+      setDeliveryMode(urlDelivery);
+    }
+  }, [searchParams]);
+
+  const handleDeliveryModeChange = useCallback((mode) => {
+    setDeliveryMode(mode);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('delivery', mode);
+    newParams.delete('page');
+    setSearchParams(newParams);
+
+    if (mode === 'express') {
+      setExperience(EXPERIENCES.QUICK_COMMERCE);
+    } else if (mode === 'marketplace') {
+      setExperience(EXPERIENCES.MARKETPLACE);
+    }
+  }, [searchParams, setSearchParams, setExperience]);
+
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
     vendor: searchParams.get('vendor') || '',
@@ -306,8 +348,16 @@ const MobileSearch = ({ isShopPage = false }) => {
     if (filters.bulkDiscount) query.bulkDiscount = 'true';
     if (filters.hasMoq) query.hasMoq = 'true';
 
-    if (isQuickCommerce) {
+    if (deliveryMode === 'express') {
+      query.delivery = 'express';
+      query.experience = 'quick_commerce';
       Object.assign(query, getLocationQueryParams(customerLocation));
+    } else if (deliveryMode === 'marketplace') {
+      query.delivery = 'standard';
+      query.experience = 'marketplace';
+    } else {
+      query.delivery = 'all';
+      query.experience = 'marketplace';
     }
 
     return query;
@@ -322,7 +372,7 @@ const MobileSearch = ({ isShopPage = false }) => {
     filters.sellingChannel,
     filters.bulkDiscount,
     filters.hasMoq,
-    isQuickCommerce,
+    deliveryMode,
     customerLocation,
   ]);
 
@@ -552,6 +602,48 @@ const MobileSearch = ({ isShopPage = false }) => {
                 />
               </div>
             </form>
+
+            {/* 3-Way Experience / Delivery Tabs */}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide py-1 mb-3 select-none -mx-1 px-1">
+              <button
+                type="button"
+                onClick={() => handleDeliveryModeChange('all')}
+                className={`shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  deliveryMode === 'all'
+                    ? 'bg-[#ffc101] text-black shadow-sm ring-1 ring-[#ffc101]'
+                    : 'bg-surface border border-border text-content-secondary hover:text-content hover:bg-surface-muted'
+                }`}
+              >
+                <FiGlobe className="text-sm shrink-0" />
+                <span>{t('All Products')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDeliveryModeChange('marketplace')}
+                className={`shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  deliveryMode === 'marketplace'
+                    ? 'bg-[#ffc101] text-black shadow-sm ring-1 ring-[#ffc101]'
+                    : 'bg-surface border border-border text-content-secondary hover:text-content hover:bg-surface-muted'
+                }`}
+              >
+                <FiShoppingBag className="text-sm shrink-0" />
+                <span>{t('Marketplace')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDeliveryModeChange('express')}
+                className={`shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  deliveryMode === 'express'
+                    ? 'bg-amber-500 text-black shadow-sm ring-1 ring-amber-500'
+                    : 'bg-surface border border-border text-content-secondary hover:text-content hover:bg-surface-muted'
+                }`}
+              >
+                <FiZap className="text-sm shrink-0" />
+                <span>{t('Dwell Mart Express (10-30 Mins)')}</span>
+              </button>
+            </div>
 
             {/* Filter Toggle and View Mode */}
             <div className="flex items-center justify-between">
@@ -922,13 +1014,45 @@ const MobileSearch = ({ isShopPage = false }) => {
 
           {/* Products List */}
           <div className="px-3 py-4 md:px-4 lg:p-6">
-            <ProductGrid
-              products={filteredProducts}
-              loading={isLoadingInitial}
-              skeletonCount={8}
-              emptyTitle={t('No products found')}
-              emptyDescription={t('Try adjusting your search or filters')}
-            />
+            {deliveryMode === 'express' && filteredProducts.length === 0 && !isLoadingInitial ? (
+              <div className="text-center py-10 px-4 my-6 bg-surface border border-amber-500/30 rounded-2xl max-w-lg mx-auto shadow-sm">
+                <div className="w-14 h-14 mx-auto mb-3 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20">
+                  <FiZap className="text-2xl text-amber-500 fill-amber-500" />
+                </div>
+                <h3 className="text-base font-bold text-content mb-1.5">
+                  {t('No Dwell Mart Express Items Found')}
+                </h3>
+                <p className="text-xs text-content-secondary mb-5 leading-relaxed">
+                  {t('Dwell Mart Express is expanding to your location soon. In the meantime, explore all standard delivery items in our Marketplace catalog!')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleDeliveryModeChange('all')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-primary text-black text-xs font-extrabold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                >
+                  <FiGlobe className="text-sm" />
+                  <span>{t('Show All Products')}</span>
+                </button>
+              </div>
+            ) : viewMode === 'list' && filteredProducts.length > 0 && !isLoadingInitial ? (
+              <div className="space-y-3">
+                {filteredProducts.map((product, index) => (
+                  <ProductListItem
+                    key={product.id || product._id || index}
+                    product={product}
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <ProductGrid
+                products={filteredProducts}
+                loading={isLoadingInitial}
+                skeletonCount={8}
+                emptyTitle={t('No products found')}
+                emptyDescription={t('Try adjusting your search or filters')}
+              />
+            )}
 
             {/* Sentinel Element for IntersectionObserver Preloading */}
             {hasMore && !isLoadingInitial && (
