@@ -118,16 +118,17 @@ const DtdcShipmentPanel = ({ orderId, context = 'admin', fulfillmentType, readyS
     return null;
   }
 
-  const handleBook = async () => {
+  const handleBook = async (isRebooking = false) => {
     setActionLoading('book');
     try {
       const svc = await getService();
       // Only send figures the vendor actually edited. An untouched panel books
       // exactly what the preview showed.
-      const res = await svc.bookDtdcShipment(orderId, pkg || undefined);
+      const payload = { ...(pkg || {}), rebook: Boolean(isRebooking) };
+      const res = await svc.bookDtdcShipment(orderId, payload);
       setShipment(res?.data || null);
       setShipments(null);
-      toast.success('DTDC shipment booked successfully!');
+      toast.success(isRebooking ? 'DTDC shipment re-booked successfully!' : 'DTDC shipment booked successfully!');
       onShipmentUpdate?.();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to book shipment');
@@ -210,6 +211,7 @@ const DtdcShipmentPanel = ({ orderId, context = 'admin', fulfillmentType, readyS
   const statusCfg = STATUS_CONFIG[shipment?.status] || STATUS_CONFIG.pending;
   const StatusIcon = statusCfg.icon;
   const canBook = !shipment || shipment.status === 'pending' || shipment.status === 'failed';
+  const canRebook = shipment?.status === 'cancelled';
   const canCancel = shipment?.awbNumber && !['cancelled', 'delivered', 'rto'].includes(shipment?.status);
   const canSync = shipment?.awbNumber && !['cancelled', 'delivered'].includes(shipment?.status);
   const canLabel = shipment?.awbNumber && shipment?.status !== 'cancelled';
@@ -275,7 +277,7 @@ const DtdcShipmentPanel = ({ orderId, context = 'admin', fulfillmentType, readyS
           Only a human knows what physically went in the box, and only the box
           is billed. Shown before booking; a booked parcel has already been
           declared and its figures are on the shipment. */}
-      {!shipment?.awbNumber && preview?.ready && (() => {
+      {(!shipment?.awbNumber || canRebook) && preview?.ready && (() => {
         const current = {
           weight: pkg?.weight ?? preview.weight,
           weightUnit: pkg?.weightUnit ?? 'kg',
@@ -478,6 +480,14 @@ const DtdcShipmentPanel = ({ orderId, context = 'admin', fulfillmentType, readyS
               <p className="text-xs text-red-700 mt-1">{shipment.failureReason || 'Unknown error'}</p>
             </div>
           )}
+          {shipment.status === 'cancelled' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-amber-900">⚠️ Consignment Cancelled</p>
+              <p className="text-xs text-amber-700 mt-1">
+                The courier pickup was cancelled. Review the package details above and click Re-book to generate a new AWB.
+              </p>
+            </div>
+          )}
 
           {/* Tracking History */}
           {shipment.trackingHistory?.length > 0 && (
@@ -503,10 +513,17 @@ const DtdcShipmentPanel = ({ orderId, context = 'admin', fulfillmentType, readyS
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
             {canBook && (
-              <button onClick={handleBook} disabled={!!actionLoading}
+              <button onClick={() => handleBook(false)} disabled={!!actionLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                 <FiPackage size={13} />
                 {actionLoading === 'book' ? 'Booking...' : 'Book Shipment'}
+              </button>
+            )}
+            {canRebook && (
+              <button onClick={() => handleBook(true)} disabled={!!actionLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                <FiPackage size={13} />
+                {actionLoading === 'book' ? 'Re-booking...' : '📦 Re-book DTDC Shipment'}
               </button>
             )}
             {canSync && (

@@ -19,6 +19,8 @@ import { EXPERIENCES } from '../../../constants/experiences.js';
 import { QUICK_COMMERCE_ASSIGNMENT_STATUS } from '../../../constants/quickCommerce.js';
 import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/events/marketplaceEventBus.js';
 import { emitToRoom, emitToUserRoom } from '../../../socket.js';
+import Shipment from '../../../models/Shipment.model.js';
+import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.service.js';
 
 /**
  * GET /api/admin/orders/quick-commerce/unassigned
@@ -195,12 +197,15 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     const nextStatus = String(status || '').toLowerCase();
 
     const allowedTransitions = {
-        pending: ['processing', 'cancelled'],
-        processing: ['shipped', 'cancelled'],
-        shipped: ['delivered', 'cancelled', 'returned'],
-        delivered: ['returned'],
-        cancelled: [],
-        returned: [],
+        pending:          ['confirmed', 'processing', 'cancelled'],
+        confirmed:        ['packed', 'cancelled'],
+        processing:       ['packed', 'shipped', 'cancelled'],
+        packed:           ['shipped', 'cancelled'],
+        shipped:          ['out_for_delivery', 'delivered', 'cancelled', 'returned'],
+        out_for_delivery: ['delivered', 'returned'],
+        delivered:        ['returned'],
+        cancelled:        [],
+        returned:         [],
     };
 
     if (previousStatus !== nextStatus) {
@@ -254,9 +259,23 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             const plain = vi?.toObject?.() ?? vi;
             return { ...plain, status: 'cancelled' };
         });
+
+        // Void any active DTDC consignment with the carrier
+        try {
+            const activeShipment = await Shipment.findOne({
+                orderId: order._id,
+                deliveryProvider: 'dtdc',
+                status: { $in: ['pending', 'booked'] },
+            });
+            if (activeShipment?.awbNumber) {
+                await cancelDtdcShipment(order, activeShipment.vendorId ? String(activeShipment.vendorId) : null);
+            }
+        } catch (shipErr) {
+            console.warn(`[OrderCancel] DTDC auto-cancel notice for order ${order._id}:`, shipErr.message);
+        }
     }
 
-    if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'processing', 'shipped'].includes(previousStatus)) {
+    if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'confirmed', 'processing', 'packed', 'shipped'].includes(previousStatus)) {
         for (const item of order.items || []) {
             const product = await Product.findById(item.productId);
             if (!product) continue;

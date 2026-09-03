@@ -518,7 +518,13 @@ const waitForAwb = async (shipmentId, { attempts = 10, intervalMs = 300 } = {}) 
  * @param {object} [pickupLoc]    Pickup location override; resolved from DB if omitted
  * @returns {Promise<Shipment>}
  */
-export const bookDtdcShipment = async (order, vendor, pickupLoc = null, packageOverride = null) => {
+export const bookDtdcShipment = async (
+    order,
+    vendor,
+    pickupLoc = null,
+    packageOverride = null,
+    options = {}
+) => {
     const vendorIdStr = String(vendor._id);
 
     // 1. Channel guard — throws for Quick Commerce before anything else happens.
@@ -547,7 +553,36 @@ export const bookDtdcShipment = async (order, vendor, pickupLoc = null, packageO
     //    dead consignment and report it as a successful booking. Rebooking is a
     //    deliberate business decision, not a retry.
     if (existing?.status === ShipmentStatus.CANCELLED) {
-        throw new Error('This shipment was cancelled. Create a new order to ship again.');
+        if (!options.rebook) {
+            throw new Error('This shipment was cancelled. Create a new order to ship again.');
+        }
+
+        if (order.status === 'cancelled') {
+            throw new Error('Cannot book shipment for a cancelled order.');
+        }
+
+        const previousAwbs = Array.isArray(existing.metadata?.cancelledAwbs)
+            ? [...existing.metadata.cancelledAwbs]
+            : [];
+        if (existing.awbNumber) previousAwbs.push(existing.awbNumber);
+
+        existing.metadata = {
+            ...(existing.metadata || {}),
+            cancelledAwbs: previousAwbs,
+            lastRebookedAt: new Date(),
+        };
+        existing.awbNumber = undefined;
+        existing.status = ShipmentStatus.PENDING;
+        existing.bookingLockedAt = null;
+        existing.failureReason = undefined;
+        existing.cancelledAt = null;
+        if (!Array.isArray(existing.trackingHistory)) existing.trackingHistory = [];
+        existing.trackingHistory.push({
+            status: 'REBOOK',
+            description: 'Consignment rebooking initiated by seller',
+            timestamp: new Date(),
+        });
+        await existing.save();
     }
 
     // 3. Fast path — already booked.

@@ -126,7 +126,7 @@ export const vendorBookDtdcShipment = asyncHandler(async (req, res) => {
     const packageOverride = extractPackageOverride(req.body);
 
     try {
-        const shipment = await bookDtdcShipment(order, vendor, null, packageOverride);
+        const shipment = await bookDtdcShipment(order, vendor, null, packageOverride, { rebook: Boolean(req.body?.rebook) });
         res.status(200).json(new ApiResponse(200, shipment, 'DTDC shipment booked'));
     } catch (err) {
         if (err instanceof ApiError) throw err;

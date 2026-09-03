@@ -88,9 +88,12 @@ const OrderDetail = () => {
 
   // Allowed state transitions based on backend logic
   const allowedTransitions = {
-    pending: ['processing', 'cancelled'],
-    processing: ['shipped', 'cancelled'],
-    shipped: ['delivered', 'cancelled', 'returned'],
+    pending: ['confirmed', 'processing', 'cancelled'],
+    confirmed: ['packed', 'cancelled'],
+    processing: ['packed', 'shipped', 'cancelled'],
+    packed: ['shipped', 'cancelled'],
+    shipped: ['out_for_delivery', 'delivered', 'cancelled', 'returned'],
+    out_for_delivery: ['delivered', 'returned'],
     delivered: ['returned'],
     cancelled: [],
     returned: [],

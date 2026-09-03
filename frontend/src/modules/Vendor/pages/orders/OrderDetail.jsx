@@ -149,8 +149,8 @@ const OrderDetail = () => {
       ? {
           pending: ['pending', 'approved', 'cancelled'],
           approved: ['approved', 'processing', 'cancelled'],
-          processing: ['processing', 'packed'],
-          packed: ['packed', 'dispatched'],
+          processing: ['processing', 'packed', 'cancelled'],
+          packed: ['packed', 'dispatched', 'cancelled'],
           dispatched: ['dispatched', 'delivered'],
           delivered: ['delivered'],
           cancelled: ['cancelled'],
@@ -158,7 +158,7 @@ const OrderDetail = () => {
       : {
           pending: ['pending', 'confirmed', 'cancelled'],
           confirmed: ['confirmed', 'packed', 'cancelled'],
-          packed: ['packed', 'shipped'],
+          packed: ['packed', 'shipped', 'cancelled'],
           shipped: ['shipped', 'out_for_delivery'],
           out_for_delivery: ['out_for_delivery', 'delivered'],
           delivered: ['delivered'],

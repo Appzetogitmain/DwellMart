@@ -18,7 +18,7 @@ export const RETAIL_STATUSES = [
 const TRANSITIONS = {
     pending:          ['confirmed', 'cancelled'],
     confirmed:        ['packed', 'cancelled'],
-    packed:           ['shipped'],
+    packed:           ['shipped', 'cancelled'],
     shipped:          ['out_for_delivery'],
     out_for_delivery: ['delivered'],
     delivered:        [],

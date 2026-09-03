@@ -18,8 +18,8 @@ export const WHOLESALE_STATUSES = [
 const TRANSITIONS = {
     pending:    ['approved', 'cancelled'],
     approved:   ['processing', 'cancelled'],
-    processing: ['packed'],
-    packed:     ['dispatched'],
+    processing: ['packed', 'cancelled'],
+    packed:     ['dispatched', 'cancelled'],
     dispatched: ['delivered'],
     delivered:  [],
     cancelled:  [],
