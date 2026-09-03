@@ -90,8 +90,14 @@ const DtdcTrackingPanel = ({ shipment, trackingNumber, deliveryPartner }) => {
         </div>
       )}
       {isCancelled && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4">
-          <p className="text-sm font-medium text-gray-700">Shipment Cancelled</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-start gap-2">
+          <FiAlertTriangle className="text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">Courier Pickup Cancelled</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              This courier consignment was cancelled. The seller is preparing a fresh dispatch.
+            </p>
+          </div>
         </div>
       )}
 

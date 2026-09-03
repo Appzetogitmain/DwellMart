@@ -290,7 +290,7 @@ const MobileOrderDetail = () => {
 
             <div className="px-4 py-4 space-y-4">
               {/* Quick Commerce Live Stage Timeline */}
-              {(order.experience === 'quick_commerce' || order.quickCommerce) && (
+              {(order.experience === 'quick_commerce' || order.fulfillmentType === 'quick_commerce') && (
                 <div className="glass-card rounded-2xl p-4 bg-amber-500/5 border border-amber-500/30">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
