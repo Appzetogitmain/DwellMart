@@ -72,6 +72,14 @@ export const toastService = {
       return null;
     }
 
+    // Suppress generic "Vendor not found" / "Product not found" / 404 resource-not-found toasts unless explicitly requested
+    if (
+      (errorObj.type === ERROR_TYPES.BUSINESS_ERROR && errorObj.title === 'Not Found' && !options.showNotFoundToast) ||
+      (error?.response?.status === 404 && !options.showNotFoundToast)
+    ) {
+      return null;
+    }
+
     const title = errorObj.title !== 'Notice' ? errorObj.title : '';
     // Show clean human-readable message without raw technical reference hashes
     const message = errorObj.message;

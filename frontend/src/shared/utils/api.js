@@ -264,8 +264,10 @@ api.interceptors.response.use(
       }
     }
 
-    // Auth components & silent background requests handle their own error UI
-    const isSilentUrl = originalRequest.silent || originalRequest.url?.includes('/admin/notifications');
+    // Auth components & silent background requests handle their own error UI.
+    // Suppress 404 resource-not-found toasts on GET requests (page views handle their own empty/not-found UI).
+    const isGet404 = (originalRequest.method || 'get').toLowerCase() === 'get' && error.response?.status === 404;
+    const isSilentUrl = originalRequest.silent || isGet404 || originalRequest.url?.includes('/admin/notifications');
     if (!isExcludedAuthRequest(scope, originalRequest.url) && !isSilentUrl && !error._toastShown) {
       toastService.error(error);
       error._toastShown = true;

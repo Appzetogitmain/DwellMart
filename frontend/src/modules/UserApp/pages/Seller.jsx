@@ -85,6 +85,13 @@ const Seller = () => {
         [vendorId, catalogVersion, remoteVendor]
     );
 
+    const isWholesaleVendor = useMemo(() => {
+        return (
+            vendor?.vendorType === 'wholesale' ||
+            (vendor?.sellingChannels?.wholesale?.enabled === true && vendor?.sellingChannels?.retail?.enabled !== true)
+        );
+    }, [vendor]);
+
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
     const [filters, setFilters] = useState({
@@ -166,11 +173,21 @@ const Seller = () => {
 
             setIsResolvingVendor(true);
             try {
-                const res = await api.get(`/vendors/${vendorId}`);
+                const res = await api.get(`/vendors/${vendorId}`, {
+                    params: { experience: 'marketplace' },
+                    silent: true,
+                });
                 const vendorPayload = res?.data ?? res;
-                const vendorDoc = vendorPayload ? normalizeVendor(vendorPayload) : null;
-                const translatedVendor = await translateObject(vendorDoc, ['storeName', 'name', 'storeDescription']);
-                if (active) setRemoteVendor(translatedVendor);
+                let vendorDoc = vendorPayload ? normalizeVendor(vendorPayload) : null;
+                if (vendorDoc) {
+                    try {
+                        const translatedVendor = await translateObject(vendorDoc, ['storeName', 'name', 'storeDescription']);
+                        if (translatedVendor) vendorDoc = translatedVendor;
+                    } catch (tErr) {
+                        console.warn('[Seller] Vendor translation skipped:', tErr);
+                    }
+                }
+                if (active) setRemoteVendor(vendorDoc);
             } catch {
                 if (active) setRemoteVendor(null);
             } finally {
@@ -192,6 +209,7 @@ const Seller = () => {
             setIsLoadingProducts(true);
             try {
                 const params = {
+                    experience: 'marketplace',
                     page: currentPage,
                     limit: 12,
                     ...(filters.minPrice && { minPrice: filters.minPrice }),
@@ -199,29 +217,51 @@ const Seller = () => {
                     ...(filters.minRating && { minRating: filters.minRating }),
                 };
 
-                const res = await api.get(`/vendors/${vendorId}/products`, { params });
+                const res = await api.get(`/vendors/${vendorId}/products`, { params, silent: true });
                 const payload = res?.data ?? res;
                 if (!active) return;
 
-                if (payload && Array.isArray(payload.products)) {
-                    const normalized = payload.products.map(normalizeProduct);
-                    const translated = await translateArray(normalized, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                const rawList = Array.isArray(payload?.products)
+                    ? payload.products
+                    : Array.isArray(payload)
+                    ? payload
+                    : null;
+
+                if (rawList && rawList.length > 0) {
+                    let normalized = rawList.map(normalizeProduct);
+                    try {
+                        const translated = await translateArray(normalized, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                        if (Array.isArray(translated) && translated.length > 0) {
+                            normalized = translated;
+                        }
+                    } catch (tErr) {
+                        console.warn('[Seller] Products translation skipped:', tErr);
+                    }
                     if (active) {
-                        setVendorProducts(translated);
+                        setVendorProducts(normalized);
                         setPagination({
-                            total: Number(payload.total || translated.length),
-                            page: Number(payload.page || currentPage),
-                            pages: Math.max(1, Number(payload.pages || 1)),
-                            limit: Number(payload.limit || 12),
+                            total: Number(payload?.total || normalized.length),
+                            page: Number(payload?.page || currentPage),
+                            pages: Math.max(1, Number(payload?.pages || 1)),
+                            limit: Number(payload?.limit || 12),
+                        });
+                    }
+                } else if (rawList && rawList.length === 0) {
+                    if (active) {
+                        setVendorProducts([]);
+                        setPagination({
+                            total: 0,
+                            page: 1,
+                            pages: 1,
+                            limit: 12,
                         });
                     }
                 } else {
                     const local = getProductsByVendor(vendorId);
-                    const translatedLocal = await translateArray(local, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
                     if (active) {
-                        setVendorProducts(translatedLocal);
+                        setVendorProducts(local);
                         setPagination({
-                            total: translatedLocal.length,
+                            total: local.length,
                             page: 1,
                             pages: 1,
                             limit: 12,
@@ -231,10 +271,9 @@ const Seller = () => {
             } catch {
                 if (active) {
                     const local = getProductsByVendor(vendorId);
-                    const translatedLocal = await translateArray(local, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
-                    setVendorProducts(translatedLocal);
+                    setVendorProducts(local);
                     setPagination({
-                        total: translatedLocal.length,
+                        total: local.length,
                         page: 1,
                         pages: 1,
                         limit: 12,
@@ -496,6 +535,11 @@ const Seller = () => {
                                             <span>{pagination.total || vendorProducts.length} {t('Products')}</span>
                                         </div>
                                     </div>
+                                    {isWholesaleVendor && (
+                                        <div className="mt-2 text-xs text-status-success bg-status-success/10 border border-status-success/20 rounded-full px-3 py-0.5 inline-flex items-center gap-1 font-medium">
+                                            <span>📦 Wholesale Catalog • Bulk Order Pricing</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
