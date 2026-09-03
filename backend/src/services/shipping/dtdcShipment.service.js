@@ -308,7 +308,10 @@ export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId 
         // the env var lets an operator change it without a deploy.
         commodity_id:              dtdcConfig.defaultCommodityId,
         description:               'E-commerce goods',
-        reference_number:          bookingKey(order._id, vendorId || vendor?._id),
+        // DTDC's softdata API expects reference_number: '' for auto-allocated
+        // digital AWB numbers. Passing a custom string causes DTDC to treat it
+        // as pre-printed stationery and reject with "Consignment Number and Service Type do not Match".
+        reference_number:          '',
 
         /**
          * Non-wire metadata. Stripped before the request is sent (see
