@@ -1,4 +1,4 @@
-import { FiHeart, FiShoppingBag, FiStar, FiTrash2 } from "react-icons/fi";
+import { FiHeart, FiShoppingBag, FiStar, FiTrash2, FiZap } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../store/useStore";
@@ -310,6 +310,14 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
           {product.wholesaleEnabled === true && (
             <div className="mb-1">
               <ProductWholesaleBadge product={product} />
+            </div>
+          )}
+          {product.quickCommerceEnabled === true && (
+            <div className="mb-1">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black bg-amber-500/15 text-amber-500 border border-amber-500/30 leading-none">
+                <FiZap className="text-[10px] fill-amber-500" />
+                Dwell Mart Express
+              </span>
             </div>
           )}
 

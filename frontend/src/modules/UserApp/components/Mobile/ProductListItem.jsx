@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiShoppingBag, FiHeart, FiTrash2 } from "react-icons/fi";
+import { FiShoppingBag, FiHeart, FiTrash2, FiZap } from "react-icons/fi";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import Price from "../../../../shared/components/Price";
@@ -156,6 +156,12 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
             <span className="text-[10px] md:text-xs text-gray-500 border-l border-gray-200 pl-2 leading-none">{product.unit}</span>
             {product.wholesaleEnabled === true && (
               <ProductWholesaleBadge product={product} />
+            )}
+            {product.quickCommerceEnabled === true && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30 leading-none">
+                <FiZap className="text-[9px] fill-amber-500" />
+                Dwell Mart Express
+              </span>
             )}
           </div>
 

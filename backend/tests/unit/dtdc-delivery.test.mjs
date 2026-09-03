@@ -38,6 +38,7 @@ import {
     normalizeAddress,
     isCodOrder,
     bookingKey,
+    buildConsignmentPayload,
 } from '../../src/services/shipping/dtdcShipment.service.js';
 
 // ─── Provider separation ───────────────────────────────────────────────────
@@ -477,4 +478,30 @@ test('Config: the B2C service names carry the right volumetric divisor', async (
     assert.equal(volumetricDivisorFor('GROUND EXPRESS'), 4750);
     // An unrecognised service must not silently pick the cheaper divisor.
     assert.equal(volumetricDivisorFor('SOMETHING NEW'), 5000);
+});
+
+test('Consignment payload: reference_number is empty string for dynamic AWB allocation', () => {
+    const order = {
+        _id: '507f1f77bcf86cd799439011',
+        orderId: 'RT-20260903-5O82IJETYQ',
+        fulfillmentType: 'retail',
+        shippingAddress: {
+            name: 'Customer Test',
+            phone: '9876543210',
+            address: 'Flat 101, Test Road',
+            city: 'Mumbai',
+            state: 'Maharashtra',
+            zipCode: '400001',
+        },
+        items: [{ quantity: 1, shippingWeightKg: 0.5, shippingDims: { length: 10, width: 10, height: 10 } }],
+    };
+    const vendor = {
+        _id: '507f1f77bcf86cd799439022',
+        storeName: 'Nansi store',
+        phone: '9987456321',
+        address: { street: 'Plot 45, Udyog Vihar', city: 'New Delhi', state: 'Delhi', zipCode: '110046' },
+    };
+    const payload = buildConsignmentPayload(order, vendor, null, vendor._id);
+    assert.equal(payload.reference_number, '', 'DTDC requires empty string for auto-allocated AWBs');
+    assert.equal(payload.customer_reference_number, 'RT-20260903-5O82IJETYQ');
 });

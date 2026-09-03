@@ -137,6 +137,8 @@ const DesktopHeader = ({ hideSellButton = false }) => {
           <SearchBar />
         </div>
 
+
+
         {/* Location Indicator (if detected or locating) */}
         {(location?.label || isLocating) && (
           <div

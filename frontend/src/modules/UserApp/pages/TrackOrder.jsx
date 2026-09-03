@@ -145,38 +145,47 @@ const MobileTrackOrder = () => {
   const getTrackingSteps = () => {
     const isCancelled = ['cancelled', 'delivery_failed'].includes(effectiveStatus);
     const isReturned = ['returned', 'returned_to_store'].includes(effectiveStatus);
-    const isProcessingOrLater = ['processing', 'accepted', 'preparing', 'ready', 'picked_up', 'arriving', 'shipped', 'delivered', 'returned'].includes(effectiveStatus);
-    const isShippedOrLater = ['shipped', 'picked_up', 'arriving', 'delivered', 'returned'].includes(effectiveStatus);
+    const isProcessingOrLater = [
+      'confirmed', 'approved', 'processing', 'packed', 'accepted', 'preparing', 'ready',
+      'shipped', 'dispatched', 'in_transit', 'out_for_delivery', 'picked_up', 'arriving', 'delivered', 'returned'
+    ].includes(effectiveStatus);
+    const isShippedOrLater = [
+      'shipped', 'dispatched', 'in_transit', 'out_for_delivery', 'picked_up', 'arriving', 'delivered', 'returned'
+    ].includes(effectiveStatus);
     const isDelivered = effectiveStatus === 'delivered';
 
-     const steps = [
+    const processingDate = order?.packedAt || order?.processingAt || (isProcessingOrLater ? (order?.updatedAt || order?.date || order?.createdAt) : null);
+    const shippedDate = order?.shippedAt || tracking?.shipment?.pickedUpAt || tracking?.shipment?.inTransitAt || (isShippedOrLater ? order?.updatedAt : null);
+    const deliveredDate = order?.deliveredAt || tracking?.shipment?.deliveredAt || order?.estimatedDelivery;
+
+    const steps = [
       {
         label: t('Order Placed'),
         completed: true,
         date: order?.date || order?.createdAt,
         icon: FiCheckCircle,
       },
-       {
+      {
         label: t('Processing'),
         completed: !isCancelled && isProcessingOrLater,
-        date: order?.processingAt || null,
+        date: processingDate,
         icon: FiPackage,
       },
-       {
+      {
         label: t('Shipped'),
         completed: !isCancelled && isShippedOrLater,
-        date: order?.shippedAt || null,
+        date: shippedDate,
         icon: FiTruck,
       },
-       {
+      {
         label: t('Delivered'),
         completed: isDelivered,
-        date: isDelivered ? (order?.deliveredAt || order?.estimatedDelivery) : null,
+        date: isDelivered ? deliveredDate : null,
         icon: FiCheckCircle,
       },
     ];
 
-     if (isCancelled || isReturned) {
+    if (isCancelled || isReturned) {
       steps.push({
         label: isCancelled ? t('Cancelled') : t('Returned'),
         completed: true,

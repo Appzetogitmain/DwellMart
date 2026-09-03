@@ -212,6 +212,7 @@ const listProducts = asyncHandler(async (req, res) => {
         sellingChannel,
         bulkDiscount,
         hasMoq,
+        delivery,
     } = req.query;
     const numericPage = Math.max(Number(page) || 1, 1);
     const numericLimit = Math.min(Math.max(Number(limit) || 12, 1), 100);
@@ -320,6 +321,11 @@ const listProducts = asyncHandler(async (req, res) => {
     if (isNewArrival === 'true') filter.isNewArrival = true;
     if (minPrice || maxPrice) filter.price = { ...(minPrice && { $gte: Number(minPrice) }), ...(maxPrice && { $lte: Number(maxPrice) }) };
     if (minRating) filter.rating = { $gte: Number(minRating) };
+    if (delivery === 'express') {
+        filter.quickCommerceEnabled = true;
+    } else if (delivery === 'standard') {
+        filter.quickCommerceEnabled = { $ne: true };
+    }
     // Wholesale facets are Marketplace-only concepts; applying them inside
     // Quick Commerce would silently contradict the experience filter.
     if (getRequestExperience(req) === EXPERIENCES.MARKETPLACE) {
