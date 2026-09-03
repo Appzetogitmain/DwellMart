@@ -17,7 +17,6 @@ import {
   FiGrid,
   FiBell,
   FiMapPin,
-  FiZap,
 } from "react-icons/fi";
 import { HiOutlineUserCircle } from "react-icons/hi";
 import { useState, useRef, useEffect } from "react";
@@ -29,7 +28,7 @@ import { EXPERIENCES } from "../../../../shared/utils/experience";
 const DesktopHeader = ({ hideSellButton = false }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { experience, setExperience, location, isLocating } = useExperienceStore();
+  const { location, isLocating } = useExperienceStore();
   const itemCount = useCartStore((state) => state.getItemCount());
   /**
    * Quick Commerce and Marketplace hold separate baskets, and the count above
@@ -138,34 +137,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
           <SearchBar />
         </div>
 
-        {/* Experience Mode Switcher (Desktop) */}
-        <div className="hidden lg:flex items-center bg-gray-900 border border-gray-800 rounded-lg p-0.5 text-xs shrink-0 select-none">
-          <button
-            type="button"
-            onClick={() => setExperience(EXPERIENCES.MARKETPLACE)}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-              experience === EXPERIENCES.MARKETPLACE
-                ? "bg-[#ffc101] text-black shadow-sm"
-                : "text-gray-400 hover:text-white"
-            }`}
-            title="Standard Marketplace (Pan-India)"
-          >
-            Marketplace
-          </button>
-          <button
-            type="button"
-            onClick={() => setExperience(EXPERIENCES.QUICK_COMMERCE)}
-            className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              experience === EXPERIENCES.QUICK_COMMERCE
-                ? "bg-amber-500 text-black shadow-sm"
-                : "text-gray-400 hover:text-white"
-            }`}
-            title="Dwell Mart Express (10-30 Mins Delivery)"
-          >
-            <FiZap className="text-[11px] fill-current" />
-            Dwell Mart Express
-          </button>
-        </div>
+
 
         {/* Location Indicator (if detected or locating) */}
         {(location?.label || isLocating) && (
