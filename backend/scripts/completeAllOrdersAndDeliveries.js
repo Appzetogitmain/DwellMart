@@ -64,6 +64,14 @@ const completeAllOrdersAndDeliveries = async () => {
     }
     console.log(`   ✓ Marked ${updatedOrdersCount} active order(s) as 'delivered' (Payment: 'paid', QC: 'delivered').`);
 
+    // Ensure all delivered orders have paymentStatus: 'paid'
+    const pendingPaidRes = await Order.updateMany(
+        { status: 'delivered', paymentStatus: 'pending' },
+        { $set: { paymentStatus: 'paid' } }
+    );
+    console.log(`   ✓ Settled payment to 'paid' for ${pendingPaidRes.modifiedCount} delivered order(s).`);
+
+
     // 2. UPDATE ALL SHIPMENTS TO DELIVERED
     console.log('\n2. Updating Shipments...');
     const shipmentsResult = await Shipment.updateMany(
