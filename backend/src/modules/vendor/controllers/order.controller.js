@@ -35,6 +35,8 @@ import { applyRetailTransition }    from '../../../services/orders/RetailOrderSe
 import { applyWholesaleTransition } from '../../../services/orders/WholesaleOrderService.js';
 import { channelToOrderType } from '../../../constants/vendorChannels.js';
 import { orderChannelFilter, resolveOrderChannel } from '../../../services/orderChannel.service.js';
+import Shipment from '../../../models/Shipment.model.js';
+import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.service.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -202,6 +204,23 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     await order.save();
+
+    // If vendor cancelled their slice, void any active DTDC consignment for this vendor
+    if (status === 'cancelled') {
+        try {
+            const activeShipment = await Shipment.findOne({
+                orderId: order._id,
+                vendorId: req.user.id,
+                deliveryProvider: 'dtdc',
+                status: { $in: ['pending', 'booked'] },
+            });
+            if (activeShipment?.awbNumber) {
+                await cancelDtdcShipment(order, String(req.user.id));
+            }
+        } catch (shipErr) {
+            console.warn(`[VendorOrderCancel] DTDC auto-cancel notice for order ${order._id}:`, shipErr.message);
+        }
+    }
 
     // Notifications
     const notificationTasks = [];
