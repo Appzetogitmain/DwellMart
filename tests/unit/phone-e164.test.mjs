@@ -10,6 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { toE164, isValidE164, splitE164, maskPhone, defaultDialCode } from '../../src/utils/phone.js';
+import { registerSchema, updateProfileSchema } from '../../src/modules/user/validators/auth.validator.js';
 
 test('toE164: bare Indian national number gains the default dial code', () => {
     assert.equal(toE164('9876543210'), '+919876543210');
@@ -97,4 +98,38 @@ test('maskPhone: reveals at most the last four digits', () => {
     assert.equal(maskPhone(null), '(none)');
     // The full number must never survive masking.
     assert.ok(!maskPhone('+917869958637').includes('786995'));
+});
+
+test('registerSchema: accepts both E.164 and 10-digit phone, rejects invalid formats', () => {
+    const base = { name: 'Test User', email: 'test@example.com', password: 'password123' };
+
+    // E.164 with dial code
+    const resE164 = registerSchema.validate({ ...base, phone: '+917869958637' });
+    assert.equal(resE164.error, undefined);
+
+    // Bare 10-digit number
+    const resBare = registerSchema.validate({ ...base, phone: '7869958637' });
+    assert.equal(resBare.error, undefined);
+
+    // International E.164 numbers (e.g. US, UK, UAE)
+    assert.equal(registerSchema.validate({ ...base, phone: '+14155552671' }).error, undefined);
+    assert.equal(registerSchema.validate({ ...base, phone: '+447911123456' }).error, undefined);
+    assert.equal(registerSchema.validate({ ...base, phone: '+971501234567' }).error, undefined);
+
+    // Optional phone (not provided)
+    assert.equal(registerSchema.validate(base).error, undefined);
+
+    // Invalid phones
+    assert.ok(registerSchema.validate({ ...base, phone: '123' }).error);
+    assert.ok(registerSchema.validate({ ...base, phone: 'not-a-number' }).error);
+    assert.ok(registerSchema.validate({ ...base, phone: '+91' }).error);
+    assert.ok(registerSchema.validate({ ...base, phone: '+0123456789' }).error);
+});
+
+test('updateProfileSchema: accepts E.164, 10-digit, empty string, and undefined', () => {
+    assert.equal(updateProfileSchema.validate({ name: 'User', phone: '+917869958637' }).error, undefined);
+    assert.equal(updateProfileSchema.validate({ name: 'User', phone: '7869958637' }).error, undefined);
+    assert.equal(updateProfileSchema.validate({ name: 'User', phone: '' }).error, undefined);
+    assert.equal(updateProfileSchema.validate({ name: 'User' }).error, undefined);
+    assert.ok(updateProfileSchema.validate({ name: 'User', phone: '123' }).error);
 });

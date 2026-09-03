@@ -315,7 +315,26 @@ const ManageVendors = () => {
   ];
 
   const handleApprove = async () => {
-    const success = await updateVendorStatus(actionModal.vendorId, "approved");
+    const targetVendor = vendors.find(
+      (v) => String(v.id || v._id) === String(actionModal.vendorId)
+    );
+    const requestedChannels = [
+      targetVendor?.channels?.retail?.status === "requested" && "retail",
+      targetVendor?.channels?.wholesale?.status === "requested" && "wholesale",
+      targetVendor?.channels?.quickCommerce?.status === "requested" && "quick_commerce",
+    ].filter(Boolean);
+    const approvedChannels =
+      requestedChannels.length > 0
+        ? requestedChannels
+        : [targetVendor?.vendorType || "retail"];
+
+    const success = await updateVendorStatus(
+      actionModal.vendorId,
+      "approved",
+      "",
+      null,
+      approvedChannels
+    );
     if (success) {
       toast.success("Vendor approved successfully");
       setActionModal({
@@ -324,8 +343,6 @@ const ManageVendors = () => {
         vendorId: null,
         vendorName: null,
       });
-    } else {
-      toast.error("Failed to approve vendor");
     }
   };
 
@@ -339,8 +356,6 @@ const ManageVendors = () => {
         vendorId: null,
         vendorName: null,
       });
-    } else {
-      toast.error("Failed to activate vendor");
     }
   };
 
@@ -359,8 +374,6 @@ const ManageVendors = () => {
         vendorName: null,
       });
       setStatusReason("");
-    } else {
-      toast.error("Failed to suspend vendor");
     }
   };
 

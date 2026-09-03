@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSave, FiTruck, FiMapPin } from 'react-icons/fi';
+import { FiSave, FiTruck, FiInfo, FiExternalLink } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import toast from 'react-hot-toast';
@@ -10,23 +10,15 @@ const ShippingSettings = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     shippingEnabled: true,
-    freeShippingThreshold: 100,
-    defaultShippingRate: 5,
-    shippingMethods: ['standard'],
-    shippingZones: [],
     handlingTime: 1, // days
     processingTime: 1, // days
   });
-  const [activeSection, setActiveSection] = useState('general');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (vendor) {
       setFormData({
         shippingEnabled: vendor.shippingEnabled !== false,
-        freeShippingThreshold: vendor.freeShippingThreshold || 100,
-        defaultShippingRate: vendor.defaultShippingRate || 5,
-        shippingMethods: vendor.shippingMethods || ['standard'],
-        shippingZones: vendor.shippingZones || [],
         handlingTime: vendor.handlingTime || 1,
         processingTime: vendor.processingTime || 1,
       });
@@ -41,47 +33,24 @@ const ShippingSettings = () => {
     });
   };
 
-  const handleShippingMethodToggle = (method) => {
-    const methods = formData.shippingMethods || [];
-    if (methods.includes(method)) {
-      setFormData({
-        ...formData,
-        shippingMethods: methods.filter((m) => m !== method),
-      });
-    } else {
-      setFormData({
-        ...formData,
-        shippingMethods: [...methods, method],
-      });
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!vendor) return;
 
+    setIsSaving(true);
     try {
-      // Note: shipping settings fields will be persisted when the backend
-      // vendor model and updateProfile allowed-list are extended to include them.
-      // For now, we save what the backend accepts; the call still succeeds.
       await updateProfile({
         shippingEnabled: formData.shippingEnabled,
-        freeShippingThreshold: parseFloat(formData.freeShippingThreshold) || 0,
-        defaultShippingRate: parseFloat(formData.defaultShippingRate) || 0,
-        shippingMethods: formData.shippingMethods,
-        handlingTime: parseInt(formData.handlingTime) || 1,
-        processingTime: parseInt(formData.processingTime) || 1,
+        handlingTime: parseInt(formData.handlingTime, 10) || 1,
+        processingTime: parseInt(formData.processingTime, 10) || 1,
       });
       toast.success('Shipping settings saved successfully');
     } catch {
-      // api.js shows toast
+      // api.js handles error feedback
+    } finally {
+      setIsSaving(false);
     }
   };
-
-  const sections = [
-    { id: 'general', label: 'General Settings', icon: FiTruck },
-    { id: 'zones', label: 'Shipping Zones', icon: FiMapPin },
-  ];
 
   if (!vendor) {
     return (
@@ -99,188 +68,102 @@ const ShippingSettings = () => {
     >
       <div className="lg:hidden">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Shipping Settings</h1>
-        <p className="text-sm sm:text-base text-gray-600">Configure your shipping options and rates</p>
+        <p className="text-sm sm:text-base text-gray-600">Configure fulfillment handling times and preferences</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 max-w-full overflow-x-hidden">
-        <div className="border-b border-gray-200 overflow-x-hidden">
-          <div className="flex overflow-x-auto scrollbar-hide -mx-1 px-1">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b-2 transition-colors whitespace-nowrap text-xs sm:text-sm ${activeSection === section.id
-                    ? 'border-purple-600 text-purple-600 font-semibold'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
-                    }`}
-                >
-                  <Icon className="text-base sm:text-lg" />
-                  <span>{section.label}</span>
-                </button>
-              );
-            })}
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-gray-800 font-bold text-base sm:text-lg">
+            <FiTruck className="text-primary-600 text-xl" />
+            <span>Fulfillment & Handling Settings</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/vendor/shipping-management')}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+          >
+            <span>View Shipping Rates</span>
+            <FiExternalLink className="text-xs" />
+          </button>
+        </div>
+
+        {/* Informational Notice */}
+        <div className="p-4 sm:p-6 bg-primary-50/60 border-b border-primary-100/80 flex items-start gap-3">
+          <FiInfo className="text-primary-600 text-lg flex-shrink-0 mt-0.5" />
+          <div className="text-xs sm:text-sm text-primary-900 leading-relaxed">
+            <p className="font-semibold mb-0.5">Admin-Managed Shipping Rates</p>
+            <p className="text-primary-800/90">
+              Customer shipping rates and delivery rules are centrally configured by the Dwell Mart Admin. You can view all applicable rates in{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/vendor/shipping-management')}
+                className="underline font-semibold text-primary-700 hover:text-primary-900"
+              >
+                Shipping Management
+              </button>
+              .
+            </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 md:p-6">
-          {/* General Settings Section */}
-          {activeSection === 'general' && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  name="shippingEnabled"
-                  checked={formData.shippingEnabled}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                />
-                <div>
-                  <span className="text-sm font-semibold text-gray-700">Enable Shipping</span>
-                  <p className="text-xs text-gray-500 mt-1">Allow customers to purchase products with shipping</p>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
+          <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl bg-gray-50/50">
+            <input
+              type="checkbox"
+              id="shippingEnabled"
+              name="shippingEnabled"
+              checked={formData.shippingEnabled}
+              onChange={handleChange}
+              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+            />
+            <label htmlFor="shippingEnabled" className="cursor-pointer">
+              <span className="text-sm font-semibold text-gray-800">Enable Marketplace Delivery</span>
+              <p className="text-xs text-gray-500 mt-0.5">Allow customers to order products with national/local delivery</p>
+            </label>
+          </div>
 
-              {formData.shippingEnabled && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Free Shipping Threshold
-                      </label>
-                      <input
-                        type="number"
-                        name="freeShippingThreshold"
-                        value={formData.freeShippingThreshold}
-                        onChange={handleChange}
-                        min="0"
-                        step="0.01"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Free shipping for orders above this amount</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Default Shipping Rate
-                      </label>
-                      <input
-                        type="number"
-                        name="defaultShippingRate"
-                        value={formData.defaultShippingRate}
-                        onChange={handleChange}
-                        min="0"
-                        step="0.01"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Default shipping cost per order</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Processing Time (Days)
-                      </label>
-                      <input
-                        type="number"
-                        name="processingTime"
-                        value={formData.processingTime}
-                        onChange={handleChange}
-                        min="0"
-                        step="1"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Time to process orders before shipping</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Handling Time (Days)
-                      </label>
-                      <input
-                        type="number"
-                        name="handlingTime"
-                        value={formData.handlingTime}
-                        onChange={handleChange}
-                        min="0"
-                        step="1"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Time to prepare items for shipping</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-6">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Shipping Methods</h3>
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={formData.shippingMethods?.includes('standard') || false}
-                          onChange={() => handleShippingMethodToggle('standard')}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-700">Standard Shipping</span>
-                          <p className="text-xs text-gray-500 mt-1">5-7 business days</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={formData.shippingMethods?.includes('express') || false}
-                          onChange={() => handleShippingMethodToggle('express')}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-700">Express Shipping</span>
-                          <p className="text-xs text-gray-500 mt-1">2-3 business days</p>
-                        </div>
-                      </label>
-                      <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={formData.shippingMethods?.includes('overnight') || false}
-                          onChange={() => handleShippingMethodToggle('overnight')}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-700">Overnight Shipping</span>
-                          <p className="text-xs text-gray-500 mt-1">Next business day</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </>
-              )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Order Processing Time (Days)
+              </label>
+              <input
+                type="number"
+                name="processingTime"
+                value={formData.processingTime}
+                onChange={handleChange}
+                min="0"
+                step="1"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">Average time to confirm and pack order items</p>
             </div>
-          )}
 
-          {/* Shipping Zones Section */}
-          {activeSection === 'zones' && (
-            <div className="space-y-6">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Shipping zones and per-zone rates are managed from Shipping Management.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate('/vendor/shipping-management')}
-                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
-                >
-                  Open Shipping Management
-                </button>
-              </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Dispatch / Handling Time (Days)
+              </label>
+              <input
+                type="number"
+                name="handlingTime"
+                value={formData.handlingTime}
+                onChange={handleChange}
+                min="0"
+                step="1"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">Time to hand over parcel to the courier partner</p>
             </div>
-          )}
+          </div>
 
-          <div className="flex justify-end pt-4 sm:pt-6 border-t border-gray-200 mt-4 sm:mt-6">
+          <div className="flex justify-end pt-4 border-t border-gray-100">
             <button
               type="submit"
-              className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base w-full sm:w-auto"
+              disabled={isSaving}
+              className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all font-semibold text-sm disabled:opacity-60 shadow-xs"
             >
-              <FiSave />
-              Save Settings
+              <FiSave className="text-base" />
+              <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
             </button>
           </div>
         </form>
@@ -290,4 +173,3 @@ const ShippingSettings = () => {
 };
 
 export default ShippingSettings;
-
