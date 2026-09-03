@@ -1,10 +1,18 @@
 import Joi from 'joi';
 
+const phonePattern = /^(\+[1-9]\d{7,14}|[0-9]{10})$/;
+const phoneSchema = Joi.string()
+    .trim()
+    .pattern(phonePattern)
+    .messages({
+        'string.pattern.base': 'Phone number must be a valid 10-digit mobile number or international number starting with +.',
+    });
+
 export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).required(),
     email: Joi.string().email().lowercase().required(),
     password: Joi.string().min(6).required(),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).optional(),
+    phone: phoneSchema.optional(),
 });
 
 export const loginSchema = Joi.object({
@@ -48,7 +56,7 @@ export const resetPasswordSchema = Joi.object({
 
 export const updateProfileSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).required(),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).allow('').optional(),
+    phone: phoneSchema.allow('').optional(),
 });
 
 export const changePasswordSchema = Joi.object({
