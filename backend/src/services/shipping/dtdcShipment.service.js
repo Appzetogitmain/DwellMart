@@ -204,7 +204,14 @@ export const isCodOrder = (order) => {
  *
  * @throws {Error} when either address is too incomplete for DTDC to accept.
  */
-export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId = null, packageOverride = null) => {
+export const buildConsignmentPayload = (
+    order,
+    vendor,
+    pickupLocation,
+    vendorId = null,
+    packageOverride = null,
+    attemptCount = 0
+) => {
     const channel = resolveOrderChannel(order, vendorId || vendor?._id);
     const serviceType = channel === VendorChannels.WHOLESALE
         ? dtdcConfig.wholesaleServiceType
@@ -298,7 +305,9 @@ export const buildConsignmentPayload = (order, vendor, pickupLocation, vendorId 
             city:           destination.city,
             state:          destination.state,
         },
-        customer_reference_number: order.orderId || String(order._id),
+        customer_reference_number: attemptCount > 0
+            ? `${order.orderId || String(order._id)}-R${attemptCount}`
+            : (order.orderId || String(order._id)),
         cod_collection_mode:       cod ? 'CASH' : '',
         cod_amount:                cod ? declaredValue : 0,
         // DTDC's commodity list is NUMERIC (see "commodity or product id"):
@@ -552,7 +561,7 @@ export const bookDtdcShipment = async (
     //    still carries its AWB, so an awbNumber-first check would hand back a
     //    dead consignment and report it as a successful booking. Rebooking is a
     //    deliberate business decision, not a retry.
-    if (existing?.status === ShipmentStatus.CANCELLED) {
+    if (existing?.status === ShipmentStatus.CANCELLED || (options.rebook && existing)) {
         if (!options.rebook) {
             throw new Error('This shipment was cancelled. Create a new order to ship again.');
         }
@@ -564,11 +573,19 @@ export const bookDtdcShipment = async (
         const previousAwbs = Array.isArray(existing.metadata?.cancelledAwbs)
             ? [...existing.metadata.cancelledAwbs]
             : [];
-        if (existing.awbNumber) previousAwbs.push(existing.awbNumber);
+        if (existing.awbNumber && !previousAwbs.includes(existing.awbNumber)) {
+            previousAwbs.push(existing.awbNumber);
+        }
+
+        const nextRebookCount = Math.max(
+            Number(existing.metadata?.rebookCount) || 0,
+            previousAwbs.length || 0
+        ) + 1;
 
         existing.metadata = {
             ...(existing.metadata || {}),
             cancelledAwbs: previousAwbs,
+            rebookCount: nextRebookCount,
             lastRebookedAt: new Date(),
         };
         existing.awbNumber = undefined;
@@ -579,7 +596,7 @@ export const bookDtdcShipment = async (
         if (!Array.isArray(existing.trackingHistory)) existing.trackingHistory = [];
         existing.trackingHistory.push({
             status: 'REBOOK',
-            description: 'Consignment rebooking initiated by seller',
+            description: `Consignment rebooking #${nextRebookCount} initiated by seller`,
             timestamp: new Date(),
         });
         await existing.save();
@@ -596,8 +613,9 @@ export const bookDtdcShipment = async (
         || null;
 
     // 5. Build (and validate) the payload BEFORE reserving anything.
+    const rebookAttempt = Number(existing?.metadata?.rebookCount) || existing?.metadata?.cancelledAwbs?.length || 0;
     const fullPayload = buildConsignmentPayload(
-        order, vendor, pickupLocation, vendorIdStr, resolvedOverride
+        order, vendor, pickupLocation, vendorIdStr, resolvedOverride, rebookAttempt
     );
     const { wire: consignmentData, meta: parcelMeta } = stripPayloadMetadata(fullPayload);
 
