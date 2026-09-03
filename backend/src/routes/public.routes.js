@@ -957,7 +957,7 @@ router.get('/vendors/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req
 
 // GET /api/vendors/:id/products (public)
 router.get('/vendors/:id([a-fA-F0-9]{24})/products', listCache, asyncHandler(async (req, res) => {
-    const { page = 1, limit = 12, sort = 'newest', minPrice, maxPrice, minRating } = req.query;
+    const { page = 1, limit = 12, sort = 'newest', minPrice, maxPrice, minRating, sellingChannel } = req.query;
     const numericPage = Math.max(parseInt(page, 10) || 1, 1);
     const numericLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 100);
     const skip = (numericPage - 1) * numericLimit;
@@ -971,13 +971,30 @@ router.get('/vendors/:id([a-fA-F0-9]{24})/products', listCache, asyncHandler(asy
         rating: { rating: -1 },
     };
 
+    let effectiveSellingChannel = sellingChannel;
+    const experience = getRequestExperience(req);
+
+    // If on marketplace and no explicit sellingChannel was specified, adapt to the vendor's active channel
+    if (!effectiveSellingChannel && experience === EXPERIENCES.MARKETPLACE) {
+        const vendorDoc = await Vendor.findById(req.params.id)
+            .select('channels vendorType sellingChannels')
+            .lean();
+        if (
+            vendorDoc &&
+            vendorDoc.channels?.wholesale?.status === 'active' &&
+            vendorDoc.channels?.retail?.status !== 'active'
+        ) {
+            effectiveSellingChannel = 'wholesale';
+        }
+    }
+
     // The storefront lists only what this vendor may sell on the experience
     // being browsed. It previously listed every active product regardless of
     // channel, so a Quick-Commerce-only store served QC products on the
     // marketplace.
     const guard = await buildPublicCatalogGuard({
-        experience: getRequestExperience(req),
-        sellingChannel: req.query?.sellingChannel,
+        experience,
+        sellingChannel: effectiveSellingChannel,
         includePaused: true,
     });
     if (!guard.vendorIds.includes(String(req.params.id))) {

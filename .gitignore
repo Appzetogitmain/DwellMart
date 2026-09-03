@@ -37,6 +37,7 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+.idea/
 *.log
 *.postman_collection.json
 **/currency_cache.json
@@ -95,3 +96,52 @@ temp_*
 
 
 
+# ─── Reports & Markdown Documentation ─────────────────────────────────────────
+/*.md
+*REPORT*.md
+*report*.md
+*AUDIT*.md
+*audit*.md
+*SOP*.md
+*sop*.md
+*PLAN*.md
+*plan*.md
+*PROMPT*.md
+*prompt*.md
+backend/docs/
+
+
+# ─── Office & Document Files ──────────────────────────────────────────────────
+*.doc
+*.docx
+*.pdf
+*.rtf
+*.odt
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.csv
+
+# ─── Database Backups & Dumps ─────────────────────────────────────────────────
+backups/
+**/backups/
+*.archive
+*.dump
+*.sql
+*.rdb
+*.bak
+
+# ─── Unrelated / Scratch / One-off Dev Scripts ────────────────────────────────
+scratch/
+**/scratch/
+temp_*
+*.tmp
+*.temp
+**/tools/dev-scripts/
+**/scripts/executeOptionBCleanup.mjs
+**/scripts/undoOptionBCleanup.mjs
+**/scripts/executeAug15Cleanup.mjs
+**/scripts/executeFreshSlateApproachA.mjs
+**/scripts/dryRun*.mjs
+**/scripts/inspectDates*.mjs
