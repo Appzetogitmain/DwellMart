@@ -701,8 +701,49 @@ router.get('/categories/all', catalogCache, getPublicCategoriesHandler);
 
 // GET /api/brands & /api/brands/all (public)
 router.get(['/brands', '/brands/all'], catalogCache, asyncHandler(async (req, res) => {
-    const brands = await Brand.find({ isActive: true }).sort({ name: 1 }).lean();
-    res.status(200).json(new ApiResponse(200, brands, 'Brands fetched.'));
+    const { hasProducts } = req.query;
+
+    // Aggregate active product counts for brands
+    const productCounts = await Product.aggregate([
+        {
+            $match: {
+                isActive: { $ne: false },
+                isDeleted: { $ne: true },
+                brandId: { $ne: null }
+            }
+        },
+        {
+            $group: {
+                _id: '$brandId',
+                count: { $sum: 1 }
+            }
+        }
+    ]);
+
+    const countMap = new Map();
+    productCounts.forEach(item => countMap.set(String(item._id), item.count));
+
+    let filter = { isActive: true };
+    if (hasProducts === 'true') {
+        filter._id = { $in: productCounts.map(item => item._id) };
+    }
+
+    const brands = await Brand.find(filter).lean();
+
+    const enriched = brands.map(b => ({
+        ...b,
+        productCount: countMap.get(String(b._id)) || 0
+    }));
+
+    // Prioritize brands with products first (descending productCount), then alphabetically by name
+    enriched.sort((a, b) => {
+        if (b.productCount !== a.productCount) {
+            return b.productCount - a.productCount;
+        }
+        return (a.name || '').localeCompare(b.name || '');
+    });
+
+    res.status(200).json(new ApiResponse(200, enriched, 'Brands fetched.'));
 }));
 
 const getVendorProductCountsMap = async (vendorIds = []) => {
