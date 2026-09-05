@@ -92,6 +92,14 @@ const Seller = () => {
         );
     }, [vendor]);
 
+    const isQuickCommerceVendor = useMemo(() => {
+        return (
+            vendor?.vendorType === 'quick_commerce' ||
+            (vendor?.channels?.quickCommerce?.status === 'active' && vendor?.channels?.retail?.status !== 'active') ||
+            (vendor?.sellingChannels?.quickCommerce?.enabled === true && vendor?.sellingChannels?.retail?.enabled !== true)
+        );
+    }, [vendor]);
+
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
     const [filters, setFilters] = useState({
@@ -538,6 +546,11 @@ const Seller = () => {
                                     {isWholesaleVendor && (
                                         <div className="mt-2 text-xs text-status-success bg-status-success/10 border border-status-success/20 rounded-full px-3 py-0.5 inline-flex items-center gap-1 font-medium">
                                             <span>📦 Wholesale Catalog • Bulk Order Pricing</span>
+                                        </div>
+                                    )}
+                                    {isQuickCommerceVendor && (
+                                        <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-0.5 inline-flex items-center gap-1 font-medium">
+                                            <span>⚡ Dwell Mart Express Store • Fast Delivery</span>
                                         </div>
                                     )}
                                 </div>

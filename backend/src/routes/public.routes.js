@@ -991,6 +991,12 @@ router.get('/vendors/:id([a-fA-F0-9]{24})/products', listCache, asyncHandler(asy
             vendorDoc.channels?.retail?.status !== 'active'
         ) {
             effectiveSellingChannel = 'wholesale';
+        } else if (
+            vendorDoc &&
+            vendorDoc.channels?.quickCommerce?.status === 'active' &&
+            vendorDoc.channels?.retail?.status !== 'active'
+        ) {
+            effectiveSellingChannel = 'quickCommerce';
         }
     }
 

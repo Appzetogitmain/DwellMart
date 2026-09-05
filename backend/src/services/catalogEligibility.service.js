@@ -28,7 +28,9 @@ import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from './feature
 /** Canonical vendor channel path for a requested experience / selling channel. */
 export const channelPathForExperience = (experience, sellingChannel) => {
     if (normalizeExperience(experience) === EXPERIENCES.QUICK_COMMERCE) return 'quickCommerce';
-    if (String(sellingChannel || '').toLowerCase() === 'wholesale') return 'wholesale';
+    const channelLower = String(sellingChannel || '').toLowerCase();
+    if (channelLower === 'wholesale') return 'wholesale';
+    if (['quick_commerce', 'quickcommerce'].includes(channelLower)) return 'quickCommerce';
     if (normalizeExperience(experience) === EXPERIENCES.WHOLESALE) return 'wholesale';
     return 'retail';
 };
@@ -140,12 +142,25 @@ export const isProductPubliclyVisible = async (product, { experience, sellingCha
     const channelPath = channelPathForExperience(experience, sellingChannel);
     const productFlag = productFlagForChannelPath(channelPath);
 
-    const published = productFlag === 'retailEnabled'
+    let effectiveChannelPath = channelPath;
+    let published = productFlag === 'retailEnabled'
         ? product.retailEnabled !== false
         : product[productFlag] === true;
+
+    // If browsing without explicit channel on marketplace, allow access if published on quickCommerce or wholesale
+    if (!published && !sellingChannel && normalizeExperience(experience) === EXPERIENCES.MARKETPLACE) {
+        if (product.quickCommerceEnabled === true) {
+            effectiveChannelPath = 'quickCommerce';
+            published = true;
+        } else if (product.wholesaleEnabled === true) {
+            effectiveChannelPath = 'wholesale';
+            published = true;
+        }
+    }
+
     if (!published) return { visible: false, reason: 'NOT_PUBLISHED_ON_CHANNEL' };
 
-    if (!(await isChannelFeatureEnabled(channelPath))) {
+    if (!(await isChannelFeatureEnabled(effectiveChannelPath))) {
         return { visible: false, reason: 'CHANNEL_DISABLED_PLATFORM_WIDE' };
     }
 
@@ -158,7 +173,7 @@ export const isProductPubliclyVisible = async (product, { experience, sellingCha
     }
 
     const allowed = includePaused ? ['active', 'paused'] : ['active'];
-    if (!allowed.includes(vendor.channels?.[channelPath]?.status)) {
+    if (!allowed.includes(vendor.channels?.[effectiveChannelPath]?.status)) {
         return { visible: false, reason: 'VENDOR_CHANNEL_INACTIVE' };
     }
 
