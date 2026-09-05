@@ -580,7 +580,13 @@ const ProductForm = () => {
     }
 
     const result = isEdit ? await editProduct(id, payload) : await addProduct(payload);
-    if (result) navigate("/vendor/products/manage-products");
+    if (result) {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate(`/vendor/products/manage-products${workspace ? `?workspace=${workspace}` : ""}`);
+      }
+    }
   };
 
   if (!vendorId) {
@@ -712,7 +718,13 @@ const ProductForm = () => {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-gray-200">
           <button
             type="button"
-            onClick={() => navigate("/vendor/products/manage-products")}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(`/vendor/products/manage-products${workspace ? `?workspace=${workspace}` : ""}`);
+              }
+            }}
             className="w-full sm:w-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold text-sm"
           >
             Cancel

@@ -27,6 +27,20 @@ import {
     cancelVendorBulkProductJob,
     downloadVendorProductTemplate,
 } from '../../modules/Vendor/services/vendorService';
+import { API_BASE_URL } from '../utils/constants';
+
+/**
+ * Converts a backend-relative path like /uploads/bulk-reports/foo.xlsx into
+ * the full absolute URL on the API server, so the browser downloads from
+ * api.dwellmart.in rather than the frontend origin.
+ */
+const resolveBackendUrl = (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) return relativePath;
+    // API_BASE_URL is like https://api.dwellmart.in/api — strip the /api suffix
+    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
+    return `${apiOrigin}${relativePath.startsWith('/') ? relativePath : '/' + relativePath}`;
+};
 
 const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors = [], workspace = null }) => {
     const [step, setStep] = useState(1);
@@ -783,16 +797,20 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                     <div className="flex justify-center gap-4 pt-4 border-t border-border-light">
                                         {jobProgress.errorFileUrl && (
                                             <a
-                                                href={jobProgress.errorFileUrl}
+                                                href={resolveBackendUrl(jobProgress.errorFileUrl)}
                                                 download
+                                                target="_blank"
+                                                rel="noreferrer"
                                                 className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-xl font-semibold text-xs hover:bg-red-700 transition-colors">
                                                 <FiDownload /> Download Import_Errors.xlsx
                                             </a>
                                         )}
                                         {jobProgress.validFileUrl && (
                                             <a
-                                                href={jobProgress.validFileUrl}
+                                                href={resolveBackendUrl(jobProgress.validFileUrl)}
                                                 download
+                                                target="_blank"
+                                                rel="noreferrer"
                                                 className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-xs hover:bg-emerald-700 transition-colors">
                                                 <FiDownload /> Download Valid_Rows.xlsx
                                             </a>

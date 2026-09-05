@@ -221,9 +221,19 @@ app.use(
     express.static(uploadsRoot, {
         // Never let a stored file be interpreted as a script or document by the
         // browser. Defence in depth behind the extension and content checks.
-        setHeaders: (res) => {
+        setHeaders: (res, filePath) => {
             res.setHeader('X-Content-Type-Options', 'nosniff');
-            res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+            // Bulk-report xlsx/csv downloads must use Content-Disposition:attachment
+            // so the browser saves them as files. Applying the 'sandbox' CSP here
+            // caused Excel to reject them as "file format not valid" because the
+            // browser was delivering them as sandboxed documents, not binary blobs.
+            const isBulkReport = filePath.includes('/bulk-reports/');
+            if (isBulkReport) {
+                const filename = filePath.split('/').pop() || 'report.xlsx';
+                res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            } else {
+                res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; sandbox");
+            }
         },
     })
 );

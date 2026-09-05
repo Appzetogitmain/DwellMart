@@ -3,6 +3,14 @@ import { FiList, FiX, FiDownload, FiCheckCircle, FiXCircle, FiClock, FiRefreshCw
 import { toastService } from '../utils/toastService';
 import { getBulkProductImportHistory } from '../../modules/Admin/services/adminService';
 import { getVendorBulkProductImportHistory } from '../../modules/Vendor/services/vendorService';
+import { API_BASE_URL } from '../utils/constants';
+
+const resolveBackendUrl = (relativePath) => {
+    if (!relativePath) return null;
+    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) return relativePath;
+    const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, '');
+    return `${apiOrigin}${relativePath.startsWith('/') ? relativePath : '/' + relativePath}`;
+};
 
 const ImportHistoryModal = ({ isOpen, onClose, mode = 'admin' }) => {
     const [history, setHistory] = useState([]);
@@ -105,8 +113,10 @@ const ImportHistoryModal = ({ isOpen, onClose, mode = 'admin' }) => {
                                                 <div className="flex items-center justify-center gap-2">
                                                     {item.errorFileUrl && (
                                                         <a
-                                                            href={item.errorFileUrl}
+                                                            href={resolveBackendUrl(item.errorFileUrl)}
                                                             download
+                                                            target="_blank"
+                                                            rel="noreferrer"
                                                             className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                                                             title="Download Error Report">
                                                             <FiDownload />
@@ -114,8 +124,10 @@ const ImportHistoryModal = ({ isOpen, onClose, mode = 'admin' }) => {
                                                     )}
                                                     {item.validFileUrl && (
                                                         <a
-                                                            href={item.validFileUrl}
+                                                            href={resolveBackendUrl(item.validFileUrl)}
                                                             download
+                                                            target="_blank"
+                                                            rel="noreferrer"
                                                             className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
                                                             title="Download Valid Rows">
                                                             <FiDownload />

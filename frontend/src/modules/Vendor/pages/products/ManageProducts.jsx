@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FiSearch, FiEdit, FiTrash2, FiAlertTriangle, FiDownload, FiUploadCloud, FiList, FiBox, FiTag } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { DashboardPage, DataTable, StatusBadge } from "../../../../shared/components/Dashboard";
@@ -35,6 +35,12 @@ const needsShippingData = (product) => {
 const ManageProducts = () => {
   const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(60, 60, "Product");
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPage = parseInt(searchParams.get("page") || "1", 10);
+  const handlePageChange = (page) => {
+    setSearchParams((prev) => { prev.set("page", String(page)); return prev; }, { replace: true });
+  };
+
   const { vendor } = useVendorAuthStore();
   const { products, isLoading, fetchProducts, removeProduct } = useVendorProductStore();
   const { categories, initialize: initCategories } = useCategoryStore();
@@ -214,7 +220,8 @@ const ManageProducts = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleActionClick(`/vendor/products/${row._id ?? row.id}`);
+                const searchStr = searchParams.toString();
+                handleActionClick(`/vendor/products/${row._id ?? row.id}${searchStr ? `?${searchStr}` : ""}`);
               }}
               className="p-1.5 text-slate-600 hover:text-brand-primary hover:bg-slate-100 rounded-lg transition-colors"
               title="Edit Product"
@@ -300,7 +307,7 @@ const ManageProducts = () => {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); handlePageChange(1); }}
               placeholder="Search products by name..."
               className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50/70 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary focus:bg-white transition-all placeholder:text-slate-400"
             />
@@ -313,7 +320,7 @@ const ManageProducts = () => {
             <AnimatedSelect
               name="status-filter"
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => { setSelectedStatus(e.target.value); handlePageChange(1); }}
               options={[
                 { value: "all",          label: "All Stock" },
                 { value: "in_stock",     label: "In Stock" },
@@ -329,7 +336,7 @@ const ManageProducts = () => {
               <AnimatedSelect
                 name="category-filter"
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => { setSelectedCategory(e.target.value); handlePageChange(1); }}
                 options={[
                   { value: "all", label: "All Categories" },
                   ...categories.map((cat) => ({
@@ -347,7 +354,7 @@ const ManageProducts = () => {
               <AnimatedSelect
                 name="perishable-filter"
                 value={filterPerishable}
-                onChange={(e) => setFilterPerishable(e.target.value)}
+                onChange={(e) => { setFilterPerishable(e.target.value); handlePageChange(1); }}
                 options={[
                   { value: "all", label: "All Products" },
                   { value: "yes", label: "Perishable" },
@@ -363,7 +370,7 @@ const ManageProducts = () => {
               <AnimatedSelect
                 name="moq-filter"
                 value={filterMoq}
-                onChange={(e) => setFilterMoq(e.target.value)}
+                onChange={(e) => { setFilterMoq(e.target.value); handlePageChange(1); }}
                 options={[
                   { value: "all",      label: "All Products" },
                   { value: "enabled",  label: "MOQ Enabled" },
@@ -384,6 +391,8 @@ const ManageProducts = () => {
           searchable={false}
           emptyTitle="No products found"
           emptyDescription="Get started by adding your first product to your catalog."
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
         />
       </div>
 
@@ -457,7 +466,10 @@ const ManageProducts = () => {
                     <Button
                       variant="outline"
                       size="xs"
-                      onClick={() => handleActionClick(`/vendor/products/${product._id ?? product.id}`)}
+                      onClick={() => {
+                        const searchStr = searchParams.toString();
+                        handleActionClick(`/vendor/products/${product._id ?? product.id}${searchStr ? `?${searchStr}` : ""}`);
+                      }}
                       leftIcon={<FiEdit />}
                     >
                       Edit
