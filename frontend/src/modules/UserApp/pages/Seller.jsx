@@ -36,6 +36,19 @@ const normalizeProduct = (raw) => ({
     reviewCount: Number(raw?.reviewCount) || 0,
 });
 
+const getPaginationRange = (current, total) => {
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+        return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+        return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+};
+
 const Seller = () => {
     const { getTranslatedText: t } = usePageTranslation([
         "Loading seller...",
@@ -576,113 +589,81 @@ const Seller = () => {
                                     {t('This seller has no products available at the moment.')}
                                 </p>
                             </div>
-                        ) : viewMode === "grid" ? (
-                            <>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
-                                    {vendorProducts.map((product, index) => (
-                                        <motion.div
-                                            key={product.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.05 }}>
-                                            <ProductCard product={product} />
-                                        </motion.div>
-                                    ))}
-                                </div>
-
-                                {/* Pagination Controls */}
-                                {pagination.pages > 1 && (
-                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-xs">
-                                        <span className="text-xs sm:text-sm text-gray-500 font-medium">
-                                            {t("Showing")} {((currentPage - 1) * pagination.limit) + 1} {t("to")}{" "}
-                                            {Math.min(currentPage * pagination.limit, pagination.total)} {t("of")}{" "}
-                                            {pagination.total} {t("products")}
-                                        </span>
-
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                onClick={() => handlePageChange(currentPage - 1)}
-                                                disabled={currentPage <= 1 || isLoadingProducts}
-                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                            >
-                                                <FiChevronLeft className="text-lg" />
-                                            </button>
-
-                                            {[...Array(pagination.pages)].map((_, i) => {
-                                                const pNum = i + 1;
-                                                const isCurrent = pNum === currentPage;
-                                                return (
-                                                    <button
-                                                        key={pNum}
-                                                        onClick={() => handlePageChange(pNum)}
-                                                        disabled={isLoadingProducts}
-                                                        className={`w-9 h-9 rounded-xl font-bold text-xs sm:text-sm transition-all ${
-                                                            isCurrent
-                                                                ? "gradient-green text-white shadow-md"
-                                                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                                                        }`}
-                                                    >
-                                                        {pNum}
-                                                    </button>
-                                                );
-                                            })}
-
-                                            <button
-                                                onClick={() => handlePageChange(currentPage + 1)}
-                                                disabled={currentPage >= pagination.pages || isLoadingProducts}
-                                                className="p-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                            >
-                                                <FiChevronRight className="text-lg" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
                         ) : (
                             <>
-                                <div className="space-y-3">
-                                    {vendorProducts.map((product, index) => (
-                                        <ProductListItem
-                                            key={product.id}
-                                            product={product}
-                                            index={index}
-                                        />
-                                    ))}
-                                </div>
+                                {viewMode === "grid" ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6">
+                                        {vendorProducts.map((product, index) => (
+                                            <motion.div
+                                                key={product.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.05 }}>
+                                                <ProductCard product={product} />
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {vendorProducts.map((product, index) => (
+                                            <ProductListItem
+                                                key={product.id}
+                                                product={product}
+                                                index={index}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
 
-                                {/* Pagination Controls */}
+                                {/* Responsive Smart Pagination Controls */}
                                 {pagination.pages > 1 && (
-                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface p-4 rounded-2xl border border-border shadow-xs">
-                                        <span className="text-xs sm:text-sm text-content-secondary font-medium">
-                                            {t("Showing")} {((currentPage - 1) * pagination.limit) + 1} {t("to")}{" "}
-                                            {Math.min(currentPage * pagination.limit, pagination.total)} {t("of")}{" "}
-                                            {pagination.total} {t("products")}
+                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-surface p-4 rounded-2xl border border-gray-100 dark:border-border shadow-xs">
+                                        <span className="text-xs sm:text-sm text-gray-600 dark:text-content-secondary font-medium text-center sm:text-left">
+                                            {t("Showing")}{" "}
+                                            <strong className="text-gray-900 dark:text-content font-bold">
+                                                {((currentPage - 1) * pagination.limit) + 1}–{Math.min(currentPage * pagination.limit, pagination.total)}
+                                            </strong>{" "}
+                                            {t("of")}{" "}
+                                            <strong className="text-gray-900 dark:text-content font-bold">{pagination.total}</strong>{" "}
+                                            {t("products")}
                                         </span>
 
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
                                             <button
                                                 onClick={() => handlePageChange(currentPage - 1)}
                                                 disabled={currentPage <= 1 || isLoadingProducts}
-                                                className="p-2 rounded-xl border border-border text-content-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:bg-gray-50 dark:hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                aria-label="Previous Page"
                                             >
-                                                <FiChevronLeft className="text-lg" />
+                                                <FiChevronLeft className="text-base" />
                                             </button>
 
-                                            {[...Array(pagination.pages)].map((_, i) => {
-                                                const pNum = i + 1;
-                                                const isCurrent = pNum === currentPage;
+                                            {getPaginationRange(currentPage, pagination.pages).map((pItem, idx) => {
+                                                if (pItem === '...') {
+                                                    return (
+                                                        <span
+                                                            key={`ellipsis-${idx}`}
+                                                            className="w-6 sm:w-7 text-center text-xs font-black text-gray-400 dark:text-content-muted select-none"
+                                                        >
+                                                            •••
+                                                        </span>
+                                                    );
+                                                }
+                                                const isCurrent = pItem === currentPage;
                                                 return (
                                                     <button
-                                                        key={pNum}
-                                                        onClick={() => handlePageChange(pNum)}
+                                                        key={pItem}
+                                                        onClick={() => handlePageChange(pItem)}
                                                         disabled={isLoadingProducts}
-                                                        className={`w-9 h-9 rounded-xl font-bold text-xs sm:text-sm transition-all ${
+                                                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center ${
                                                             isCurrent
-                                                                ? "bg-brand-primary text-black shadow-md"
-                                                                : "bg-surface border border-border text-content-secondary hover:bg-surface-muted"
+                                                                ? "bg-brand-primary text-black font-extrabold shadow-sm ring-2 ring-brand-primary/25"
+                                                                : "bg-white dark:bg-surface border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:text-black dark:hover:text-content hover:bg-gray-50 dark:hover:bg-surface-muted"
                                                         }`}
+                                                        aria-label={`Page ${pItem}`}
+                                                        aria-current={isCurrent ? "page" : undefined}
                                                     >
-                                                        {pNum}
+                                                        {pItem}
                                                     </button>
                                                 );
                                             })}
@@ -690,9 +671,10 @@ const Seller = () => {
                                             <button
                                                 onClick={() => handlePageChange(currentPage + 1)}
                                                 disabled={currentPage >= pagination.pages || isLoadingProducts}
-                                                className="p-2 rounded-xl border border-border text-content-secondary hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:bg-gray-50 dark:hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                aria-label="Next Page"
                                             >
-                                                <FiChevronRight className="text-lg" />
+                                                <FiChevronRight className="text-base" />
                                             </button>
                                         </div>
                                     </div>

@@ -128,6 +128,7 @@ import MobileSeller from "./modules/UserApp/pages/Seller";
 import MobileSellers from "./modules/UserApp/pages/Sellers";
 import MobileCategory from "./modules/UserApp/pages/Category";
 import MobileBrand from "./modules/UserApp/pages/Brand";
+import MobileBrands from "./modules/UserApp/pages/Brands";
 import MobileCategories from "./modules/UserApp/pages/categories";
 import MobileCheckout from "./modules/UserApp/pages/Checkout";
 import MobileSearch from "./modules/UserApp/pages/Search";
@@ -334,6 +335,14 @@ const AppRoutes = () => {
         element={
           <RouteWrapper>
             <MobileBrand />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/brands"
+        element={
+          <RouteWrapper>
+            <MobileBrands />
           </RouteWrapper>
         }
       />

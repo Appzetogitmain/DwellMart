@@ -18,7 +18,7 @@ const BrandLogosScroll = ({ brands = null }) => {
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-800 tracking-tight">Top Brands</h2>
                     <button
-                        onClick={() => navigate('/categories')}
+                        onClick={() => navigate('/brands')}
                         className="text-sm font-semibold text-brand-primary hover:underline transition-colors"
                     >
                         See All &rarr;
@@ -56,7 +56,7 @@ const BrandLogosScroll = ({ brands = null }) => {
                 </div>
             </div>
 
-            {/* Mobile Layout - Unchanged */}
+            {/* Mobile Layout */}
             <div className="md:hidden w-full">
                 <style>{`
           @media (min-width: 1024px) {
@@ -74,6 +74,15 @@ const BrandLogosScroll = ({ brands = null }) => {
             }
           }
         `}</style>
+                <div className="flex items-center justify-between px-1 mb-2">
+                    <h2 className="text-lg font-bold text-gray-800 tracking-tight">Top Brands</h2>
+                    <button
+                        onClick={() => navigate('/brands')}
+                        className="text-xs font-semibold text-brand-primary hover:underline transition-colors"
+                    >
+                        See All &rarr;
+                    </button>
+                </div>
                 <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <div className="flex gap-3 sm:gap-4 lg:gap-3 min-w-max px-4 pb-2">
                         {displayBrands.map((brand, index) => (

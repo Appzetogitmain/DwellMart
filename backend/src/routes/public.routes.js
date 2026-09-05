@@ -699,8 +699,8 @@ const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
 router.get('/categories', catalogCache, getPublicCategoriesHandler);
 router.get('/categories/all', catalogCache, getPublicCategoriesHandler);
 
-// GET /api/brands (public)
-router.get('/brands/all', catalogCache, asyncHandler(async (req, res) => {
+// GET /api/brands & /api/brands/all (public)
+router.get(['/brands', '/brands/all'], catalogCache, asyncHandler(async (req, res) => {
     const brands = await Brand.find({ isActive: true }).sort({ name: 1 }).lean();
     res.status(200).json(new ApiResponse(200, brands, 'Brands fetched.'));
 }));
