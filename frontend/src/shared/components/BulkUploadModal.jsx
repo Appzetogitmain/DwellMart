@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
     FiUploadCloud,
     FiFileText,
@@ -10,6 +10,7 @@ import {
     FiTrash2,
     FiRefreshCw,
     FiList,
+    FiInfo,
 } from 'react-icons/fi';
 import { toastService } from '../utils/toastService';
 import {
@@ -39,6 +40,8 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
     const [isValidating, setIsValidating] = useState(false);
     const [validationResult, setValidationResult] = useState(null);
     const [previewRows, setPreviewRows] = useState([]);
+    const [selectedRowError, setSelectedRowError] = useState(null);
+
 
     const [jobId, setJobId] = useState(null);
     const [jobProgress, setJobProgress] = useState(null);
@@ -411,13 +414,45 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 </div>
                             </div>
 
+                            {/* Summary of Errors Breakdown if any exist */}
+                            {previewRows.some((r) => r.validationStatus === 'error') && (
+                                <div className="bg-red-50/90 border border-red-200 rounded-xl p-3.5 text-xs animate-fadeIn">
+                                    <div className="flex items-center gap-2 font-bold text-red-800 mb-2">
+                                        <FiAlertTriangle className="text-red-600 w-4 h-4 shrink-0" />
+                                        <span>
+                                            Validation Issues Found ({previewRows.filter((r) => r.validationStatus === 'error').length} Products Blocked)
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                        {Object.entries(
+                                            previewRows.reduce((acc, r) => {
+                                                (r.errors || []).forEach((err) => {
+                                                    acc[err] = (acc[err] || 0) + 1;
+                                                });
+                                                return acc;
+                                            }, {})
+                                        ).map(([errMsg, count], idx) => (
+                                            <div key={idx} className="flex items-start justify-between gap-2 text-[11px] text-red-700 bg-red-100/60 px-2.5 py-1.5 rounded-lg">
+                                                <span>• {errMsg}</span>
+                                                <span className="shrink-0 font-bold bg-red-200/80 text-red-900 px-1.5 py-0.5 rounded text-[10px]">
+                                                    {count} {count === 1 ? 'row' : 'rows'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-[11px] text-red-800/80 font-medium">
+                                        💡 <strong>What you can do:</strong> You can click <em>"Next: Duplicate Strategy"</em> to import the valid rows now, or update the categories in your Excel file / create the categories in Admin and re-upload.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-center justify-between flex-wrap gap-2">
                                 <div className="flex items-center gap-4 flex-wrap">
                                     <span className="flex items-center gap-1 font-semibold text-emerald-700">🟢 Valid: Ready to import</span>
-                                    <span className="flex items-center gap-1 font-semibold text-amber-700">🟡 Warning: Import allowed (Hover for details)</span>
-                                    <span className="flex items-center gap-1 font-semibold text-red-700">🔴 Error: Import blocked</span>
+                                    <span className="flex items-center gap-1 font-semibold text-amber-700">🟡 Warning: Auto-creates brand</span>
+                                    <span className="flex items-center gap-1 font-semibold text-red-700">🔴 Error: Row blocked</span>
                                 </div>
-                                <span className="text-[11px] text-blue-700 font-medium italic">Hover over any status badge for instant details</span>
+                                <span className="text-[11px] text-blue-700 font-medium italic">Click or hover on any badge for details</span>
                             </div>
 
                             {/* Preview Table */}
@@ -463,7 +498,7 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="p-2.5">{r.categoryName}</td>
+                                                <td className="p-2.5">{r.categoryName || r.categoryInput || 'Uncategorized'}</td>
                                                 <td className="p-2.5 font-mono text-[11px]">{r.sku}</td>
                                                 <td className="p-2.5 font-medium">₹{r.price}</td>
                                                 <td className="p-2.5">{r.stockQuantity}</td>
@@ -481,49 +516,25 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                                     )}
 
                                                     {r.validationStatus === 'warning' && (
-                                                        <div className="group relative inline-block">
-                                                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-amber-100 transition-colors">
-                                                                <FiAlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                                <span>Warning</span>
-                                                                <span className="text-[9px] bg-amber-200 text-amber-800 px-1 rounded-full font-extrabold">{r.warnings.length}</span>
-                                                            </div>
-                                                            <div className="hidden group-hover:block absolute right-0 z-30 w-72 p-3 bg-slate-900 text-white text-xs rounded-xl shadow-2xl border border-slate-700 mt-1 animate-fadeIn">
-                                                                <p className="font-bold text-amber-400 mb-1.5 flex items-center gap-1">
-                                                                    <FiAlertTriangle /> Import Allowed (Minor Notice)
-                                                                </p>
-                                                                <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-200">
-                                                                    {r.warnings.map((w, idx) => (
-                                                                        <li key={idx}>{w}</li>
-                                                                    ))}
-                                                                </ul>
-                                                                <p className="mt-2 text-[10px] text-emerald-400 border-t border-slate-700 pt-1 font-semibold">
-                                                                    ✓ This row can still be imported successfully.
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedRowError(r)}
+                                                            className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-amber-100 transition-colors">
+                                                            <FiAlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                            <span>Warning</span>
+                                                            <span className="text-[9px] bg-amber-200 text-amber-800 px-1 rounded-full font-extrabold">{r.warnings?.length || 0}</span>
+                                                        </button>
                                                     )}
 
                                                     {r.validationStatus === 'error' && (
-                                                        <div className="group relative inline-block">
-                                                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-red-100 transition-colors">
-                                                                <FiXCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                                                                <span>Error</span>
-                                                                <span className="text-[9px] bg-red-200 text-red-800 px-1 rounded-full font-extrabold">{r.errors.length}</span>
-                                                            </div>
-                                                            <div className="hidden group-hover:block absolute right-0 z-30 w-72 p-3 bg-slate-900 text-white text-xs rounded-xl shadow-2xl border border-slate-700 mt-1 animate-fadeIn">
-                                                                <p className="font-bold text-red-400 mb-1.5 flex items-center gap-1">
-                                                                    <FiXCircle /> Import Blocked
-                                                                </p>
-                                                                <ul className="list-disc list-inside space-y-1 text-[11px] text-gray-200">
-                                                                    {r.errors.map((errText, idx) => (
-                                                                        <li key={idx}>{errText}</li>
-                                                                    ))}
-                                                                </ul>
-                                                                <p className="mt-2 text-[10px] text-amber-300 border-t border-slate-700 pt-1 font-medium">
-                                                                    💡 Delete this row or fix the category/price to allow import.
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedRowError(r)}
+                                                            className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-red-100 transition-colors">
+                                                            <FiXCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                                            <span>Error</span>
+                                                            <span className="text-[9px] bg-red-200 text-red-800 px-1 rounded-full font-extrabold">{r.errors?.length || 0}</span>
+                                                        </button>
                                                     )}
                                                 </td>
                                                 <td className="p-2.5 text-center">
@@ -540,6 +551,63 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 </table>
                             </div>
 
+                            {/* Row Validation Detail Modal */}
+                            {selectedRowError && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                                    <div className="bg-surface rounded-xl shadow-xl max-w-md w-full p-5 border border-border animate-fadeIn">
+                                        <div className="flex items-center justify-between pb-3 border-b border-border">
+                                            <div className="flex items-center gap-2">
+                                                {selectedRowError.validationStatus === 'error' ? (
+                                                    <FiXCircle className="w-5 h-5 text-red-500" />
+                                                ) : (
+                                                    <FiAlertTriangle className="w-5 h-5 text-amber-500" />
+                                                )}
+                                                <h3 className="font-bold text-sm text-content">
+                                                    Row {selectedRowError.rowNumber}: {selectedRowError.name}
+                                                </h3>
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedRowError(null)}
+                                                className="p-1 text-content-muted hover:text-content rounded">
+                                                <FiX className="w-4 h-4" />
+                                            </button>
+                                        </div>
+
+                                        <div className="py-3 space-y-2">
+                                            {selectedRowError.errors?.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-bold text-red-600 mb-1">Errors (Import Blocked):</p>
+                                                    <ul className="list-disc list-inside space-y-1 text-xs text-red-700 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                                                        {selectedRowError.errors.map((e, idx) => (
+                                                            <li key={idx}>{e}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {selectedRowError.warnings?.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-bold text-amber-600 mb-1">Notices / Warnings:</p>
+                                                    <ul className="list-disc list-inside space-y-1 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                                                        {selectedRowError.warnings.map((w, idx) => (
+                                                            <li key={idx}>{w}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-3 border-t border-border flex justify-end">
+                                            <button
+                                                onClick={() => setSelectedRowError(null)}
+                                                className="px-4 py-2 bg-surface-muted hover:bg-border text-content text-xs font-semibold rounded-lg">
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-between items-center pt-4 border-t border-border-light">
                                 <button
                                     onClick={() => setStep(2)}
@@ -548,13 +616,14 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
                                 </button>
                                 <button
                                     onClick={() => setStep(4)}
-                                    disabled={previewRows.length === 0}
+                                    disabled={previewRows.filter(r => r.validationStatus !== 'error').length === 0}
                                     className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-semibold text-sm hover:bg-primary-700 disabled:opacity-50 transition-colors">
-                                    Next: Duplicate Strategy →
+                                    Next: Duplicate Strategy ({previewRows.filter(r => r.validationStatus !== 'error').length} Valid) →
                                 </button>
                             </div>
                         </div>
                     )}
+
 
                     {/* STEP 4: Duplicate Strategy */}
                     {step === 4 && (
@@ -654,11 +723,39 @@ const BulkUploadModal = ({ isOpen, onClose, mode = 'admin', onSuccess, vendors =
 
                             {!isProcessing && jobProgress && (
                                 <div className="space-y-6">
-                                    <div className="p-4 bg-status-successBg border border-status-success/20 rounded-2xl text-center">
-                                        <FiCheckCircle className="w-12 h-12 text-status-success mx-auto mb-2" />
-                                        <h3 className="text-xl font-bold text-status-success">Bulk Upload Complete</h3>
-                                        <p className="text-xs text-status-success mt-1">Products have been processed and synced to store catalog.</p>
-                                    </div>
+                                    {/* 1. Full Failure */}
+                                    {(jobProgress.status === 'failed' || (jobProgress.status === 'completed' && jobProgress.importedCount === 0 && jobProgress.updatedCount === 0 && jobProgress.failedCount > 0)) && (
+                                        <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-center animate-fadeIn">
+                                            <FiXCircle className="w-12 h-12 text-red-600 mx-auto mb-2" />
+                                            <h3 className="text-xl font-bold text-red-800">Bulk Upload Failed</h3>
+                                            <p className="text-xs text-red-700 mt-1 max-w-lg mx-auto">
+                                                No products could be imported. Please download the error report below to view the issues on each row and re-upload.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* 2. Partial Success */}
+                                    {jobProgress.status === 'completed' && jobProgress.failedCount > 0 && (jobProgress.importedCount > 0 || jobProgress.updatedCount > 0) && (
+                                        <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl text-center animate-fadeIn">
+                                            <FiAlertTriangle className="w-12 h-12 text-amber-600 mx-auto mb-2" />
+                                            <h3 className="text-xl font-bold text-amber-800">Bulk Upload Partially Completed</h3>
+                                            <p className="text-xs text-amber-700 mt-1 max-w-lg mx-auto">
+                                                <strong>{jobProgress.importedCount + jobProgress.updatedCount}</strong> products were successfully saved to your catalog, but <strong>{jobProgress.failedCount}</strong> rows could not be processed.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* 3. 100% Success */}
+                                    {jobProgress.status === 'completed' && jobProgress.failedCount === 0 && (
+                                        <div className="p-5 bg-status-successBg border border-status-success/20 rounded-2xl text-center animate-fadeIn">
+                                            <FiCheckCircle className="w-12 h-12 text-status-success mx-auto mb-2" />
+                                            <h3 className="text-xl font-bold text-status-success">Bulk Upload Complete</h3>
+                                            <p className="text-xs text-status-success mt-1">
+                                                All {jobProgress.importedCount + jobProgress.updatedCount} products have been processed and synced to your store catalog.
+                                            </p>
+                                        </div>
+                                    )}
+
 
                                     <div className="grid grid-cols-5 gap-3 text-center text-xs font-bold">
                                         <div className="p-3 bg-surface-muted border rounded-xl">

@@ -16,6 +16,8 @@ import {
     validatePriceTiers,
 } from './pricingValidation.service.js';
 
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
@@ -1153,7 +1155,8 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                     hsnCode: row.hsnCode,
                                     stockQuantity: row.stockQuantity,
                                     stock: row.stockQuantity > 5 ? 'in_stock' : row.stockQuantity > 0 ? 'low_stock' : 'out_of_stock',
-                                    minimumOrderQuantity: row.minimumStock,
+                                    minimumOrderQuantity: Math.max(1, Number(row.minimumStock) || 1),
+                                    lowStockThreshold: Math.max(0, Number(row.minimumStock) || 10),
                                     categoryId: row.categoryId,
                                     brandId: finalBrandId,
                                     vendorId: row.vendorId,
@@ -1167,7 +1170,6 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 },
                             },
                         });
-                        jobState.importedCount++;
                     }
                 } else {
                     const slug = `${slugify(row.name)}-${crypto.randomBytes(3).toString('hex')}`;
@@ -1186,7 +1188,8 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 ...(row.shipping ? { shipping: row.shipping } : {}),
                                 stockQuantity: row.stockQuantity,
                                 stock: row.stockQuantity > 5 ? 'in_stock' : row.stockQuantity > 0 ? 'low_stock' : 'out_of_stock',
-                                minimumOrderQuantity: row.minimumStock,
+                                minimumOrderQuantity: Math.max(1, Number(row.minimumStock) || 1),
+                                lowStockThreshold: Math.max(0, Number(row.minimumStock) || 10),
                                 categoryId: row.categoryId,
                                 brandId: finalBrandId,
                                 vendorId: row.vendorId,
@@ -1200,7 +1203,6 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                             },
                         },
                     });
-                    jobState.importedCount++;
                 }
 
                 jobState.validRowsSaved.push(row);
@@ -1216,8 +1218,41 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
         }
 
         if (bulkOperations.length > 0) {
-            await Product.bulkWrite(bulkOperations);
+            try {
+                const writeResult = await Product.bulkWrite(bulkOperations, { ordered: false });
+                jobState.importedCount += (writeResult.insertedCount || 0) + (writeResult.upsertedCount || 0);
+                jobState.updatedCount += (writeResult.modifiedCount || 0);
+            } catch (bulkErr) {
+                if (bulkErr.name === 'MongoBulkWriteError' || bulkErr.writeErrors) {
+                    const inserted = (bulkErr.result?.nInserted || bulkErr.result?.insertedCount || 0) + (bulkErr.result?.nUpserted || bulkErr.result?.upsertedCount || 0);
+                    const modified = (bulkErr.result?.nModified || bulkErr.result?.modifiedCount || 0);
+                    jobState.importedCount += inserted;
+                    jobState.updatedCount += modified;
+                    const errorsCount = bulkErr.writeErrors?.length || 1;
+                    jobState.failedCount += errorsCount;
+                    if (bulkErr.writeErrors) {
+                        bulkErr.writeErrors.forEach((we) => {
+                            failedRowsList.push({
+                                row: batch[we.index]?.rowNumber || 'Unknown',
+                                sku: batch[we.index]?.sku || 'Unknown',
+                                productName: batch[we.index]?.name || 'Unknown',
+                                reason: we.errmsg || we.message || 'Database write error',
+                            });
+                        });
+                    }
+                } else {
+                    console.error('Unexpected bulkWrite error:', bulkErr);
+                    jobState.failedCount += bulkOperations.length;
+                    failedRowsList.push({
+                        row: 'Batch',
+                        sku: 'Batch',
+                        productName: 'Batch write error',
+                        reason: bulkErr.message || 'Database batch write error',
+                    });
+                }
+            }
         }
+
 
         jobState.processedRows += batch.length;
         jobState.progressPercent = Math.min(100, Math.round((jobState.processedRows / jobState.totalRows) * 100));
