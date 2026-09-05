@@ -613,8 +613,19 @@ export const createCategory = asyncHandler(async (req, res) => {
     const payload = sanitizeCategoryPayload(req.body);
     const { name, ...rest } = payload;
 
-    const slug = slugify(name);
-    const existingSlug = await Category.findOne({ slug });
+    const baseSlug = slugify(name);
+    let slug = baseSlug;
+
+    // If subcategory, try base slug first; if taken, fallback to parentSlug-baseSlug
+    let existingSlug = await Category.findOne({ slug }).lean();
+    if (existingSlug && rest.parentId) {
+        const parentCat = await Category.findById(rest.parentId).select('slug').lean();
+        if (parentCat?.slug) {
+            slug = `${parentCat.slug}-${baseSlug}`;
+            existingSlug = await Category.findOne({ slug }).lean();
+        }
+    }
+
     if (existingSlug) {
         throw new ApiError(400, `Category slug '${slug}' already exists.`);
     }
@@ -634,12 +645,30 @@ export const updateCategory = asyncHandler(async (req, res) => {
     const payload = sanitizeCategoryPayload(req.body);
 
     if (payload.name) {
-        const slug = slugify(payload.name);
-        const duplicateSlug = await Category.findOne({ slug, _id: { $ne: req.params.id } });
-        if (duplicateSlug) {
-            throw new ApiError(400, `Category slug '${slug}' already exists.`);
+        // If the name hasn't changed, preserve existing slug (prevents false positive duplicate errors)
+        if (payload.name.trim().toLowerCase() === existingCategory.name.trim().toLowerCase() && existingCategory.slug) {
+            payload.slug = existingCategory.slug;
+        } else {
+            const baseSlug = slugify(payload.name);
+            let slug = baseSlug;
+
+            let duplicateSlug = await Category.findOne({ slug, _id: { $ne: req.params.id } }).lean();
+            if (duplicateSlug) {
+                const parentId = payload.parentId !== undefined ? payload.parentId : existingCategory.parentId;
+                if (parentId) {
+                    const parentCat = await Category.findById(parentId).select('slug').lean();
+                    if (parentCat?.slug) {
+                        slug = `${parentCat.slug}-${baseSlug}`;
+                        duplicateSlug = await Category.findOne({ slug, _id: { $ne: req.params.id } }).lean();
+                    }
+                }
+            }
+
+            if (duplicateSlug) {
+                throw new ApiError(400, `Category slug '${slug}' already exists.`);
+            }
+            payload.slug = slug;
         }
-        payload.slug = slug;
     }
 
     const supportedExperiences = payload.supportedExperiences || existingCategory.supportedExperiences;
