@@ -12,6 +12,7 @@
     "migrate:verify": "node src/migrations/cli.js --verify",
     "seed:categories": "node src/scripts/seedCategories.js",
     "seed:policies": "node scripts/seedPolicies.js",
+    "seed:delivery": "node src/scripts/seedDelivery.js",
     "test": "node tests/run.mjs",
     "test:gate": "node tests/run.mjs",
     "test:contract": "node tests/run.mjs contract",

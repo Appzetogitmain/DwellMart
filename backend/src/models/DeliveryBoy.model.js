@@ -4,7 +4,7 @@ import { EXPERIENCES, EXPERIENCE_VALUES } from '../constants/experiences.js';
 const deliveryBoySchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true },
-        email: { type: String, required: false, trim: true, lowercase: true, index: true, sparse: true, default: null },
+        email: { type: String, required: false, trim: true, lowercase: true },
         phone: { type: String, required: true },
 
         /**
@@ -147,6 +147,11 @@ deliveryBoySchema.index({ location: '2dsphere' }, { sparse: true });
 deliveryBoySchema.index({ activeOrderId: 1, status: 1, isAvailable: 1, applicationStatus: 1 });
 // PERF-5: Backs the QC sweep staleness check (riders who have gone dark mid-delivery).
 deliveryBoySchema.index({ lastLocationAt: 1, isAvailable: 1, status: 1 });
+// Enforce unique email only when email is provided as a string; ignores missing/null values.
+deliveryBoySchema.index(
+    { email: 1 },
+    { unique: true, partialFilterExpression: { email: { $type: 'string' } } }
+);
 
 /**
  * Delivery partners have no password.
