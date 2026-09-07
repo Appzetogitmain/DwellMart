@@ -30,10 +30,11 @@ const MobileProductCard = ({ product }) => {
     removeItem: removeFromWishlist,
     isInWishlist,
   } = useWishlistStore();
-  const hasNoVariant = (cartItem) => !getVariantSignature(cartItem?.variant || {});
-  const isFavorite = isInWishlist(product.id);
+  const productId = String(product?.id || product?._id || "").trim();
+  const productLink = productId ? `/product/${productId}` : "#";
+  const isFavorite = isInWishlist(productId);
   const isInCart = items.some(
-    (item) => item.id === product.id && hasNoVariant(item)
+    (item) => String(item.id || item.productId || item._id).trim() === productId
   );
   const [showLongPressMenu, setShowLongPressMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -50,15 +51,33 @@ const MobileProductCard = ({ product }) => {
       e.stopPropagation();
     }
 
-    const hasDynamicAxes =
+    const hasMultipleSizes = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 1;
+    const hasMultipleColors = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 1;
+    const hasMultipleDynamicOptions =
       Array.isArray(product?.variants?.attributes) &&
-      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
-    const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
-    const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    if (hasDynamicAxes || hasSizeVariants || hasColorVariants) {
+      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 1);
+
+    if (hasMultipleSizes || hasMultipleColors || hasMultipleDynamicOptions) {
       toast.error("Please select variant on product page");
-      navigate(`/product/${product.id}`);
+      if (productId) {
+        navigate(productLink);
+      }
       return;
+    }
+
+    const autoVariant = {};
+    if (Array.isArray(product?.variants?.sizes) && product.variants.sizes.length === 1 && product.variants.sizes[0]) {
+      autoVariant.size = product.variants.sizes[0];
+    }
+    if (Array.isArray(product?.variants?.colors) && product.variants.colors.length === 1 && product.variants.colors[0]) {
+      autoVariant.color = product.variants.colors[0];
+    }
+    if (Array.isArray(product?.variants?.attributes)) {
+      product.variants.attributes.forEach((attr) => {
+        if (attr?.name && Array.isArray(attr.values) && attr.values.length === 1 && attr.values[0]) {
+          autoVariant[attr.name] = attr.values[0];
+        }
+      });
     }
 
     const isLargeScreen = window.innerWidth >= 1024;
@@ -98,7 +117,9 @@ const MobileProductCard = ({ product }) => {
     }
 
     const addedToCart = addItem({
-      id: product.id,
+      id: productId,
+      _id: productId,
+      productId: productId,
       name: product.name,
       price: product.price,
       image: product.image,
@@ -112,9 +133,11 @@ const MobileProductCard = ({ product }) => {
       fulfillmentType: product.fulfillmentType || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
       experience: product.experience || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
       wholesale: product.wholesale,
+      variant: Object.keys(autoVariant).length > 0 ? autoVariant : undefined,
     });
     if (!addedToCart) return;
     triggerCartAnimation();
+    toast.success("Added to cart!");
   };
 
   const handleRemoveFromCart = (e) => {
@@ -122,7 +145,7 @@ const MobileProductCard = ({ product }) => {
       e.preventDefault();
       e.stopPropagation();
     }
-    removeItem(product.id, {});
+    removeItem(productId);
     toast.success("Removed from cart!");
   };
 
@@ -132,11 +155,13 @@ const MobileProductCard = ({ product }) => {
       e.stopPropagation();
     }
     if (isFavorite) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(productId);
       toast.success("Removed from wishlist");
     } else {
       const addedToWishlist = addToWishlist({
-        id: product.id,
+        id: productId,
+        _id: productId,
+        productId: productId,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -164,11 +189,11 @@ const MobileProductCard = ({ product }) => {
       navigator.share({
         title: product.name,
         text: `Check out ${product.name}`,
-        url: window.location.origin + `/product/${product.id}`,
+        url: window.location.origin + productLink,
       });
     } else {
       navigator.clipboard.writeText(
-        window.location.origin + `/product/${product.id}`
+        window.location.origin + productLink
       );
       toast.success("Link copied to clipboard");
     }
@@ -184,7 +209,7 @@ const MobileProductCard = ({ product }) => {
         {...longPressHandlers}>
         <div className="flex gap-3 p-3">
           {/* Product Image */}
-          <Link to={`/product/${product.id}`} className="w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 block p-1">
+          <Link to={productLink} className="w-28 h-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 block p-1">
             <LazyImage
               src={product.image}
               alt={product.name}
@@ -198,7 +223,7 @@ const MobileProductCard = ({ product }) => {
           {/* Product Info */}
           <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex items-start justify-between gap-2 mb-0">
-              <Link to={`/product/${product.id}`} className="flex-1">
+              <Link to={productLink} className="flex-1">
                 <h3 className="font-bold text-gray-800 text-sm line-clamp-2 leading-none">
                   {product.name}
                 </h3>

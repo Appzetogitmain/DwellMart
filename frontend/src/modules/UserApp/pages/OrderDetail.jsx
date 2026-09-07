@@ -171,8 +171,12 @@ const MobileOrderDetail = () => {
 
   const handleReorder = () => {
     order.items.forEach((item) => {
+      const productId = item.id || item.productId || item._id;
       addItem({
-        id: item.id,
+        ...item,
+        id: productId,
+        _id: productId,
+        productId: productId,
         name: item.name,
         price: item.price,
         image: item.image,

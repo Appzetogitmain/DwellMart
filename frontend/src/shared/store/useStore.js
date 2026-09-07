@@ -223,15 +223,19 @@ export const useCartStore = create(
         return true;
       },
       removeItem: (id, variant = null) =>
-        set((state) => ({
-          items: state.items.filter((item) => {
-            if (String(item.id) !== String(id)) return true;
-            if (!variant) return false; // backwards-compatible: remove all variants for this product
-            const candidate = String(item.cartLineKey || getCartLineKey(item.id, item.variant));
-            return candidate !== getCartLineKey(id, variant);
-          }),
-          ownerUserId: state.ownerUserId,
-        })),
+        set((state) => {
+          const hasVariantFilter = Boolean(variant && typeof variant === 'object' && Object.keys(variant).length > 0);
+          const targetKey = hasVariantFilter ? getCartLineKey(id, variant) : null;
+          return {
+            items: state.items.filter((item) => {
+              if (String(item.id || item.productId) !== String(id)) return true;
+              if (!hasVariantFilter) return false; // backwards-compatible: remove all variants for this product
+              const candidate = String(item.cartLineKey || getCartLineKey(item.id, item.variant));
+              return candidate !== targetKey;
+            }),
+            ownerUserId: state.ownerUserId,
+          };
+        }),
       updateQuantity: (id, quantity, variant = null) => {
         if (quantity <= 0) {
           get().removeItem(id, variant);

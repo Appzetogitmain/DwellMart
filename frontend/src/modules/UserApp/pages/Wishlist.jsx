@@ -45,10 +45,15 @@ const MobileWishlist = () => {
   }, [items, translateArray]);
 
   const handleMoveToCart = (item) => {
-    const wishlistItem = moveToCart(item.id);
+    const targetId = item.id || item._id;
+    const wishlistItem = moveToCart(targetId);
     if (wishlistItem) {
+      const productId = wishlistItem.id || wishlistItem._id;
       addItem({
         ...wishlistItem,
+        id: productId,
+        _id: productId,
+        productId: productId,
         quantity: 1,
       });
       toast.success(t("Moved to cart!"));

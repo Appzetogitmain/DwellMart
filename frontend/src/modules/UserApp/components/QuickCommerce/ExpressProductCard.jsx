@@ -19,7 +19,7 @@ const ExpressProductCard = ({ product }) => {
 
   // Find quantity in cart
   const cartItem = useMemo(() => {
-    return items.find((item) => String(item.id || item._id).trim() === productId);
+    return items.find((item) => String(item.id || item.productId || item._id).trim() === productId);
   }, [items, productId]);
 
   const quantity = cartItem?.quantity || 0;
@@ -27,13 +27,23 @@ const ExpressProductCard = ({ product }) => {
   const handleAdd = (e) => {
     e.stopPropagation();
     if (!product) return;
-    addItem(product);
+    addItem({
+      ...product,
+      id: productId,
+      _id: productId,
+      productId: productId,
+    });
   };
 
   const handleIncrement = (e) => {
     e.stopPropagation();
     if (!cartItem) {
-      addItem(product);
+      addItem({
+        ...product,
+        id: productId,
+        _id: productId,
+        productId: productId,
+      });
     } else {
       updateQuantity(productId, quantity + 1);
     }

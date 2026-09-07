@@ -14,7 +14,8 @@ import { ProductWholesaleBadge } from "../../../../shared/components/WholesaleBa
 
 const ProductListItem = ({ product, index, isFlashSale = false }) => {
   const navigate = useNavigate();
-  const productLink = `/product/${product.id}`;
+  const productId = String(product?.id || product?._id || "").trim();
+  const productLink = `/product/${productId}`;
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
     (state) => state.triggerCartAnimation
@@ -24,10 +25,9 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
     removeItem: removeFromWishlist,
     isInWishlist,
   } = useWishlistStore();
-  const hasNoVariant = (cartItem) => !getVariantSignature(cartItem?.variant || {});
-  const isFavorite = isInWishlist(product.id);
+  const isFavorite = isInWishlist(productId);
   const isInCart = items.some(
-    (item) => item.id === product.id && hasNoVariant(item)
+    (item) => String(item.id || item.productId || item._id).trim() === productId
   );
 
   const handleAddToCart = (e) => {
@@ -36,35 +36,82 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
       e.stopPropagation();
     }
 
-    const hasDynamicAxes =
-      Array.isArray(product?.variants?.attributes) &&
-      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
-    const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
-    const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    if (hasDynamicAxes || hasSizeVariants || hasColorVariants) {
+    if (!productId) {
+      toast.error("Product information is missing.");
+      return;
+    }
+
+    const dynamicAttributeAxes = Array.isArray(product?.variants?.attributes)
+      ? product.variants.attributes.filter((attr) => Array.isArray(attr?.values) && attr.values.length > 0)
+      : [];
+    const hasMultipleDynamicOptions = dynamicAttributeAxes.some((attr) => attr.values.length > 1);
+    const hasMultipleSizes = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 1;
+    const hasMultipleColors = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 1;
+
+    if (hasMultipleDynamicOptions || hasMultipleSizes || hasMultipleColors) {
       toast.error("Please select variant on product page");
       navigate(productLink);
       return;
     }
 
+    const autoVariant = (() => {
+      const selected = {};
+      if (product?.variants?.defaultSelection && typeof product.variants.defaultSelection === "object") {
+        Object.assign(selected, product.variants.defaultSelection);
+      }
+      if (Array.isArray(product?.variants?.sizes) && product.variants.sizes.length === 1 && !selected.size) {
+        selected.size = product.variants.sizes[0];
+      }
+      if (Array.isArray(product?.variants?.colors) && product.variants.colors.length === 1 && !selected.color) {
+        selected.color = product.variants.colors[0];
+      }
+      for (const attr of dynamicAttributeAxes) {
+        const attrKey = String(attr?.name || "").trim();
+        if (attrKey && attr.values.length === 1 && !selected[attrKey]) {
+          selected[attrKey] = attr.values[0];
+        }
+      }
+      return selected;
+    })();
+
+    const resolvedVendorId = String(
+      product.vendorId ||
+      product.vendor?._id ||
+      product.vendor?.id ||
+      (typeof product.vendor === "string" ? product.vendor : "") ||
+      ""
+    ).trim();
+    const resolvedVendorName = String(
+      product.vendorName ||
+      product.vendor?.storeName ||
+      product.vendor?.name ||
+      ""
+    ).trim();
+
     const addedToCart = addItem({
-      id: product.id,
+      id: productId,
+      _id: productId,
+      productId: productId,
       name: product.name,
       price: product.price,
       image: product.image,
       quantity: 1,
-      stockQuantity: product.stockQuantity,
-      vendorId: product.vendorId,
-      vendorName: product.vendorName,
+      variant: autoVariant,
+      stockQuantity: Number(product.stockQuantity) || 0,
+      vendorId: resolvedVendorId,
+      vendorName: resolvedVendorName,
       quickCommerceEnabled: product.quickCommerceEnabled,
       wholesaleEnabled: product.wholesaleEnabled,
       retailEnabled: product.retailEnabled,
-      fulfillmentType: product.fulfillmentType || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
-      experience: product.experience || (product.quickCommerceEnabled ? 'quick_commerce' : undefined),
+      fulfillmentType: product.fulfillmentType || (product.quickCommerceEnabled ? "quick_commerce" : undefined),
+      experience: product.experience || (product.quickCommerceEnabled ? "quick_commerce" : undefined),
       wholesale: product.wholesale,
+      taxRate: product.taxRate,
+      taxIncluded: product.taxIncluded,
     });
     if (!addedToCart) return;
     triggerCartAnimation();
+    toast.success("Added to cart!");
   };
 
   const handleRemoveFromCart = (e) => {
@@ -72,7 +119,7 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
       e.preventDefault();
       e.stopPropagation();
     }
-    removeItem(product.id, {});
+    removeItem(productId);
     toast.success("Removed from cart!");
   };
 
@@ -82,11 +129,11 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
       e.stopPropagation();
     }
     if (isFavorite) {
-      removeFromWishlist(product.id);
+      removeFromWishlist(productId);
       toast.success("Removed from wishlist");
     } else {
       const addedToWishlist = addToWishlist({
-        id: product.id,
+        id: productId,
         name: product.name,
         price: product.price,
         image: product.image,
