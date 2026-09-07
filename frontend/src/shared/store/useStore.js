@@ -143,7 +143,7 @@ export const useCartStore = create(
           if (ft === 'retail') return 'retail';
 
           // 2. Active experience context matching product-level channel flags
-          const activeExp = String(useExperienceStore?.getState?.()?.experience || getExperience() || '').toLowerCase();
+          const activeExp = String(getExperience() || '').toLowerCase();
           if (activeExp === 'quick_commerce' && item?.quickCommerceEnabled === true) return 'quick_commerce';
           if (activeExp === 'wholesale' && item?.wholesaleEnabled === true) return 'wholesale';
           if ((activeExp === 'marketplace' || activeExp === 'retail') && item?.retailEnabled !== false) return 'retail';
@@ -395,7 +395,7 @@ export const useCartStore = create(
           if (ft === 'retail') return 'retail';
 
           // 2. Active experience context matching product-level channel flags
-          const activeExp = String(useExperienceStore?.getState?.()?.experience || getExperience() || '').toLowerCase();
+          const activeExp = String(getExperience() || '').toLowerCase();
           if (activeExp === 'quick_commerce' && item?.quickCommerceEnabled === true) return 'quick_commerce';
           if (activeExp === 'wholesale' && item?.wholesaleEnabled === true) return 'wholesale';
           if ((activeExp === 'marketplace' || activeExp === 'retail') && item?.retailEnabled !== false) return 'retail';

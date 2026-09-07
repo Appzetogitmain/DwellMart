@@ -92,9 +92,8 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
   const cartItem = items.find(
     (item) => String(item.id || item.productId || item._id).trim() === productId
   );
-  const isInCart = Boolean(cartItem);
+  const isInCart = Boolean(cartItem && (cartItem.quantity || 0) > 0);
   const cartQuantity = cartItem?.quantity || 0;
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
   const isOutOfStock =
     product.stock === 'out_of_stock' ||
     (Number.isFinite(Number(product.stockQuantity)) && Number(product.stockQuantity) <= 0);
@@ -103,16 +102,10 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       ? Number(product.stockQuantity)
       : 99;
 
-  const handleQuantityChange = (newQty) => {
-    const clamped = Math.min(Math.max(1, newQty), maxStock);
-    setSelectedQuantity(clamped);
-  };
-
   const handleCartQuantityChange = (newQty) => {
-    if (newQty < 1) {
+    if (newQty <= 0) {
       removeItem(productId, cartItem?.variant || {});
       toast.success(t("Removed from cart!"));
-      setSelectedQuantity(1);
       return;
     }
     const maxStock = Number(product.stockQuantity);
@@ -262,7 +255,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       name: product.name,
       price: product.price,
       image: product.image,
-      quantity: selectedQuantity,
+      quantity: 1,
       variant: autoVariant,
       stockQuantity: Number(product.stockQuantity) || 0,
       vendorId: resolvedVendorId,
@@ -276,10 +269,10 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       taxRate: product.taxRate,
       taxIncluded: product.taxIncluded,
     });
+    setIsAdding(false);
     if (!addedToCart) return;
     triggerCartAnimation();
     toast.success(t("Added to cart!"));
-    setSelectedQuantity(1);
   };
 
   const handleRemoveFromCart = (e) => {
@@ -289,7 +282,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     }
     removeItem(productId, cartItem?.variant || {});
     toast.success(t("Removed from cart!"));
-    setSelectedQuantity(1);
   };
 
   const handleIncreaseQuantity = (e) => {
@@ -508,19 +500,19 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
             )}
           </div>
 
-          {/* Compact Centered Quantity Selector */}
-          {!isOutOfStock && (
+          {/* Action Area: Add to Cart (when not in cart) or QuantitySelector (when in cart) */}
+          {isInCart ? (
             <div
-              className="flex items-center justify-center mb-2"
+              className="h-8 flex items-center justify-center w-full"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
             >
               <QuantitySelector
-                value={isInCart ? cartQuantity : selectedQuantity}
-                onChange={isInCart ? handleCartQuantityChange : handleQuantityChange}
-                min={1}
+                value={cartQuantity}
+                onChange={handleCartQuantityChange}
+                min={0}
                 max={maxStock}
                 size="sm"
                 compact
@@ -530,19 +522,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
                 className="bg-surface-card border-borderToken-default shadow-xs"
               />
             </div>
-          )}
-
-          {/* Add / Remove Button using Primitive Button */}
-          {isInCart ? (
-            <Button
-              variant="danger"
-              size="sm"
-              fullWidth
-              onClick={handleRemoveFromCart}
-              leftIcon={<FiTrash2 className="text-xs shrink-0" />}
-            >
-              {t('Remove')}
-            </Button>
           ) : (
             <Button
               ref={buttonRef}
