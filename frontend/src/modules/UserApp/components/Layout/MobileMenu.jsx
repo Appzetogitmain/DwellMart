@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useUserNotificationStore } from "../../store/userNotificationStore";
-import { appLogo } from "../../../../data/logos";
+import { loginLogo } from "../../../../shared/utils/imagePaths";
 import LanguageSelector from "../../../../shared/components/LanguageSelector";
 import CurrencySelector from "../../../../shared/components/CurrencySelector";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
@@ -83,13 +83,13 @@ const MobileMenu = ({ isOpen, onClose }) => {
             style={{ overscrollBehavior: 'contain' }}
           >
             {/* Header / Brand */}
-            <div className="flex items-center justify-between px-5 pt-8 pb-5 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-7 pb-4 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
               <Link to="/home" onClick={onClose} className="flex-shrink-0 flex items-center">
-                {appLogo.src ? (
-                  <img src={appLogo.src} alt="Logo" className="h-16 w-auto max-w-[200px] object-contain scale-[1.65] origin-left drop-shadow-xl my-1 ml-1" />
-                ) : (
-                  <span className="text-2xl font-bold text-white uppercase tracking-tighter">Dwell Mart</span>
-                )}
+                <img
+                  src={loginLogo}
+                  alt="Dwell Mart"
+                  className="h-11 sm:h-12 w-auto max-w-[175px] object-contain drop-shadow-md"
+                />
               </Link>
               <button 
                 onClick={onClose}
@@ -125,16 +125,17 @@ const MobileMenu = ({ isOpen, onClose }) => {
 
             {/* Scrollable Nav - Fixed scroll bleed */}
             <div className="flex-1 overflow-y-auto pt-2 pb-10 scrollbar-hide px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {/* Language Settings Drawer/Section */}
-              <div className="pb-2">
-                <p className="px-4 text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-2 scale-95 origin-left">Language</p>
-                <LanguageSelector variant="mobile" />
-              </div>
+              {/* Preferences Section: Language & Currency Dropdowns */}
+              <div className="space-y-3 mb-6 px-1">
+                <div className="relative z-20">
+                  <p className="px-1 text-[10px] font-black text-white/30 uppercase tracking-[0.25em] mb-1.5 scale-95 origin-left">Language</p>
+                  <LanguageSelector variant="mobile" />
+                </div>
 
-              {/* Currency Settings Section */}
-              <div className="pb-4">
-                <p className="px-4 text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mb-2 scale-95 origin-left">Currency</p>
-                <CurrencySelector variant="mobile" />
+                <div className="relative z-10">
+                  <p className="px-1 text-[10px] font-black text-white/30 uppercase tracking-[0.25em] mb-1.5 scale-95 origin-left">Currency</p>
+                  <CurrencySelector variant="mobile" />
+                </div>
               </div>
               {/* Main Links */}
               <div className="space-y-1 mb-10">
