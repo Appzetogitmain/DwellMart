@@ -120,9 +120,9 @@ const CartDrawer = () => {
       title={t("Shopping Cart")}
       size="cart"
     >
-      <div className="flex flex-col h-full justify-between bg-slate-900">
+      <div className="flex flex-col flex-1 min-h-0 justify-between bg-slate-900 overflow-hidden">
         {/* Cart Body */}
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-4 scrollbar-admin">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-4 space-y-4 scrollbar-admin">
           {items.length === 0 ? (
             <div className="space-y-4">
               {/* An empty basket is not the whole story when the other
@@ -225,7 +225,7 @@ const CartDrawer = () => {
 
         {/* Cart Footer */}
         {items.length > 0 && (
-          <div className="border-t border-slate-800 p-4 sm:p-5 bg-slate-950/90 space-y-4 backdrop-blur-md">
+          <div className="border-t border-slate-800 p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] bg-slate-950/95 space-y-3.5 backdrop-blur-md shrink-0">
             {/* Mixed cart summary */}
             {isMixedCart && (
               <div className="space-y-1.5 pb-3 border-b border-slate-800">

@@ -13,6 +13,7 @@ export const QuantitySelector = ({
   isLoading = false,
   isOutOfStock = false,
   size = 'md',
+  compact = false,
   className = '',
 }) => {
   const isDisabled = disabled || isOutOfStock || isLoading;
@@ -43,13 +44,13 @@ export const QuantitySelector = ({
   };
 
   const sizeClasses = {
-    sm: 'h-7 text-xs px-1',
+    sm: 'h-8 text-xs px-1',
     md: 'h-9 text-sm px-1.5',
     lg: 'h-11 text-base px-2',
   };
 
   const buttonSizeClasses = {
-    sm: 'w-6 h-6 text-xs',
+    sm: 'w-7 h-7 text-xs',
     md: 'w-7 h-7 text-sm',
     lg: 'w-9 h-9 text-base',
   };
@@ -58,7 +59,7 @@ export const QuantitySelector = ({
     <div
       className={`inline-flex items-center rounded-btn border border-border bg-surface shadow-sm ${
         sizeClasses[size] || sizeClasses.md
-      } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      } ${compact ? 'w-[104px] justify-between' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
     >
       {/* Decrement Button */}
       <button
@@ -78,7 +79,7 @@ export const QuantitySelector = ({
       </button>
 
       {/* Value Display / Manual Input */}
-      <div className="flex-1 min-w-[36px] text-center px-1">
+      <div className={`flex-1 ${compact ? 'min-w-[28px] max-w-[44px] px-0.5' : 'min-w-[36px] px-1'} text-center`}>
         {isLoading ? (
           <Spinner size="sm" inline />
         ) : isOutOfStock ? (

@@ -504,4 +504,7 @@ test('Consignment payload: reference_number is empty string for dynamic AWB allo
     const payload = buildConsignmentPayload(order, vendor, null, vendor._id);
     assert.equal(payload.reference_number, '', 'DTDC requires empty string for auto-allocated AWBs');
     assert.equal(payload.customer_reference_number, 'RT-20260903-5O82IJETYQ');
+
+    const rebookPayload = buildConsignmentPayload(order, vendor, null, vendor._id, null, 1);
+    assert.equal(rebookPayload.customer_reference_number, 'RT-20260903-5O82IJETYQ-R1');
 });

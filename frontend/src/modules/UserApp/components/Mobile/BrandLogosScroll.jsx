@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { getCatalogBrands } from '../../data/catalogData';
@@ -6,10 +7,33 @@ const placeholderLogo = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmln
 
 const BrandLogosScroll = ({ brands = null }) => {
     const navigate = useNavigate();
+    const containerRef = useRef(null);
+    const [cardWidth, setCardWidth] = useState(null);
+
     const fallbackBrands = getCatalogBrands().slice(0, 10);
     const displayBrands = Array.isArray(brands) && brands.length > 0
         ? brands.slice(0, 10)
         : fallbackBrands;
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        const calculateWidth = () => {
+            const available = containerRef.current.clientWidth;
+            if (available > 0) {
+                const gap = 10; // 10px gap
+                const columns = 4; // exactly 4 brands visible without cut-off
+                // subtract 2px to ensure no rounding overflow
+                const computed = Math.floor((available - (gap * (columns - 1)) - 2) / columns);
+                setCardWidth(Math.max(computed, 64));
+            }
+        };
+
+        calculateWidth();
+        const ro = new ResizeObserver(calculateWidth);
+        ro.observe(containerRef.current);
+        return () => ro.disconnect();
+    }, []);
 
     return (
         <section className="bg-transparent w-full overflow-hidden px-4 py-3">
@@ -58,23 +82,7 @@ const BrandLogosScroll = ({ brands = null }) => {
 
             {/* Mobile Layout */}
             <div className="md:hidden w-full">
-                <style>{`
-          @media (min-width: 1024px) {
-            .brand-card-desktop {
-              width: 5rem !important;
-              min-width: 5rem !important;
-              max-width: 5rem !important;
-            }
-          }
-          @media (min-width: 1280px) {
-            .brand-card-desktop {
-              width: 6rem !important;
-              min-width: 6rem !important;
-              max-width: 6rem !important;
-            }
-          }
-        `}</style>
-                <div className="flex items-center justify-between px-1 mb-2">
+                <div className="flex items-center justify-between px-1 mb-2.5">
                     <h2 className="text-lg font-bold text-gray-800 tracking-tight">Top Brands</h2>
                     <button
                         onClick={() => navigate('/brands')}
@@ -83,36 +91,41 @@ const BrandLogosScroll = ({ brands = null }) => {
                         See All &rarr;
                     </button>
                 </div>
-                <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <div className="flex gap-3 sm:gap-4 lg:gap-3 min-w-max px-4 pb-2">
+                <div
+                    ref={containerRef}
+                    className="w-full overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                    <div className="flex gap-2.5 min-w-max pb-2">
                         {displayBrands.map((brand, index) => (
                             <motion.div
                                 key={brand.id}
-                                initial={{ opacity: 0, x: -20 }}
+                                initial={{ opacity: 0, x: -10 }}
                                 whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true, margin: "-50px" }}
-                                transition={{ delay: index * 0.05, duration: 0.3 }}
-                                className="flex-shrink-0 flex flex-col items-center brand-card-desktop"
+                                viewport={{ once: true, margin: "-20px" }}
+                                transition={{ delay: index * 0.04, duration: 0.25 }}
+                                className="flex-shrink-0 flex flex-col items-center snap-start"
                                 style={{
-                                    width: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
-                                    minWidth: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
-                                    maxWidth: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
+                                    width: cardWidth ? `${cardWidth}px` : '70px',
+                                    minWidth: cardWidth ? `${cardWidth}px` : '70px',
+                                    maxWidth: cardWidth ? `${cardWidth}px` : '70px',
                                 }}
                             >
                                 <div
                                     onClick={() => navigate(`/brand/${brand.id}`)}
-                                    className="bg-white rounded-lg sm:rounded-xl lg:rounded-lg p-1.5 sm:p-2 md:p-2 lg:p-1.5 xl:p-2 shadow-md transition-all duration-300 flex items-center justify-center w-full aspect-square group cursor-pointer border border-gray-100 mb-1.5 lg:mb-1 hover:shadow-lg">
+                                    className="bg-white rounded-xl p-2 shadow-xs transition-all duration-300 flex items-center justify-center w-full aspect-square group cursor-pointer border border-gray-100 mb-1 hover:shadow-md hover:border-amber-400 active:scale-95"
+                                >
                                     <img
                                         src={brand.logo || placeholderLogo}
                                         alt={brand.name}
-                                        className="w-[85%] h-[85%] lg:w-[80%] lg:h-[80%] object-contain"
+                                        className="w-[82%] h-[82%] object-contain"
                                         onError={(e) => {
                                             e.target.src = placeholderLogo;
                                         }}
                                         loading="lazy"
                                     />
                                 </div>
-                                <p className="text-xs sm:text-sm lg:text-xs font-semibold text-black text-center transition-colors truncate w-full px-1">
+                                <p className="text-[11px] sm:text-xs font-semibold text-gray-800 text-center transition-colors truncate w-full px-0.5 mt-1">
                                     {brand.name}
                                 </p>
                             </motion.div>

@@ -25,6 +25,7 @@ const Button = forwardRef(({
   fullWidth = false,
   isLoading = false,
   disabled = false,
+  iconOnly = false,
   leftIcon,
   rightIcon,
   type = 'button',
@@ -36,7 +37,7 @@ const Button = forwardRef(({
   const isDisabled = disabled || isLoading;
 
   // Base semantic styles
-  const baseStyles = 'inline-flex items-center justify-center font-bold tracking-wide transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none select-none';
+  const baseStyles = 'inline-flex items-center justify-center font-bold tracking-wide transition-all duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none select-none whitespace-nowrap';
 
   // Size styles — icon variant uses compact square sizing
   const sizeStyles = {
@@ -46,9 +47,9 @@ const Button = forwardRef(({
   };
 
   const iconSizeStyles = {
-    sm: 'p-1.5 min-h-[32px] min-w-[32px] rounded-button',
-    md: 'p-2.5 min-h-[44px] min-w-[44px] rounded-button',
-    lg: 'p-3 min-h-[50px] min-w-[50px] rounded-button',
+    sm: 'p-1.5 h-8 w-8 min-h-[32px] min-w-[32px] shrink-0 rounded-button',
+    md: 'p-2.5 h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-button',
+    lg: 'p-3 h-12 w-12 sm:h-14 sm:w-14 min-h-[48px] min-w-[48px] shrink-0 rounded-button',
   };
 
   // Tone-specific classes for ghost + icon variants
@@ -91,7 +92,7 @@ const Button = forwardRef(({
     icon:      toneMap[tone]?.icon  ?? toneMap.neutral.icon,
   };
 
-  const isIconVariant = variant === 'icon';
+  const isIconVariant = variant === 'icon' || iconOnly;
   const activeSizeStyle = isIconVariant
     ? (iconSizeStyles[size] || iconSizeStyles.md)
     : (sizeStyles[size] || sizeStyles.md);

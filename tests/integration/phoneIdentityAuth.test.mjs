@@ -336,3 +336,42 @@ test('delivery login uses the local default OTP for the configured rider number'
     assert.equal(String(verifyRes.body.data.deliveryBoy.id), String(rider._id));
     assert.equal(await storedCode(PHONE), undefined, 'login OTP must be consumed after a successful session');
 });
+
+test('delivery login uses fixed OTP 123456 for seeded 1234567890 rider', async () => {
+    const SEED_PHONE_NATIONAL = '1234567890';
+    const SEED_PHONE_E164 = '+911234567890';
+
+    const rider = await DeliveryBoy.create({
+        name: 'Delivery Boy',
+        email: 'test-1234567890@example.com',
+        phone: SEED_PHONE_NATIONAL,
+        phoneE164: SEED_PHONE_E164,
+        phoneVerified: true,
+        applicationStatus: 'approved',
+        isActive: true,
+        isAvailable: true,
+    });
+
+    const requestRes = await invokeHandler(requestLoginOTP, { phone: SEED_PHONE_NATIONAL });
+    assert.equal(requestRes.statusCode, 200);
+    assert.equal(await storedCode(SEED_PHONE_E164), '123456');
+
+    // Wrong OTP must be rejected
+    await assert.rejects(
+        () => invokeHandler(verifyLoginOTP, { phone: SEED_PHONE_NATIONAL, otp: '999999' }),
+        (err) => err.statusCode === 400
+    );
+
+    // Fixed OTP 123456 must succeed
+    const verifyRes = await invokeHandler(verifyLoginOTP, { phone: SEED_PHONE_NATIONAL, otp: '123456' });
+    assert.equal(verifyRes.statusCode, 200);
+    assert.ok(verifyRes.body.data.accessToken);
+    assert.ok(verifyRes.body.data.refreshToken);
+    assert.equal(String(verifyRes.body.data.deliveryBoy.id), String(rider._id));
+
+    // Direct login with +911234567890 and OTP 123456 also succeeds
+    const directVerifyRes = await invokeHandler(verifyLoginOTP, { phone: SEED_PHONE_E164, otp: '123456' });
+    assert.equal(directVerifyRes.statusCode, 200);
+    assert.ok(directVerifyRes.body.data.accessToken);
+});
+

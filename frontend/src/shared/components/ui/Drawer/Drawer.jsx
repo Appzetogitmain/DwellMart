@@ -157,7 +157,7 @@ const Drawer = ({
             exit="hidden"
             variants={slideVariants[position] || slideVariants.right}
             transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-            className={`fixed bg-slate-900 border-l border-slate-800 shadow-2xl text-white flex flex-col z-20 ${
+            className={`fixed bg-slate-900 border-l border-slate-800 shadow-2xl text-white flex flex-col z-20 overflow-hidden ${
               positionClasses[position] || positionClasses.right
             } ${sizeMap[size] || sizeMap.md} ${className}`}
             data-component="Drawer"
@@ -194,7 +194,7 @@ const Drawer = ({
 // Compound Drawer Subcomponents
 const DrawerHeader = ({ title, subtitle, children, className = '' }) => (
   <div
-    className={`p-5 sm:p-6 border-b border-border flex flex-col justify-center ${className}`}
+    className={`p-5 sm:p-6 border-b border-border flex flex-col justify-center shrink-0 ${className}`}
     data-component="DrawerHeader"
   >
     <div className="space-y-1 pr-6">
