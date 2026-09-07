@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useCartStore, useUIStore } from "../../../shared/store/useStore";
+import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { useWishlistStore } from "../../../shared/store/wishlistStore";
 import { useReviewsStore } from "../../../shared/store/reviewsStore";
 import { useOrderStore } from "../../../shared/store/orderStore";
@@ -242,6 +243,30 @@ const MobileProductDetail = () => {
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   const { items, addItem, removeItem } = useCartStore();
+  const activeExperience = useExperienceStore((state) => state.experience);
+  const setExperience = useExperienceStore((state) => state.setExperience);
+
+  const productExperience = useMemo(() => {
+    if (!product) return 'marketplace';
+    if (product.effectiveChannel === 'quickCommerce') return 'quick_commerce';
+    if (product.effectiveChannel === 'wholesale') return 'wholesale';
+    if (product.effectiveChannel === 'retail') return 'marketplace';
+
+    // If browsing experience matches a supported channel:
+    if (activeExperience === 'quick_commerce' && product.quickCommerceEnabled) return 'quick_commerce';
+    if (activeExperience === 'wholesale' && product.wholesaleEnabled) return 'wholesale';
+    if ((activeExperience === 'marketplace' || activeExperience === 'retail') && product.retailEnabled !== false) return 'marketplace';
+
+    // Channel fallbacks:
+    if (product.quickCommerceEnabled && product.retailEnabled === false) return 'quick_commerce';
+    if (product.wholesaleEnabled && product.retailEnabled === false) return 'wholesale';
+    if (product.retailEnabled !== false) return 'marketplace';
+    if (product.quickCommerceEnabled) return 'quick_commerce';
+    if (product.wholesaleEnabled) return 'wholesale';
+
+    return 'marketplace';
+  }, [product, activeExperience]);
+
   const triggerCartAnimation = useUIStore(
     (state) => state.triggerCartAnimation
   );
@@ -471,14 +496,15 @@ const MobileProductDetail = () => {
     }
 
     const resolvedFulfillmentType = (() => {
-      // Prefer explicit fields from the API response
+      // 1. Prefer explicit fields from the API response
       if (product.fulfillmentType) return product.fulfillmentType;
-      if (product.experience) return product.experience;
-      // Product channel flags (canonical source of truth post-migration)
-      if (product.quickCommerceEnabled) return 'quick_commerce';
-      // Wholesale-only product (not available on retail)
-      if (product.wholesaleEnabled && product.retailEnabled === false) return 'wholesale';
-      // Backend checkout will re-validate; default to retail
+      if (product.effectiveChannel === 'quickCommerce') return 'quick_commerce';
+      if (product.effectiveChannel === 'wholesale') return 'wholesale';
+      if (product.effectiveChannel === 'retail') return 'retail';
+
+      // 2. Align with productExperience context
+      if (productExperience === 'quick_commerce') return 'quick_commerce';
+      if (productExperience === 'wholesale') return 'wholesale';
       return 'retail';
     })();
 
@@ -813,14 +839,77 @@ const MobileProductDetail = () => {
                     {product.name}
                   </h1>
 
+                  {/* Cross-Experience Context Notice Banner */}
+                  {activeExperience === 'quick_commerce' && productExperience === 'marketplace' && (
+                    <div className="mb-4 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">📦</span>
+                        <div>
+                          <p className="text-xs sm:text-sm font-semibold text-blue-900 dark:text-blue-200">
+                            {t("Standard Delivery Item (Marketplace)")}
+                          </p>
+                          <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                            {t("This item is delivered in 2–5 days via standard shipping and will be placed in your Standard Delivery basket.")}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExperience('marketplace')}
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                      >
+                        {t("Switch to Marketplace")}
+                      </button>
+                    </div>
+                  )}
+
+                  {activeExperience === 'marketplace' && productExperience === 'quick_commerce' && (
+                    <div className="mb-4 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">⚡</span>
+                        <div>
+                          <p className="text-xs sm:text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                            {t("Express Delivery Item (Quick Commerce)")}
+                          </p>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                            {t("Delivered in 15–30 minutes via hyperlocal delivery and will be placed in your Express Delivery basket.")}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExperience('quick_commerce')}
+                        className="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                      >
+                        {t("Switch to Express")}
+                      </button>
+                    </div>
+                  )}
+
+                  {activeExperience !== 'wholesale' && productExperience === 'wholesale' && (
+                    <div className="mb-4 p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-xl">🏭</span>
+                        <div>
+                          <p className="text-xs sm:text-sm font-semibold text-purple-900 dark:text-purple-200">
+                            {t("B2B Wholesale Item")}
+                          </p>
+                          <p className="text-[11px] text-purple-700 dark:text-purple-300">
+                            {t("Bulk order item with Tier Pricing and Minimum Order Quantity.")}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Contextual Experience Specs Banner */}
                   <div className="mb-5 p-4 rounded-2xl bg-surface border border-border space-y-2">
                     <div className="flex items-center gap-2 mb-2">
-                      <ExperienceBadge experience={product.experience || (product.quickCommerceEnabled ? 'quick_commerce' : product.wholesaleEnabled ? 'wholesale' : 'marketplace')} size="md" />
+                      <ExperienceBadge experience={productExperience} size="md" />
                       <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Experience Specific Specs</span>
                     </div>
 
-                    {(product.quickCommerceEnabled || product.experience === 'quick_commerce') ? (
+                    {productExperience === 'quick_commerce' ? (
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-700 dark:text-amber-300">
                           <span className="font-semibold block text-[11px] uppercase">ETA Window</span>
@@ -839,7 +928,7 @@ const MobileProductDetail = () => {
                           <span className="font-bold">{product.quickCommerce?.isPerishable ? 'Refund on damaged delivery' : '24-Hour QC Window'}</span>
                         </div>
                       </div>
-                    ) : (hasWholesale || product.wholesaleEnabled) ? (
+                    ) : (productExperience === 'wholesale' || hasWholesale) ? (
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-700 dark:text-purple-300">
                           <span className="font-semibold block text-[11px] uppercase">B2B Wholesale</span>

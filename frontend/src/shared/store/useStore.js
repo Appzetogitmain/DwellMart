@@ -142,15 +142,20 @@ export const useCartStore = create(
           if (ft === 'wholesale') return 'wholesale';
           if (ft === 'retail') return 'retail';
 
-          // 2. Product-level channel flags (canonical source of truth)
-          if (item?.quickCommerceEnabled === true) return 'quick_commerce';
-          if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
-
-          // 3. Heuristic fallback: check active experience store or vendor name
+          // 2. Active experience context matching product-level channel flags
           const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
-          if (activeExp === 'quick_commerce') return 'quick_commerce';
-          if (activeExp === 'wholesale') return 'wholesale';
+          if (activeExp === 'quick_commerce' && item?.quickCommerceEnabled === true) return 'quick_commerce';
+          if (activeExp === 'wholesale' && item?.wholesaleEnabled === true) return 'wholesale';
+          if ((activeExp === 'marketplace' || activeExp === 'retail') && item?.retailEnabled !== false) return 'retail';
 
+          // 3. Dedicated single-channel products (canonical source of truth)
+          if (item?.quickCommerceEnabled === true && item?.retailEnabled === false) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
+          if (item?.retailEnabled !== false) return 'retail';
+          if (item?.quickCommerceEnabled === true) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true) return 'wholesale';
+
+          // 4. Heuristic fallback: check vendor name
           const vName = String(item?.vendorName || item?.vendor?.storeName || item?.storeName || '').toLowerCase();
           if (vName.includes('quick commerce') || vName.includes('express daily')) return 'quick_commerce';
           if (vName.includes('wholesale') || vName.includes('mega bulk')) return 'wholesale';
@@ -385,15 +390,20 @@ export const useCartStore = create(
           if (ft === 'wholesale') return 'wholesale';
           if (ft === 'retail') return 'retail';
 
-          // 2. Product-level channel flags (canonical source of truth post-migration)
-          if (item?.quickCommerceEnabled === true) return 'quick_commerce';
-          if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
-
-          // 3. Heuristic fallback: check active experience store or vendor name
+          // 2. Active experience context matching product-level channel flags
           const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
-          if (activeExp === 'quick_commerce') return 'quick_commerce';
-          if (activeExp === 'wholesale') return 'wholesale';
+          if (activeExp === 'quick_commerce' && item?.quickCommerceEnabled === true) return 'quick_commerce';
+          if (activeExp === 'wholesale' && item?.wholesaleEnabled === true) return 'wholesale';
+          if ((activeExp === 'marketplace' || activeExp === 'retail') && item?.retailEnabled !== false) return 'retail';
 
+          // 3. Dedicated single-channel products (canonical source of truth post-migration)
+          if (item?.quickCommerceEnabled === true && item?.retailEnabled === false) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
+          if (item?.retailEnabled !== false) return 'retail';
+          if (item?.quickCommerceEnabled === true) return 'quick_commerce';
+          if (item?.wholesaleEnabled === true) return 'wholesale';
+
+          // 4. Heuristic fallback: check vendor name
           const vName = String(item?.vendorName || item?.vendor?.storeName || item?.storeName || '').toLowerCase();
           if (vName.includes('quick commerce') || vName.includes('express daily')) return 'quick_commerce';
           if (vName.includes('wholesale') || vName.includes('mega bulk')) return 'wholesale';

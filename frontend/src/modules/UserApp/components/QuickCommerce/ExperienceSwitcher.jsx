@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiCheckCircle, FiArrowRight, FiZap, FiShoppingBag, FiClock, FiPackage } from "react-icons/fi";
@@ -15,7 +16,12 @@ import { EXPERIENCES } from "../../../../shared/utils/experience";
 const ExperienceSwitcher = ({ className = "" }) => {
   const navigate = useNavigate();
   const { experience, setExperience } = useExperienceStore();
-  const { settings } = useSettingsStore();
+  const { settings, initialize } = useSettingsStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
 
   if (!quickCommerceEnabled) return null;

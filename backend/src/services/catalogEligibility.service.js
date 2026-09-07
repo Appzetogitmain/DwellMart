@@ -139,31 +139,6 @@ export const isProductPubliclyVisible = async (product, { experience, sellingCha
         return { visible: false, reason: 'PRODUCT_INACTIVE' };
     }
 
-    const channelPath = channelPathForExperience(experience, sellingChannel);
-    const productFlag = productFlagForChannelPath(channelPath);
-
-    let effectiveChannelPath = channelPath;
-    let published = productFlag === 'retailEnabled'
-        ? product.retailEnabled !== false
-        : product[productFlag] === true;
-
-    // If browsing without explicit channel on marketplace, allow access if published on quickCommerce or wholesale
-    if (!published && !sellingChannel && normalizeExperience(experience) === EXPERIENCES.MARKETPLACE) {
-        if (product.quickCommerceEnabled === true) {
-            effectiveChannelPath = 'quickCommerce';
-            published = true;
-        } else if (product.wholesaleEnabled === true) {
-            effectiveChannelPath = 'wholesale';
-            published = true;
-        }
-    }
-
-    if (!published) return { visible: false, reason: 'NOT_PUBLISHED_ON_CHANNEL' };
-
-    if (!(await isChannelFeatureEnabled(effectiveChannelPath))) {
-        return { visible: false, reason: 'CHANNEL_DISABLED_PLATFORM_WIDE' };
-    }
-
     const vendorId = product.vendorId?._id || product.vendorId;
     if (!vendorId) return { visible: false, reason: 'VENDOR_MISSING' };
 
@@ -173,11 +148,49 @@ export const isProductPubliclyVisible = async (product, { experience, sellingCha
     }
 
     const allowed = includePaused ? ['active', 'paused'] : ['active'];
-    if (!allowed.includes(vendor.channels?.[effectiveChannelPath]?.status)) {
-        return { visible: false, reason: 'VENDOR_CHANNEL_INACTIVE' };
+    const primaryChannel = channelPathForExperience(experience, sellingChannel);
+
+    // If an explicit sellingChannel is requested, only check that specific channel.
+    // Otherwise, check candidate channels in proximity order to the requested experience
+    // so direct link / detail page navigation never falsely 404s when a product is published.
+    let candidateChannels = [primaryChannel];
+    if (!sellingChannel) {
+        const normExp = normalizeExperience(experience);
+        if (normExp === EXPERIENCES.QUICK_COMMERCE) {
+            candidateChannels = ['quickCommerce', 'retail', 'wholesale'];
+        } else if (normExp === EXPERIENCES.WHOLESALE) {
+            candidateChannels = ['wholesale', 'retail', 'quickCommerce'];
+        } else {
+            candidateChannels = ['retail', 'quickCommerce', 'wholesale'];
+        }
     }
 
-    return { visible: true, reason: null };
+    let lastFailureReason = 'NOT_PUBLISHED_ON_CHANNEL';
+
+    for (const ch of candidateChannels) {
+        const flag = productFlagForChannelPath(ch);
+        const isPublished = flag === 'retailEnabled'
+            ? product.retailEnabled !== false
+            : product[flag] === true;
+
+        if (!isPublished) {
+            continue;
+        }
+
+        if (!(await isChannelFeatureEnabled(ch))) {
+            lastFailureReason = 'CHANNEL_DISABLED_PLATFORM_WIDE';
+            continue;
+        }
+
+        if (!allowed.includes(vendor.channels?.[ch]?.status)) {
+            lastFailureReason = 'VENDOR_CHANNEL_INACTIVE';
+            continue;
+        }
+
+        return { visible: true, channel: ch, reason: null };
+    }
+
+    return { visible: false, reason: lastFailureReason };
 };
 
 /**

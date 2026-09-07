@@ -549,11 +549,23 @@ router.get('/similar/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req
     if (!product) throw new ApiError(404, 'Product not found.');
     const activeSaleProductIds = await getActiveSaleProductIds();
 
-    // Channel comes from the experience the customer is browsing, not from
-    // flag priority on the product: a retail+QC product is a marketplace
-    // product on the marketplace and a QC product on Quick Commerce.
+    // Channel comes from the experience the customer is browsing, unless the product
+    // does not belong to that channel (e.g. customer in Quick Commerce views a Marketplace
+    // product), in which case recommendations match the product's actual channel.
+    const reqExp = getRequestExperience(req);
+    let effectiveExp = reqExp;
+    if (reqExp === EXPERIENCES.QUICK_COMMERCE && !product.quickCommerceEnabled) {
+        effectiveExp = product.wholesaleEnabled && product.retailEnabled === false
+            ? EXPERIENCES.WHOLESALE
+            : EXPERIENCES.MARKETPLACE;
+    } else if (reqExp === EXPERIENCES.WHOLESALE && !product.wholesaleEnabled) {
+        effectiveExp = product.quickCommerceEnabled && product.retailEnabled === false
+            ? EXPERIENCES.QUICK_COMMERCE
+            : EXPERIENCES.MARKETPLACE;
+    }
+
     const guard = await buildPublicCatalogGuard({
-        experience: getRequestExperience(req),
+        experience: effectiveExp,
         sellingChannel: req.query?.sellingChannel,
     });
 
@@ -591,6 +603,8 @@ const getProductDetail = asyncHandler(async (req, res) => {
         includePaused: true,
     });
     if (!visibility.visible) throw new ApiError(404, 'Product not found.');
+
+    product.effectiveChannel = visibility.channel;
 
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
     if (!wholesaleEnabled) {
