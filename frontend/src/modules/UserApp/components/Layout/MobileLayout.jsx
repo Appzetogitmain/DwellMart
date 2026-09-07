@@ -65,7 +65,7 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
         {children}
       </main>
       {!isAuthPage && !isCheckoutPage && <Footer />}
-      {showCartBar && <MobileCartBar />}
+      {showCartBar && <MobileCartBar hasBottomNav={shouldShowBottomNav} />}
       {shouldShowBottomNav && <MobileBottomNav />}
       <CartDrawer />
     </>

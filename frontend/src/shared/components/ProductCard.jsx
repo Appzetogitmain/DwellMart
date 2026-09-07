@@ -1,4 +1,4 @@
-import { FiHeart, FiShoppingBag, FiStar, FiTrash2, FiZap } from "react-icons/fi";
+import { FiHeart, FiShoppingBag, FiStar, FiTrash2, FiZap, FiMinus, FiPlus } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../store/useStore";
@@ -13,7 +13,7 @@ import LongPressMenu from "../../modules/UserApp/components/Mobile/LongPressMenu
 import FlyingItem from "../../modules/UserApp/components/Mobile/FlyingItem";
 import { getVariantSignature } from "../utils/variant";
 import { usePageTranslation } from "../../hooks/usePageTranslation";
-import { Card, Button, Badge } from "./ui";
+import { Card, Button, Badge, QuantitySelector } from "./ui";
 import { ProductWholesaleBadge } from "./WholesaleBadge";
 
 
@@ -78,7 +78,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
   ]);
 
   const productLink = `/product/${product.id}`;
-  const { items, addItem, removeItem } = useCartStore();
+  const { items, addItem, removeItem, updateQuantity } = useCartStore();
   const triggerCartAnimation = useUIStore(
     (state) => state.triggerCartAnimation
   );
@@ -87,11 +87,68 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     removeItem: removeFromWishlist,
     isInWishlist,
   } = useWishlistStore();
-  const hasNoVariant = (cartItem) => !getVariantSignature(cartItem?.variant || {});
   const isFavorite = isInWishlist(product.id);
-  const isInCart = items.some(
-    (item) => item.id === product.id && hasNoVariant(item)
+  const cartItem = items.find(
+    (item) => String(item.id || item.productId) === String(product.id || product._id)
   );
+  const isInCart = Boolean(cartItem);
+  const cartQuantity = cartItem?.quantity || 0;
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const isOutOfStock =
+    product.stock === 'out_of_stock' ||
+    (Number.isFinite(Number(product.stockQuantity)) && Number(product.stockQuantity) <= 0);
+  const maxStock =
+    Number.isFinite(Number(product.stockQuantity)) && Number(product.stockQuantity) > 0
+      ? Number(product.stockQuantity)
+      : 99;
+
+  const handleQuantityChange = (newQty) => {
+    const clamped = Math.min(Math.max(1, newQty), maxStock);
+    setSelectedQuantity(clamped);
+  };
+
+  const handleCartQuantityChange = (newQty) => {
+    if (newQty < 1) {
+      removeItem(product.id, cartItem?.variant || {});
+      toast.success(t("Removed from cart!"));
+      setSelectedQuantity(1);
+      return;
+    }
+    const maxStock = Number(product.stockQuantity);
+    if (Number.isFinite(maxStock) && maxStock > 0 && newQty > maxStock) {
+      toast.error(`Only ${maxStock} items available in stock`);
+      return;
+    }
+    updateQuantity(product.id, newQty, cartItem?.variant || {});
+    triggerCartAnimation();
+  };
+
+  const priceNum = Number(product?.price) || 0;
+  const originalPriceNum = Number(product?.originalPrice) || 0;
+  const hasOriginalPrice = Boolean(product?.originalPrice && originalPriceNum > priceNum);
+
+  // Scaled typography classes based on price magnitude to prevent horizontal overflow/clipping
+  const isSuperLongPrice = priceNum >= 100000 || originalPriceNum >= 100000;
+  const isVeryLongPrice = !isSuperLongPrice && (priceNum >= 10000 || originalPriceNum >= 10000);
+  const isLongPrice = !isSuperLongPrice && !isVeryLongPrice && (priceNum >= 1000 || originalPriceNum >= 1000);
+
+  const priceTextSize = isSuperLongPrice
+    ? "text-xs sm:text-[13px] md:text-sm lg:text-[15px] tracking-tight"
+    : isVeryLongPrice
+    ? "text-xs sm:text-sm md:text-[15px] lg:text-base tracking-tight"
+    : isLongPrice && hasOriginalPrice
+    ? "text-xs sm:text-sm md:text-base lg:text-lg tracking-tight"
+    : isLongPrice
+    ? "text-xs sm:text-sm md:text-lg lg:text-xl tracking-tight"
+    : hasOriginalPrice
+    ? "text-xs sm:text-sm md:text-lg lg:text-xl"
+    : "text-xs sm:text-sm md:text-xl";
+
+  const originalPriceTextSize = isSuperLongPrice
+    ? "text-[9px] md:text-[10px]"
+    : isVeryLongPrice
+    ? "text-[9px] md:text-[11px]"
+    : "text-[9px] md:text-xs";
   const [isAdding, setIsAdding] = useState(false);
   const [showLongPressMenu, setShowLongPressMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
@@ -161,7 +218,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       name: product.name,
       price: product.price,
       image: product.image,
-      quantity: 1,
+      quantity: selectedQuantity,
       stockQuantity: product.stockQuantity,
       vendorId: product.vendorId,
       vendorName: product.vendorName,
@@ -175,6 +232,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     if (!addedToCart) return;
     triggerCartAnimation();
     toast.success(t("Added to cart!"));
+    setSelectedQuantity(1);
   };
 
   const handleRemoveFromCart = (e) => {
@@ -182,8 +240,38 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
       e.preventDefault();
       e.stopPropagation();
     }
-    removeItem(product.id, {});
+    removeItem(product.id, cartItem?.variant || {});
     toast.success(t("Removed from cart!"));
+    setSelectedQuantity(1);
+  };
+
+  const handleIncreaseQuantity = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const maxStock = Number(product.stockQuantity);
+    const newQty = cartQuantity + 1;
+    if (Number.isFinite(maxStock) && maxStock > 0 && newQty > maxStock) {
+      toast.error(`Only ${maxStock} items available in stock`);
+      return;
+    }
+    updateQuantity(product.id, newQty, cartItem?.variant || {});
+    triggerCartAnimation();
+  };
+
+  const handleDecreaseQuantity = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (cartQuantity <= 1) {
+      removeItem(product.id, cartItem?.variant || {});
+      toast.success(t("Removed from cart!"));
+    } else {
+      updateQuantity(product.id, cartQuantity - 1, cartItem?.variant || {});
+    }
+    triggerCartAnimation();
   };
 
   const handleLongPress = (e) => {
@@ -359,21 +447,52 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
             </div>
           )}
 
-          <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 mb-2 mt-auto leading-none">
-            <Price amount={product.price} className={`text-xs md:text-xl font-black leading-none ${currentVariantConfig.priceColor}`} />
-            {product.originalPrice && (
-              <Price amount={product.originalPrice} className="text-[9px] md:text-xs text-textColor-muted line-through font-medium leading-none mb-0.5" />
+          {/* Responsive Flexible Price Row */}
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-2 mt-auto leading-none w-full min-w-0">
+            <Price
+              amount={product.price}
+              className={`whitespace-nowrap font-black leading-none shrink-0 ${currentVariantConfig.priceColor} ${priceTextSize}`}
+            />
+            {hasOriginalPrice && (
+              <Price
+                amount={product.originalPrice}
+                className={`whitespace-nowrap text-textColor-muted line-through font-medium leading-none mb-0.5 ${originalPriceTextSize}`}
+              />
             )}
           </div>
 
-          {/* Add/Remove Button using Primitive Button */}
+          {/* Compact Centered Quantity Selector */}
+          {!isOutOfStock && (
+            <div
+              className="flex items-center justify-center mb-2"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <QuantitySelector
+                value={isInCart ? cartQuantity : selectedQuantity}
+                onChange={isInCart ? handleCartQuantityChange : handleQuantityChange}
+                min={1}
+                max={maxStock}
+                size="sm"
+                compact
+                allowManualInput={false}
+                disabled={isOutOfStock}
+                isOutOfStock={isOutOfStock}
+                className="bg-surface-card border-borderToken-default shadow-xs"
+              />
+            </div>
+          )}
+
+          {/* Add / Remove Button using Primitive Button */}
           {isInCart ? (
             <Button
               variant="danger"
               size="sm"
               fullWidth
               onClick={handleRemoveFromCart}
-              leftIcon={<FiTrash2 />}
+              leftIcon={<FiTrash2 className="text-xs shrink-0" />}
             >
               {t('Remove')}
             </Button>
@@ -383,12 +502,12 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
               variant={currentVariantConfig.buttonVariant}
               size="sm"
               fullWidth
-              disabled={product.stock === 'out_of_stock'}
+              disabled={isOutOfStock}
               isLoading={isAdding}
               onClick={handleAddToCart}
-              leftIcon={<FiShoppingBag />}
+              leftIcon={<FiShoppingBag className="text-xs shrink-0" />}
             >
-              {product.stock === 'out_of_stock'
+              {isOutOfStock
                 ? t('Out of Stock')
                 : t('Add to Cart')}
             </Button>

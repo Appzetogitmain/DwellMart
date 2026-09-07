@@ -147,7 +147,7 @@ export const useCartStore = create(
           if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
 
           // 3. Heuristic fallback: check active experience store or vendor name
-          const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
+          const activeExp = String(getExperience() || '').toLowerCase();
           if (activeExp === 'quick_commerce') return 'quick_commerce';
           if (activeExp === 'wholesale') return 'wholesale';
 
@@ -390,7 +390,7 @@ export const useCartStore = create(
           if (item?.wholesaleEnabled === true && item?.retailEnabled === false) return 'wholesale';
 
           // 3. Heuristic fallback: check active experience store or vendor name
-          const activeExp = String(useExperienceStore?.getState?.()?.experience || '').toLowerCase();
+          const activeExp = String(getExperience() || '').toLowerCase();
           if (activeExp === 'quick_commerce') return 'quick_commerce';
           if (activeExp === 'wholesale') return 'wholesale';
 

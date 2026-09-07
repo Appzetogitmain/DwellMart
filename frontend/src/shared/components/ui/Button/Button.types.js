@@ -9,6 +9,7 @@
  * @property {boolean} [fullWidth=false]
  * @property {boolean} [isLoading=false]
  * @property {boolean} [disabled=false]
+ * @property {boolean} [iconOnly=false]
  * @property {React.ReactNode} [leftIcon]
  * @property {React.ReactNode} [rightIcon]
  * @property {'button'|'submit'|'reset'} [type='button']

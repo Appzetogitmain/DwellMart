@@ -944,14 +944,14 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* PRODUCT ACTIONS */}
-                <div className="flex items-center gap-3 w-full py-2">
+                <div className="flex items-center gap-2.5 sm:gap-3.5 w-full py-2">
                   {isInCart ? (
                     <Button
                       variant="danger"
                       size="lg"
-                      fullWidth
+                      className="flex-1 h-12 sm:h-14 text-sm sm:text-base font-bold shadow-sm active:scale-[0.98] transition-all"
                       onClick={handleRemoveFromCart}
-                      leftIcon={<FiTrash2 />}
+                      leftIcon={<FiTrash2 className="text-base sm:text-lg shrink-0" />}
                     >
                       {t('Remove from Cart')}
                     </Button>
@@ -959,10 +959,10 @@ const MobileProductDetail = () => {
                     <Button
                       variant="primary"
                       size="lg"
-                      fullWidth
+                      className="flex-1 h-12 sm:h-14 text-sm sm:text-base font-bold shadow-sm active:scale-[0.98] transition-all"
                       disabled={product.stock === "out_of_stock" || belowMinimumOrder}
                       onClick={handleAddToCart}
-                      leftIcon={<FiShoppingBag />}
+                      leftIcon={<FiShoppingBag className="text-base sm:text-lg shrink-0" />}
                     >
                       {product.stock === "out_of_stock"
                         ? t("Out of Stock")
@@ -975,14 +975,22 @@ const MobileProductDetail = () => {
                   <Button
                     variant={isFavorite ? 'danger' : 'outline'}
                     size="lg"
+                    iconOnly
+                    className={`h-12 w-12 sm:h-14 sm:w-14 shrink-0 transition-all ${
+                      isFavorite
+                        ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-500'
+                        : 'bg-surface hover:bg-surface-muted text-content border-border hover:border-content-muted'
+                    }`}
                     onClick={handleFavorite}
                     aria-label="Add to wishlist"
-                    leftIcon={<FiHeart className={isFavorite ? 'fill-current' : ''} />}
+                    leftIcon={<FiHeart className={`text-lg sm:text-xl ${isFavorite ? 'fill-current' : ''}`} />}
                   />
 
                   <Button
                     variant="outline"
                     size="lg"
+                    iconOnly
+                    className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 bg-surface hover:bg-surface-muted text-content border-border hover:border-content-muted transition-all"
                     onClick={() => {
                       if (navigator.share) {
                         navigator.share({
@@ -996,7 +1004,7 @@ const MobileProductDetail = () => {
                       }
                     }}
                     aria-label="Share product"
-                    leftIcon={<FiShare2 />}
+                    leftIcon={<FiShare2 className="text-lg sm:text-xl" />}
                   />
                 </div>
 
