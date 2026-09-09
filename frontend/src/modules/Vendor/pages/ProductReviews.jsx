@@ -24,6 +24,7 @@ const ProductReviews = () => {
   const [selectedProduct, setSelectedProduct] = useState("all");
   const [selectedReview, setSelectedReview] = useState(null);
   const [responseText, setResponseText] = useState("");
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   const vendorId = vendor?.id;
 
@@ -353,7 +354,10 @@ const ProductReviews = () => {
           data={filteredReviews}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={itemsPerPage}
+          showSizeChanger={true}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+          onPageSizeChange={setItemsPerPage}
         />
       ) : (
         <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">

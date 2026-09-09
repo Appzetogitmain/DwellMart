@@ -44,7 +44,9 @@ export const useVendorProductStore = create((set, get) => ({
         set({ isLoading: true });
         try {
             const { fetchAll = false, ...queryParams } = params || {};
-            const pageSize = Math.max(Number.parseInt(queryParams.limit, 10) || 100, 1);
+            const pageSize = queryParams.limit === 'all'
+                ? 'all'
+                : Math.max(Number.parseInt(queryParams.limit, 10) || 100, 1);
             let currentPage = Math.max(Number.parseInt(queryParams.page, 10) || 1, 1);
             let totalPages = 1;
             let latestPagination = {

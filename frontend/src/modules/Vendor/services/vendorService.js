@@ -221,7 +221,7 @@ export const getVendorOrders = (params = {}) =>
  * @param {{ limit?: number, status?: string }} params
  */
 export const getAllVendorOrders = async (params = {}) => {
-    const pageSize = Math.max(Number.parseInt(params.limit, 10) || 100, 1);
+    const pageSize = params.limit === 'all' ? 'all' : Math.max(Number.parseInt(params.limit, 10) || 100, 1);
     let page = 1;
     let pages = 1;
     let total = 0;
@@ -402,7 +402,7 @@ export const getVendorReturnRequests = (params = {}) =>
  * @param {{ limit?: number, search?: string, status?: string }} params
  */
 export const getAllVendorReturnRequests = async (params = {}) => {
-    const pageSize = Math.max(Number.parseInt(params.limit, 10) || 100, 1);
+    const pageSize = params.limit === 'all' ? 'all' : Math.max(Number.parseInt(params.limit, 10) || 100, 1);
     let page = 1;
     let pages = 1;
     let total = 0;
@@ -458,7 +458,7 @@ export const getVendorReviews = (params = {}) =>
  * @param {{ limit?: number, rating?: number|string, productId?: string }} params
  */
 export const getAllVendorReviews = async (params = {}) => {
-    const pageSize = Math.max(Number.parseInt(params.limit, 10) || 100, 1);
+    const pageSize = params.limit === 'all' ? 'all' : Math.max(Number.parseInt(params.limit, 10) || 100, 1);
     let page = 1;
     let pages = 1;
     let total = 0;

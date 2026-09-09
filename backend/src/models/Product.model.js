@@ -199,6 +199,8 @@ productSchema.index({ createdAt: -1 });
 productSchema.index({ categoryId: 1, createdAt: -1 });
 productSchema.index({ brandId: 1, createdAt: -1 });
 productSchema.index({ stock: 1, createdAt: -1 });
+productSchema.index({ vendorId: 1, createdAt: -1 });
+productSchema.index({ vendorId: 1, stock: 1, createdAt: -1 });
 
 /**
  * Product channel flags (quickCommerceEnabled, retailEnabled, wholesaleEnabled)

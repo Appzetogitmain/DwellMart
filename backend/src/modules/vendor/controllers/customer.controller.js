@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const toPositiveNumber = (value) => {
     const parsed = Number(value);
@@ -70,10 +71,11 @@ const shouldIncludeOrderForMetrics = (order, vendorId) => {
 };
 
 export const getVendorCustomers = asyncHandler(async (req, res) => {
-    const { search = '', page = 1, limit = 10 } = req.query;
-    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.max(parseInt(limit, 10) || 10, 1);
-    const skip = (numericPage - 1) * numericLimit;
+    const { search = '' } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 10,
+        maxLimit: 1000,
+    });
 
     const orders = await Order.find({
         'vendorItems.vendorId': req.user.id,
@@ -141,7 +143,7 @@ export const getVendorCustomers = asyncHandler(async (req, res) => {
     const total = customers.length;
     const totalRevenue = customers.reduce((sum, customer) => sum + toPositiveNumber(customer.totalSpent), 0);
     const averageCustomerValue = total > 0 ? totalRevenue / total : 0;
-    const paginated = customers.slice(skip, skip + numericLimit);
+    const paginated = customers.slice(skip, skip + limit);
 
     res.status(200).json(
         new ApiResponse(
@@ -155,9 +157,9 @@ export const getVendorCustomers = asyncHandler(async (req, res) => {
                 },
                 pagination: {
                     total,
-                    page: numericPage,
-                    limit: numericLimit,
-                    pages: Math.max(Math.ceil(total / numericLimit), 1),
+                    page,
+                    limit,
+                    pages: calculatePages(total),
                 },
             },
             'Customers fetched.'
@@ -167,10 +169,10 @@ export const getVendorCustomers = asyncHandler(async (req, res) => {
 
 export const getVendorCustomerById = asyncHandler(async (req, res) => {
     const customerId = String(req.params.id);
-    const { page = 1, limit = 10 } = req.query;
-    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.max(parseInt(limit, 10) || 10, 1);
-    const skip = (numericPage - 1) * numericLimit;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 10,
+        maxLimit: 1000,
+    });
 
     const orders = await Order.find({
         'vendorItems.vendorId': req.user.id,
@@ -195,7 +197,7 @@ export const getVendorCustomerById = asyncHandler(async (req, res) => {
         0
     );
 
-    const paginatedHistory = customerOrders.slice(skip, skip + numericLimit);
+    const paginatedHistory = customerOrders.slice(skip, skip + limit);
 
     const detail = {
         id: customerId,
@@ -208,9 +210,9 @@ export const getVendorCustomerById = asyncHandler(async (req, res) => {
         orderHistory: paginatedHistory,
         pagination: {
             total: customerOrders.length,
-            page: numericPage,
-            limit: numericLimit,
-            pages: Math.max(Math.ceil(customerOrders.length / numericLimit), 1),
+            page,
+            limit,
+            pages: calculatePages(customerOrders.length),
         },
     };
 

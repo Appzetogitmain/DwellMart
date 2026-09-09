@@ -29,6 +29,9 @@ const returnRequestSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+returnRequestSchema.index({ vendorId: 1, createdAt: -1 });
+returnRequestSchema.index({ vendorId: 1, status: 1, createdAt: -1 });
+
 const ReturnRequest = mongoose.model('ReturnRequest', returnRequestSchema);
 export { ReturnRequest };
 export default ReturnRequest;

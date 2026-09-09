@@ -26,6 +26,7 @@ const AllOrders = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedExperience, setSelectedExperience] = useState('all');
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   /**
    * Orders that are ready to despatch but have no courier booking. Fetched
    * from the server rather than derived here, because eligibility depends on
@@ -358,7 +359,10 @@ const AllOrders = () => {
             data={filteredOrders}
             columns={columns}
             pagination={true}
-            itemsPerPage={10}
+            itemsPerPage={itemsPerPage}
+            showSizeChanger={true}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+            onPageSizeChange={setItemsPerPage}
             onRowClick={(row) => navigate(`/vendor/orders/${row.orderId ?? row._id}`)}
           />
         ) : (
