@@ -6,6 +6,7 @@ import { createNotification } from '../../../services/notification.service.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { ApiResponse } from '../../../utils/ApiResponse.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const enrichReturnItems = (request) => {
     const orderItems = Array.isArray(request?.orderId?.items) ? request.orderId.items : [];
@@ -48,9 +49,8 @@ const normalizeReturnRequest = (request) => ({
  * @access  Private (Admin)
  */
 export const getAllReturnRequests = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, search = '', status, startDate, endDate } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 10;
+    const { search = '', status, startDate, endDate } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 10, maxLimit: 1000 });
 
     const filter = {};
 
@@ -98,8 +98,8 @@ export const getAllReturnRequests = asyncHandler(async (req, res) => {
         .populate('userId', 'name email phone')
         .populate('orderId', 'orderId total')
         .sort({ createdAt: -1 })
-        .skip((numericPage - 1) * numericLimit)
-        .limit(numericLimit);
+        .skip(skip)
+        .limit(limit);
 
     const total = await ReturnRequest.countDocuments(filter);
 
@@ -111,9 +111,9 @@ export const getAllReturnRequests = asyncHandler(async (req, res) => {
             returnRequests: normalizedRequests,
             pagination: {
                 total,
-                page: numericPage,
-                limit: numericLimit,
-                pages: Math.ceil(total / numericLimit)
+                page,
+                limit,
+                pages: calculatePages(total)
             }
         }, 'Return requests fetched successfully')
     );

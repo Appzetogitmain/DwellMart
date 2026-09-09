@@ -21,6 +21,7 @@ import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/event
 import { emitToRoom, emitToUserRoom } from '../../../socket.js';
 import Shipment from '../../../models/Shipment.model.js';
 import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 /**
  * GET /api/admin/orders/quick-commerce/unassigned
@@ -30,8 +31,7 @@ import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.serv
  * state rather than inferring it from a null `deliveryBoyId`.
  */
 export const getUnassignedQuickCommerceOrders = asyncHandler(async (req, res) => {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
 
     const filter = {
         experience: EXPERIENCES.QUICK_COMMERCE,
@@ -107,10 +107,8 @@ export const retryQuickCommerceAssignment = asyncHandler(async (req, res) => {
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
-    const { status, page = 1, limit = 20, search, startDate, endDate, userId } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 20;
-    const skip = (numericPage - 1) * numericLimit;
+    const { status, search, startDate, endDate, userId } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const filter = { isDeleted: { $ne: true } };
 
     if (status && status !== 'all') filter.status = status;
@@ -152,7 +150,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
             .populate('deliveryBoyId', 'name phone')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(numericLimit)
+            .limit(limit)
             .lean(),
         Order.countDocuments(filter),
     ]);
@@ -160,8 +158,9 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, {
         orders,
         total,
-        page: numericPage,
-        pages: Math.ceil(total / numericLimit),
+        page,
+        pages: calculatePages(total),
+        limit,
     }, 'Orders fetched.'));
 });
 

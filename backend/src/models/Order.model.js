@@ -494,6 +494,9 @@ orderSchema.index({ vendorId: 1, fulfillmentType: 1, createdAt: -1 });
 orderSchema.index({ checkoutSessionId: 1 });
 orderSchema.index({ fulfillmentGroupId: 1 });
 orderSchema.index({ fulfillmentType: 1, status: 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ 'shippingAddress.email': 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export { Order };

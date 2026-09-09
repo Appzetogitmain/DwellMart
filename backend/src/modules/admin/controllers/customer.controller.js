@@ -4,6 +4,7 @@ import ApiError from '../../../utils/ApiError.js';
 import User from '../../../models/User.model.js';
 import Order from '../../../models/Order.model.js';
 import Address from '../../../models/Address.model.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 /**
  * @desc    Get all customers with pagination and filters
@@ -11,9 +12,8 @@ import Address from '../../../models/Address.model.js';
  * @access  Private (Admin)
  */
 export const getAllCustomers = asyncHandler(async (req, res) => {
-    const { status, search, page = 1, limit = 10 } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 10;
+    const { status, search } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 10, maxLimit: 1000 });
 
     const filter = { role: 'customer' };
 
@@ -29,13 +29,11 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
         ];
     }
 
-    const skip = (numericPage - 1) * numericLimit;
-
     const customers = await User.find(filter)
         .select('-password -otp -otpExpiry')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(numericLimit);
+        .limit(limit);
 
     const total = await User.countDocuments(filter);
 
@@ -91,9 +89,9 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
             customers: customersWithStats,
             pagination: {
                 total,
-                page: numericPage,
-                limit: numericLimit,
-                pages: Math.ceil(total / numericLimit)
+                page,
+                limit,
+                pages: calculatePages(total)
             }
         }, 'Customers fetched successfully')
     );

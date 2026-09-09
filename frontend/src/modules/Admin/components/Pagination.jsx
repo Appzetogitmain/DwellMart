@@ -7,12 +7,17 @@ const Pagination = ({
   totalItems,
   itemsPerPage,
   onPageChange,
+  showSizeChanger = false,
+  onPageSizeChange = null,
+  pageSizeOptions = [25, 50, 100, 250, 500, 'All'],
   className = '',
 }) => {
-  if (totalPages <= 1) return null;
+  if (totalPages <= 1 && !showSizeChanger) return null;
 
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const isAll = String(itemsPerPage).toLowerCase() === 'all';
+  const numericItemsPerPage = isAll ? (totalItems || 1000) : (Number(itemsPerPage) || 10);
+  const startItem = totalItems === 0 ? 0 : isAll ? 1 : Math.min((currentPage - 1) * numericItemsPerPage + 1, totalItems);
+  const endItem = isAll ? totalItems : Math.min(currentPage * numericItemsPerPage, totalItems);
 
   const handlePageChange = (page) => {
     const newPage = Math.max(1, Math.min(page, totalPages));
@@ -26,16 +31,16 @@ const Pagination = ({
       <div className="text-xs sm:text-sm text-gray-700">
         Showing {startItem} to {endItem} of {totalItems} results
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          disabled={currentPage <= 1}
           variant="secondary"
           icon={FiChevronLeft}
           aria-label="Previous page"
         />
         <div className="flex items-center gap-1">
-          {[...Array(totalPages)].map((_, index) => {
+          {[...Array(Math.max(1, totalPages))].map((_, index) => {
             const page = index + 1;
             // Show first, last, current, and adjacent pages
             if (
@@ -66,11 +71,30 @@ const Pagination = ({
         </div>
         <Button
           onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage >= totalPages}
           variant="secondary"
           icon={FiChevronRight}
           aria-label="Next page"
         />
+        {showSizeChanger && onPageSizeChange && (
+          <select
+            value={isAll ? 'all' : String(itemsPerPage)}
+            onChange={(e) => {
+              const val = e.target.value;
+              onPageSizeChange(val.toLowerCase() === 'all' ? 'all' : Number(val));
+            }}
+            className="ml-2 text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            {pageSizeOptions.map((opt) => {
+              const optIsAll = String(opt).toLowerCase() === 'all';
+              return (
+                <option key={String(opt)} value={optIsAll ? 'all' : String(opt)}>
+                  {optIsAll ? 'All' : `${opt} / page`}
+                </option>
+              );
+            })}
+          </select>
+        )}
       </div>
     </div>
   );
