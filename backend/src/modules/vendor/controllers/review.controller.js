@@ -4,6 +4,7 @@ import ApiError from '../../../utils/ApiError.js';
 import Review from '../../../models/Review.model.js';
 import Product from '../../../models/Product.model.js';
 import { syncProductAndVendorReviewStats } from '../../../services/reviewAggregate.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const normalizeReview = (reviewDoc) => {
     const review = reviewDoc.toObject ? reviewDoc.toObject() : reviewDoc;
@@ -22,9 +23,11 @@ const normalizeReview = (reviewDoc) => {
 
 // GET /api/vendor/reviews
 export const getVendorReviews = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, rating, productId } = req.query;
-    const numericPage = Math.max(1, Number(page) || 1);
-    const numericLimit = Math.max(1, Number(limit) || 20);
+    const { rating, productId } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 20,
+        maxLimit: 1000,
+    });
 
     const vendorProducts = await Product.find({ vendorId: req.user.id }).select('_id').lean();
     const vendorProductIds = vendorProducts.map((p) => p._id);
@@ -34,7 +37,7 @@ export const getVendorReviews = asyncHandler(async (req, res) => {
                 200,
                 {
                     reviews: [],
-                    pagination: { total: 0, page: numericPage, limit: numericLimit, pages: 0 },
+                    pagination: { total: 0, page, limit, pages: 0 },
                 },
                 'Reviews fetched.'
             )
@@ -57,8 +60,8 @@ export const getVendorReviews = asyncHandler(async (req, res) => {
             .populate('userId', 'name email')
             .populate('productId', 'name')
             .sort({ createdAt: -1 })
-            .skip((numericPage - 1) * numericLimit)
-            .limit(numericLimit),
+            .skip(skip)
+            .limit(limit),
         Review.countDocuments(filter),
     ]);
 
@@ -70,9 +73,9 @@ export const getVendorReviews = asyncHandler(async (req, res) => {
                 reviews: normalized,
                 pagination: {
                     total,
-                    page: numericPage,
-                    limit: numericLimit,
-                    pages: Math.ceil(total / numericLimit),
+                    page,
+                    limit,
+                    pages: calculatePages(total),
                 },
             },
             'Reviews fetched.'

@@ -62,6 +62,7 @@ const ManageProducts = () => {
   const [filterPerishable, setFilterPerishable] = useState("all"); // qc
 
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, productId: null });
+  const [pageSize, setPageSize] = useState(50);
 
   const vendorId = vendor?.id;
   const currentExperience = workspace === 'quick_commerce' ? 'quick_commerce' : 'marketplace';
@@ -393,6 +394,13 @@ const ManageProducts = () => {
           emptyDescription="Get started by adding your first product to your catalog."
           currentPage={currentPage}
           onPageChange={handlePageChange}
+          pageSize={pageSize}
+          showSizeChanger={true}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            handlePageChange(1);
+          }}
         />
       </div>
 

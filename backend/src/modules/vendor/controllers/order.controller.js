@@ -37,6 +37,7 @@ import { channelToOrderType } from '../../../constants/vendorChannels.js';
 import { orderChannelFilter, resolveOrderChannel } from '../../../services/orderChannel.service.js';
 import Shipment from '../../../models/Shipment.model.js';
 import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -56,11 +57,12 @@ const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
 
 // GET /api/vendor/orders
 export const getVendorOrders = asyncHandler(async (req, res) => {
-    const { status, orderType, type, fulfillmentType, page = 1, limit = 20 } = req.query;
+    const { status, orderType, type, fulfillmentType } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 20,
+        maxLimit: 1000,
+    });
     const targetOrderType = channelToOrderType(req.vendorWorkspace) || orderType || type;
-    const numericPage = Math.max(1, Number(page) || 1);
-    const numericLimit = Math.max(1, Number(limit) || 20);
-    const skip = (numericPage - 1) * numericLimit;
 
     const vendorId = req.user.id;
 
@@ -83,7 +85,7 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
         .populate('userId', 'name email phone')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(numericLimit)
+        .limit(limit)
         .lean();
     const total = await Order.countDocuments(filter);
 
@@ -108,7 +110,7 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
         };
     });
 
-    res.status(200).json(new ApiResponse(200, { orders: sanitizedOrders, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Orders fetched.'));
+    res.status(200).json(new ApiResponse(200, { orders: sanitizedOrders, total, page, pages: calculatePages(total), limit }, 'Orders fetched.'));
 });
 
 // GET /api/vendor/orders/:id
