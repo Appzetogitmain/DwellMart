@@ -556,25 +556,24 @@ export const logout = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, null, 'Logged out successfully.'));
 });
 
+const buildVendorProfilePayload = async (vendorDoc) => {
+    const currentSubscription = await getCurrentVendorSubscription(vendorDoc._id);
+    return {
+        ...vendorDoc.toObject({ virtuals: true }),
+        ...channelSummary(vendorDoc),
+        selectedPlan: vendorDoc.selectedPlan ? serializePlan(vendorDoc.selectedPlan, vendorDoc.country) : null,
+        subscription: await serializeSubscription(currentSubscription),
+    };
+};
+
 export const getProfile = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findById(req.user.id)
         .select('-password -otp -otpExpiry')
         .populate('selectedPlan');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    const currentSubscription = await getCurrentVendorSubscription(vendor._id);
-    res.status(200).json(
-        new ApiResponse(
-            200,
-            {
-                ...vendor.toObject({ virtuals: true }),
-                ...channelSummary(vendor),
-                selectedPlan: vendor.selectedPlan ? serializePlan(vendor.selectedPlan, vendor.country) : null,
-                subscription: await serializeSubscription(currentSubscription),
-            },
-            'Profile fetched.'
-        )
-    );
+    const profile = await buildVendorProfilePayload(vendor);
+    res.status(200).json(new ApiResponse(200, profile, 'Profile fetched.'));
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
@@ -603,7 +602,10 @@ export const updateProfile = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true })
         .select('-password -otp -otpExpiry')
         .populate('selectedPlan');
-    res.status(200).json(new ApiResponse(200, vendor, 'Profile updated.'));
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    const profile = await buildVendorProfilePayload(vendor);
+    res.status(200).json(new ApiResponse(200, profile, 'Profile updated.'));
 });
 
 // PUT /api/vendor/quick-commerce/settings
@@ -899,9 +901,12 @@ export const updateBankDetails = asyncHandler(async (req, res) => {
         req.user.id,
         { $set: updates },
         { new: true, runValidators: true }
-    ).select('-password -otp -otpExpiry');
+    ).select('-password -otp -otpExpiry')
+     .populate('selectedPlan');
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
 
-    res.status(200).json(new ApiResponse(200, vendor, 'Bank details updated.'));
+    const profile = await buildVendorProfilePayload(vendor);
+    res.status(200).json(new ApiResponse(200, profile, 'Bank details updated.'));
 });
 
 // DELETE /api/vendor/auth/account

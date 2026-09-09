@@ -216,11 +216,28 @@ export const useVendorAuthStore = create(
         try {
           const response = await updateVendorProfile(profileData);
           const data = response?.data ?? response;
-          // Merge returned vendor data back into state so UI stays in sync
-          const updatedVendor =
-            data && (data._id || data.id)
-              ? data
-              : (data?.vendor ?? { ...get().vendor, ...profileData });
+          const returnedVendor = (data && (data._id || data.id))
+            ? data
+            : (data?.vendor ?? profileData);
+
+          const currentVendor = get().vendor || {};
+          // Strip undefined fields so they do not inadvertently overwrite existing state
+          const cleanReturned = returnedVendor && typeof returnedVendor === 'object'
+            ? Object.fromEntries(Object.entries(returnedVendor).filter(([_, v]) => v !== undefined))
+            : {};
+
+          const updatedVendor = {
+            ...currentVendor,
+            ...cleanReturned,
+          };
+
+          // Guard against losing channel session arrays if the payload was partial
+          if (!updatedVendor.activeWorkspaces && currentVendor.activeWorkspaces) {
+            updatedVendor.activeWorkspaces = currentVendor.activeWorkspaces;
+          }
+          if (!updatedVendor.readableWorkspaces && currentVendor.readableWorkspaces) {
+            updatedVendor.readableWorkspaces = currentVendor.readableWorkspaces;
+          }
 
           set({
             vendor: updatedVendor,
