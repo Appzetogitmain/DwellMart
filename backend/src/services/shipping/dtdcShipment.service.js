@@ -451,9 +451,21 @@ export const parseServiceabilityResponse = (data) => {
     const message = String(verdict.MESSAGE || '').trim();
     const serviceable = message.toUpperCase() === 'SUCCESS';
 
+    // B2C E-Commerce COD check: DTDC returns specific B2C retail COD availability in SERV_LIST[0].b2C_COD_Serviceable.
+    // In many pincodes, generic SERV_COD or b2B_COD_Serviceable is 'Y' while b2C_COD_Serviceable is 'NO'.
+    const servList = Array.isArray(data?.SERV_LIST) ? data.SERV_LIST[0] : null;
+    let codAvailable = false;
+    if (servList && typeof servList.b2C_COD_Serviceable === 'string') {
+        codAvailable = servList.b2C_COD_Serviceable.trim().toUpperCase() === 'YES';
+    } else if (servList && typeof servList.COD_Serviceable === 'string') {
+        codAvailable = servList.COD_Serviceable.trim().toUpperCase() === 'YES';
+    } else {
+        codAvailable = String(verdict.SERV_COD || '').trim().toUpperCase() === 'Y';
+    }
+
     return {
         serviceable,
-        codAvailable: String(verdict.SERV_COD || '').toUpperCase() === 'Y',
+        codAvailable,
         destinationCity: verdict.DESTCITY || null,
         destinationState: verdict.DESTSTATE || null,
         ...(serviceable ? {} : { error: message || 'Route is not serviceable.' }),

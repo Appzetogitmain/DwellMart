@@ -330,7 +330,7 @@ export const splitAndCreateOrders = async ({
     // yields `blocking: false` and is recorded on the order instead; see
     // services/shipping/deliverability.service.js.
     const deliverability = await checkDeliverability(shippingAddress?.zipCode, {
-        requiresCod: String(paymentMethod || '').toLowerCase() === 'cod',
+        requiresCod: ['cod', 'cash'].includes(String(paymentMethod || '').trim().toLowerCase()),
     });
 
     if (deliverability.blocking) {

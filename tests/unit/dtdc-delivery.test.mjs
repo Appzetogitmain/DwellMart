@@ -39,6 +39,7 @@ import {
     isCodOrder,
     bookingKey,
     buildConsignmentPayload,
+    parseServiceabilityResponse,
 } from '../../src/services/shipping/dtdcShipment.service.js';
 
 // ─── Provider separation ───────────────────────────────────────────────────
@@ -508,3 +509,67 @@ test('Consignment payload: reference_number is empty string for dynamic AWB allo
     const rebookPayload = buildConsignmentPayload(order, vendor, null, vendor._id, null, 1);
     assert.equal(rebookPayload.customer_reference_number, 'RT-20260903-5O82IJETYQ-R1');
 });
+
+test('Serviceability parser: accurately prioritizes b2C_COD_Serviceable over legacy SERV_COD', () => {
+    // Exact response structure for Bokaro / Dugda pincode 828404 where B2C COD is disallowed but legacy SERV_COD is "Y"
+    const mockDugdaResponse = {
+        ZIPCODE_RESP: [{
+            MESSAGE: 'SUCCESS',
+            DESTPIN: '828404',
+            DESTCITY: 'DUGDA',
+            DESTSTATE: 'JHARKHAND',
+            SERV_COD: 'Y',
+        }],
+        SERV_LIST: [{
+            b2C_SERVICEABLE: 'YES',
+            b2C_COD_Serviceable: 'NO',
+            b2B_COD_Serviceable: 'YES',
+            COD_Serviceable: 'YES',
+        }],
+    };
+
+    const verdict = parseServiceabilityResponse(mockDugdaResponse);
+    assert.equal(verdict.serviceable, true);
+    assert.equal(verdict.codAvailable, false, 'Should be false when b2C_COD_Serviceable is NO, regardless of SERV_COD');
+    assert.equal(verdict.destinationCity, 'DUGDA');
+    assert.equal(verdict.destinationState, 'JHARKHAND');
+});
+
+test('Serviceability parser: marks codAvailable true when b2C_COD_Serviceable is YES', () => {
+    const mockServiceableCodResponse = {
+        ZIPCODE_RESP: [{
+            MESSAGE: 'SUCCESS',
+            DESTPIN: '400001',
+            DESTCITY: 'MUMBAI',
+            DESTSTATE: 'MAHARASHTRA',
+            SERV_COD: 'Y',
+        }],
+        SERV_LIST: [{
+            b2C_SERVICEABLE: 'YES',
+            b2C_COD_Serviceable: 'YES',
+            b2B_COD_Serviceable: 'YES',
+        }],
+    };
+
+    const verdict = parseServiceabilityResponse(mockServiceableCodResponse);
+    assert.equal(verdict.serviceable, true);
+    assert.equal(verdict.codAvailable, true);
+    assert.equal(verdict.destinationCity, 'MUMBAI');
+});
+
+test('Serviceability parser: handles missing SERV_LIST by falling back to ZIPCODE_RESP.SERV_COD', () => {
+    const mockLegacyResponse = {
+        ZIPCODE_RESP: [{
+            MESSAGE: 'SUCCESS',
+            DESTPIN: '500034',
+            DESTCITY: 'HYDERABAD',
+            DESTSTATE: 'TELANGANA',
+            SERV_COD: 'Y',
+        }],
+    };
+
+    const verdict = parseServiceabilityResponse(mockLegacyResponse);
+    assert.equal(verdict.serviceable, true);
+    assert.equal(verdict.codAvailable, true);
+});
+

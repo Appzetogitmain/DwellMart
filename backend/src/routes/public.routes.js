@@ -1667,7 +1667,7 @@ router.get('/deliverability', deliverabilityLimiter, asyncHandler(async (req, re
 
     const verdict = await checkDeliverability(pincode, {
         vendorId: vendorId && mongoose.isValidObjectId(vendorId) ? vendorId : null,
-        requiresCod: String(paymentMethod || '').toLowerCase() === 'cod',
+        requiresCod: ['cod', 'cash'].includes(String(paymentMethod || '').trim().toLowerCase()),
     });
 
     res.status(200).json(new ApiResponse(200, verdict, 'Deliverability checked'));

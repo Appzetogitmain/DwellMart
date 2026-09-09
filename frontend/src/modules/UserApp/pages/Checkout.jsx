@@ -114,7 +114,10 @@ const MobileCheckout = () => {
     "Failed to place order",
     "product",
     "products",
-    "available"
+    "available",
+    "Prepaid only",
+    "COD is unavailable for this pincode. Switched to online payment.",
+    "Cash on Delivery is unavailable for this pincode. Please select an online payment method."
   ]);
 
   const { translateArray } = useDynamicTranslation();
@@ -507,6 +510,19 @@ const MobileCheckout = () => {
     };
   }, [isQuickCommerce, formData.zipCode, formData.paymentMethod]);
 
+  // If COD is not serviceable for this destination pincode, auto-switch to online payment
+  useEffect(() => {
+    if (!isQuickCommerce && deliverabilityVerdict && deliverabilityVerdict.codAvailable === false && formData.paymentMethod === 'cash') {
+      const fallbackMethod = (paymentSettings?.cardEnabled !== false)
+        ? 'card'
+        : (paymentSettings?.upiEnabled !== false ? 'upi' : 'wallet');
+      setFormData((prev) => ({ ...prev, paymentMethod: fallbackMethod }));
+      toast(t("COD is unavailable for this pincode. Switched to online payment."), {
+        icon: 'ℹ️',
+      });
+    }
+  }, [deliverabilityVerdict, isQuickCommerce, formData.paymentMethod, paymentSettings, t]);
+
   const handleApplyCoupon = async (codeOverride = "") => {
     const normalizedCode = String(codeOverride || couponCode).trim().toUpperCase();
     if (!normalizedCode) {
@@ -717,6 +733,10 @@ const MobileCheckout = () => {
       }
       if (deliverabilityVerdict && deliverabilityVerdict.blocking) {
         toast.error(deliverabilityVerdict.message || t("This destination is not serviceable for delivery."));
+        return;
+      }
+      if (step === 2 && deliverabilityVerdict?.codAvailable === false && ['cash', 'cod'].includes(String(formData.paymentMethod || '').toLowerCase())) {
+        toast.error(t("Cash on Delivery is unavailable for this pincode. Please select an online payment method."));
         return;
       }
     }
@@ -1192,32 +1212,53 @@ const MobileCheckout = () => {
                         if (method === 'wallet') return paymentSettings.walletEnabled !== false;
                         if (method === 'upi') return paymentSettings.upiEnabled !== false;
                         return true;
-                      }).map((method) => (
-                        <label
-                          key={method}
-                          className={`flex items-center gap-3.5 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
-                            ? "border-brand-primary bg-amber-500/10 shadow-xs"
-                            : "border-slate-200 bg-white hover:border-slate-300 shadow-2xs"
+                      }).map((method) => {
+                        const isMethodDisabled = method === 'cash' && !isQuickCommerce && deliverabilityVerdict?.codAvailable === false;
+                        return (
+                          <label
+                            key={method}
+                            className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                              isMethodDisabled
+                                ? "opacity-60 cursor-not-allowed bg-slate-50 border-slate-200"
+                                : formData.paymentMethod === method
+                                ? "border-brand-primary bg-amber-500/10 shadow-xs cursor-pointer"
+                                : "border-slate-200 bg-white hover:border-slate-300 shadow-2xs cursor-pointer"
                             }`}>
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method}
-                            checked={formData.paymentMethod === method}
-                            onChange={handleInputChange}
-                            className="w-5 h-5 text-brand-primary focus:ring-brand-primary"
-                          />
-                          <span className="font-bold text-slate-900 capitalize text-base">
-                            {method === "card"
-                              ? t("Credit/Debit Card")
-                              : method === "cash"
-                                ? t("Cash on Delivery")
-                                : method === "wallet"
-                                  ? t("Digital Wallet")
-                                  : t("UPI")}
-                          </span>
-                        </label>
-                      ))}
+                            <div className="flex items-center gap-3.5">
+                              <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={method}
+                                checked={formData.paymentMethod === method}
+                                onChange={handleInputChange}
+                                disabled={isMethodDisabled}
+                                className="w-5 h-5 text-brand-primary focus:ring-brand-primary disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-900 capitalize text-base">
+                                  {method === "card"
+                                    ? t("Credit/Debit Card")
+                                    : method === "cash"
+                                      ? t("Cash on Delivery")
+                                      : method === "wallet"
+                                        ? t("Digital Wallet")
+                                        : t("UPI")}
+                                </span>
+                                {isMethodDisabled && (
+                                  <span className="text-xs text-amber-700 font-medium mt-0.5">
+                                    Not available for pincode {formData.zipCode}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {isMethodDisabled && (
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                                {t('Prepaid only')}
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}
