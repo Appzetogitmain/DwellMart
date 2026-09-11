@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
+import BannerLinkInput from "../../components/Banners/BannerLinkInput";
 import { useBannerStore } from "../../../../shared/store/bannerStore";
 import { getPlaceholderImage } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
@@ -356,12 +357,16 @@ const HomeSliders = () => {
                       disabled={isUploadingImage}
                     />
                   </label>
-                  <input
-                    type="text"
+                  <BannerLinkInput
                     name="link"
-                    defaultValue={editingSlider.link || ""}
+                    value={editingSlider.link || ""}
+                    onChange={(e) =>
+                      setEditingSlider({
+                        ...editingSlider,
+                        link: e.target.value,
+                      })
+                    }
                     placeholder="Optional: /offers or https://example.com"
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 -mt-2">
                     Leave empty to make banner non-clickable. Invalid links are ignored.

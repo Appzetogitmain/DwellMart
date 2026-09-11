@@ -53,6 +53,7 @@ const gradientPalette = [
 const KNOWN_USER_ROUTE_PATTERNS = [
   "/",
   "/home",
+  "/shop",
   "/search",
   "/offers",
   "/daily-deals",
@@ -61,9 +62,15 @@ const KNOWN_USER_ROUTE_PATTERNS = [
   "/categories",
   "/category/:id",
   "/brand/:id",
+  "/brands",
   "/seller/:id",
+  "/sellers",
+  "/vendors",
   "/product/:id",
   "/sale/:slug",
+  "/quick-commerce",
+  "/sell-on-dwellmart",
+  "/shop-with-confidence",
   "/track-order/:orderId",
 ];
 

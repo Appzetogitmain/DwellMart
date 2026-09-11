@@ -6,6 +6,7 @@ import { useBannerStore } from "../../../../shared/store/bannerStore";
 import AnimatedSelect from "../AnimatedSelect";
 import toast from "react-hot-toast";
 import Button from "../Button";
+import BannerLinkInput from "./BannerLinkInput";
 import { uploadAdminImage } from "../../services/adminService";
 
 const BannerForm = ({ banner, onClose, onSave }) => {
@@ -314,12 +315,10 @@ const BannerForm = ({ banner, onClose, onSave }) => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Link URL
                   </label>
-                  <input
-                    type="text"
+                  <BannerLinkInput
                     name="link"
                     value={formData.link}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="/category/electronics or https://example.com"
                   />
                 </div>

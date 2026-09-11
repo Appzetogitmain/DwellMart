@@ -59,9 +59,15 @@ export const useCategoryStore = create(
         return get().categories;
       },
 
-      // Get category by ID
+      // Get category by ID or slug
       getCategoryById: (id) => {
-        return get().categories.find((cat) => String(cat.id) === String(id));
+        if (!id) return null;
+        const target = String(id).trim().toLowerCase();
+        return get().categories.find((cat) =>
+          String(cat.id || "").toLowerCase() === target ||
+          String(cat._id || "").toLowerCase() === target ||
+          String(cat.slug || "").toLowerCase() === target
+        );
       },
 
       // Create category
