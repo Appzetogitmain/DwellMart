@@ -662,30 +662,29 @@ const MobileHome = () => {
                         />
 
                         {hasText && (
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent sm:bg-gradient-to-r sm:from-black/80 sm:via-black/35 sm:to-transparent flex flex-col justify-end sm:justify-center p-4 sm:p-8 md:p-10 pointer-events-none z-10">
-                            <div className="max-w-md space-y-1.5 sm:space-y-2.5">
+                          <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 pointer-events-none max-w-[70%] sm:max-w-xs md:max-w-sm">
+                            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-white/60 dark:border-gray-800/60 shadow-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1 sm:space-y-1.5 text-left">
                               {slide.subtitle && (
                                 <div>
-                                  <span className="inline-block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400 bg-black/50 backdrop-blur-sm px-2.5 py-0.5 rounded-md drop-shadow">
+                                  <span className="inline-block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 px-2 py-0.5 rounded-md">
                                     {slide.subtitle}
                                   </span>
                                 </div>
                               )}
                               {slide.title && (
-                                <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white leading-tight drop-shadow-lg line-clamp-2">
+                                <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-1">
                                   {slide.title}
                                 </h2>
                               )}
                               {slide.description && (
-                                <p className="text-xs sm:text-sm md:text-base text-gray-200 line-clamp-2 drop-shadow font-medium">
+                                <p className="text-[11px] sm:text-xs md:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
                                   {slide.description}
                                 </p>
                               )}
                               {slide.link && (
-                                <div className="pt-1 sm:pt-2">
-                                  <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900 px-4 py-1.5 rounded-lg shadow-lg hover:bg-gray-100 transition-colors pointer-events-auto">
-                                    {t("Shop Now")} →
-                                  </span>
+                                <div className="pt-1 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-primary-600 dark:text-primary-400">
+                                  <span>{t("Shop Now")}</span>
+                                  <span>→</span>
                                 </div>
                               )}
                             </div>
