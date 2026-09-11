@@ -420,6 +420,8 @@ const MobileHome = () => {
             image: banner.image,
             link: resolveBannerLink(banner),
             title: banner.title || "",
+            subtitle: banner.subtitle || "",
+            description: banner.description || "",
           }));
         setSlides(bannerSlides.length > 0 ? bannerSlides : DEFAULT_HERO_SLIDES);
 
@@ -634,27 +636,64 @@ const MobileHome = () => {
                     ease: [0.25, 0.46, 0.45, 0.94], // Smooth easing
                     type: "tween",
                   }}>
-                  {slides.map((slide, index) => (
-                    <div
-                      key={index}
-                      className="flex-shrink-0"
-                      onClick={() => handleSlideClick(slide)}
-                      style={{
-                        width: `${100 / slides.length}%`,
-                        height: "100%",
-                        cursor: slide?.link ? "pointer" : "default",
-                      }}>
-                      <LazyImage
-                        src={slide.image}
-                        alt={`Slide ${index + 1}`}
-                        className="w-full h-full object-cover pointer-events-none select-none"
-                        draggable={false}
-                        onError={(e) => {
-                          e.target.src = getPlaceholderImage(400, 200, `Slide ${index + 1}`);
-                        }}
-                      />
-                    </div>
-                  ))}
+                  {slides.map((slide, index) => {
+                    const hasText = Boolean(
+                      slide.title || slide.subtitle || slide.description
+                    );
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex-shrink-0 relative h-full overflow-hidden"
+                        onClick={() => handleSlideClick(slide)}
+                        style={{
+                          width: `${100 / slides.length}%`,
+                          height: "100%",
+                          cursor: slide?.link ? "pointer" : "default",
+                        }}>
+                        <LazyImage
+                          src={slide.image}
+                          alt={slide.title || `Slide ${index + 1}`}
+                          className="w-full h-full object-cover pointer-events-none select-none"
+                          draggable={false}
+                          onError={(e) => {
+                            e.target.src = getPlaceholderImage(400, 200, `Slide ${index + 1}`);
+                          }}
+                        />
+
+                        {hasText && (
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent sm:bg-gradient-to-r sm:from-black/80 sm:via-black/35 sm:to-transparent flex flex-col justify-end sm:justify-center p-4 sm:p-8 md:p-10 pointer-events-none z-10">
+                            <div className="max-w-md space-y-1.5 sm:space-y-2.5">
+                              {slide.subtitle && (
+                                <div>
+                                  <span className="inline-block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-yellow-400 bg-black/50 backdrop-blur-sm px-2.5 py-0.5 rounded-md drop-shadow">
+                                    {slide.subtitle}
+                                  </span>
+                                </div>
+                              )}
+                              {slide.title && (
+                                <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white leading-tight drop-shadow-lg line-clamp-2">
+                                  {slide.title}
+                                </h2>
+                              )}
+                              {slide.description && (
+                                <p className="text-xs sm:text-sm md:text-base text-gray-200 line-clamp-2 drop-shadow font-medium">
+                                  {slide.description}
+                                </p>
+                              )}
+                              {slide.link && (
+                                <div className="pt-1 sm:pt-2">
+                                  <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold bg-white text-gray-900 px-4 py-1.5 rounded-lg shadow-lg hover:bg-gray-100 transition-colors pointer-events-auto">
+                                    {t("Shop Now")} →
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </motion.div>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10 pointer-events-none">
                   {slides.map((_, index) => (
