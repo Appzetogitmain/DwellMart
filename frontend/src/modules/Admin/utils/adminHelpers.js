@@ -9,23 +9,22 @@ export const formatCurrency = (amount) => {
 
 // Format date for admin display
 export const formatDate = (date, options = {}) => {
+  if (!date) return '—';
   const defaultOptions = {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     ...options,
   };
-  return new Date(date).toLocaleDateString('en-US', defaultOptions);
+  return new Date(date).toLocaleDateString('en-IN', defaultOptions);
 };
 
 // Format date and time
 export const formatDateTime = (date) => {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  if (!date) return '—';
+  return new Date(date).toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
   });
 };
 

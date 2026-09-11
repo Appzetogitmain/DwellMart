@@ -493,6 +493,7 @@ export const splitAndCreateOrders = async ({
                             packagingFee: pricing.packagingFee || 0,
                             tax:       pricing.tax,
                             discount:  pricing.discount,
+                            total:     pricing.total,
                             // The channel this group was split under. `orderType`
                             // below is a PRICING type from deriveOrderType() and
                             // cannot represent Quick Commerce, so it must never

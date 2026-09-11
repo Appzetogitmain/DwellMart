@@ -107,7 +107,7 @@ const currentStatusFor = (order, vendorId) => {
  * @param {string} [vendorId]
  * @returns {string[]} the statuses stepped through, in order (empty = no change)
  */
-export const advanceOrderStatus = (order, target, channel, vendorId = null) => {
+export const advanceOrderStatus = (order, target, channel, vendorId = null, eventAt = null) => {
     if (!target) return [];
 
     const ladder = ladderFor(channel);
@@ -126,7 +126,7 @@ export const advanceOrderStatus = (order, target, channel, vendorId = null) => {
     const applied = [];
 
     for (const next of path) {
-        applyOrderStatus(order, next, vendorId, channel);
+        applyOrderStatus(order, next, vendorId, channel, eventAt);
         applied.push(next);
     }
 
@@ -174,7 +174,7 @@ const deriveTopLevelStatus = (items, channel, fallback = 'pending') => {
  * with `allStatuses.every(...)`, which returns true for an empty array and so
  * would mark a vendorItems-less order `cancelled`.
  */
-const applyOrderStatus = (order, next, vendorId, channel) => {
+const applyOrderStatus = (order, next, vendorId, channel, eventAt = null) => {
     const items = order.vendorItems || [];
     const hasSlice = vendorId && items.some((vi) => String(vi?.vendorId) === String(vendorId));
 
@@ -187,9 +187,19 @@ const applyOrderStatus = (order, next, vendorId, channel) => {
         order.status = next;
     }
 
-    const now = new Date();
-    if (next === 'shipped' || next === 'dispatched') order.shippedAt = order.shippedAt || now;
-    if (next === 'delivered') order.deliveredAt = order.deliveredAt || now;
+    const timestamp = eventAt instanceof Date && !Number.isNaN(eventAt.valueOf()) ? eventAt : new Date();
+    if (next === 'shipped' || next === 'dispatched') order.shippedAt = order.shippedAt || timestamp;
+    if (next === 'delivered') {
+        order.deliveredAt = eventAt || order.deliveredAt || timestamp;
+        // COD Auto-Payment update: On successful delivery, customer pays cash to courier
+        const method = String(order?.paymentMethod || '').trim().toLowerCase();
+        const isCod = method === 'cod' || method === 'cash';
+        if (isCod && order.paymentStatus !== 'paid') {
+            order.paymentStatus = 'paid';
+            order.isCashSettled = true;
+            order.settledAt = timestamp;
+        }
+    }
 };
 
 /**
@@ -202,6 +212,7 @@ const applyOrderStatus = (order, next, vendorId, channel) => {
  * @param {string} [meta.note]
  * @param {string} [meta.source]
  * @param {string} [meta.partnerReferenceId]
+ * @param {Date}   [meta.eventAt]
  * @param {object} [meta.rawPayload]
  * @returns {boolean} true when something was written
  */
@@ -215,7 +226,9 @@ export const recordPartnerStatus = (order, shipmentStatus, meta = {}) => {
     order.integration.partnerStatus = partnerStatus;
     order.integration.lastPartnerSyncAt = new Date();
     if (meta.partnerReferenceId) order.integration.partnerReferenceId = meta.partnerReferenceId;
-    if (partnerStatus === 'DELIVERED') order.integration.deliveredAt = order.integration.deliveredAt || new Date();
+    if (partnerStatus === 'DELIVERED') {
+        order.integration.deliveredAt = meta.eventAt || order.integration.deliveredAt || new Date();
+    }
 
     if (!Array.isArray(order.integration.logs)) order.integration.logs = [];
 
@@ -284,6 +297,7 @@ export const notifyShipmentProgress = async (order, statuses, { vendorId = null 
  * @param {object} [options]
  * @param {string} [options.note]
  * @param {string} [options.source]
+ * @param {Date}   [options.eventAt]
  * @param {object} [options.rawPayload]
  * @param {boolean} [options.notify] send customer/vendor notifications
  * @returns {Promise<{ changed: boolean, appliedStatuses: string[] }>}
@@ -292,14 +306,16 @@ export const syncOrderWithShipment = async (order, shipment, options = {}) => {
     const vendorId = shipment.vendorId ? String(shipment.vendorId) : null;
     const channel = shipment.channel || resolveOrderChannel(order, vendorId);
 
+    const eventAt = shipment?.deliveredAt || shipment?.pickedUpAt || options.eventAt || null;
     const targetOrderStatus = shipmentStatusToOrderStatus(shipment.status, channel);
-    const appliedStatuses = advanceOrderStatus(order, targetOrderStatus, channel, vendorId);
+    const appliedStatuses = advanceOrderStatus(order, targetOrderStatus, channel, vendorId, eventAt);
 
     const recorded = recordPartnerStatus(order, shipment.status, {
         note: options.note,
         source: options.source || 'dtdc',
         partnerReferenceId: shipment.awbNumber || undefined,
         rawPayload: options.rawPayload,
+        eventAt,
     });
 
     const changed = appliedStatuses.length > 0 || recorded;

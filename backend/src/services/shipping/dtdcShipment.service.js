@@ -176,16 +176,28 @@ const itemsForVendor = (order, vendorId) => {
 };
 
 /** Declared value of one vendor's slice, falling back to the order total. */
-const declaredValueFor = (order, vendorId) => {
+export const declaredValueFor = (order, vendorId) => {
     if (vendorId) {
         const slice = (order.vendorItems || []).find(
             (vi) => String(vi?.vendorId) === String(vendorId)
         );
-        const sliceTotal = Number(slice?.total ?? slice?.subtotal);
-        if (Number.isFinite(sliceTotal) && sliceTotal > 0) return sliceTotal;
+        if (slice) {
+            if (Number.isFinite(Number(slice.total)) && Number(slice.total) > 0) {
+                return Number(Number(slice.total).toFixed(2));
+            }
+            const computedSliceTotal =
+                (Number(slice.subtotal) || 0) +
+                (Number(slice.shipping) || 0) +
+                (Number(slice.packagingFee) || 0) +
+                (Number(slice.tax) || 0) -
+                (Number(slice.discount) || 0);
+            if (Number.isFinite(computedSliceTotal) && computedSliceTotal > 0) {
+                return Number(computedSliceTotal.toFixed(2));
+            }
+        }
     }
-    const total = Number(order.total ?? order.totalAmount ?? order.subtotal);
-    return Number.isFinite(total) ? total : 0;
+    const total = Number(order?.total ?? order?.totalAmount ?? order?.subtotal);
+    return Number.isFinite(total) && total > 0 ? Number(total.toFixed(2)) : 0;
 };
 
 /** True when the buyer pays the courier on the doorstep. */
@@ -1125,6 +1137,7 @@ export default {
     bookingKey,
     normalizeAddress,
     isCodOrder,
+    declaredValueFor,
     buildConsignmentPayload,
     findDtdcShipment,
     parseServiceabilityResponse,

@@ -71,6 +71,7 @@ const vendorItemGroupSchema = new mongoose.Schema({
     packagingFee: Number,
     tax: Number,
     discount: Number,
+    total: Number,
     /**
      * Canonical channel for this vendor's slice.
      *
