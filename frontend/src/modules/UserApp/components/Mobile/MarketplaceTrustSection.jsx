@@ -183,13 +183,13 @@ const MarketplaceTrustSection = ({ vendorCount = 0, productCount = 0 }) => {
   };
 
   return (
-    <section className="py-8 sm:py-12 px-4 sm:px-6">
+    <section className="px-4 py-4 sm:py-6">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.7, ease: 'easeOut' }}
-        className="max-w-6xl mx-auto bg-surface rounded-3xl sm:rounded-[36px] border border-border p-6 sm:p-10 md:p-12 shadow-xl text-center"
+        className="w-full bg-surface rounded-3xl sm:rounded-[36px] border border-border p-6 sm:p-10 md:p-12 shadow-xl text-center"
       >
         {/* Top Pill Badge */}
         {data.badge && (

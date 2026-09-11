@@ -187,7 +187,7 @@ export const getDailyDeals = () => {
       Number(p.originalPrice) > Number(p.price || 0) &&
       !p.flashSale
   );
-  const allDeals = [...flashSaleProducts, ...discountedProducts.slice(0, 5)];
+  const allDeals = [...flashSaleProducts, ...discountedProducts.slice(0, 10)];
   return allDeals.filter(
     (p, idx, arr) => idx === arr.findIndex((x) => normalizeId(x.id) === normalizeId(p.id))
   );

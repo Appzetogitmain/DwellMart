@@ -50,8 +50,8 @@ const TestimonialsSection = ({ testimonials = [] }) => {
     : DEFAULT_TESTIMONIALS;
 
   return (
-    <section className="px-4 py-8 sm:py-12">
-      <div className="max-w-6xl mx-auto">
+    <section className="px-4 py-4 sm:py-6">
+      <div className="w-full">
         <div className="text-center mb-8">
           <p className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-bold tracking-[0.24em] uppercase border border-amber-100">
             {t("Customer Voices")}
@@ -64,7 +64,7 @@ const TestimonialsSection = ({ testimonials = [] }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {displayTestimonials.map((testimonial, index) => {
             const rating = normalizeRating(testimonial.rating);
             const subtitle = [testimonial.designation, testimonial.company]

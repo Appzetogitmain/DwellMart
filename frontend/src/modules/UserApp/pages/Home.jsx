@@ -278,7 +278,7 @@ const MobileHome = () => {
   const fallbackTrending = getTrending();
   const fallbackFlashSale = getFlashSale();
   const fallbackNewArrivals = getAllNewArrivals().slice(0, 6);
-  const fallbackDailyDeals = getDailyDeals().slice(0, 5);
+  const fallbackDailyDeals = getDailyDeals().slice(0, 6);
   const fallbackRecommended = getRecommendedProducts(6);
   const fallbackVendors = getApprovedVendors();
   const fallbackBrands = getCatalogBrands().slice(0, 10);
@@ -294,7 +294,7 @@ const MobileHome = () => {
 
   const computedDailyDeals = useMemo(() => {
     if (catalogProducts.length === 0) return fallbackDailyDeals;
-    return deriveDailyDeals(catalogProducts).slice(0, 5);
+    return deriveDailyDeals(catalogProducts).slice(0, 6);
   }, [catalogProducts, fallbackDailyDeals]);
 
   const computedRecommended = useMemo(() => {
