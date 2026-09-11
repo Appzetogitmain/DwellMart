@@ -63,10 +63,15 @@ const normalizeBannerLink = (value) => {
     return '';
 };
 
-const normalizeBannerPayload = (payload = {}) => ({
-    ...payload,
-    link: normalizeBannerLink(payload?.link),
-});
+const normalizeBannerPayload = (payload = {}) => {
+    const rawType = String(payload?.type || '').trim().toLowerCase();
+    const type = rawType === 'hero' ? 'home_slider' : (payload?.type || 'home_slider');
+    return {
+        ...payload,
+        type,
+        link: normalizeBannerLink(payload?.link),
+    };
+};
 
 const normalizeObjectIdList = (values) => {
     if (!Array.isArray(values)) return [];

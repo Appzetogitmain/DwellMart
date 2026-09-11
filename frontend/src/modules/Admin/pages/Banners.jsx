@@ -41,7 +41,11 @@ const Banners = () => {
           (banner.subtitle &&
             banner.subtitle.toLowerCase().includes(searchQuery.toLowerCase()));
 
-        const matchesType = selectedType === 'all' || banner.type === selectedType;
+        const matchesType =
+          selectedType === 'all' ||
+          (selectedType === 'home_slider'
+            ? banner.type === 'home_slider' || banner.type === 'hero'
+            : banner.type === selectedType);
 
         const matchesStatus =
           selectedStatus === 'all' ||
@@ -174,7 +178,6 @@ const Banners = () => {
               { value: 'quick_commerce', label: 'Quick Commerce Banners' },
               { value: 'festival_offer', label: 'Festival Offer Banners' },
               { value: 'banner', label: 'Generic Banners' },
-              { value: 'hero', label: 'Hero Banners' },
               { value: 'promotional', label: 'Promotional Banners' },
               { value: 'side_banner', label: 'Side Banners' },
             ]}
@@ -246,17 +249,15 @@ const Banners = () => {
                         <Badge variant="info">
                           {banner.type === 'quick_commerce'
                             ? 'Quick Commerce'
-                            : banner.type === 'hero'
-                              ? 'Hero'
+                            : (banner.type === 'home_slider' || banner.type === 'hero')
+                              ? 'Slider'
                               : banner.type === 'promotional'
                                 ? 'Promo'
                                 : banner.type === 'side_banner'
                                   ? 'Side'
-                                  : banner.type === 'home_slider'
-                                    ? 'Slider'
-                                    : banner.type === 'festival_offer'
-                                      ? 'Festival'
-                                      : 'Banner'}
+                                  : banner.type === 'festival_offer'
+                                    ? 'Festival'
+                                    : 'Banner'}
                         </Badge>
                       </div>
                     </div>

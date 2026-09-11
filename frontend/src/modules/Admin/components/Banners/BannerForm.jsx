@@ -17,7 +17,7 @@ const BannerForm = ({ banner, onClose, onSave }) => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState({
-    type: "hero",
+    type: "home_slider",
     title: "",
     subtitle: "",
     description: "",
@@ -32,7 +32,7 @@ const BannerForm = ({ banner, onClose, onSave }) => {
   useEffect(() => {
     if (banner) {
       setFormData({
-        type: banner.type || "hero",
+        type: banner.type === "hero" ? "home_slider" : (banner.type || "home_slider"),
         title: banner.title || "",
         subtitle: banner.subtitle || "",
         description: banner.description || "",
@@ -209,7 +209,6 @@ const BannerForm = ({ banner, onClose, onSave }) => {
                         { value: "quick_commerce", label: "Quick Commerce Banner" },
                         { value: "festival_offer", label: "Festival Offer Banner" },
                         { value: "banner", label: "Generic Banner" },
-                        { value: "hero", label: "Hero Banner" },
                         { value: "promotional", label: "Promotional Banner" },
                         { value: "side_banner", label: "Side Banner (Home Right)" },
                       ]}

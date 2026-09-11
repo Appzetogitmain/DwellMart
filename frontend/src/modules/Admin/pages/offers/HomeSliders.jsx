@@ -22,7 +22,12 @@ const HomeSliders = () => {
   const sliders = useMemo(
     () =>
       (banners || [])
-        .filter((banner) => banner.type === selectedBannerType)
+        .filter((banner) => {
+          if (selectedBannerType === "home_slider") {
+            return banner.type === "home_slider" || banner.type === "hero";
+          }
+          return banner.type === selectedBannerType;
+        })
         .map((banner) => ({
           ...banner,
           id: banner._id,
@@ -47,7 +52,10 @@ const HomeSliders = () => {
       link: sliderData.link,
       order: sliderData.order,
       isActive: sliderData.status === "active",
-      type: sliderData.type || selectedBannerType,
+      type:
+        sliderData.type === "hero"
+          ? "home_slider"
+          : sliderData.type || selectedBannerType,
     };
 
     try {

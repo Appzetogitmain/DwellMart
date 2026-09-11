@@ -10,7 +10,7 @@ const bannerSchema = new mongoose.Schema(
         type: {
             type: String,
             enum: ['home_slider', 'quick_commerce', 'festival_offer', 'banner', 'hero', 'promotional', 'side_banner'],
-            default: 'banner',
+            default: 'home_slider',
         },
         order: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
