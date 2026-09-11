@@ -636,63 +636,27 @@ const MobileHome = () => {
                     ease: [0.25, 0.46, 0.45, 0.94], // Smooth easing
                     type: "tween",
                   }}>
-                  {slides.map((slide, index) => {
-                    const hasText = Boolean(
-                      slide.title || slide.subtitle || slide.description
-                    );
-
-                    return (
-                      <div
-                        key={index}
-                        className="flex-shrink-0 relative h-full overflow-hidden"
-                        onClick={() => handleSlideClick(slide)}
-                        style={{
-                          width: `${100 / slides.length}%`,
-                          height: "100%",
-                          cursor: slide?.link ? "pointer" : "default",
-                        }}>
-                        <LazyImage
-                          src={slide.image}
-                          alt={slide.title || `Slide ${index + 1}`}
-                          className="w-full h-full object-cover pointer-events-none select-none"
-                          draggable={false}
-                          onError={(e) => {
-                            e.target.src = getPlaceholderImage(400, 200, `Slide ${index + 1}`);
-                          }}
-                        />
-
-                        {hasText && (
-                          <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-10 pointer-events-none max-w-[70%] sm:max-w-xs md:max-w-sm">
-                            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-white/60 dark:border-gray-800/60 shadow-xl rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-1 sm:space-y-1.5 text-left">
-                              {slide.subtitle && (
-                                <div>
-                                  <span className="inline-block text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 px-2 py-0.5 rounded-md">
-                                    {slide.subtitle}
-                                  </span>
-                                </div>
-                              )}
-                              {slide.title && (
-                                <h2 className="text-sm sm:text-base md:text-lg font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-1">
-                                  {slide.title}
-                                </h2>
-                              )}
-                              {slide.description && (
-                                <p className="text-[11px] sm:text-xs md:text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
-                                  {slide.description}
-                                </p>
-                              )}
-                              {slide.link && (
-                                <div className="pt-1 flex items-center gap-1 text-[11px] sm:text-xs font-bold text-primary-600 dark:text-primary-400">
-                                  <span>{t("Shop Now")}</span>
-                                  <span>→</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {slides.map((slide, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 relative h-full overflow-hidden"
+                      onClick={() => handleSlideClick(slide)}
+                      style={{
+                        width: `${100 / slides.length}%`,
+                        height: "100%",
+                        cursor: slide?.link ? "pointer" : "default",
+                      }}>
+                      <LazyImage
+                        src={slide.image}
+                        alt={slide.title || `Slide ${index + 1}`}
+                        className="w-full h-full object-cover pointer-events-none select-none"
+                        draggable={false}
+                        onError={(e) => {
+                          e.target.src = getPlaceholderImage(400, 200, `Slide ${index + 1}`);
+                        }}
+                      />
+                    </div>
+                  ))}
                 </motion.div>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10 pointer-events-none">
                   {slides.map((_, index) => (
