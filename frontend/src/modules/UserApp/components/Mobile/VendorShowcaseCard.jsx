@@ -19,7 +19,7 @@ const getInitials = (name = '') => {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 };
 
-const VendorShowcaseCard = ({ vendor, index = 0 }) => {
+const VendorShowcaseCard = ({ vendor, index = 0, className = '' }) => {
   const [imageFailed, setImageFailed] = useState(false);
   if (!vendor) return null;
 
@@ -40,17 +40,17 @@ const VendorShowcaseCard = ({ vendor, index = 0 }) => {
   const location = vendor.location || (vendor.address?.city && vendor.address?.state ? `${vendor.address.city}, ${vendor.address.state}` : vendor.address?.city || vendor.address?.state || '');
 
   return (
-    <Link to={vendorLink} className="block group h-full">
+    <Link to={vendorLink} className="block group h-full w-full">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
         whileTap={{ scale: 0.98 }}
-        className="bg-surface border border-border hover:border-brand-primary/50 rounded-card p-4 flex flex-col items-center text-center w-[170px] min-w-[170px] h-[250px] min-h-[250px] shadow-sm hover:shadow-md transition-all justify-between"
+        className={`bg-surface border border-border hover:border-brand-primary/50 rounded-card p-3 sm:p-4 flex flex-col items-center text-center w-full h-full min-h-[245px] sm:min-h-[250px] shadow-sm hover:shadow-md transition-all justify-between ${className}`}
       >
         {/* Vendor Logo / Internal Initials Avatar */}
         <div className="relative mb-2 flex-shrink-0">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 border-2 border-brand-primary/30 flex items-center justify-center overflow-hidden shadow-sm group-hover:scale-105 transition-transform text-white font-black text-lg select-none">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 border-2 border-brand-primary/30 flex items-center justify-center overflow-hidden shadow-sm group-hover:scale-105 transition-transform text-white font-black text-base sm:text-lg select-none">
             {hasValidImage ? (
               <img
                 src={rawImage}
