@@ -7,11 +7,13 @@ const AnimatedSelect = ({
   onChange,
   options = [],
   placeholder = "Select an option",
+  searchPlaceholder = "Search options...",
   className = "",
   disabled = false,
   searchable,
   required = false,
   name,
+  direction = "auto", // "auto" | "down" | "up"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -143,21 +145,26 @@ const AnimatedSelect = ({
   // Check if dropdown should open upward
   const [openUpward, setOpenUpward] = useState(false);
   useEffect(() => {
-    if (isOpen && containerRef.current) {
+    if (!isOpen) return;
+    if (direction === "down") {
+      setOpenUpward(false);
+      return;
+    }
+    if (direction === "up") {
+      setOpenUpward(true);
+      return;
+    }
+    if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      const estimatedHeight = Math.min(
-        filteredOptions.length * 48 + (isSearchable ? 60 : 0),
-        300
-      );
-
-      setOpenUpward(spaceBelow < estimatedHeight && spaceAbove > spaceBelow);
+      // Only flip upward if space below is genuinely insufficient (< 180px) and space above is larger
+      setOpenUpward(spaceBelow < 180 && spaceAbove > 250 && spaceAbove > spaceBelow);
     }
-  }, [isOpen, filteredOptions.length, isSearchable]);
+  }, [isOpen, direction]);
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative ${isOpen ? "z-30" : ""} ${className}`}>
       {/* Selected Value Display */}
       <button
         type="button"
@@ -202,8 +209,8 @@ const AnimatedSelect = ({
               ref={dropdownRef}
               initial={{
                 opacity: 0,
-                y: openUpward ? 10 : -10,
-                scale: 0.95,
+                y: openUpward ? 6 : -6,
+                scale: 0.98,
               }}
               animate={{
                 opacity: 1,
@@ -212,30 +219,44 @@ const AnimatedSelect = ({
               }}
               exit={{
                 opacity: 0,
-                y: openUpward ? 10 : -10,
-                scale: 0.95,
+                y: openUpward ? 6 : -6,
+                scale: 0.98,
               }}
               transition={{
-                duration: 0.25,
+                duration: 0.2,
                 ease: [0.4, 0, 0.2, 1],
               }}
-              className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden ${openUpward ? "bottom-full mb-2" : "top-full"
-                }`}
+              className={`absolute z-50 min-w-full sm:min-w-[220px] bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col ${
+                openUpward ? "bottom-full mb-2" : "top-full mt-1"
+              }`}
               style={{
-                maxHeight: "300px",
+                maxHeight: "320px",
                 transformOrigin: openUpward ? "bottom center" : "top center",
               }}>
               {/* Search Input */}
               {isSearchable && (
-                <div className="p-2 border-b border-gray-200 bg-gray-50">
+                <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                   <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none" />
                     <input
                       ref={searchInputRef}
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search options..."
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Escape") {
+                          setIsOpen(false);
+                          setSearchQuery("");
+                        } else if (e.key === "Enter" && filteredOptions.length > 0) {
+                          e.preventDefault();
+                          const firstOption = filteredOptions[0];
+                          const firstValue =
+                            typeof firstOption === "object" ? firstOption.value : firstOption;
+                          handleSelect(firstValue);
+                        }
+                      }}
+                      placeholder={searchPlaceholder}
                       className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
                       onClick={(e) => e.stopPropagation()}
                     />
@@ -256,7 +277,7 @@ const AnimatedSelect = ({
               )}
 
               {/* Options List */}
-              <div className="overflow-y-auto max-h-[240px] scrollbar-admin">
+              <div className="overflow-y-auto flex-1 min-h-0 scrollbar-admin">
                 {filteredOptions.length === 0 ? (
                   <div className="px-4 py-3 text-sm text-gray-500 text-center">
                     {searchQuery ? "No options found" : "No options available"}
@@ -273,23 +294,23 @@ const AnimatedSelect = ({
                         String(optionValue) === String(value);
 
                       return (
-                        <motion.button
+                        <button
                           key={
-                            typeof option === "object" ? option.value : option
+                            typeof option === "object"
+                              ? `${option.value}-${index}`
+                              : `${option}-${index}`
                           }
                           type="button"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.02 }}
                           onClick={() => handleSelect(optionValue)}
-                          className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 ${isSelected
+                          className={`w-full px-4 py-2.5 text-left text-sm transition-colors duration-150 truncate ${
+                            isSelected
                               ? "bg-primary-600 text-white font-medium"
                               : "text-gray-900 hover:bg-gray-50"
-                            }`}
+                          }`}
                           role="option"
                           aria-selected={isSelected}>
                           {optionLabel}
-                        </motion.button>
+                        </button>
                       );
                     })}
                   </div>

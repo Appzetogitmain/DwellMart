@@ -301,6 +301,7 @@ const ManageProducts = () => {
                 { value: "low_stock", label: "Low Stock" },
                 { value: "out_of_stock", label: "Out of Stock" },
               ]}
+              direction="down"
               className="w-full sm:w-auto min-w-[140px]"
             />
 
@@ -316,7 +317,10 @@ const ManageProducts = () => {
                   .filter((cat) => cat.isActive !== false)
                   .map((cat) => ({ value: String(cat.id), label: cat.name })),
               ]}
-              className="w-full sm:w-auto min-w-[160px]"
+              searchable={true}
+              searchPlaceholder="Search categories..."
+              direction="down"
+              className="w-full sm:w-auto min-w-[170px]"
             />
 
             <AnimatedSelect
@@ -331,7 +335,10 @@ const ManageProducts = () => {
                   .filter((brand) => brand.isActive !== false)
                   .map((brand) => ({ value: String(brand.id), label: brand.name })),
               ]}
-              className="w-full sm:w-auto min-w-[160px]"
+              searchable={true}
+              searchPlaceholder="Search brands..."
+              direction="down"
+              className="w-full sm:w-auto min-w-[170px]"
             />
 
 
