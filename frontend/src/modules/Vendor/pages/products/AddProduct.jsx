@@ -32,6 +32,7 @@ import {
 } from "../../utils/variantHelpers";
 import { getVendorCapabilities } from "../../../../shared/config/vendorCapabilities";
 import { useVendorWorkspace } from '../../hooks/useVendorWorkspace';
+import UnitSelector from "../../../../shared/components/UnitSelector";
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const AddProduct = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    unit: "",
+    unit: "Piece",
     price: "",
     originalPrice: "",
     image: "",
@@ -628,13 +629,11 @@ const AddProduct = () => {
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Unit
               </label>
-              <input
-                type="text"
-                name="unit"
+              <UnitSelector
                 value={formData.unit}
                 onChange={handleChange}
-                placeholder="e.g., Piece, Kilogram, Gram, Pair"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                name="unit"
+                placeholder="Select or search unit..."
               />
             </div>
 

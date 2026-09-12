@@ -3,6 +3,7 @@
  */
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
+import UnitSelector from "../../../../shared/components/UnitSelector";
 
 const GeneralSection = ({ formData, handleChange, brands }) => (
   <div>
@@ -25,13 +26,11 @@ const GeneralSection = ({ formData, handleChange, brands }) => (
 
       <div>
         <label className="block text-xs font-semibold text-gray-700 mb-1">Unit</label>
-        <input
-          type="text"
-          name="unit"
+        <UnitSelector
           value={formData.unit}
           onChange={handleChange}
-          placeholder="e.g., Piece, Kilogram, Gram, Pair"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+          name="unit"
+          placeholder="Select or search unit..."
         />
       </div>
 

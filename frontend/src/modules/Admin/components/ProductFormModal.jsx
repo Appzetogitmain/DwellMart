@@ -17,6 +17,7 @@ import AnimatedSelect from "./AnimatedSelect";
 import WholesalePricingSection from "../../../shared/components/WholesalePricingSection";
 import toast from "react-hot-toast";
 import Button from "./Button";
+import UnitSelector from "../../../shared/components/UnitSelector";
 import {
   emptyWholesaleState,
   wholesaleStateFromProduct,
@@ -887,14 +888,11 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Unit
                         </label>
-                        <input
-                          type="text"
-                          name="unit"
+                        <UnitSelector
                           value={formData.unit}
                           onChange={handleChange}
-                          placeholder="e.g., Piece, Kilogram, Gram"
-                          disabled={isVendorProductEdit}
-                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                          name="unit"
+                          placeholder="Select or search unit..."
                         />
                       </div>
 

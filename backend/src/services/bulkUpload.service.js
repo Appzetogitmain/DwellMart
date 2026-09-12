@@ -34,6 +34,94 @@ const BULK_REPORTS_DIR = path.join(UPLOADS_DIR, 'bulk-reports');
 // In-memory job state store for real-time progress & cancellation
 const activeJobs = new Map();
 
+/**
+ * Standard unit alias dictionary to normalize imported unit representations
+ */
+export const UNIT_ALIAS_MAP = {
+    'pc': 'Piece',
+    'pcs': 'Piece',
+    'piece': 'Piece',
+    'pieces': 'Piece',
+    'pk': 'Pack',
+    'pack': 'Pack',
+    'packs': 'Pack',
+    'packet': 'Pack',
+    'packets': 'Pack',
+    'box': 'Box',
+    'boxes': 'Box',
+    'set': 'Set',
+    'sets': 'Set',
+    'pair': 'Pair',
+    'pairs': 'Pair',
+    'pr': 'Pair',
+    'dz': 'Dozen',
+    'dozen': 'Dozen',
+    'doz': 'Dozen',
+    'dozens': 'Dozen',
+    'bundle': 'Bundle',
+    'bundles': 'Bundle',
+    'roll': 'Roll',
+    'rolls': 'Roll',
+    'bottle': 'Bottle',
+    'bottles': 'Bottle',
+    'can': 'Can',
+    'cans': 'Can',
+    'sachet': 'Sachet',
+    'sachets': 'Sachet',
+    'g': 'Gram (g)',
+    'gm': 'Gram (g)',
+    'gms': 'Gram (g)',
+    'gram': 'Gram (g)',
+    'grams': 'Gram (g)',
+    'kg': 'Kilogram (kg)',
+    'kgs': 'Kilogram (kg)',
+    'kilogram': 'Kilogram (kg)',
+    'kilograms': 'Kilogram (kg)',
+    'mg': 'Milligram (mg)',
+    'milligram': 'Milligram (mg)',
+    'milligrams': 'Milligram (mg)',
+    'ml': 'Millilitre (ml)',
+    'mls': 'Millilitre (ml)',
+    'millilitre': 'Millilitre (ml)',
+    'millilitres': 'Millilitre (ml)',
+    'l': 'Litre (L)',
+    'lt': 'Litre (L)',
+    'ltr': 'Litre (L)',
+    'ltrs': 'Litre (L)',
+    'litre': 'Litre (L)',
+    'litres': 'Litre (L)',
+    'liter': 'Litre (L)',
+    'liters': 'Litre (L)',
+    'm': 'Meter (m)',
+    'meter': 'Meter (m)',
+    'meters': 'Meter (m)',
+    'metre': 'Meter (m)',
+    'metres': 'Meter (m)',
+    'cm': 'Centimeter (cm)',
+    'centimeter': 'Centimeter (cm)',
+    'centimeters': 'Centimeter (cm)',
+    'sq ft': 'Square Feet (sq ft)',
+    'sqft': 'Square Feet (sq ft)',
+};
+
+/**
+ * Normalizes a unit string, defaults empty values to 'Piece', and rejects purely numeric values.
+ */
+export const normalizeUnit = (rawUnit) => {
+    const trimmed = String(rawUnit || '').trim();
+    if (!trimmed) {
+        return { unit: 'Piece', error: null };
+    }
+    if (/^\d+$/.test(trimmed)) {
+        return { unit: trimmed, error: `Unit "${trimmed}" cannot be a numeric value alone.` };
+    }
+    const alias = UNIT_ALIAS_MAP[trimmed.toLowerCase()];
+    if (alias) {
+        return { unit: alias, error: null };
+    }
+    return { unit: trimmed, error: null };
+};
+
 
 /**
  * Parse the shipping columns from one spreadsheet row.
@@ -641,7 +729,8 @@ export const validateBulkUpload = async ({
         const brandInput = String(raw['Brand'] || '').trim();
         let sku = String(raw['SKU'] || '').trim();
         const hsnCode = String(raw['HSN Code'] || '').trim();
-        const unit = String(raw['Unit'] || 'Piece').trim();
+        const unitParse = normalizeUnit(raw['Unit']);
+        const unit = unitParse.unit;
         const priceNum = parseFloat(raw['Price']);
         const mrpNum = raw['MRP'] !== '' ? parseFloat(raw['MRP']) : null;
         const costPriceNum = raw['Cost Price'] !== '' ? parseFloat(raw['Cost Price']) : null;
@@ -718,6 +807,7 @@ export const validateBulkUpload = async ({
         if (!categoryInput) errors.push('Category is required.');
         if (isNaN(priceNum) || priceNum < 0) errors.push('Price must be a non-negative number.');
         if (isNaN(stockNum) || stockNum < 0) errors.push('Stock must be a non-negative number.');
+        if (unitParse.error) errors.push(unitParse.error);
 
         // 2. Pricing & GST Rules
         if (mrpNum !== null && !isNaN(mrpNum) && mrpNum < priceNum) {
