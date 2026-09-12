@@ -35,7 +35,7 @@ export const customerOrdersQuerySchema = Joi.object({
 
 export const customerTransactionsQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).optional(),
-    limit: Joi.number().integer().min(1).max(200).optional(),
+    limit: Joi.number().integer().min(1).max(1000).optional(),
     search: Joi.string().trim().allow('').optional(),
     status: Joi.string().valid('all', 'completed', 'pending', 'failed').optional(),
 });

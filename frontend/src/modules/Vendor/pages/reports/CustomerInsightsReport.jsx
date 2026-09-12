@@ -10,6 +10,7 @@ import { getVendorOrders } from '../../services/vendorService';
 const CustomerInsightsReport = () => {
   const { vendor } = useVendorAuthStore();
   const [orders, setOrders] = useState([]);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   const vendorId = vendor?.id;
 
@@ -179,7 +180,10 @@ const CustomerInsightsReport = () => {
           data={customerData}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={itemsPerPage}
+          showSizeChanger={true}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+          onPageSizeChange={setItemsPerPage}
         />
       ) : (
         <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">

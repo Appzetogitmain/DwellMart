@@ -40,9 +40,15 @@ const ManageProducts = () => {
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     productId: null,
@@ -55,65 +61,53 @@ const ManageProducts = () => {
   useEffect(() => {
     initCategories();
     initBrands();
-    loadProducts();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadProducts = async () => {
     try {
-      let currentPage = 1;
-      let totalPages = 1;
-      const products = [];
+      setIsLoading(true);
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (selectedStatus !== "all") params.status = selectedStatus;
+      if (selectedCategory !== "all") params.categoryId = selectedCategory;
+      if (selectedBrand !== "all") params.brandId = selectedBrand;
 
-      do {
-        const response = await getAllProducts({ page: currentPage, limit: 100 });
-        const pageProducts = Array.isArray(response.data)
-          ? response.data
-          : (response.data?.products || []);
-        products.push(...pageProducts);
+      const response = await getAllProducts(params);
+      const pageProducts = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.products || []);
+      const total = Number(response.data?.total ?? pageProducts.length);
+      const pages = Number(response.data?.pages ?? 1);
 
-        totalPages = Number(response.data?.pages || 1);
-        currentPage += 1;
-      } while (currentPage <= totalPages);
-
-      const normalizedProducts = products.map(p => ({
+      const normalizedProducts = pageProducts.map(p => ({
         ...p,
         id: p._id, // Map backend _id to frontend id
         image: p.image || p.images?.[0] || PRODUCT_IMAGE_PLACEHOLDER,
         stock: p.stock || (p.stockQuantity > 5 ? "in_stock" : p.stockQuantity > 0 ? "low_stock" : "out_of_stock"),
       }));
       setProducts(normalizedProducts);
+      setTotalItems(total);
+      setTotalPages(pages);
     } catch (error) {
       // Error is handled in interceptor
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
-
-    if (searchQuery) {
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((product) => product.stock === selectedStatus);
-    }
-
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(
-        (product) => String(product.categoryId?._id || product.categoryId) === String(selectedCategory)
-      );
-    }
-
-    if (selectedBrand !== "all") {
-      filtered = filtered.filter(
-        (product) => String(product.brandId?._id || product.brandId) === String(selectedBrand)
-      );
-    }
-
-    return filtered;
-  }, [products, searchQuery, selectedStatus, selectedCategory, selectedBrand]);
+  useEffect(() => {
+    loadProducts();
+  }, [currentPage, pageSize, debouncedSearch, selectedStatus, selectedCategory, selectedBrand]);
 
   const columns = [
     {
@@ -286,7 +280,10 @@ const ManageProducts = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search products..."
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
               />
@@ -294,7 +291,10 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "all", label: "All Status" },
                 { value: "in_stock", label: "In Stock" },
@@ -306,7 +306,10 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "all", label: "All Categories" },
                 ...categories
@@ -318,7 +321,10 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
+              onChange={(e) => {
+                setSelectedBrand(e.target.value);
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "all", label: "All Brands" },
                 ...brands
@@ -332,7 +338,7 @@ const ManageProducts = () => {
 
             <div className="w-full sm:w-auto">
               <ExportButton
-                data={filteredProducts}
+                data={products}
                 headers={[
                   { label: "ID", accessor: (row) => row.id },
                   { label: "Name", accessor: (row) => row.name },
@@ -351,10 +357,21 @@ const ManageProducts = () => {
 
         {/* DataTable */}
         <DataTable
-          data={filteredProducts}
+          data={products}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          serverSidePagination={true}
+          itemsPerPage={pageSize}
+          currentPage={currentPage}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) =>
             setProductFormModal({ isOpen: true, productId: row.id })
           }

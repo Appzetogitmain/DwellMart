@@ -33,6 +33,7 @@ const Shipments = () => {
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState(25);
   /**
    * 'booked'   — consignments that exist
    * 'awaiting' — orders ready to ship with no consignment yet
@@ -47,35 +48,37 @@ const Shipments = () => {
   const fetchShipments = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit: 20 };
+      const numericLimit = String(pageSize).toLowerCase() === 'all' ? 1000 : Number(pageSize);
+      const params = { page, limit: numericLimit };
       if (statusFilter) params.status = statusFilter;
       if (search) params.search = search;
       const res = await getShipments(params);
       const data = res?.data || {};
       setShipments(data.shipments || []);
-      setTotalPages(data.pages || 1);
+      setTotalPages(data.pages || Math.ceil((data.total || 0) / numericLimit) || 1);
       setTotal(data.total || 0);
     } catch {
       setShipments([]);
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, search]);
+  }, [page, statusFilter, search, pageSize]);
 
   const fetchAwaiting = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getOrdersAwaitingBooking({ page, limit: 20 });
+      const numericLimit = String(pageSize).toLowerCase() === 'all' ? 1000 : Number(pageSize);
+      const res = await getOrdersAwaitingBooking({ page, limit: numericLimit });
       const data = res?.data || {};
       setAwaiting(data.orders || []);
       setAwaitingTotal(data.total || 0);
-      setTotalPages(data.pages || 1);
+      setTotalPages(data.pages || Math.ceil((data.total || 0) / numericLimit) || 1);
     } catch {
       setAwaiting([]);
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     if (tab === 'awaiting') fetchAwaiting();
@@ -285,29 +288,45 @@ const Shipments = () => {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
-            <p className="text-sm text-gray-500">
-              Page {page} of {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:opacity-50 hover:bg-white transition-colors"
-              >
-                <FiChevronLeft size={14} /> Prev
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm disabled:opacity-50 hover:bg-white transition-colors"
-              >
-                Next <FiChevronRight size={14} />
-              </button>
-            </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <p className="text-xs sm:text-sm text-gray-500">
+            Page <span className="font-semibold text-gray-800">{page}</span> of <span className="font-semibold text-gray-800">{Math.max(1, totalPages)}</span> ({tab === 'awaiting' ? awaitingTotal : total} total records)
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs sm:text-sm disabled:opacity-50 hover:bg-white transition-colors bg-white shadow-2xs font-medium"
+            >
+              <FiChevronLeft size={14} /> Prev
+            </button>
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-200">
+              {page}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex items-center gap-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs sm:text-sm disabled:opacity-50 hover:bg-white transition-colors bg-white shadow-2xs font-medium"
+            >
+              Next <FiChevronRight size={14} />
+            </button>
+            <select
+              value={String(pageSize).toLowerCase() === 'all' ? 'all' : String(pageSize)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPageSize(val.toLowerCase() === 'all' ? 'all' : Number(val));
+                setPage(1);
+              }}
+              className="ml-2 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium"
+            >
+              {[25, 50, 100, 250, 500, 'All'].map((opt) => (
+                <option key={String(opt)} value={String(opt).toLowerCase() === 'all' ? 'all' : String(opt)}>
+                  {String(opt).toLowerCase() === 'all' ? 'All' : `${opt} / page`}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+        </div>
       </div>
     </motion.div>
   );

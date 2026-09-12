@@ -10,8 +10,7 @@
  *
  * All 30 existing import sites continue to work without changes.
  */
-import React, { useState, useMemo } from 'react';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import React from 'react';
 import { DataTable as DSDataTable } from '../../../shared/components/Dashboard/DataTable';
 
 const DataTable = ({
@@ -24,8 +23,12 @@ const DataTable = ({
   className = '',
   serverSidePagination = false,
   totalItems = 0,
+  totalPages = null,
   currentPage: externalCurrentPage,
   onPageChange,
+  showSizeChanger = false,
+  onPageSizeChange,
+  pageSizeOptions = [25, 50, 100, 250, 500, 'All'],
 }) => {
   // Map Admin column format (label) → DS column format (title)
   const mappedColumns = columns.map((col) => ({
@@ -35,21 +38,24 @@ const DataTable = ({
     render: col.render,
   }));
 
-  // For server-side pagination, pass data as-is (already paginated by caller)
-  // For client-side, let DS DataTable handle it
-  const tableData = data;
-
   return (
     <DSDataTable
       columns={mappedColumns}
-      data={tableData}
+      data={data}
       pageSize={itemsPerPage}
       className={className}
       emptyTitle="No data available"
       emptyDescription="There are no items to display."
       searchable={false}
-      currentPage={serverSidePagination ? externalCurrentPage : undefined}
-      onPageChange={serverSidePagination ? onPageChange : undefined}
+      pagination={pagination}
+      currentPage={externalCurrentPage}
+      onPageChange={onPageChange}
+      serverSidePagination={serverSidePagination}
+      totalItems={totalItems}
+      totalPages={totalPages}
+      showSizeChanger={showSizeChanger}
+      onPageSizeChange={onPageSizeChange}
+      pageSizeOptions={pageSizeOptions}
     />
   );
 };

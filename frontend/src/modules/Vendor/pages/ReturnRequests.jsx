@@ -22,6 +22,7 @@ const ReturnRequests = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   const vendorId = vendor?.id;
 
@@ -448,7 +449,10 @@ const ReturnRequests = () => {
           data={filteredRequests}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={itemsPerPage}
+          showSizeChanger={true}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+          onPageSizeChange={setItemsPerPage}
           onRowClick={(row) => navigate(`/vendor/return-requests/${row.id}`)}
         />
       ) : (

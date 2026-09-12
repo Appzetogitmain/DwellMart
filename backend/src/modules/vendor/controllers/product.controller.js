@@ -11,6 +11,7 @@ import {
     resolveQuickCommercePayload,
 } from '../../../services/pricingValidation.service.js';
 import { channelToProductFlag, isChannelWritable } from '../../../constants/vendorChannels.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 /**
  * Derive which selling channels this vendor supports.
@@ -240,10 +241,11 @@ const calculateVariantAggregateStock = (variants = {}) => {
 
 // GET /api/vendor/products
 export const getVendorProducts = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search, stock } = req.query;
-    const numericPage = Math.max(1, Number(page) || 1);
-    const numericLimit = Math.max(1, Number(limit) || 20);
-    const skip = (numericPage - 1) * numericLimit;
+    const { search, stock } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 20,
+        maxLimit: 1000,
+    });
     const flag = channelToProductFlag(req.vendorWorkspace);
     const filter = { vendorId: req.user.id, isDeleted: { $ne: true } };
     if (String(req.query.includeUnpublished) !== 'true') filter[flag] = true;
@@ -257,11 +259,11 @@ export const getVendorProducts = asyncHandler(async (req, res) => {
             .populate('brandId', 'name')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(numericLimit)
+            .limit(limit)
             .lean(),
         Product.countDocuments(filter),
     ]);
-    res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Products fetched.'));
+    res.status(200).json(new ApiResponse(200, { products, total, page, pages: calculatePages(total), limit }, 'Products fetched.'));
 });
 
 // GET /api/vendor/products/:id

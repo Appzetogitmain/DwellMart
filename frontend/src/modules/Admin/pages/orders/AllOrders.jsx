@@ -423,7 +423,7 @@ const AllOrders = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [deleteModal, setDeleteModal] = useState({
@@ -507,7 +507,7 @@ const AllOrders = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedStatus, searchQuery, dateRange, currentPage]);
+  }, [selectedStatus, searchQuery, dateRange, currentPage, itemsPerPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -899,9 +899,16 @@ const AllOrders = () => {
           pagination={true}
           serverSidePagination={true}
           totalItems={totalItems}
+          totalPages={Math.ceil(totalItems / (String(itemsPerPage).toLowerCase() === 'all' ? (totalItems || 1) : Number(itemsPerPage)))}
           currentPage={currentPage}
           itemsPerPage={itemsPerPage}
           onPageChange={(page) => setCurrentPage(page)}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => {
+            setItemsPerPage(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           sortable={false}
         />
       )}

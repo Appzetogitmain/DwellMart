@@ -181,6 +181,7 @@ const asList = (value) => (Array.isArray(value) ? value : []);
 const KNOWN_USER_ROUTE_PATTERNS = [
   "/",
   "/home",
+  "/shop",
   "/search",
   "/offers",
   "/daily-deals",
@@ -189,11 +190,15 @@ const KNOWN_USER_ROUTE_PATTERNS = [
   "/categories",
   "/category/:id",
   "/brand/:id",
+  "/brands",
   "/seller/:id",
   "/sellers",
   "/vendors",
   "/product/:id",
   "/sale/:slug",
+  "/quick-commerce",
+  "/sell-on-dwellmart",
+  "/shop-with-confidence",
   "/track-order/:orderId",
 ];
 
@@ -273,7 +278,7 @@ const MobileHome = () => {
   const fallbackTrending = getTrending();
   const fallbackFlashSale = getFlashSale();
   const fallbackNewArrivals = getAllNewArrivals().slice(0, 6);
-  const fallbackDailyDeals = getDailyDeals().slice(0, 5);
+  const fallbackDailyDeals = getDailyDeals().slice(0, 6);
   const fallbackRecommended = getRecommendedProducts(6);
   const fallbackVendors = getApprovedVendors();
   const fallbackBrands = getCatalogBrands().slice(0, 10);
@@ -289,7 +294,7 @@ const MobileHome = () => {
 
   const computedDailyDeals = useMemo(() => {
     if (catalogProducts.length === 0) return fallbackDailyDeals;
-    return deriveDailyDeals(catalogProducts).slice(0, 5);
+    return deriveDailyDeals(catalogProducts).slice(0, 6);
   }, [catalogProducts, fallbackDailyDeals]);
 
   const computedRecommended = useMemo(() => {
@@ -415,6 +420,8 @@ const MobileHome = () => {
             image: banner.image,
             link: resolveBannerLink(banner),
             title: banner.title || "",
+            subtitle: banner.subtitle || "",
+            description: banner.description || "",
           }));
         setSlides(bannerSlides.length > 0 ? bannerSlides : DEFAULT_HERO_SLIDES);
 
@@ -632,7 +639,7 @@ const MobileHome = () => {
                   {slides.map((slide, index) => (
                     <div
                       key={index}
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 relative h-full overflow-hidden"
                       onClick={() => handleSlideClick(slide)}
                       style={{
                         width: `${100 / slides.length}%`,
@@ -641,7 +648,7 @@ const MobileHome = () => {
                       }}>
                       <LazyImage
                         src={slide.image}
-                        alt={`Slide ${index + 1}`}
+                        alt={slide.title || `Slide ${index + 1}`}
                         className="w-full h-full object-cover pointer-events-none select-none"
                         draggable={false}
                         onError={(e) => {

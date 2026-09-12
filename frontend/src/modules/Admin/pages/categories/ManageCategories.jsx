@@ -34,7 +34,10 @@ const ManageCategories = () => {
   // Which category tree is being managed. Marketplace is the default so the
   // page behaves exactly as before when Quick Commerce is disabled.
   const [experience, setExperience] = useState('marketplace');
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+
+  const isAll = String(itemsPerPage).toLowerCase() === 'all';
+  const numericItemsPerPage = isAll ? 1000 : (Number(itemsPerPage) || 10);
 
   useEffect(() => {
     initializeSettings();
@@ -64,13 +67,13 @@ const ManageCategories = () => {
 
   // Pagination for list view
   const paginatedCategories = useMemo(() => {
-    if (viewMode !== 'list') return filteredCategories;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
+    if (viewMode !== 'list' || isAll) return filteredCategories;
+    const startIndex = (currentPage - 1) * numericItemsPerPage;
+    const endIndex = startIndex + numericItemsPerPage;
     return filteredCategories.slice(startIndex, endIndex);
-  }, [filteredCategories, currentPage, itemsPerPage, viewMode]);
+  }, [filteredCategories, currentPage, numericItemsPerPage, isAll, viewMode]);
 
-  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
+  const totalPages = isAll ? 1 : Math.ceil(filteredCategories.length / numericItemsPerPage);
 
   // Reset page when filters change
   useEffect(() => {
@@ -293,6 +296,12 @@ const ManageCategories = () => {
                 totalItems={filteredCategories.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
+                showSizeChanger={true}
+                onPageSizeChange={(newSize) => {
+                  setItemsPerPage(newSize);
+                  setCurrentPage(1);
+                }}
+                pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
                 className="mt-4"
               />
             )}

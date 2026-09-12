@@ -31,7 +31,7 @@ const DeliveryBoys = () => {
   const [editingBoy, setEditingBoy] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   useEffect(() => {
     const params = {
@@ -42,7 +42,7 @@ const DeliveryBoys = () => {
       limit: itemsPerPage
     };
     fetchDeliveryBoys(params);
-  }, [searchQuery, statusFilter, applicationFilter, currentPage, fetchDeliveryBoys]);
+  }, [searchQuery, statusFilter, applicationFilter, currentPage, itemsPerPage, fetchDeliveryBoys]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -363,6 +363,12 @@ const DeliveryBoys = () => {
           totalItems={pagination.total}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => {
+            setItemsPerPage(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           className="mt-6"
         />
       </div>

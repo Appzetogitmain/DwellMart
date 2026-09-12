@@ -31,6 +31,7 @@ import {
 } from '../../../services/vendorChannelTransition.service.js';
 import { isQuickCommerceEnabled, isWholesaleMarketplaceEnabled } from '../../../services/featureFlags.service.js';
 import AdminActivityLog from '../../../models/AdminActivityLog.model.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -62,10 +63,8 @@ const toApiVendor = (vendorDoc) => {
 
 // GET /api/admin/vendors
 export const getAllVendors = asyncHandler(async (req, res) => {
-    const { status, page = 1, limit = 20, search } = req.query;
-    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-    const numericLimit = Math.max(parseInt(limit, 10) || 20, 1);
-    const skip = (numericPage - 1) * numericLimit;
+    const { status, search } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const filter = {};
 
     const allowedStatuses = new Set(['pending', 'approved', 'suspended', 'rejected']);
@@ -84,7 +83,7 @@ export const getAllVendors = asyncHandler(async (req, res) => {
             .select('-password -otp -otpExpiry')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(numericLimit)
+            .limit(limit)
             .lean(),
         Vendor.countDocuments(filter),
     ]);
@@ -123,8 +122,9 @@ export const getAllVendors = asyncHandler(async (req, res) => {
         new ApiResponse(200, {
             vendors: vendorsWithStats,
             total,
-            page: numericPage,
-            pages: Math.ceil(total / numericLimit)
+            page,
+            pages: calculatePages(total),
+            limit,
         }, 'Vendors fetched.')
     );
 });

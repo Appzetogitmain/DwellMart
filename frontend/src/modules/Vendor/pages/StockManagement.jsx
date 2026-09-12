@@ -26,6 +26,7 @@ const StockManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
   const [alertThreshold, setAlertThreshold] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [stockModal, setStockModal] = useState({
     isOpen: false,
     product: null,
@@ -284,7 +285,10 @@ const StockManagement = () => {
               data={filteredProducts}
               columns={columns}
               pagination={true}
-              itemsPerPage={10}
+              itemsPerPage={itemsPerPage}
+              showSizeChanger={true}
+              pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+              onPageSizeChange={setItemsPerPage}
             />
           </>
         ) : (

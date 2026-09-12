@@ -134,7 +134,7 @@ export const listShipments = asyncHandler(async (req, res) => {
     }
 
     const pageNum  = Math.max(1, Number(page) || 1);
-    const pageSize = Math.max(1, Math.min(Number(limit) || 20, 100));
+    const pageSize = Math.max(1, Math.min(Number(limit) || 20, 1000));
     const skip     = (pageNum - 1) * pageSize;
 
     const [shipments, total] = await Promise.all([
@@ -302,7 +302,7 @@ export const getOrderShipment = asyncHandler(async (req, res) => {
 export const listAwaitingBooking = asyncHandler(async (req, res) => {
     const { vendorId, channel, minHours } = req.query;
     const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 1000));
 
     if (vendorId && !mongoose.Types.ObjectId.isValid(vendorId)) {
         throw new ApiError(400, 'Invalid vendorId.');

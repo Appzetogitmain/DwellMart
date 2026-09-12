@@ -21,6 +21,7 @@ const ReturnRequests = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   useEffect(() => {
     const now = new Date();
@@ -335,7 +336,10 @@ const ReturnRequests = () => {
           data={filteredRequests}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={itemsPerPage}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => setItemsPerPage(newSize)}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) => navigate(`/admin/return-requests/${row.id}`)}
         />
       )}

@@ -22,6 +22,7 @@ const PromoCodes = () => {
   const [editingCode, setEditingCode] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
   const [copiedCode, setCopiedCode] = useState(null);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   useEffect(() => {
     fetchCoupons();
@@ -287,7 +288,10 @@ const PromoCodes = () => {
           data={filteredCodes}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={itemsPerPage}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => setItemsPerPage(newSize)}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
         />
       </div>
 

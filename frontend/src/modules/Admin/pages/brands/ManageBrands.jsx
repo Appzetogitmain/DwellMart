@@ -17,6 +17,7 @@ const ManageBrands = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     initialize();
@@ -191,7 +192,10 @@ const ManageBrands = () => {
           data={filteredBrands}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={pageSize}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => setPageSize(newSize)}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
         />
       </div>
 

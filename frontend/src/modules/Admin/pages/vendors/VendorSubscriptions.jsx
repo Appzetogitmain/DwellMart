@@ -11,12 +11,14 @@ const VendorSubscriptions = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const fetchSubscriptions = useCallback(async () => {
     setIsLoading(true);
     try {
+      const numericLimit = String(pageSize).toLowerCase() === 'all' ? 1000 : Number(pageSize);
       const response = await api.get('/admin/vendor-subscriptions', {
-        params: { page: currentPage, limit: 15 },
+        params: { page: currentPage, limit: numericLimit },
       });
       const data = response?.data || {};
       setSubscriptions(data.subscriptions || []);
@@ -24,7 +26,7 @@ const VendorSubscriptions = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
     fetchSubscriptions();
@@ -146,15 +148,47 @@ const VendorSubscriptions = () => {
 
         <DataTable data={filtered} columns={columns} pagination={false} />
 
-        {pagination.pages > 1 ? (
-          <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4">
-            <p className="text-sm text-slate-500">Page {pagination.page} of {pagination.pages}</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setCurrentPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50">Previous</button>
-              <button type="button" onClick={() => setCurrentPage((value) => Math.min(pagination.pages, value + 1))} disabled={currentPage === pagination.pages} className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50">Next</button>
-            </div>
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 pt-4">
+          <p className="text-sm text-slate-500">
+            Page <span className="font-semibold text-slate-800">{pagination.page}</span> of <span className="font-semibold text-slate-800">{Math.max(1, pagination.pages)}</span> ({pagination.total || 0} Total Subscriptions)
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+              disabled={currentPage <= 1}
+              className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 font-medium"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-200">
+              {currentPage}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((value) => Math.min(pagination.pages, value + 1))}
+              disabled={currentPage >= pagination.pages}
+              className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 font-medium"
+            >
+              Next
+            </button>
+            <select
+              value={String(pageSize).toLowerCase() === 'all' ? 'all' : String(pageSize)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPageSize(val.toLowerCase() === 'all' ? 'all' : Number(val));
+                setCurrentPage(1);
+              }}
+              className="ml-2 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium"
+            >
+              {[25, 50, 100, 250, 500, 'All'].map((opt) => (
+                <option key={String(opt)} value={String(opt).toLowerCase() === 'all' ? 'all' : String(opt)}>
+                  {String(opt).toLowerCase() === 'all' ? 'All' : `${opt} / page`}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : null}
+        </div>
       </div>
     </motion.div>
   );

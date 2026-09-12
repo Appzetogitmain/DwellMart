@@ -20,7 +20,7 @@ const ViewCustomers = () => {
   const [showDetail, setShowDetail] = useState(false);
   const [startInEditMode, setStartInEditMode] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   useEffect(() => {
     const params = {
@@ -30,7 +30,7 @@ const ViewCustomers = () => {
       status: selectedStatus !== 'all' ? selectedStatus : undefined,
     };
     initialize(params);
-  }, [currentPage, searchQuery, selectedStatus, initialize]);
+  }, [currentPage, itemsPerPage, searchQuery, selectedStatus, initialize]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -211,6 +211,12 @@ const ViewCustomers = () => {
               totalItems={pagination.total}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
+              showSizeChanger={true}
+              onPageSizeChange={(newSize) => {
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
               className="mt-6"
             />
           </>
@@ -227,6 +233,12 @@ const ViewCustomers = () => {
               totalItems={pagination.total}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
+              showSizeChanger={true}
+              onPageSizeChange={(newSize) => {
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
               className="mt-6"
             />
           </>

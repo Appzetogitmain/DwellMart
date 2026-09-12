@@ -3,6 +3,7 @@ import { ApiError } from '../../../utils/ApiError.js';
 import { ApiResponse } from '../../../utils/ApiResponse.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
 import { syncProductAndVendorReviewStats } from '../../../services/reviewAggregate.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 /**
  * @desc    Get all reviews with filtering and pagination
@@ -10,9 +11,8 @@ import { syncProductAndVendorReviewStats } from '../../../services/reviewAggrega
  * @access  Private (Admin)
  */
 export const getAllReviews = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, search = '', status } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 10;
+    const { search = '', status } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 10, maxLimit: 1000 });
 
     const filter = {};
 
@@ -53,8 +53,8 @@ export const getAllReviews = asyncHandler(async (req, res) => {
         .populate('userId', 'name email')
         .populate('productId', 'name')
         .sort({ createdAt: -1 })
-        .skip((numericPage - 1) * numericLimit)
-        .limit(numericLimit);
+        .skip(skip)
+        .limit(limit);
 
     const total = await Review.countDocuments(filter);
 
@@ -63,10 +63,8 @@ export const getAllReviews = asyncHandler(async (req, res) => {
         ...review._doc,
         id: review._id,
         customerName: review.userId ? review.userId.name : 'Unknown',
-        customerEmail: review.userId ? review.userId.email : 'N/A',
-        productName: review.productId ? review.productId.name : 'Unknown Product',
-        productId: review.productId?._id ? String(review.productId._id) : '',
-        review: review.comment || '',
+        customerEmail: review.userId ? review.userId.email : '',
+        productName: review.productId ? review.productId.name : 'Unknown',
         status: review.isApproved ? 'approved' : 'pending'
     }));
 
@@ -75,9 +73,9 @@ export const getAllReviews = asyncHandler(async (req, res) => {
             reviews: normalizedReviews,
             pagination: {
                 total,
-                page: numericPage,
-                limit: numericLimit,
-                pages: Math.ceil(total / numericLimit)
+                page,
+                limit,
+                pages: calculatePages(total)
             }
         }, 'Reviews fetched successfully')
     );

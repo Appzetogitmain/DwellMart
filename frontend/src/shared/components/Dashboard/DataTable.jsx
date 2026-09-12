@@ -9,18 +9,28 @@ export const DataTable = ({
   searchable = true,
   searchPlaceholder = 'Search table...',
   pageSize = 10,
+  pagination = true,
   emptyTitle = 'No Records Found',
   emptyDescription = 'There are no items to display in this table.',
   bulkActions = null,
   className = '',
   currentPage: externalCurrentPage,
   onPageChange: externalOnPageChange,
+  serverSidePagination = false,
+  totalItems = null,
+  totalPages = null,
+  showSizeChanger = false,
+  onPageSizeChange = null,
+  pageSizeOptions = [25, 50, 100, 250, 500, 'All'],
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [internalPage, setInternalPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const currentPage = externalCurrentPage !== undefined ? externalCurrentPage : internalPage;
+
+  const isAll = String(pageSize).toLowerCase() === 'all';
+  const numericPageSize = isAll ? 1000 : (Number(pageSize) || 10);
 
   const handlePageChange = (page) => {
     if (externalOnPageChange) {
@@ -31,6 +41,7 @@ export const DataTable = ({
 
   // Filter data by search query
   const filteredData = useMemo(() => {
+    if (serverSidePagination) return data;
     if (!searchQuery.trim()) return data;
     const lowerQ = searchQuery.toLowerCase();
     return data.filter((row) =>
@@ -38,10 +49,11 @@ export const DataTable = ({
         String(val ?? '').toLowerCase().includes(lowerQ)
       )
     );
-  }, [data, searchQuery]);
+  }, [serverSidePagination, data, searchQuery]);
 
   // Sort data
   const sortedData = useMemo(() => {
+    if (serverSidePagination) return data;
     if (!sortConfig.key) return filteredData;
     return [...filteredData].sort((a, b) => {
       const aVal = a[sortConfig.key];
@@ -50,13 +62,15 @@ export const DataTable = ({
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [filteredData, sortConfig]);
+  }, [serverSidePagination, data, filteredData, sortConfig]);
 
   // Paginate data
   const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return sortedData.slice(startIndex, startIndex + pageSize);
-  }, [sortedData, currentPage, pageSize]);
+    if (serverSidePagination) return data;
+    if (isAll) return sortedData;
+    const startIndex = (currentPage - 1) * numericPageSize;
+    return sortedData.slice(startIndex, startIndex + numericPageSize);
+  }, [serverSidePagination, data, isAll, sortedData, currentPage, numericPageSize]);
 
   const handleSort = (key) => {
     setSortConfig((prev) => ({
@@ -143,17 +157,32 @@ export const DataTable = ({
       </div>
 
       {/* Pagination Footer */}
-      {!loading && sortedData.length > pageSize && (
-        <div className="p-4 border-t border-borderToken-default flex justify-end bg-surface-card">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(sortedData.length / pageSize)}
-            totalItems={sortedData.length}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-          />
-        </div>
-      )}
+      {(() => {
+        const effectiveTotalItems = serverSidePagination ? (totalItems ?? data.length) : sortedData.length;
+        const effectiveTotalPages = totalPages ?? Math.max(1, Math.ceil(effectiveTotalItems / (isAll ? (effectiveTotalItems || 1) : numericPageSize)));
+        const showPagination = pagination && !loading && (
+          serverSidePagination
+            ? (effectiveTotalPages > 1 || showSizeChanger || effectiveTotalItems > 0)
+            : (sortedData.length > numericPageSize || showSizeChanger)
+        );
+
+        if (!showPagination) return null;
+
+        return (
+          <div className="p-4 border-t border-borderToken-default flex justify-end bg-surface-card">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={effectiveTotalPages}
+              totalItems={effectiveTotalItems}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              showSizeChanger={showSizeChanger}
+              onPageSizeChange={onPageSizeChange}
+              pageSizeOptions={pageSizeOptions}
+            />
+          </div>
+        );
+      })()}
     </Card>
   );
 };

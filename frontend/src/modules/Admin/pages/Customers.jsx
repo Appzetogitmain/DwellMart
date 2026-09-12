@@ -19,7 +19,7 @@ const Customers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   useEffect(() => {
     const params = {
@@ -29,7 +29,7 @@ const Customers = () => {
       status: selectedStatus !== 'all' ? selectedStatus : undefined
     };
     initialize(params);
-  }, [currentPage, searchQuery, selectedStatus]);
+  }, [currentPage, itemsPerPage, searchQuery, selectedStatus]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -217,6 +217,12 @@ const Customers = () => {
               totalItems={pagination.total}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
+              showSizeChanger={true}
+              onPageSizeChange={(newSize) => {
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
               className="mt-6"
             />
           </>
@@ -224,7 +230,19 @@ const Customers = () => {
           <DataTable
             data={customers}
             columns={columns}
-            pagination={false} // Store handles pagination
+            pagination={true}
+            serverSidePagination={true}
+            totalItems={pagination.total}
+            totalPages={pagination.pages}
+            currentPage={currentPage}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            showSizeChanger={true}
+            onPageSizeChange={(newSize) => {
+              setItemsPerPage(newSize);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           />
         )}
       </div>

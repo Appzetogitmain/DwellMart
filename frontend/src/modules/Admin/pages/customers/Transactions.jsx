@@ -15,21 +15,22 @@ const Transactions = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 25,
     pages: 0,
   });
-  const itemsPerPage = 10;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const loadTransactions = async () => {
         try {
+          const numericLimit = String(itemsPerPage).toLowerCase() === 'all' ? 1000 : Number(itemsPerPage);
           const response = await getCustomerTransactions({
             page: currentPage,
-            limit: itemsPerPage,
+            limit: numericLimit,
             search: searchQuery || undefined,
             status: statusFilter,
           });
@@ -104,7 +105,7 @@ const Transactions = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [currentPage, searchQuery, statusFilter]);
+  }, [currentPage, searchQuery, statusFilter, itemsPerPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -271,10 +272,16 @@ const Transactions = () => {
         <DataTable data={transactions} columns={columns} pagination={false} />
         <Pagination
           currentPage={pagination.page || currentPage}
-          totalPages={pagination.pages || 0}
+          totalPages={pagination.pages || Math.ceil((pagination.total || 0) / (String(itemsPerPage).toLowerCase() === 'all' ? (pagination.total || 1) : Number(itemsPerPage))) || 1}
           totalItems={pagination.total || 0}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => {
+            setItemsPerPage(newSize);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           className="mt-6"
         />
       </div>

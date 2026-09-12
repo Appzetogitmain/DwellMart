@@ -31,6 +31,7 @@ const ManageVendors = () => {
   const urlPage = parseInt(searchParams.get("page") || "1", 10);
   const initialPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(50);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -606,9 +607,15 @@ const ManageVendors = () => {
           data={filteredVendors}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={pageSize}
           currentPage={currentPage}
           onPageChange={handlePageChange}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            handlePageChange(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) => navigate(`/admin/vendors/${row.id}`)}
         />
       </div>

@@ -15,10 +15,11 @@ const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
-    limit: 10,
+    limit: pageSize === 'all' || pageSize === 'All' ? 'all' : pageSize,
     pages: 1,
   });
   const [summary, setSummary] = useState({
@@ -63,7 +64,7 @@ const Customers = () => {
     };
 
     fetchCustomers();
-  }, [vendorId, page, searchQuery]);
+  }, [vendorId, page, searchQuery, pageSize]);
 
   useEffect(() => {
     setPage(1);
@@ -214,41 +215,23 @@ const Customers = () => {
           <p className="text-gray-500">Loading customers...</p>
         </div>
       ) : filteredCustomers.length > 0 ? (
-        <div className="space-y-4">
-          <DataTable
+        <DataTable
             data={filteredCustomers}
             columns={columns}
-            pagination={false}
+            pagination={true}
+            serverSidePagination={true}
+            totalItems={pagination.total}
+            totalPages={pagination.pages}
+            currentPage={page}
+            itemsPerPage={pageSize}
+            onPageChange={setPage}
+            showSizeChanger={true}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
           />
-          <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-sm text-gray-600">
-              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-              {pagination.total} customers
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={pagination.page <= 1}
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-700">
-                Page {pagination.page} / {pagination.pages}
-              </span>
-              <button
-                type="button"
-                disabled={pagination.page >= pagination.pages}
-                onClick={() => setPage((prev) => Math.min(pagination.pages, prev + 1))}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
       ) : (
         <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
           <p className="text-gray-500">No customers found</p>

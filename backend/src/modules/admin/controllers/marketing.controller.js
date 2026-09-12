@@ -6,6 +6,7 @@ import Banner from '../../../models/Banner.model.js';
 import Campaign from '../../../models/Campaign.model.js';
 import Testimonial from '../../../models/Testimonial.model.js';
 import { slugify } from '../../../utils/slugify.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const COUPON_TYPES = new Set(['percentage', 'fixed', 'freeship']);
 const EXCLUSIVE_SALE_CAMPAIGN_TYPES = ['flash_sale', 'daily_deal', 'special_offer', 'festival'];
@@ -62,10 +63,15 @@ const normalizeBannerLink = (value) => {
     return '';
 };
 
-const normalizeBannerPayload = (payload = {}) => ({
-    ...payload,
-    link: normalizeBannerLink(payload?.link),
-});
+const normalizeBannerPayload = (payload = {}) => {
+    const rawType = String(payload?.type || '').trim().toLowerCase();
+    const type = rawType === 'hero' ? 'home_slider' : (payload?.type || 'home_slider');
+    return {
+        ...payload,
+        type,
+        link: normalizeBannerLink(payload?.link),
+    };
+};
 
 const normalizeObjectIdList = (values) => {
     if (!Array.isArray(values)) return [];
@@ -407,9 +413,8 @@ const normalizeTestimonialPayload = (payload = {}, { partial = false } = {}) => 
 
 // ─── Coupons (Promo Codes) ──────────────────────────────────────────────────
 export const getAllCoupons = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, status } = req.query;
-    const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
-    const parsedLimit = Math.max(Number.parseInt(limit, 10) || 10, 1);
+    const { status } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 10, maxLimit: 1000 });
     const query = {};
     const now = new Date();
 
@@ -429,8 +434,8 @@ export const getAllCoupons = asyncHandler(async (req, res) => {
 
     const coupons = await Coupon.find(query)
         .sort({ createdAt: -1 })
-        .limit(parsedLimit)
-        .skip((parsedPage - 1) * parsedLimit);
+        .limit(limit)
+        .skip(skip);
 
     const count = await Coupon.countDocuments(query);
 
@@ -439,9 +444,9 @@ export const getAllCoupons = asyncHandler(async (req, res) => {
             coupons: coupons.map(formatCoupon),
             pagination: {
                 total: count,
-                page: parsedPage,
-                limit: parsedLimit,
-                pages: Math.ceil(count / parsedLimit)
+                page,
+                limit,
+                pages: calculatePages(count)
             }
         }, 'Coupons fetched successfully')
     );

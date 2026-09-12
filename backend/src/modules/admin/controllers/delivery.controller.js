@@ -5,6 +5,7 @@ import { ApiResponse } from '../../../utils/ApiResponse.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 import crypto from 'crypto';
 
 const DOC_TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -58,9 +59,8 @@ import DeliveryCashLedger from '../../../models/DeliveryCashLedger.model.js';
  * @access  Private (Admin)
  */
 export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, search = '', status, applicationStatus } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 10;
+    const { search = '', status, applicationStatus } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 10, maxLimit: 1000 });
 
     const filter = {};
 
@@ -84,8 +84,8 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
     const deliveryBoys = await DeliveryBoy.find(filter)
         .select('-password -payoutDetails.accountNumber -payoutDetails.upiId')
         .sort({ createdAt: -1 })
-        .skip((numericPage - 1) * numericLimit)
-        .limit(numericLimit);
+        .skip(skip)
+        .limit(limit);
 
     const total = await DeliveryBoy.countDocuments(filter);
     const maxCodCashLimit = await getMaxCodCashLimit();
@@ -136,9 +136,9 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
             deliveryBoys: boysWithStats,
             pagination: {
                 total,
-                page: numericPage,
-                limit: numericLimit,
-                pages: Math.ceil(total / numericLimit)
+                page,
+                limit,
+                pages: calculatePages(total)
             }
         }, 'Delivery boys fetched successfully')
     );
@@ -448,10 +448,8 @@ export const getDeliverySettlements = asyncHandler(async (req, res) => {
     // Run stale pending request cleanup across all riders first
     await autoCleanupStalePendingRequests();
 
-    const { page = 1, limit = 20, status = 'all', search = '' } = req.query;
-    const numericPage = Math.max(1, Number(page) || 1);
-    const numericLimit = Math.min(Math.max(1, Number(limit) || 20), 100);
-    const skip = (numericPage - 1) * numericLimit;
+    const { status = 'all', search = '' } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
 
     const filter = {};
     if (status && status !== 'all') {
@@ -475,7 +473,7 @@ export const getDeliverySettlements = asyncHandler(async (req, res) => {
             .populate('receivedBy', 'name email')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(numericLimit)
+            .limit(limit)
             .lean(),
         DeliveryCashSettlement.countDocuments(filter),
     ]);
@@ -514,9 +512,9 @@ export const getDeliverySettlements = asyncHandler(async (req, res) => {
                 settlements,
                 pagination: {
                     total,
-                    page: numericPage,
-                    limit: numericLimit,
-                    pages: Math.ceil(total / numericLimit) || 1,
+                    page,
+                    limit,
+                    pages: calculatePages(total),
                 },
             },
             'Delivery settlements fetched successfully.'

@@ -9,6 +9,7 @@ import User from '../../../models/User.model.js';
 import Admin from '../../../models/Admin.model.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
+import { parsePagination } from '../../../utils/pagination.js';
 
 const enrichReturnItems = (request) => {
     const orderItems = Array.isArray(request?.orderId?.items) ? request.orderId.items : [];
@@ -54,9 +55,11 @@ const normalizeReturnRequest = (requestDoc) => {
 
 // GET /api/vendor/return-requests
 export const getVendorReturnRequests = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search = '', status } = req.query;
-    const numericPage = Math.max(1, Number(page) || 1);
-    const numericLimit = Math.max(1, Number(limit) || 20);
+    const { search = '', status } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, {
+        defaultLimit: 20,
+        maxLimit: 1000,
+    });
 
     const filter = { vendorId: req.user.id };
     if (status && status !== 'all') {
@@ -99,8 +102,8 @@ export const getVendorReturnRequests = asyncHandler(async (req, res) => {
             .populate('userId', 'name email phone')
             .populate('orderId', 'orderId total items vendorItems status paymentStatus')
             .sort({ createdAt: -1 })
-            .skip((numericPage - 1) * numericLimit)
-            .limit(numericLimit),
+            .skip(skip)
+            .limit(limit),
         ReturnRequest.countDocuments(filter),
     ]);
 
@@ -112,9 +115,9 @@ export const getVendorReturnRequests = asyncHandler(async (req, res) => {
                 returnRequests: normalized,
                 pagination: {
                     total,
-                    page: numericPage,
-                    limit: numericLimit,
-                    pages: Math.ceil(total / numericLimit),
+                    page,
+                    limit,
+                    pages: calculatePages(total),
                 },
             },
             'Return requests fetched.'

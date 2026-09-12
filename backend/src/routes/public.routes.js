@@ -1230,7 +1230,13 @@ router.get('/banners', marketingCache, asyncHandler(async (req, res) => {
             { $or: [{ endDate: null }, { endDate: { $exists: false } }, { endDate: { $gte: now } }] }
         ]
     };
-    if (type) filter.type = type;
+    if (type) {
+        if (type === 'home_slider' || type === 'hero') {
+            filter.type = { $in: ['home_slider', 'hero'] };
+        } else {
+            filter.type = type;
+        }
+    }
     const banners = await Banner.find(filter).sort({ order: 1 }).lean();
     res.status(200).json(new ApiResponse(200, banners, 'Banners fetched.'));
 }));

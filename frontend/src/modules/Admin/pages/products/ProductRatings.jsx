@@ -19,6 +19,10 @@ const ProductRatings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRating, setSelectedRating] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     ratingId: null,
@@ -30,15 +34,21 @@ const ProductRatings = () => {
       const params = {
         search: searchQuery || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
-        limit: 200,
+        page: currentPage,
+        limit: pageSize,
       };
       const response = await getAllReviews(params);
       const reviewRows = response.data?.reviews || [];
+      const total = response.data?.pagination?.total ?? reviewRows.length;
+      const pages = response.data?.pagination?.pages ?? 1;
+
       const normalizedRows = reviewRows.map((row) => ({
         ...row,
         date: row.createdAt || row.date,
       }));
       setRatings(normalizedRows);
+      setTotalItems(total);
+      setTotalPages(pages);
     } catch (error) {
       setRatings([]);
     } finally {
@@ -47,8 +57,12 @@ const ProductRatings = () => {
   };
 
   useEffect(() => {
-    loadRatings();
+    setCurrentPage(1);
   }, [searchQuery, statusFilter]);
+
+  useEffect(() => {
+    loadRatings();
+  }, [searchQuery, statusFilter, currentPage, pageSize]);
 
   const filteredRatings = ratings;
 
@@ -228,7 +242,18 @@ const ProductRatings = () => {
             data={filteredRatings}
             columns={columns}
             pagination={true}
-            itemsPerPage={10}
+            serverSidePagination={true}
+            totalItems={totalItems}
+            totalPages={totalPages}
+            currentPage={currentPage}
+            itemsPerPage={pageSize}
+            onPageChange={(page) => setCurrentPage(page)}
+            showSizeChanger={true}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           />
         )}
       </div>

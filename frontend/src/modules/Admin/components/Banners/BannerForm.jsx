@@ -6,6 +6,7 @@ import { useBannerStore } from "../../../../shared/store/bannerStore";
 import AnimatedSelect from "../AnimatedSelect";
 import toast from "react-hot-toast";
 import Button from "../Button";
+import BannerLinkInput from "./BannerLinkInput";
 import { uploadAdminImage } from "../../services/adminService";
 
 const BannerForm = ({ banner, onClose, onSave }) => {
@@ -16,7 +17,7 @@ const BannerForm = ({ banner, onClose, onSave }) => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [formData, setFormData] = useState({
-    type: "hero",
+    type: "home_slider",
     title: "",
     subtitle: "",
     description: "",
@@ -31,7 +32,7 @@ const BannerForm = ({ banner, onClose, onSave }) => {
   useEffect(() => {
     if (banner) {
       setFormData({
-        type: banner.type || "hero",
+        type: banner.type === "hero" ? "home_slider" : (banner.type || "home_slider"),
         title: banner.title || "",
         subtitle: banner.subtitle || "",
         description: banner.description || "",
@@ -208,7 +209,6 @@ const BannerForm = ({ banner, onClose, onSave }) => {
                         { value: "quick_commerce", label: "Quick Commerce Banner" },
                         { value: "festival_offer", label: "Festival Offer Banner" },
                         { value: "banner", label: "Generic Banner" },
-                        { value: "hero", label: "Hero Banner" },
                         { value: "promotional", label: "Promotional Banner" },
                         { value: "side_banner", label: "Side Banner (Home Right)" },
                       ]}
@@ -314,12 +314,10 @@ const BannerForm = ({ banner, onClose, onSave }) => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Link URL
                   </label>
-                  <input
-                    type="text"
+                  <BannerLinkInput
                     name="link"
                     value={formData.link}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="/category/electronics or https://example.com"
                   />
                 </div>

@@ -11,9 +11,12 @@ export const Pagination = ({
   totalItems = null,
   onPageSizeChange = null,
   showSizeChanger = false,
-  pageSizeOptions = [10, 20, 50, 100],
+  pageSizeOptions = [25, 50, 100, 250, 500, 'All'],
   className = '',
 }) => {
+  const isAll = String(pageSize).toLowerCase() === 'all';
+  const numericPageSize = isAll ? (totalItems || 1000) : (Number(pageSize) || 10);
+
   // Generate page numbers with smart ellipses calculation
   const getPageNumbers = () => {
     const pages = [];
@@ -56,6 +59,9 @@ export const Pagination = ({
     }
   };
 
+  const fromItem = totalItems === 0 ? 0 : isAll ? 1 : Math.min((currentPage - 1) * numericPageSize + 1, totalItems);
+  const toItem = isAll ? totalItems : Math.min(currentPage * numericPageSize, totalItems);
+
   return (
     <nav
       role="navigation"
@@ -66,8 +72,8 @@ export const Pagination = ({
       <div className="text-xs text-textColor-muted font-medium">
         {totalItems !== null ? (
           <span>
-            Showing <strong className="text-textColor-primary">{Math.min((currentPage - 1) * pageSize + 1, totalItems)}</strong> to{' '}
-            <strong className="text-textColor-primary">{Math.min(currentPage * pageSize, totalItems)}</strong> of{' '}
+            Showing <strong className="text-textColor-primary">{fromItem}</strong> to{' '}
+            <strong className="text-textColor-primary">{toItem}</strong> of{' '}
             <strong className="text-textColor-primary">{totalItems}</strong> items
           </span>
         ) : (
@@ -136,15 +142,21 @@ export const Pagination = ({
 
         {/* Optional Page Size Changer */}
         {showSizeChanger && onPageSizeChange && (
-          <div className="ml-2 w-28">
+          <div className="ml-2 w-32">
             <Select
               size="sm"
-              value={String(pageSize)}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              options={pageSizeOptions.map((opt) => ({
-                value: String(opt),
-                label: `${opt} / page`,
-              }))}
+              value={isAll ? 'all' : String(pageSize)}
+              onChange={(e) => {
+                const val = e.target.value;
+                onPageSizeChange(val.toLowerCase() === 'all' ? 'all' : Number(val));
+              }}
+              options={pageSizeOptions.map((opt) => {
+                const optIsAll = String(opt).toLowerCase() === 'all';
+                return {
+                  value: optIsAll ? 'all' : String(opt),
+                  label: optIsAll ? 'All' : `${opt} / page`,
+                };
+              })}
             />
           </div>
         )}

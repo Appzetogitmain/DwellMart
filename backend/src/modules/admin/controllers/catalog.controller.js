@@ -8,6 +8,7 @@ import Brand from '../../../models/Brand.model.js';
 import Settings from '../../../models/Settings.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
+import { parsePagination } from '../../../utils/pagination.js';
 import { seedCategoriesInDb } from '../../../../scripts/seedCategories.js';
 import {
     resolveWholesalePayload,
@@ -251,10 +252,8 @@ const sanitizeBrandPayload = (payload = {}) => {
 
 // GET /api/admin/products
 export const getAllProducts = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search, vendorId, categoryId, status, includeInactive = 'false' } = req.query;
-    const numericPage = Number(page) || 1;
-    const numericLimit = Number(limit) || 20;
-    const skip = (numericPage - 1) * numericLimit;
+    const { search, vendorId, categoryId, status, includeInactive = 'false' } = req.query;
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const filter = {};
     if (search) filter.$text = { $search: search };
     if (vendorId) filter.vendorId = vendorId;
@@ -272,11 +271,11 @@ export const getAllProducts = asyncHandler(async (req, res) => {
             .populate('brandId', 'name')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(numericLimit)
+            .limit(limit)
             .lean(),
         Product.countDocuments(filter),
     ]);
-    res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Products fetched.'));
+    res.status(200).json(new ApiResponse(200, { products, total, page, pages: calculatePages(total), limit }, 'Products fetched.'));
 });
 
 // GET /api/admin/products/:id
@@ -854,8 +853,7 @@ export const deleteBrand = asyncHandler(async (req, res) => {
  * reach a courier, so an estimate on them costs nothing.
  */
 export const listProductsMissingShipping = asyncHandler(async (req, res) => {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.max(1, Math.min(Number(req.query.limit) || 20, 100));
+    const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const { vendorId, channel } = req.query;
 
     const filter = {
