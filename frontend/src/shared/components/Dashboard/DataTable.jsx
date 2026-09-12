@@ -9,6 +9,7 @@ export const DataTable = ({
   searchable = true,
   searchPlaceholder = 'Search table...',
   pageSize = 10,
+  pagination = true,
   emptyTitle = 'No Records Found',
   emptyDescription = 'There are no items to display in this table.',
   bulkActions = null,
@@ -159,7 +160,7 @@ export const DataTable = ({
       {(() => {
         const effectiveTotalItems = serverSidePagination ? (totalItems ?? data.length) : sortedData.length;
         const effectiveTotalPages = totalPages ?? Math.max(1, Math.ceil(effectiveTotalItems / (isAll ? (effectiveTotalItems || 1) : numericPageSize)));
-        const showPagination = !loading && (
+        const showPagination = pagination && !loading && (
           serverSidePagination
             ? (effectiveTotalPages > 1 || showSizeChanger || effectiveTotalItems > 0)
             : (sortedData.length > numericPageSize || showSizeChanger)

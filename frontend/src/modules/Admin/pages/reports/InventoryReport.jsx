@@ -11,6 +11,8 @@ const InventoryReport = () => {
   const [products, setProducts] = useState([]);
   const [summary, setSummary] = useState({ totalProducts: 0, activeProducts: 0, lowStock: 0, outOfStock: 0, totalValue: 0 });
   const [productsLoading, setProductsLoading] = useState(true);
+  const [pageSize, setPageSize] = useState(25);
+  const [lowStockPageSize, setLowStockPageSize] = useState(25);
 
   useEffect(() => {
     let mounted = true;
@@ -193,7 +195,10 @@ const InventoryReport = () => {
             data={lowStockProducts}
             columns={columns}
             pagination={true}
-            itemsPerPage={10}
+            itemsPerPage={lowStockPageSize}
+            showSizeChanger={true}
+            onPageSizeChange={(newSize) => setLowStockPageSize(newSize)}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           />
         ) : (
           <p className="text-gray-500 text-center py-8">No low stock products</p>
@@ -206,7 +211,10 @@ const InventoryReport = () => {
           data={products}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={pageSize}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => setPageSize(newSize)}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
         />
       </div>
     </motion.div>

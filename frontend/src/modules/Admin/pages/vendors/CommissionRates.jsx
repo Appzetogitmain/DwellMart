@@ -20,6 +20,7 @@ const CommissionRates = () => {
     currentRate: "",
   });
   const [newRate, setNewRate] = useState("");
+  const [pageSize, setPageSize] = useState(25);
 
   const filteredVendors = useMemo(() => {
     let filtered = vendors.filter((v) => v.status === "approved");
@@ -183,7 +184,10 @@ const CommissionRates = () => {
           data={filteredVendors}
           columns={columns}
           pagination={true}
-          itemsPerPage={10}
+          itemsPerPage={pageSize}
+          showSizeChanger={true}
+          onPageSizeChange={(newSize) => setPageSize(newSize)}
+          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) => navigate(`/admin/vendors/${row.id}`)}
         />
       </div>

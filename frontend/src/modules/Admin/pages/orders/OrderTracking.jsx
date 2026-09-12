@@ -14,12 +14,13 @@ const OrderTracking = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     const fetchOrders = async () => {
       setIsLoading(true);
       try {
-        const response = await getAllOrders({ limit: 100 });
+        const response = await getAllOrders({ limit: 500 });
         const normalizedOrders = (response.data?.orders || []).map(order => ({
           ...order,
           id: order.orderId || order._id,
@@ -128,7 +129,10 @@ const OrderTracking = () => {
             data={filteredOrders}
             columns={columns}
             pagination={true}
-            itemsPerPage={10}
+            itemsPerPage={pageSize}
+            showSizeChanger={true}
+            onPageSizeChange={(newSize) => setPageSize(newSize)}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           />
         )}
       </div>

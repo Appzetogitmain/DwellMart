@@ -12,6 +12,7 @@ const SalesReport = () => {
   const [orders, setOrders] = useState([]);
   const [summary, setSummary] = useState({ totalSales: 0, totalOrders: 0, averageOrderValue: 0 });
   const [loading, setLoading] = useState(false);
+  const [pageSize, setPageSize] = useState(25);
 
   const fetchOrders = useCallback(async (range = { start: '', end: '' }) => {
     setLoading(true);
@@ -183,7 +184,10 @@ const SalesReport = () => {
             data={orders}
             columns={columns}
             pagination={true}
-            itemsPerPage={10}
+            itemsPerPage={pageSize}
+            showSizeChanger={true}
+            onPageSizeChange={(newSize) => setPageSize(newSize)}
+            pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           />
         )}
       </div>
