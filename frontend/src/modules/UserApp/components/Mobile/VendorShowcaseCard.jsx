@@ -44,7 +44,7 @@ const VendorShowcaseCard = ({ vendor, index = 0, className = '' }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.05 }}
+        transition={{ delay: (index % 12) * 0.04 }}
         whileTap={{ scale: 0.98 }}
         className={`bg-surface border border-border hover:border-brand-primary/50 rounded-card p-3 sm:p-4 flex flex-col items-center text-center w-full h-full min-h-[245px] sm:min-h-[250px] shadow-sm hover:shadow-md transition-all justify-between ${className}`}
       >
@@ -55,6 +55,8 @@ const VendorShowcaseCard = ({ vendor, index = 0, className = '' }) => {
               <img
                 src={rawImage}
                 alt={storeName}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
                 onError={() => setImageFailed(true)}
               />
