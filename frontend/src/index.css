@@ -416,3 +416,54 @@ body::-webkit-scrollbar {
     transform: translateZ(0);
   }
 }
+
+/* ─── Best Sellers Carousel Responsive Card Sizing ────────────────────────── */
+.best-seller-carousel-item {
+  flex-shrink: 0;
+  width: 100%;
+  scroll-snap-align: start;
+}
+
+/* Screens >= 350px (covers 360px, 375px, 390px, 412px): exactly 2 complete cards */
+@media (min-width: 350px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 0.75rem) / 2);
+  }
+}
+
+/* Small Tablet (>= 640px): exactly 3 complete cards */
+@media (min-width: 640px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 2rem) / 3);
+  }
+}
+
+/* Tablet (>= 768px): exactly 3 complete cards */
+@media (min-width: 768px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 2rem) / 3);
+  }
+}
+
+/* Laptop / Desktop (>= 1024px): exactly 4 complete cards */
+@media (min-width: 1024px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 3rem) / 4);
+  }
+}
+
+/* MacBook / Wide Desktop (>= 1280px): exactly 5 complete cards */
+@media (min-width: 1280px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 4rem) / 5);
+  }
+}
+
+/* Extra Large Displays (>= 1536px): exactly 6 complete cards */
+@media (min-width: 1536px) {
+  .best-seller-carousel-item {
+    width: calc((100% - 5rem) / 6);
+  }
+}
+
+
