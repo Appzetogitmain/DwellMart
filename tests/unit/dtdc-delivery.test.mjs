@@ -38,6 +38,7 @@ import {
     normalizeAddress,
     isCodOrder,
     bookingKey,
+    declaredValueFor,
     buildConsignmentPayload,
     parseServiceabilityResponse,
 } from '../../src/services/shipping/dtdcShipment.service.js';
@@ -572,4 +573,73 @@ test('Serviceability parser: handles missing SERV_LIST by falling back to ZIPCOD
     assert.equal(verdict.serviceable, true);
     assert.equal(verdict.codAvailable, true);
 });
+
+test('Declared value & COD amount: correctly includes subtotal, shipping, and taxes', () => {
+    // Exact scenario from Order RT-20260909-CN2MZP9USP
+    const order = {
+        _id: '507f1f77bcf86cd799439011',
+        orderId: 'RT-20260909-CN2MZP9USP',
+        fulfillmentType: 'retail',
+        paymentMethod: 'cod',
+        paymentStatus: 'pending',
+        subtotal: 349.00,
+        shipping: 65.00,
+        tax: 62.82,
+        total: 476.82,
+        shippingAddress: {
+            name: 'Devesh Lal',
+            phone: '9999188143',
+            address: 'H block 343b 2nd floor Palam Vihar',
+            city: 'Gurugram',
+            state: 'Haryana',
+            zipCode: '122017',
+        },
+        items: [{ quantity: 1, shippingWeightKg: 0.5, shippingDims: { length: 10, width: 10, height: 10 } }],
+        vendorItems: [{
+            vendorId: '507f1f77bcf86cd799439022',
+            subtotal: 349.00,
+            shipping: 65.00,
+            tax: 62.82,
+            discount: 0,
+            // total omitted intentionally to verify compute fallback
+        }],
+    };
+
+    const vendor = {
+        _id: '507f1f77bcf86cd799439022',
+        storeName: 'Kavya Begs',
+        phone: '9876543210',
+        address: { street: 'Main Bazar', city: 'Gurugram', state: 'Haryana', zipCode: '122001' },
+    };
+
+    const declared = declaredValueFor(order, vendor._id);
+    assert.equal(declared, 476.82, 'Declared value must include subtotal + shipping + tax');
+
+    const payload = buildConsignmentPayload(order, vendor, null, vendor._id);
+    assert.equal(payload.declared_value, 476.82);
+    assert.equal(payload.cod_amount, 476.82, 'COD amount sent to DTDC must be full grand total');
+    assert.equal(payload.cod_collection_mode, 'CASH');
+});
+
+test('COD Lifecycle: delivered status automatically updates paymentStatus to paid and sets deliveredAt', () => {
+    const scanEventTime = new Date('2026-09-11T18:43:00.000Z');
+    const order = {
+        orderId: 'RT-20260909-CN2MZP9USP',
+        status: 'out_for_delivery',
+        paymentMethod: 'cod',
+        paymentStatus: 'pending',
+        vendorItems: [{
+            vendorId: '507f1f77bcf86cd799439022',
+            status: 'out_for_delivery',
+        }],
+    };
+
+    const applied = advanceOrderStatus(order, 'delivered', 'retail', '507f1f77bcf86cd799439022', scanEventTime);
+    assert.deepEqual(applied, ['delivered']);
+    assert.equal(order.status, 'delivered');
+    assert.equal(order.paymentStatus, 'paid', 'COD order paymentStatus must automatically move to paid on delivery');
+    assert.equal(order.isCashSettled, true);
+    assert.equal(order.deliveredAt.toISOString(), scanEventTime.toISOString(), 'deliveredAt must match scan event timestamp');
+});
+
 
