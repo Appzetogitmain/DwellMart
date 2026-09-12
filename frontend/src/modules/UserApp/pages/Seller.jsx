@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { FiFilter, FiArrowLeft, FiGrid, FiList, FiX, FiCheckCircle, FiStar, FiShoppingBag, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { FiFilter, FiArrowLeft, FiGrid, FiList, FiX, FiCheckCircle, FiStar, FiShoppingBag, FiArrowUp } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
@@ -36,17 +36,19 @@ const normalizeProduct = (raw) => ({
     reviewCount: Number(raw?.reviewCount) || 0,
 });
 
-const getPaginationRange = (current, total) => {
-    if (total <= 7) {
-        return Array.from({ length: total }, (_, i) => i + 1);
+const deduplicateProducts = (existingList = [], newList = []) => {
+    const seen = new Set();
+    const result = [];
+    for (const p of [...existingList, ...newList]) {
+        const id = String(p?.id || p?._id || "");
+        if (id && !seen.has(id)) {
+            seen.add(id);
+            result.push(p);
+        } else if (!id) {
+            result.push(p);
+        }
     }
-    if (current <= 4) {
-        return [1, 2, 3, 4, 5, '...', total];
-    }
-    if (current >= total - 3) {
-        return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
-    }
-    return [1, '...', current - 1, current, current + 1, '...', total];
+    return result;
 };
 
 const Seller = () => {
@@ -66,10 +68,9 @@ const Seller = () => {
         "Products",
         "No products found",
         "This seller has no products available at the moment.",
-        "Showing",
-        "to",
-        "of",
-        "products"
+        "Loading more products...",
+        "Load More Products",
+        "You've viewed all products from"
     ]);
 
     const { translateObject, translateArray } = useDynamicTranslation();
@@ -78,20 +79,46 @@ const Seller = () => {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const vendorId = String(id ?? "").trim();
-    const pageParam = parseInt(searchParams.get("page") || "1", 10);
-    const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 
     const [catalogVersion, setCatalogVersion] = useState(0);
     const [remoteVendor, setRemoteVendor] = useState(null);
     const [vendorProducts, setVendorProducts] = useState([]);
-    const [pagination, setPagination] = useState({
-        total: 0,
-        page: currentPage,
-        pages: 1,
-        limit: 12
-    });
-    const [isResolvingVendor, setIsResolvingVendor] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pages, setPages] = useState(1);
+    const [total, setTotal] = useState(0);
     const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [showBackToTop, setShowBackToTop] = useState(false);
+
+    const loadMoreRef = useRef(null);
+    const isFetchingRef = useRef(false);
+    const abortControllerRef = useRef(null);
+
+    const hasMore = page < pages;
+
+    // Clean up residual ?page= param if user navigated with an old link
+    useEffect(() => {
+        if (searchParams.has("page")) {
+            setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                next.delete("page");
+                return next;
+            }, { replace: true });
+        }
+    }, [searchParams, setSearchParams]);
+
+    // Track scroll for Back to Top button
+    useEffect(() => {
+        const handleScroll = () => {
+            setShowBackToTop(window.scrollY > 400);
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
 
     const vendor = useMemo(
         () => getVendorById(vendorId) || remoteVendor,
@@ -124,12 +151,7 @@ const Seller = () => {
     const filterButtonRef = useRef(null);
 
     const handleFilterChange = (name, value) => {
-        setFilters({ ...filters, [name]: value });
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("page", "1");
-            return next;
-        });
+        setFilters((prev) => ({ ...prev, [name]: value }));
     };
 
     const clearFilters = () => {
@@ -137,11 +159,6 @@ const Seller = () => {
             minPrice: "",
             maxPrice: "",
             minRating: "",
-        });
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("page", "1");
-            return next;
         });
     };
 
@@ -222,104 +239,131 @@ const Seller = () => {
         };
     }, [vendorId]);
 
-    // Fetch paginated vendor products
-    useEffect(() => {
-        let active = true;
-        const fetchProducts = async () => {
-            if (!vendorId) return;
+    // Fetch paginated vendor products with infinite scroll
+    const fetchProducts = useCallback(async (targetPage = 1, isReset = false) => {
+        if (!vendorId) return;
+        if (isFetchingRef.current && !isReset) return;
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        isFetchingRef.current = true;
+
+        if (targetPage === 1 || isReset) {
             setIsLoadingProducts(true);
-            try {
-                const params = {
-                    experience: 'marketplace',
-                    page: currentPage,
-                    limit: 12,
-                    ...(filters.minPrice && { minPrice: filters.minPrice }),
-                    ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
-                    ...(filters.minRating && { minRating: filters.minRating }),
-                };
+        } else {
+            setIsLoadingMore(true);
+        }
 
-                const res = await api.get(`/vendors/${vendorId}/products`, { params, silent: true });
-                const payload = res?.data ?? res;
-                if (!active) return;
+        try {
+            const params = {
+                experience: 'marketplace',
+                page: targetPage,
+                limit: 12,
+                ...(filters.minPrice && { minPrice: filters.minPrice }),
+                ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
+                ...(filters.minRating && { minRating: filters.minRating }),
+            };
 
-                const rawList = Array.isArray(payload?.products)
-                    ? payload.products
-                    : Array.isArray(payload)
-                    ? payload
-                    : null;
+            const res = await api.get(`/vendors/${vendorId}/products`, {
+                params,
+                signal: controller.signal,
+                silent: true,
+            });
+            const payload = res?.data ?? res;
 
-                if (rawList && rawList.length > 0) {
-                    let normalized = rawList.map(normalizeProduct);
-                    try {
-                        const translated = await translateArray(normalized, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
-                        if (Array.isArray(translated) && translated.length > 0) {
-                            normalized = translated;
-                        }
-                    } catch (tErr) {
-                        console.warn('[Seller] Products translation skipped:', tErr);
+            const rawList = Array.isArray(payload?.products)
+                ? payload.products
+                : Array.isArray(payload)
+                ? payload
+                : null;
+
+            if (rawList && rawList.length > 0) {
+                let normalized = rawList.map(normalizeProduct);
+                try {
+                    const translated = await translateArray(normalized, ['name', 'description', 'unit', 'categoryName', 'brandName', 'vendorName']);
+                    if (Array.isArray(translated) && translated.length > 0) {
+                        normalized = translated;
                     }
-                    if (active) {
-                        setVendorProducts(normalized);
-                        setPagination({
-                            total: Number(payload?.total || normalized.length),
-                            page: Number(payload?.page || currentPage),
-                            pages: Math.max(1, Number(payload?.pages || 1)),
-                            limit: Number(payload?.limit || 12),
-                        });
-                    }
-                } else if (rawList && rawList.length === 0) {
-                    if (active) {
-                        setVendorProducts([]);
-                        setPagination({
-                            total: 0,
-                            page: 1,
-                            pages: 1,
-                            limit: 12,
-                        });
-                    }
+                } catch (tErr) {
+                    console.warn('[Seller] Products translation skipped:', tErr);
+                }
+
+                const newPage = Number(payload?.page || targetPage);
+                const totalPages = Math.max(1, Number(payload?.pages || Math.ceil((payload?.total || normalized.length) / 12)));
+                const totalCount = Number(payload?.total || normalized.length);
+
+                setPage(newPage);
+                setPages(totalPages);
+                setTotal(totalCount);
+
+                if (targetPage === 1 || isReset) {
+                    setVendorProducts(normalized);
                 } else {
-                    const local = getProductsByVendor(vendorId);
-                    if (active) {
-                        setVendorProducts(local);
-                        setPagination({
-                            total: local.length,
-                            page: 1,
-                            pages: 1,
-                            limit: 12,
-                        });
-                    }
+                    setVendorProducts((prev) => deduplicateProducts(prev, normalized));
                 }
-            } catch {
-                if (active) {
-                    const local = getProductsByVendor(vendorId);
-                    setVendorProducts(local);
-                    setPagination({
-                        total: local.length,
-                        page: 1,
-                        pages: 1,
-                        limit: 12,
-                    });
+            } else if (rawList && rawList.length === 0) {
+                if (targetPage === 1 || isReset) {
+                    setVendorProducts([]);
                 }
-            } finally {
-                if (active) setIsLoadingProducts(false);
+                setPage(1);
+                setPages(1);
+                setTotal(0);
+            } else {
+                const local = getProductsByVendor(vendorId);
+                setVendorProducts(local);
+                setPage(1);
+                setPages(1);
+                setTotal(local.length);
             }
-        };
+        } catch (err) {
+            if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
+            const local = getProductsByVendor(vendorId);
+            setVendorProducts(local);
+            setPage(1);
+            setPages(1);
+            setTotal(local.length);
+        } finally {
+            isFetchingRef.current = false;
+            setIsLoadingProducts(false);
+            setIsLoadingMore(false);
+        }
+    }, [vendorId, filters, translateArray]);
 
-        fetchProducts();
+    // Reset and fetch page 1 whenever filters, vendorId, or catalogVersion change
+    useEffect(() => {
+        fetchProducts(1, true);
+    }, [fetchProducts, catalogVersion]);
+
+    // Fetch next page handler
+    const fetchNextPage = useCallback(() => {
+        if (isFetchingRef.current || isLoadingProducts || isLoadingMore || !hasMore) return;
+        fetchProducts(page + 1, false);
+    }, [fetchProducts, page, hasMore, isLoadingProducts, isLoadingMore]);
+
+    // IntersectionObserver for continuous automatic preloading
+    useEffect(() => {
+        if (!hasMore || isLoadingProducts || isLoadingMore) return;
+        const target = loadMoreRef.current;
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    fetchNextPage();
+                }
+            },
+            { rootMargin: '350px 0px' }
+        );
+
+        observer.observe(target);
         return () => {
-            active = false;
+            observer.unobserve(target);
+            observer.disconnect();
         };
-    }, [vendorId, currentPage, filters, catalogVersion]);
-
-    const handlePageChange = (newPage) => {
-        if (newPage < 1 || newPage > pagination.pages || newPage === currentPage) return;
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("page", String(newPage));
-            return next;
-        });
-        window.scrollTo({ top: 250, behavior: "smooth" });
-    };
+    }, [hasMore, isLoadingProducts, isLoadingMore, fetchNextPage]);
 
     if (isResolvingVendor) {
         return (
@@ -553,7 +597,7 @@ const Seller = () => {
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <FiShoppingBag className="text-content-muted" />
-                                            <span>{pagination.total || vendorProducts.length} {t('Products')}</span>
+                                            <span>{total || vendorProducts.length} {t('Products')}</span>
                                         </div>
                                     </div>
                                     {isWholesaleVendor && (
@@ -598,7 +642,7 @@ const Seller = () => {
                                                 key={product.id}
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                transition={{ delay: index * 0.05 }}>
+                                                transition={{ delay: (index % 12) * 0.04 }}>
                                                 <ProductCard product={product} />
                                             </motion.div>
                                         ))}
@@ -615,73 +659,57 @@ const Seller = () => {
                                     </div>
                                 )}
 
-                                {/* Responsive Smart Pagination Controls */}
-                                {pagination.pages > 1 && (
-                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-surface p-4 rounded-2xl border border-gray-100 dark:border-border shadow-xs">
-                                        <span className="text-xs sm:text-sm text-gray-600 dark:text-content-secondary font-medium text-center sm:text-left">
-                                            {t("Showing")}{" "}
-                                            <strong className="text-gray-900 dark:text-content font-bold">
-                                                {((currentPage - 1) * pagination.limit) + 1}–{Math.min(currentPage * pagination.limit, pagination.total)}
-                                            </strong>{" "}
-                                            {t("of")}{" "}
-                                            <strong className="text-gray-900 dark:text-content font-bold">{pagination.total}</strong>{" "}
-                                            {t("products")}
-                                        </span>
-
-                                        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
+                                {/* Infinite Scroll Sentinel & Bottom Loader */}
+                                {hasMore && (
+                                    <div ref={loadMoreRef} className="pt-6 pb-2 flex flex-col items-center justify-center">
+                                        {isLoadingMore ? (
+                                            <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-surface border border-border shadow-2xs text-xs font-bold text-content-secondary">
+                                                <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                                                <span>{t("Loading more products...")}</span>
+                                            </div>
+                                        ) : (
                                             <button
-                                                onClick={() => handlePageChange(currentPage - 1)}
-                                                disabled={currentPage <= 1 || isLoadingProducts}
-                                                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:bg-gray-50 dark:hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                                aria-label="Previous Page"
+                                                type="button"
+                                                onClick={fetchNextPage}
+                                                className="px-5 py-2 rounded-full bg-surface border border-border hover:border-brand-primary text-xs font-bold text-content transition-all shadow-2xs hover:shadow-xs"
                                             >
-                                                <FiChevronLeft className="text-base" />
+                                                {t("Load More Products")}
                                             </button>
+                                        )}
+                                    </div>
+                                )}
 
-                                            {getPaginationRange(currentPage, pagination.pages).map((pItem, idx) => {
-                                                if (pItem === '...') {
-                                                    return (
-                                                        <span
-                                                            key={`ellipsis-${idx}`}
-                                                            className="w-6 sm:w-7 text-center text-xs font-black text-gray-400 dark:text-content-muted select-none"
-                                                        >
-                                                            •••
-                                                        </span>
-                                                    );
-                                                }
-                                                const isCurrent = pItem === currentPage;
-                                                return (
-                                                    <button
-                                                        key={pItem}
-                                                        onClick={() => handlePageChange(pItem)}
-                                                        disabled={isLoadingProducts}
-                                                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center ${
-                                                            isCurrent
-                                                                ? "bg-brand-primary text-black font-extrabold shadow-sm ring-2 ring-brand-primary/25"
-                                                                : "bg-white dark:bg-surface border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:text-black dark:hover:text-content hover:bg-gray-50 dark:hover:bg-surface-muted"
-                                                        }`}
-                                                        aria-label={`Page ${pItem}`}
-                                                        aria-current={isCurrent ? "page" : undefined}
-                                                    >
-                                                        {pItem}
-                                                    </button>
-                                                );
-                                            })}
-
-                                            <button
-                                                onClick={() => handlePageChange(currentPage + 1)}
-                                                disabled={currentPage >= pagination.pages || isLoadingProducts}
-                                                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-border text-gray-700 dark:text-content-secondary hover:bg-gray-50 dark:hover:bg-surface-muted disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                                aria-label="Next Page"
-                                            >
-                                                <FiChevronRight className="text-base" />
-                                            </button>
+                                {/* End of Catalog Indicator */}
+                                {!hasMore && vendorProducts.length > 0 && !isLoadingProducts && (
+                                    <div className="flex justify-center pt-8 pb-4">
+                                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-muted border border-border text-xs font-semibold text-content-secondary">
+                                            <FiCheckCircle className="text-brand-primary w-3.5 h-3.5" />
+                                            <span>
+                                                {t("You've viewed all products from")} {vendor.storeName || vendor.name} ({total || vendorProducts.length})
+                                            </span>
                                         </div>
                                     </div>
                                 )}
                             </>
                         )}
                     </div>
+
+                    {/* Floating Back to Top Button */}
+                    <AnimatePresence>
+                        {showBackToTop && (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                type="button"
+                                onClick={scrollToTop}
+                                className="fixed bottom-6 right-6 z-40 p-3 rounded-full bg-brand-primary text-black shadow-lg hover:bg-brand-primaryHover transition-all focus:outline-none flex items-center justify-center"
+                                title="Back to Top"
+                            >
+                                <FiArrowUp className="w-5 h-5 stroke-[2.5]" />
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
                 </div>
             </MobileLayout>
         </PageTransition>
