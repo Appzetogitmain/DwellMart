@@ -82,6 +82,7 @@ const Seller = () => {
 
     const [catalogVersion, setCatalogVersion] = useState(0);
     const [remoteVendor, setRemoteVendor] = useState(null);
+    const [isResolvingVendor, setIsResolvingVendor] = useState(() => !getVendorById(vendorId));
     const [vendorProducts, setVendorProducts] = useState([]);
     const [page, setPage] = useState(1);
     const [pages, setPages] = useState(1);
@@ -209,7 +210,9 @@ const Seller = () => {
                 return;
             }
 
-            setIsResolvingVendor(true);
+            if (!getVendorById(vendorId) && !remoteVendor) {
+                setIsResolvingVendor(true);
+            }
             try {
                 const res = await api.get(`/vendors/${vendorId}`, {
                     params: { experience: 'marketplace' },
