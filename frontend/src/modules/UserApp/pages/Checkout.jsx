@@ -856,7 +856,7 @@ const MobileCheckout = () => {
               checkoutSessionId: sessionId,
             });
             const sessionData = sessionRes.data?.data || sessionRes.data || {};
-            const { keyId, rzpOrderId, amount, currency } = sessionData;
+            const { keyId, razorpayOrderId: rzpOrderId, amount, currency } = sessionData;
             if (!rzpOrderId || !keyId) {
               throw new Error(sessionData.message || 'Failed to initialize Razorpay checkout.');
             }

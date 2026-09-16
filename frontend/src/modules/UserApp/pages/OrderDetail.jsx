@@ -120,6 +120,23 @@ const MobileOrderDetail = () => {
     };
   }).filter((group) => group.id);
 
+  const hasNonCancelableItems = useMemo(() => {
+    const flatItems = [
+      ...(Array.isArray(order?.items) ? order.items : []),
+      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
+    ];
+    return flatItems.some((i) => i?.cancelable === false);
+  }, [order]);
+
+  const hasReturnableItems = useMemo(() => {
+    const flatItems = [
+      ...(Array.isArray(order?.items) ? order.items : []),
+      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
+    ];
+    if (flatItems.length === 0) return true;
+    return flatItems.some((i) => i?.returnable !== false);
+  }, [order]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -199,23 +216,6 @@ const MobileOrderDetail = () => {
     toast.success(t('Items added to cart!'));
     navigate('/checkout');
   };
-
-  const hasNonCancelableItems = useMemo(() => {
-    const flatItems = [
-      ...(Array.isArray(order?.items) ? order.items : []),
-      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
-    ];
-    return flatItems.some((i) => i?.cancelable === false);
-  }, [order]);
-
-  const hasReturnableItems = useMemo(() => {
-    const flatItems = [
-      ...(Array.isArray(order?.items) ? order.items : []),
-      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
-    ];
-    if (flatItems.length === 0) return true;
-    return flatItems.some((i) => i?.returnable !== false);
-  }, [order]);
 
   // Mirrors CUSTOMER_CANCELLABLE_STATUSES on the server. 'confirmed' is what a
   // PAID order carries, so omitting it made every paid order uncancellable.
