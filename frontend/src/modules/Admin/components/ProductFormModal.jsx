@@ -1440,9 +1440,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 {size}
                                 <button
                                   type="button"
-                                  disabled={isVendorProductEdit}
                                   onClick={() => removeVariantAxisValue("sizes", size)}
-                                  className={`text-blue-700 hover:text-blue-900 ${isVendorProductEdit ? 'hidden' : ''}`}
+                                  className="text-blue-700 hover:text-blue-900 cursor-pointer"
                                 >
                                   <FiX className="w-3 h-3" />
                                 </button>
@@ -1459,14 +1458,12 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                               onKeyDown={(e) => handleVariantAxisInputKeyDown("sizes", e)}
                               onBlur={() => addVariantAxisValues("sizes", variantAxisInput.sizes)}
                               placeholder="Type size and press Enter (e.g. S, M, L)"
-                              disabled={isVendorProductEdit}
-                              className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-800"
                             />
                             <button
                               type="button"
-                              disabled={isVendorProductEdit}
                               onClick={() => addVariantAxisValues("sizes", variantAxisInput.sizes)}
-                              className={`px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              className="px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
                             >
                               Add
                             </button>
@@ -1487,9 +1484,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 {color}
                                 <button
                                   type="button"
-                                  disabled={isVendorProductEdit}
                                   onClick={() => removeVariantAxisValue("colors", color)}
-                                  className={`text-emerald-700 hover:text-emerald-900 ${isVendorProductEdit ? 'hidden' : ''}`}
+                                  className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
                                 >
                                   <FiX className="w-3 h-3" />
                                 </button>
@@ -1506,14 +1502,12 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                               onKeyDown={(e) => handleVariantAxisInputKeyDown("colors", e)}
                               onBlur={() => addVariantAxisValues("colors", variantAxisInput.colors)}
                               placeholder="Type color and press Enter (e.g. Red, Blue)"
-                              disabled={isVendorProductEdit}
-                              className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-800"
                             />
                             <button
                               type="button"
-                              disabled={isVendorProductEdit}
                               onClick={() => addVariantAxisValues("colors", variantAxisInput.colors)}
-                              className={`px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              className="px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
                             >
                               Add
                             </button>
@@ -1527,9 +1521,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           </label>
                           <button
                             type="button"
-                            disabled={isVendorProductEdit}
                             onClick={addAttributeRow}
-                            className={`px-2 py-1 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 ${isVendorProductEdit ? 'hidden' : ''}`}
+                            className="px-2 py-1 text-xs font-semibold border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
                           >
                             Add Attribute
                           </button>
@@ -1542,22 +1535,19 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 value={attribute?.name || ""}
                                 onChange={(e) => updateAttributeName(index, e.target.value)}
                                 placeholder="Attribute name"
-                                disabled={isVendorProductEdit}
-                                className={`md:col-span-3 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                className="md:col-span-3 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-800"
                               />
                               <input
                                 type="text"
                                 value={(attribute?.values || []).join(", ")}
                                 onChange={(e) => updateAttributeValues(index, e.target.value)}
                                 placeholder="Values (comma separated)"
-                                disabled={isVendorProductEdit}
-                                className={`md:col-span-8 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                className="md:col-span-8 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-gray-800"
                               />
                               <button
                                 type="button"
-                                disabled={isVendorProductEdit}
                                 onClick={() => removeAttributeRow(index)}
-                                className={`md:col-span-1 px-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 ${isVendorProductEdit ? 'hidden' : ''}`}
+                                className="md:col-span-1 px-2 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 cursor-pointer"
                                 aria-label="Remove attribute"
                               >
                                 <FiX className="w-4 h-4 mx-auto" />
@@ -1595,8 +1585,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                       },
                                     }));
                                   }}
-                                  disabled={isVendorProductEdit}
-                                  className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs bg-white text-gray-800"
                                   placeholder="Price"
                                 />
                                 <input
@@ -1617,8 +1606,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                       },
                                     }));
                                   }}
-                                  disabled={isVendorProductEdit}
-                                  className={`w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs bg-white text-gray-800"
                                   placeholder="Stock"
                                 />
                                 <div className="flex items-center gap-2">
