@@ -59,7 +59,13 @@ const MobileOrderDetail = () => {
     "Order Items",
     "Payment Method:",
     "Tracking Number:",
-    "Order Date:"
+    "Order Date:",
+    "Non-Returnable",
+    "Non-Cancelable",
+    "All items in this order are non-returnable",
+    "Order cannot be cancelled because it contains non-cancelable items",
+    "This order contains non-cancelable items and cannot be cancelled",
+    "This order contains only non-returnable items"
   ]);
 
   const { translateArray } = useDynamicTranslation();
@@ -103,10 +109,16 @@ const MobileOrderDetail = () => {
   const shippingAddress = order?.shippingAddress || {};
   const orderItems = translatedOrderItems.length > 0 ? translatedOrderItems : (Array.isArray(order?.items) ? order.items : []);
   const vendorItems = translatedVendorGroups.length > 0 ? translatedVendorGroups : (order?.vendorItems || []);
-  const vendorOptions = vendorItems.map((group) => ({
-    id: String(group?.vendorId || ''),
-    name: group?.vendorName || t('Vendor'),
-  })).filter((group) => group.id);
+  const vendorOptions = vendorItems.map((group) => {
+    const hasReturnableInGroup = Array.isArray(group?.items)
+      ? group.items.some((i) => i?.returnable !== false)
+      : true;
+    return {
+      id: String(group?.vendorId || ''),
+      name: group?.vendorName || t('Vendor'),
+      hasReturnable: hasReturnableInGroup,
+    };
+  }).filter((group) => group.id);
 
   useEffect(() => {
     let mounted = true;
@@ -188,12 +200,34 @@ const MobileOrderDetail = () => {
     navigate('/checkout');
   };
 
+  const hasNonCancelableItems = useMemo(() => {
+    const flatItems = [
+      ...(Array.isArray(order?.items) ? order.items : []),
+      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
+    ];
+    return flatItems.some((i) => i?.cancelable === false);
+  }, [order]);
+
+  const hasReturnableItems = useMemo(() => {
+    const flatItems = [
+      ...(Array.isArray(order?.items) ? order.items : []),
+      ...(Array.isArray(order?.vendorItems) ? order.vendorItems.flatMap((v) => v.items || []) : []),
+    ];
+    if (flatItems.length === 0) return true;
+    return flatItems.some((i) => i?.returnable !== false);
+  }, [order]);
+
   // Mirrors CUSTOMER_CANCELLABLE_STATUSES on the server. 'confirmed' is what a
   // PAID order carries, so omitting it made every paid order uncancellable.
   const CANCELLABLE_STATUSES = ['pending', 'processing', 'approved', 'confirmed'];
-  const isCancellable = CANCELLABLE_STATUSES.includes(order?.status);
+  const isCancellable = CANCELLABLE_STATUSES.includes(order?.status) && !hasNonCancelableItems;
 
   const handleCancel = async () => {
+    if (hasNonCancelableItems) {
+      toast.error(t('This order contains non-cancelable items and cannot be cancelled'));
+      return;
+    }
+
     // Includes 'confirmed' — that is the status a PAID order carries. The
     // previous list allowed only pending/processing, so every paid order was
     // uncancellable and needed a support ticket.
@@ -230,10 +264,15 @@ const MobileOrderDetail = () => {
       toast.error(t('Return can only be requested for delivered orders'));
       return;
     }
-    if (vendorOptions.length === 1) {
-      setReturnVendorId(vendorOptions[0].id);
-    } else if (!vendorOptions.find((v) => v.id === returnVendorId)) {
-      setReturnVendorId(vendorOptions[0]?.id || '');
+    if (!hasReturnableItems) {
+      toast.error(t('This order contains only non-returnable items'));
+      return;
+    }
+    const returnableVendors = vendorOptions.filter((v) => v.hasReturnable);
+    if (returnableVendors.length === 1) {
+      setReturnVendorId(returnableVendors[0].id);
+    } else if (!returnableVendors.find((v) => v.id === returnVendorId)) {
+      setReturnVendorId(returnableVendors[0]?.id || '');
     }
     setShowReturnModal(true);
   };
@@ -241,13 +280,18 @@ const MobileOrderDetail = () => {
   const handleRequestReturn = async () => {
     if (isSubmittingReturn) return;
 
-     const reason = String(returnReason || '').trim();
+    if (!hasReturnableItems) {
+      toast.error(t('This order contains only non-returnable items'));
+      return;
+    }
+
+    const reason = String(returnReason || '').trim();
     if (reason.length < 5) {
       toast.error(t('Please enter a valid return reason'));
       return;
     }
 
-     if (vendorOptions.length > 1 && !returnVendorId) {
+    if (vendorOptions.length > 1 && !returnVendorId) {
       toast.error(t('Please select a vendor for return request'));
       return;
     }
@@ -368,6 +412,20 @@ const MobileOrderDetail = () => {
                                     {formatVariantLabel(item?.variant)}
                                   </p>
                                 )}
+                                {(item.returnable === false || item.cancelable === false) && (
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    {item.returnable === false && (
+                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                        🚫 {t('Non-Returnable')}
+                                      </span>
+                                    )}
+                                    {item.cancelable === false && (
+                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                        🚫 {t('Non-Cancelable')}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <p className="font-bold text-content text-sm">
                                 <Price amount={item.price * item.quantity} />
@@ -401,10 +459,24 @@ const MobileOrderDetail = () => {
                             </p>
                           )}
                           {formatVariantLabel(item?.variant) && (
-                                  <p className="text-[11px] text-content-muted">
-                                    {formatVariantLabel(item?.variant)}
-                                  </p>
-                                )}
+                            <p className="text-[11px] text-content-muted">
+                              {formatVariantLabel(item?.variant)}
+                            </p>
+                          )}
+                          {(item.returnable === false || item.cancelable === false) && (
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {item.returnable === false && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  🚫 {t('Non-Returnable')}
+                                </span>
+                              )}
+                              {item.cancelable === false && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                  🚫 {t('Non-Cancelable')}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <p className="font-bold text-content text-sm">
                           <Price amount={item.price * item.quantity} />
@@ -540,13 +612,20 @@ const MobileOrderDetail = () => {
 
               {/* Actions */}
               <div className="space-y-2">
-                {isCancellable && (
-                  <button
-                    onClick={handleCancel}
-                    className="w-full py-3 bg-status-errorBg text-status-error border border-status-error/30 rounded-xl font-semibold hover:opacity-90 transition-colors"
-                  >
-                    {t('Cancel Order')}
-                  </button>
+                {CANCELLABLE_STATUSES.includes(order?.status) && (
+                  hasNonCancelableItems ? (
+                    <div className="w-full py-2.5 px-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl text-xs text-center font-medium flex items-center justify-center gap-1.5">
+                      <span>🚫</span>
+                      <span>{t('Order cannot be cancelled because it contains non-cancelable items')}</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCancel}
+                      className="w-full py-3 bg-status-errorBg text-status-error border border-status-error/30 rounded-xl font-semibold hover:opacity-90 transition-colors"
+                    >
+                      {t('Cancel Order')}
+                    </button>
+                  )
                 )}
                 <button
                   onClick={handleReorder}
@@ -556,13 +635,20 @@ const MobileOrderDetail = () => {
                   {t('Reorder')}
                 </button>
                 {order.status === 'delivered' && (
-                  <button
-                    onClick={openReturnModal}
-                    className="w-full py-3 bg-status-warningBg text-status-warning border border-status-warning/30 rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
-                  >
-                    <FiPackage className="text-lg" />
-                    {t('Request Return')}
-                  </button>
+                  hasReturnableItems ? (
+                    <button
+                      onClick={openReturnModal}
+                      className="w-full py-3 bg-status-warningBg text-status-warning border border-status-warning/30 rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-colors"
+                    >
+                      <FiPackage className="text-lg" />
+                      {t('Request Return')}
+                    </button>
+                  ) : (
+                    <div className="w-full py-2.5 px-3 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs text-center font-medium flex items-center justify-center gap-1.5">
+                      <span>🚫</span>
+                      <span>{t('All items in this order are non-returnable')}</span>
+                    </div>
+                  )
                 )}
                 <button
                   onClick={() => navigate(`/track-order/${order.id}`)}
@@ -612,8 +698,8 @@ const MobileOrderDetail = () => {
                     >
                       <option value="">{t('Choose vendor')}</option>
                       {vendorOptions.map((vendor) => (
-                        <option key={vendor.id} value={vendor.id}>
-                          {vendor.name}
+                        <option key={vendor.id} value={vendor.id} disabled={!vendor.hasReturnable}>
+                          {vendor.name} {!vendor.hasReturnable ? `(${t('Non-Returnable')})` : ''}
                         </option>
                       ))}
                     </select>

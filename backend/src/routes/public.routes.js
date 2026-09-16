@@ -206,6 +206,7 @@ const listProducts = asyncHandler(async (req, res) => {
         sort = 'newest',
         flashSale,
         isNewArrival,
+        isFeatured,
         minPrice,
         maxPrice,
         minRating,
@@ -319,6 +320,7 @@ const listProducts = asyncHandler(async (req, res) => {
     }
     if (flashSale === 'true') filter.flashSale = true;
     if (isNewArrival === 'true') filter.isNewArrival = true;
+    if (isFeatured === 'true') filter.isFeatured = true;
     if (minPrice || maxPrice) filter.price = { ...(minPrice && { $gte: Number(minPrice) }), ...(maxPrice && { $lte: Number(maxPrice) }) };
     if (minRating) filter.rating = { $gte: Number(minRating) };
     if (delivery === 'express') {

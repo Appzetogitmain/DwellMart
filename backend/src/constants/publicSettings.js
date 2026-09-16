@@ -40,9 +40,9 @@ export const PUBLIC_SETTINGS_POLICY = {
 
     /**
      * Which payment methods to offer at checkout. Only the availability
-     * booleans; gateway credentials stored alongside them are never published.
+     * booleans and the designated default gateway; gateway credentials stored alongside them are never published.
      */
-    payment: { booleansOnly: true },
+    payment: { booleansOnly: true, allowFields: ['defaultGateway'] },
 
     /**
      * Review display configuration. `booleansOnly` covers the toggles; the

@@ -762,15 +762,15 @@ const MobileProductDetail = () => {
             </div>
 
             {/* Right Column: Product Info */}
-            <div className="px-4 py-4 lg:p-0">
-              <div className="flex flex-col gap-6">
+            <div className="px-2 sm:px-4 py-3 sm:py-4 lg:p-0 min-w-0">
+              <div className="flex flex-col gap-5 sm:gap-6">
                 <div>
                   {/* Vendor Badge */}
                   {vendor && (
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       <Link
                         to={`/seller/${vendor.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group">
+                        className="inline-flex items-center gap-2.5 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group max-w-full">
                         {/* Vendor Logo */}
                         <div className="w-6 h-6 rounded-full overflow-hidden bg-surface border border-border flex-shrink-0 flex items-center justify-center">
                           {stableVendorLogo ? (
@@ -791,24 +791,24 @@ const MobileProductDetail = () => {
                           </div>
                         </div>
 
-                        <span className="font-medium text-sm group-hover:text-brand-primary transition-colors">
+                        <span className="font-medium text-xs sm:text-sm group-hover:text-brand-primary transition-colors truncate min-w-0">
                           {translatedVendor?.storeName || translatedVendor?.name || product.vendorName}
                         </span>
                         {translatedVendor?.isVerified && (
                           <FiCheckCircle
-                            className="text-status-info text-sm"
+                            className="text-status-info text-sm shrink-0"
                             title={t("Verified Vendor")}
                           />
                         )}
-                        <span className="text-content-muted group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-content-muted group-hover:translate-x-1 transition-transform shrink-0">{"->"}</span>
                       </Link>
                     </div>
                   )}
                   {brand && (
-                    <div className="mb-4">
+                    <div className="mb-3 sm:mb-4">
                       <Link
                         to={`/brand/${brand.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group">
+                        className="inline-flex items-center gap-2.5 sm:gap-3 px-3.5 py-1.5 sm:px-4 sm:py-2 bg-surface hover:bg-surface-muted text-content-secondary rounded-full transition-all duration-300 border border-border group max-w-full">
                         <div className="w-6 h-6 rounded-full overflow-hidden bg-surface border border-border flex-shrink-0 flex items-center justify-center">
                           {stableBrandLogo ? (
                             <img
@@ -827,17 +827,38 @@ const MobileProductDetail = () => {
                             {(translatedBrand?.name || brand.name)?.[0]?.toUpperCase()}
                           </div>
                         </div>
-                        <span className="font-medium text-sm group-hover:text-brand-primary transition-colors">
+                        <span className="font-medium text-xs sm:text-sm group-hover:text-brand-primary transition-colors truncate min-w-0">
                           {translatedBrand?.name || product.brandName}
                         </span>
-                        <span className="text-content-muted group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-content-muted group-hover:translate-x-1 transition-transform shrink-0">{"->"}</span>
                       </Link>
                     </div>
                   )}
 
-                  <h1 className="text-2xl lg:text-4xl font-extrabold text-content mb-4 leading-tight">
+                  <h1 className="text-xl sm:text-2xl lg:text-4xl font-extrabold text-content mb-2 leading-tight break-words">
                     {product.name}
                   </h1>
+
+                  {/* Policy Highlights */}
+                  {(product.returnable === false || product.cancelable === false || product.codAllowed === false) && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      {product.returnable === false && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                          🚫 {t('Non-Returnable')}
+                        </span>
+                      )}
+                      {product.cancelable === false && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          🚫 {t('Non-Cancelable')}
+                        </span>
+                      )}
+                      {product.codAllowed === false && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          💳 {t('Online Payment Only (No COD)')}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Cross-Experience Context Notice Banner */}
                   {activeExperience === 'quick_commerce' && productExperience === 'marketplace' && (
@@ -903,61 +924,101 @@ const MobileProductDetail = () => {
                   )}
 
                   {/* Contextual Experience Specs Banner */}
-                  <div className="mb-5 p-4 rounded-2xl bg-surface border border-border space-y-2">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-4 sm:mb-5 p-3.5 sm:p-4 rounded-2xl bg-surface border border-border space-y-2.5 overflow-hidden">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <ExperienceBadge experience={productExperience} size="md" />
-                      <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">Experience Specific Specs</span>
+                      <span className="text-[11px] sm:text-xs font-bold text-content-secondary uppercase tracking-wider">Experience Specific Specs</span>
                     </div>
 
                     {productExperience === 'quick_commerce' ? (
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-700 dark:text-amber-300">
-                          <span className="font-semibold block text-[11px] uppercase">ETA Window</span>
-                          <span className="font-bold">15–30 Mins Express</span>
+                        <div className="p-2 sm:p-2.5 bg-amber-500/10 rounded-xl border border-amber-500/20 text-amber-700 dark:text-amber-300 min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">ETA Window</span>
+                          <span className="font-bold text-xs sm:text-sm">15–30 Mins Express</span>
                         </div>
-                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
-                          <span className="font-semibold block text-[11px] uppercase">Max Order Qty</span>
-                          <span className="font-bold">{product.quickCommerce?.maxQuantityPerOrder || 5} units</span>
+                        <div className="p-2 sm:p-2.5 bg-surface-muted rounded-xl border border-border text-content-secondary min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">Max Order Qty</span>
+                          <span className="font-bold text-xs sm:text-sm">{product.quickCommerce?.maxQuantityPerOrder || 5} units</span>
                         </div>
-                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
-                          <span className="font-semibold block text-[11px] uppercase">Perishable Item</span>
-                          <span className="font-bold">{product.quickCommerce?.isPerishable ? 'Yes (Refund Only)' : 'No'}</span>
+                        <div className="p-2 sm:p-2.5 bg-surface-muted rounded-xl border border-border text-content-secondary min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">Perishable Item</span>
+                          <span className="font-bold text-xs sm:text-sm">{product.quickCommerce?.isPerishable ? 'Yes (Refund Only)' : 'No'}</span>
                         </div>
-                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
-                          <span className="font-semibold block text-[11px] uppercase">Return Policy</span>
-                          <span className="font-bold">{product.quickCommerce?.isPerishable ? 'Refund on damaged delivery' : '24-Hour QC Window'}</span>
+                        <div className="p-2 sm:p-2.5 bg-surface-muted rounded-xl border border-border text-content-secondary min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">Return Policy</span>
+                          <span className="font-bold text-xs sm:text-sm">{product.quickCommerce?.isPerishable ? 'Refund on damage' : '24-Hour QC Window'}</span>
                         </div>
                       </div>
                     ) : (productExperience === 'wholesale' || hasWholesale) ? (
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-700 dark:text-purple-300">
-                          <span className="font-semibold block text-[11px] uppercase">B2B Wholesale</span>
-                          <span className="font-bold">MOQ: {minimumPurchaseQuantity} units</span>
+                        <div className="p-2 sm:p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20 text-purple-700 dark:text-purple-300 min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">B2B Wholesale</span>
+                          <span className="font-bold text-xs sm:text-sm">MOQ: {minimumPurchaseQuantity} units</span>
                         </div>
-                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
-                          <span className="font-semibold block text-[11px] uppercase">Tax Invoice</span>
-                          <span className="font-bold">GST Invoice Included</span>
+                        <div className="p-2 sm:p-2.5 bg-surface-muted rounded-xl border border-border text-content-secondary min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">Tax Invoice</span>
+                          <span className="font-bold text-xs sm:text-sm">GST Invoice Included</span>
                         </div>
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                          <span className="font-semibold block text-[11px] uppercase">Shipping</span>
-                          <span className="font-bold">Standard 2–5 Days</span>
+                        <div className="p-2 sm:p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 min-w-0">
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">Shipping</span>
+                          <span className="font-bold text-xs sm:text-sm">Standard 2–5 Days</span>
                         </div>
-                        <div className="p-2 bg-surface-muted rounded-xl border border-border text-content-secondary">
-                          <span className="font-semibold block text-[11px] uppercase">Return Window</span>
-                          <span className="font-bold">7-Day Return Policy</span>
+                        <div className={`p-2 sm:p-2.5 rounded-xl border min-w-0 ${
+                          product.returnable === false
+                            ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+                            : "bg-surface-muted border-border text-content-secondary"
+                        }`}>
+                          <span className="font-semibold block text-[10px] sm:text-[11px] uppercase truncate">{t('Return Policy')}</span>
+                          <span className="font-bold text-xs sm:text-sm">{product.returnable === false ? t('Non-Returnable') : t('7-Day Return Policy')}</span>
                         </div>
                       </div>
                     )}
+
+                    {/* Policy Cards */}
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-[10px] sm:text-xs pt-1">
+                      <div className={`p-1.5 sm:p-2 rounded-xl border flex flex-col justify-center min-w-0 ${
+                        product.returnable === false
+                          ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
+                          : "bg-surface-muted border-border text-content-secondary"
+                      }`}>
+                        <span className="font-semibold block text-[9px] sm:text-[11px] uppercase tracking-wider text-content-muted truncate">{t('Returns')}</span>
+                        <span className="font-bold text-[10px] sm:text-xs leading-snug break-words">
+                          {product.returnable === false ? `🚫 ${t('Non-Returnable')}` : `✓ ${t('7-Day Returns')}`}
+                        </span>
+                      </div>
+
+                      <div className={`p-1.5 sm:p-2 rounded-xl border flex flex-col justify-center min-w-0 ${
+                        product.cancelable === false
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300"
+                          : "bg-surface-muted border-border text-content-secondary"
+                      }`}>
+                        <span className="font-semibold block text-[9px] sm:text-[11px] uppercase tracking-wider text-content-muted truncate">{t('Cancellation')}</span>
+                        <span className="font-bold text-[10px] sm:text-xs leading-snug break-words">
+                          {product.cancelable === false ? `🚫 ${t('Non-Cancelable')}` : `✓ ${t('Cancellable')}`}
+                        </span>
+                      </div>
+
+                      <div className={`p-1.5 sm:p-2 rounded-xl border flex flex-col justify-center min-w-0 ${
+                        product.codAllowed === false
+                          ? "bg-slate-500/10 border-slate-500/20 text-slate-700 dark:text-slate-300"
+                          : "bg-surface-muted border-border text-content-secondary"
+                      }`}>
+                        <span className="font-semibold block text-[9px] sm:text-[11px] uppercase tracking-wider text-content-muted truncate">{t('COD')}</span>
+                        <span className="font-bold text-[10px] sm:text-xs leading-snug break-words">
+                          {product.codAllowed === false ? `💳 ${t('Prepaid Only')}` : `💵 ${t('Available')}`}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Rating & Reviews */}
                   {!!product.rating && (
-                    <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2.5 sm:gap-4 mb-4 sm:mb-6 flex-wrap">
                       <Rating value={product.rating} readOnly showValue size="md" />
-                      <span className="text-content-muted text-sm font-medium">
+                      <span className="text-content-muted text-xs sm:text-sm font-medium">
                         {product.reviewCount || 0} {t('Reviews')}
                       </span>
                       <span className="text-content-muted">|</span>
@@ -969,19 +1030,20 @@ const MobileProductDetail = () => {
                     </div>
                   )}
 
-                  <div className="bg-surface rounded-card p-6 mb-8 border border-border shadow-card">
-                    <div className="flex items-end gap-3 mb-2">
-                      <Price amount={currentPrice} className="text-4xl font-extrabold text-content" />
+                  {/* Price Card */}
+                  <div className="bg-surface rounded-card p-4 sm:p-6 mb-6 sm:mb-8 border border-border shadow-card overflow-hidden">
+                    <div className="flex items-baseline flex-wrap gap-x-2.5 sm:gap-x-3 gap-y-1 mb-2">
+                      <Price amount={currentPrice} className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-content tracking-tight shrink-0" />
                       {product.originalPrice && (
-                        <Price amount={product.originalPrice} className="text-xl text-content-muted line-through font-medium mb-1.5" />
+                        <Price amount={product.originalPrice} className="text-base sm:text-lg lg:text-xl text-content-muted line-through font-medium" />
                       )}
                     </div>
                     {product.originalPrice && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-brand-primary font-bold bg-brand-primary/15 px-3 py-1 rounded-full text-sm">
+                      <div className="flex items-center flex-wrap gap-2 pt-0.5">
+                        <span className="text-brand-primary font-bold bg-brand-primary/15 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm shrink-0">
                           {calculateDiscount(product.originalPrice, currentPrice)}% {t('OFF')}
                         </span>
-                        <span className="text-sm text-content-muted">{t('Best price guaranteed')}</span>
+                        <span className="text-xs sm:text-sm text-content-muted">{t('Best price guaranteed')}</span>
                       </div>
                     )}
                   </div>
@@ -1102,7 +1164,7 @@ const MobileProductDetail = () => {
                   <h3 className="text-lg font-bold text-content mb-4">
                     {t('Product Description')}
                   </h3>
-                  <div className="prose prose-sm lg:prose-base text-content-secondary leading-relaxed bg-surface p-6 rounded-2xl border border-border">
+                  <div className="prose prose-sm lg:prose-base text-content-secondary leading-relaxed bg-surface p-4 sm:p-6 rounded-2xl border border-border break-words overflow-hidden">
                     {product.description ? (
                       <p>{product.description}</p>
                     ) : (
@@ -1177,7 +1239,7 @@ const MobileProductDetail = () => {
           </div>
 
           {/* Similar Products Grid */}
-          <div className="mt-12 sm:mt-16 px-4 lg:px-8">
+          <div className="mt-12 sm:mt-16 px-2 sm:px-4 lg:px-8">
             <h3 className="text-xl sm:text-2xl font-bold text-textColor-primary mb-6">
               {similarProducts.length > 0 ? t('Similar Products') : t('You might also like')}
             </h3>

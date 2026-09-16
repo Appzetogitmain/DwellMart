@@ -357,6 +357,8 @@ export const createProduct = asyncHandler(async (req, res) => {
         stock,
         ...resolvedWholesale,
         ...resolvedQuickCommerce,
+        isActive: true,
+        isDeleted: false,
     });
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
@@ -487,6 +489,11 @@ export const updateProduct = asyncHandler(async (req, res) => {
 
     if (product.retailEnabled === false && product.wholesaleEnabled !== true && product.quickCommerceEnabled !== true) {
         throw new ApiError(400, 'At least one selling channel (Retail, Wholesale, or Quick Commerce) must be enabled for this product.');
+    }
+
+    if (product.retailEnabled || product.wholesaleEnabled || product.quickCommerceEnabled) {
+        product.isActive = true;
+        product.isDeleted = false;
     }
 
     await assertShippingPolicy(product, req.vendorWorkspace);

@@ -30,7 +30,16 @@ const PaymentSettings = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    updateSettings("payment", formData);
+    const sanitizedPayment = {
+      codEnabled: !!formData.codEnabled,
+      cardEnabled: !!formData.cardEnabled,
+      walletEnabled: !!formData.walletEnabled,
+      upiEnabled: !!formData.upiEnabled,
+      cashfreeEnabled: formData.cashfreeEnabled !== false,
+      razorpayEnabled: !!formData.razorpayEnabled,
+      defaultGateway: formData.defaultGateway || "auto",
+    };
+    updateSettings("payment", sanitizedPayment);
   };
 
   return (
@@ -69,6 +78,10 @@ const PaymentSettings = () => {
             onChange={handleChange}
             className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
           />
+          <span className="text-sm font-semibold text-gray-700">
+            Digital Wallet
+          </span>
+        </label>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -79,6 +92,44 @@ const PaymentSettings = () => {
           />
           <span className="text-sm font-semibold text-gray-700">
             UPI / GPay / PhonePe / Paytm
+          </span>
+        </label>
+      </div>
+
+      <div className="space-y-4 border-t pt-6">
+        <h3 className="text-lg font-bold text-gray-800">Gateway Preference</h3>
+        <p className="text-sm text-gray-600">
+          When both gateways are enabled, select which gateway will automatically process online payments (customers will not be asked to choose).
+        </p>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Default Online Gateway
+          </label>
+          <AnimatedSelect
+            name="defaultGateway"
+            value={formData.defaultGateway || "cashfree"}
+            onChange={handleChange}
+            options={[
+              { value: 'cashfree', label: 'Cashfree' },
+              { value: 'razorpay', label: 'Razorpay' },
+              { value: 'auto', label: 'Auto (Cashfree with Razorpay fallback)' },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 border-t pt-6">
+        <h3 className="text-lg font-bold text-gray-800">Razorpay Payment Gateway</h3>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="razorpayEnabled"
+            checked={formData.razorpayEnabled || false}
+            onChange={handleChange}
+            className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+          />
+          <span className="text-sm font-semibold text-gray-700">
+            Enable Razorpay PG
           </span>
         </label>
       </div>
@@ -97,49 +148,6 @@ const PaymentSettings = () => {
             Enable Cashfree Payments PG
           </span>
         </label>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Environment
-          </label>
-          <AnimatedSelect
-            name="cashfreeEnv"
-            value={formData.cashfreeEnv || "sandbox"}
-            onChange={handleChange}
-            options={[
-              { value: 'sandbox', label: 'Sandbox (Testing)' },
-              { value: 'production', label: 'Production (Live)' },
-            ]}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Cashfree App ID (Client ID)
-          </label>
-          <input
-            type="text"
-            name="cashfreeAppId"
-            value={formData.cashfreeAppId || ""}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Enter Cashfree App ID"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Cashfree Secret Key
-          </label>
-          <input
-            type="password"
-            name="cashfreeSecretKey"
-            value={formData.cashfreeSecretKey || ""}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Enter Cashfree Secret Key"
-          />
-        </div>
       </div>
 
 

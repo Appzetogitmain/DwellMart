@@ -60,6 +60,9 @@ const orderItemSchema = new mongoose.Schema({
         width: Number,
         height: Number,
     },
+    codAllowed: { type: Boolean, default: true },
+    returnable: { type: Boolean, default: true },
+    cancelable: { type: Boolean, default: true },
 });
 
 const vendorItemGroupSchema = new mongoose.Schema({

@@ -50,6 +50,9 @@ const paymentSchema = Joi.object({
     upiEnabled: booleanFlag,
     walletEnabled: booleanFlag,
     bankEnabled: booleanFlag,
+    cashfreeEnabled: booleanFlag,
+    razorpayEnabled: booleanFlag,
+    defaultGateway: Joi.string().valid('auto', 'razorpay', 'cashfree', '').allow(null),
 }).unknown(true);
 
 /**

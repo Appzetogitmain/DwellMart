@@ -32,6 +32,7 @@ import Settings from '../../models/Settings.model.js';
 import ApiError from '../../utils/ApiError.js';
 import { roundMoney } from '../PriceReconciliationService.js';
 import { createCashfreeRefund } from '../billing/cashfree.service.js';
+import { createRazorpayRefund } from '../billing/razorpay.service.js';
 import { createNotification, notifyAdmins } from '../notification.service.js';
 
 // ── Policy ────────────────────────────────────────────────────────────────────
@@ -242,14 +243,27 @@ export const executeRefund = async (refundId) => {
     // order id for legacy single orders.
     const order = await Order.findById(refund.orderId).select('checkoutSessionId orderId').lean();
     let gatewayOrderId = refund.gatewayOrderId;
-    if (!gatewayOrderId && order?.checkoutSessionId) {
+    let gateway = 'cashfree';
+    let paymentRef = null;
+
+    if (order?.checkoutSessionId) {
         const { CheckoutSession } = await import('../../models/CheckoutSession.model.js');
-        const session = await CheckoutSession.findById(order.checkoutSessionId).select('gatewayOrderId sessionId').lean();
-        gatewayOrderId = session?.gatewayOrderId || session?.sessionId || null;
+        const session = await CheckoutSession.findById(order.checkoutSessionId).select('gatewayOrderId sessionId gatewayReference metadata').lean();
+        if (!gatewayOrderId) {
+            gatewayOrderId = session?.gatewayOrderId || session?.sessionId || null;
+        }
+        if (
+            session?.metadata?.gateway === 'razorpay' ||
+            String(session?.gatewayReference || '').startsWith('pay_') ||
+            String(gatewayOrderId || '').startsWith('order_')
+        ) {
+            gateway = 'razorpay';
+            paymentRef = session?.gatewayReference || null;
+        }
     }
     if (!gatewayOrderId) gatewayOrderId = order?.orderId || null;
 
-    if (!gatewayOrderId) {
+    if (!gatewayOrderId && !paymentRef) {
         return revert({
             status: 'failed',
             failedAt: new Date(),
@@ -258,16 +272,27 @@ export const executeRefund = async (refundId) => {
     }
 
     try {
-        const result = await createCashfreeRefund({
-            orderId: gatewayOrderId,
-            // The gateway's refund_id IS our idempotency key — a retry reuses it
-            // and the gateway rejects the duplicate rather than paying twice.
-            refundId: refund.idempotencyKey,
-            amount: refund.amount,
-            note: refund.reason,
-        });
+        let result;
+        if (gateway === 'razorpay') {
+            result = await createRazorpayRefund({
+                paymentId: paymentRef,
+                orderId: gatewayOrderId,
+                receipt: refund.idempotencyKey,
+                amount: refund.amount,
+                notes: { reason: refund.reason },
+            });
+        } else {
+            result = await createCashfreeRefund({
+                orderId: gatewayOrderId,
+                // The gateway's refund_id IS our idempotency key — a retry reuses it
+                // and the gateway rejects the duplicate rather than paying twice.
+                refundId: refund.idempotencyKey,
+                amount: refund.amount,
+                note: refund.reason,
+            });
+        }
 
-        const settledNow = String(result.status || '').toUpperCase() === 'SUCCESS';
+        const settledNow = ['SUCCESS', 'PROCESSED'].includes(String(result.status || '').toUpperCase());
 
         await Refund.updateOne(
             { _id: refund._id },

@@ -11,9 +11,9 @@ const getCashfreeCredentials = async () => {
         const dbSettings = await Settings.findOne({ key: 'payment' });
         if (dbSettings?.value) {
             const paymentConfig = dbSettings.value;
-            if (paymentConfig.cashfreeAppId) appId = paymentConfig.cashfreeAppId;
-            if (paymentConfig.cashfreeSecretKey) secretKey = paymentConfig.cashfreeSecretKey;
-            if (paymentConfig.cashfreeEnv) env = paymentConfig.cashfreeEnv;
+            if (paymentConfig.cashfreeAppId?.trim()) appId = paymentConfig.cashfreeAppId.trim();
+            if (paymentConfig.cashfreeSecretKey?.trim()) secretKey = paymentConfig.cashfreeSecretKey.trim();
+            if (paymentConfig.cashfreeEnv?.trim()) env = paymentConfig.cashfreeEnv.trim();
         }
     } catch {
         // Fall back to environment variables

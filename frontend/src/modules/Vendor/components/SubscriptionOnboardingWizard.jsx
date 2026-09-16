@@ -24,7 +24,7 @@ import {
   selectVendorSubscriptionPlan,
 } from '../services/vendorService';
 import api from '../../../shared/utils/api';
-import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
+import { executeSubscriptionPayment, resolveEffectiveGateway } from '../../../shared/utils/subscriptionPayment';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { useDynamicTranslation } from '../../../hooks/useDynamicTranslation';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
@@ -111,6 +111,12 @@ const SubscriptionOnboardingWizard = ({
   const [termsContent, setTermsContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [paymentState, setPaymentState] = useState('idle');
+  const [preferredGateway, setPreferredGateway] = useState('auto');
+
+  const isCashfreeEnabled = settings?.payment?.cashfreeEnabled !== false;
+  const isRazorpayEnabled = settings?.payment?.razorpayEnabled === true;
+  const bothGatewaysEnabled = isCashfreeEnabled && isRazorpayEnabled;
+  const effectiveGateway = resolveEffectiveGateway(settings?.payment, preferredGateway);
   const [showTerms, setShowTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -473,34 +479,19 @@ const SubscriptionOnboardingWizard = ({
         clearStorage();
         toast.success(t('Subscription activated successfully!'));
       } else {
-        // Paid Plan — Initiate Cashfree Checkout Session
-        const sessionRes = await api.post('/payments/cashfree/session', {
-          subscriptionPlanId: selectedPlan?._id,
+        // Paid Plan — Initiate Dual Gateway Checkout
+        const result = await executeSubscriptionPayment({
+          planId: selectedPlan?._id,
+          planName: selectedPlan?.name,
           email: paymentEmail,
+          name: formData.name,
+          phone: formData.phone,
+          preferredGateway,
+          paymentSettings: settings?.payment,
+          onStatusChange: (status) => setPaymentState(status),
         });
-        const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || sessionRes || {};
 
-        if (!paymentSessionId) {
-          throw new Error(sessionRes?.message || 'Could not initiate payment session.');
-        }
-
-        setPaymentState('checkout_open');
-        const cashfree = await getCashfreeInstance(environment || 'sandbox');
-        try {
-          await cashfree.checkout({
-            paymentSessionId,
-            redirectTarget: '_modal',
-          });
-        } catch (modalErr) {
-          console.warn('Cashfree modal notice:', modalErr);
-        }
-
-        // Verify payment status with server
-        setPaymentState('processing');
-        const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-        const verifyData = verifyRes.data?.data || verifyRes.data || verifyRes || {};
-
-        if (verifyData.isPaid) {
+        if (result.isPaid) {
           setStep(3);
           setPaymentState('confirmed');
           clearStorage();
@@ -511,9 +502,14 @@ const SubscriptionOnboardingWizard = ({
         }
       }
     } catch (error) {
-      console.error('Payment error:', error);
-      toast.error(error.response?.data?.message || error.message || t('Unable to activate subscription.'));
-      setPaymentState('failed');
+      if (error?.message === 'PAYMENT_DISMISSED' || error?.isDismissed) {
+        setPaymentState('idle');
+        toast.error(t('Payment window was closed.'));
+      } else {
+        console.error('Payment error:', error);
+        toast.error(error.response?.data?.message || error.message || t('Unable to activate subscription.'));
+        setPaymentState('failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -859,6 +855,7 @@ const SubscriptionOnboardingWizard = ({
                 {paymentState === 'processing' ? <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs font-bold text-amber-800">{t('Waiting for billing confirmation. This page will keep checking automatically.')}</div> : null}
                 {paymentState === 'pending' ? <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs font-bold text-amber-800">{t('Payment is still pending confirmation. Please give the gateway a moment and retry if needed.')}</div> : null}
                 {paymentState === 'failed' ? <div className="mt-4 rounded-xl border border-rose-300 bg-rose-50 p-4 text-xs font-bold text-rose-800">{t('Billing could not be confirmed. Please retry the payment step.')}</div> : null}
+
 
                 <div className="mt-6 flex flex-col gap-3">
                   <button

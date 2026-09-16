@@ -17,21 +17,37 @@ const verificationRequests = new Map();
 
 const unwrapApiData = (response) => response?.data?.data ?? response?.data ?? response ?? {};
 
-const verifyCheckoutSession = (sessionId) => {
-  if (verificationRequests.has(sessionId)) {
-    return verificationRequests.get(sessionId);
+const verifyCheckoutSession = (sessionId, rzpParams = {}) => {
+  const reqKey = `${sessionId}_${rzpParams.razorpay_payment_id || ''}`;
+  if (verificationRequests.has(reqKey)) {
+    return verificationRequests.get(reqKey);
   }
 
-  const request = api
-    .post(
-      '/payments/cashfree/verify',
-      { checkoutSessionId: sessionId },
-      { silent: true }
-    )
-    .then(unwrapApiData)
-    .finally(() => verificationRequests.delete(sessionId));
+  const isRazorpay = Boolean(rzpParams.razorpay_payment_id || rzpParams.razorpay_order_id);
+  const primaryPromise = isRazorpay
+    ? api.post('/payments/razorpay/verify', { checkoutSessionId: sessionId, ...rzpParams }, { silent: true })
+    : api.post('/payments/cashfree/verify', { checkoutSessionId: sessionId }, { silent: true });
 
-  verificationRequests.set(sessionId, request);
+  const request = primaryPromise
+    .then(unwrapApiData)
+    .catch(async (err) => {
+      if (!isRazorpay) {
+        try {
+          const rzpFallback = await api.post(
+            '/payments/razorpay/verify',
+            { checkoutSessionId: sessionId },
+            { silent: true }
+          );
+          return unwrapApiData(rzpFallback);
+        } catch {
+          throw err;
+        }
+      }
+      throw err;
+    })
+    .finally(() => verificationRequests.delete(reqKey));
+
+  verificationRequests.set(reqKey, request);
   return request;
 };
 
@@ -58,7 +74,17 @@ const PaymentReturn = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const clearCart = useCartStore((state) => state.clearCart);
-  const sessionId = searchParams.get('session_id') || searchParams.get('session');
+  const sessionId = searchParams.get('session_id') || searchParams.get('session') || searchParams.get('checkoutSessionId');
+  const razorpayPaymentId = searchParams.get('razorpay_payment_id');
+  const razorpayOrderId = searchParams.get('razorpay_order_id');
+  const razorpaySignature = searchParams.get('razorpay_signature');
+  const rzpParams = (razorpayPaymentId || razorpayOrderId)
+    ? {
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_order_id: razorpayOrderId,
+        razorpay_signature: razorpaySignature,
+      }
+    : {};
 
   const [status, setStatus] = useState('verifying');
   const [message, setMessage] = useState('Confirming your payment securely...');
@@ -79,7 +105,7 @@ const PaymentReturn = () => {
 
       for (let attempt = 1; attempt <= MAX_VERIFICATION_ATTEMPTS; attempt += 1) {
         try {
-          const verification = await verifyCheckoutSession(sessionId);
+          const verification = await verifyCheckoutSession(sessionId, rzpParams);
           if (!active) return;
 
           if (verification?.isPaid) {

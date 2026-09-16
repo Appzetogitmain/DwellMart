@@ -41,7 +41,10 @@ export const buildCatalogFilter = ({
     const resolvedExperience = normalizeExperience(experience);
     const filter = {};
 
-    if (activeOnly) filter.isActive = true;
+    if (activeOnly) {
+        filter.isActive = true;
+        filter.isVisible = { $ne: false };
+    }
 
     if (resolvedExperience === EXPERIENCES.QUICK_COMMERCE) {
         filter.quickCommerceEnabled = true;

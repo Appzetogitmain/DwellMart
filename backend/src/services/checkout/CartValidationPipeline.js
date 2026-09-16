@@ -105,7 +105,7 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
         Product.find({ _id: { $in: productIds } })
             .select('_id name isActive isVisible stock stockQuantity lowStockThreshold vendorId '
                 + 'quickCommerceEnabled retailEnabled wholesaleEnabled quickCommerce wholesale '
-                + 'variants price taxRate taxIncluded')
+                + 'variants price taxRate taxIncluded codAllowed returnable cancelable')
             .lean(),
         isWholesaleMarketplaceEnabled(),
         isQuickCommerceEnabled(),
@@ -255,6 +255,9 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
             productId,
             productName,
             fulfillmentType: ft,
+            codAllowed: product.codAllowed !== false,
+            returnable: product.returnable !== false,
+            cancelable: product.cancelable !== false,
             // P1-12 FIX: warnings must NEVER cause valid=false, even in strictMode.
             // Only hard errors block checkout. Low-stock is advisory information only.
             valid: errors.length === 0,
@@ -262,6 +265,13 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
             warnings,
         });
     }
+
+    summary.codAllowed = itemResults.every((r) => r.codAllowed !== false);
+    summary.allReturnable = itemResults.every((r) => r.returnable !== false);
+    summary.allCancelable = itemResults.every((r) => r.cancelable !== false);
+    summary.nonCodItems = itemResults.filter((r) => r.codAllowed === false).map((r) => r.productName);
+    summary.nonReturnableItems = itemResults.filter((r) => r.returnable === false).map((r) => r.productName);
+    summary.nonCancelableItems = itemResults.filter((r) => r.cancelable === false).map((r) => r.productName);
 
     const allValid = itemResults.every((r) => r.valid) && globalErrors.length === 0;
 

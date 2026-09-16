@@ -28,6 +28,7 @@ import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import { calculateCartTax, calculateCartTotal } from "../../../shared/utils/cartTotals";
 import { getCashfreeInstance } from "../../../shared/utils/cashfreeLoader";
+import { openRazorpayCheckout } from "../../../shared/utils/razorpayLoader";
 import { useExperienceStore } from "../../../shared/store/experienceStore";
 import { getQuickCommerceCheckoutEstimate } from "../../../shared/services/quickCommerceService";
 import { getLocationQueryParams, getCustomerLocation } from "../../../shared/utils/experience";
@@ -133,6 +134,10 @@ const MobileCheckout = () => {
   // Detect if ANY items in cart are QC (for fee + ETA estimation)
   const fulfillmentGroups = useMemo(() => getItemsByFulfillment(), [items, getItemsByFulfillment]);
   const isQuickCommerce = fulfillmentGroups.some((fg) => fg.fulfillmentType === 'quick_commerce');
+  const nonCodCartItems = useMemo(() => {
+    return (items || []).filter((item) => item.codAllowed === false);
+  }, [items]);
+  const hasNonCodItems = nonCodCartItems.length > 0;
 
   // Group items by fulfillment type (for order summary display)
   const itemsByVendor = useMemo(
@@ -164,6 +169,20 @@ const MobileCheckout = () => {
   const [isEstimatingQuick, setIsEstimatingQuick] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState(null);
+  const isCashfreeEnabled = paymentSettings?.cashfreeEnabled !== false;
+  const isRazorpayEnabled = paymentSettings?.razorpayEnabled === true;
+  const bothGatewaysEnabled = isCashfreeEnabled && isRazorpayEnabled;
+  const hasOnlineGateway = isCashfreeEnabled || isRazorpayEnabled;
+
+  const effectiveGateway = useMemo(() => {
+    if (bothGatewaysEnabled) {
+      if (paymentSettings?.defaultGateway === 'razorpay') return 'razorpay';
+      return 'cashfree';
+    }
+    if (isRazorpayEnabled) return 'razorpay';
+    return 'cashfree';
+  }, [bothGatewaysEnabled, paymentSettings, isRazorpayEnabled]);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -214,17 +233,19 @@ const MobileCheckout = () => {
           
           // Auto-select first available payment method if current is disabled
           const currentMethod = formData.paymentMethod;
+          const onlineAllowed = (payload.cashfreeEnabled !== false) || (payload.razorpayEnabled === true);
           let isCurrentMethodEnabled = true;
-          if (currentMethod === 'card' && payload.cardEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'card' && (!onlineAllowed || payload.cardEnabled === false)) isCurrentMethodEnabled = false;
           if (currentMethod === 'cash' && payload.codEnabled === false) isCurrentMethodEnabled = false;
-          if (currentMethod === 'wallet' && payload.walletEnabled === false) isCurrentMethodEnabled = false;
-          if (currentMethod === 'upi' && payload.upiEnabled === false) isCurrentMethodEnabled = false;
+          if (currentMethod === 'wallet' && (!onlineAllowed || payload.walletEnabled === false)) isCurrentMethodEnabled = false;
+          if (currentMethod === 'upi' && (!onlineAllowed || payload.upiEnabled === false)) isCurrentMethodEnabled = false;
           if (currentMethod === 'bank') isCurrentMethodEnabled = false;
           
           if (!isCurrentMethodEnabled) {
              const availableMethods = ["card", "cash", "wallet", "upi"].filter(method => {
-                if (method === 'card') return payload.cardEnabled !== false;
                 if (method === 'cash') return payload.codEnabled !== false;
+                if (!onlineAllowed) return false;
+                if (method === 'card') return payload.cardEnabled !== false;
                 if (method === 'wallet') return payload.walletEnabled !== false;
                 if (method === 'upi') return payload.upiEnabled !== false;
                 return true;
@@ -523,6 +544,19 @@ const MobileCheckout = () => {
     }
   }, [deliverabilityVerdict, isQuickCommerce, formData.paymentMethod, paymentSettings, t]);
 
+  // If cart contains items where codAllowed is false, auto-switch away from cash/COD
+  useEffect(() => {
+    if (hasNonCodItems && formData.paymentMethod === 'cash') {
+      const fallbackMethod = (paymentSettings?.cardEnabled !== false)
+        ? 'card'
+        : (paymentSettings?.upiEnabled !== false ? 'upi' : 'wallet');
+      setFormData((prev) => ({ ...prev, paymentMethod: fallbackMethod }));
+      toast(t("One or more items require online payment. Switched payment method."), {
+        icon: 'ℹ️',
+      });
+    }
+  }, [hasNonCodItems, formData.paymentMethod, paymentSettings, t]);
+
   const handleApplyCoupon = async (codeOverride = "") => {
     const normalizedCode = String(codeOverride || couponCode).trim().toUpperCase();
     if (!normalizedCode) {
@@ -817,6 +851,71 @@ const MobileCheckout = () => {
         // 2. Payment Gateway (for online payments)
         const isOnlinePayment = ['card', 'upi', 'wallet', 'netbanking'].includes(String(formData.paymentMethod).toLowerCase());
         if (isOnlinePayment) {
+          if (effectiveGateway === 'razorpay') {
+            const sessionRes = await api.post('/payments/razorpay/session', {
+              checkoutSessionId: sessionId,
+            });
+            const sessionData = sessionRes.data?.data || sessionRes.data || {};
+            const { keyId, rzpOrderId, amount, currency } = sessionData;
+            if (!rzpOrderId || !keyId) {
+              throw new Error(sessionData.message || 'Failed to initialize Razorpay checkout.');
+            }
+
+            let rzpResponse;
+            try {
+              rzpResponse = await openRazorpayCheckout({
+                key: keyId,
+                amount,
+                currency: currency || 'INR',
+                order_id: rzpOrderId,
+                name: 'DwellMart',
+                description: `Order Payment (${sessionId.slice(-8)})`,
+                prefill: {
+                  name: formData.name || user?.name || '',
+                  email: formData.email || user?.email || '',
+                  contact: formData.phone || user?.phone || '',
+                },
+                theme: {
+                  color: '#10b981',
+                },
+              });
+            } catch (rzpErr) {
+              if (rzpErr?.message === 'PAYMENT_DISMISSED') {
+                toast.error(t('Payment window closed.'));
+              } else {
+                toast.error(rzpErr?.message || t('Payment failed or cancelled.'));
+              }
+              setIsPlacingOrder(false);
+              return;
+            }
+
+            // Immediately verify payment status with backend
+            const verifyRes = await api.post('/payments/razorpay/verify', {
+              checkoutSessionId: sessionId,
+              razorpay_order_id: rzpResponse.razorpay_order_id,
+              razorpay_payment_id: rzpResponse.razorpay_payment_id,
+              razorpay_signature: rzpResponse.razorpay_signature,
+            });
+            const verifyData = verifyRes.data?.data || verifyRes.data || {};
+
+            if (!verifyData.isPaid) {
+              toast.error(t('Payment cancelled or failed. Your order has not been placed.'));
+              setIsPlacingOrder(false);
+              return;
+            }
+
+            // Payment verified as PAID!
+            clearCart();
+            toast.success(t('Payment successful! Order placed.'));
+            const orders = verifyData.orders || [];
+            if (orders.length === 1) {
+              navigate(`/order-confirmation/${orders[0].orderId}`);
+            } else {
+              navigate(`/order-confirmation?session=${sessionId}`);
+            }
+            return;
+          }
+
           const sessionRes = await api.post('/payments/cashfree/session', {
             checkoutSessionId: sessionId,
             email: formData.email || user?.email,
@@ -1207,13 +1306,16 @@ const MobileCheckout = () => {
                     <div className="space-y-3 mb-6">
                       {["card", "cash", "wallet", "upi"].filter(method => {
                         if (!paymentSettings) return true; // Show all until loaded
-                        if (method === 'card') return paymentSettings.cardEnabled !== false;
                         if (method === 'cash') return paymentSettings.codEnabled !== false;
+                        if (!hasOnlineGateway) return false;
+                        if (method === 'card') return paymentSettings.cardEnabled !== false;
                         if (method === 'wallet') return paymentSettings.walletEnabled !== false;
                         if (method === 'upi') return paymentSettings.upiEnabled !== false;
                         return true;
                       }).map((method) => {
-                        const isMethodDisabled = method === 'cash' && !isQuickCommerce && deliverabilityVerdict?.codAvailable === false;
+                        const isPincodeCodDisabled = method === 'cash' && !isQuickCommerce && deliverabilityVerdict?.codAvailable === false;
+                        const isItemCodDisabled = method === 'cash' && hasNonCodItems;
+                        const isMethodDisabled = isPincodeCodDisabled || isItemCodDisabled;
                         return (
                           <label
                             key={method}
@@ -1246,7 +1348,9 @@ const MobileCheckout = () => {
                                 </span>
                                 {isMethodDisabled && (
                                   <span className="text-xs text-amber-700 font-medium mt-0.5">
-                                    Not available for pincode {formData.zipCode}
+                                    {isItemCodDisabled
+                                      ? `${t("Unavailable")}: ${nonCodCartItems.map(i => i.name).slice(0, 2).join(', ')}${nonCodCartItems.length > 2 ? '...' : ''} ${t("requires online payment")}`
+                                      : `Not available for pincode ${formData.zipCode}`}
                                   </span>
                                 )}
                               </div>
@@ -1260,6 +1364,7 @@ const MobileCheckout = () => {
                         );
                       })}
                     </div>
+
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}
                     <div className="mb-6 space-y-3">

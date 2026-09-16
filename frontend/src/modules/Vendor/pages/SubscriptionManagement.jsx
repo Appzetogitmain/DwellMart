@@ -17,7 +17,7 @@ import {
   getVendorSubscriptionPlans,
 } from '../services/vendorService';
 import api from '../../../shared/utils/api';
-import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
+import { executeSubscriptionPayment, resolveEffectiveGateway } from '../../../shared/utils/subscriptionPayment';
 import { useVendorAuthStore } from '../store/vendorAuthStore';
 
 const intervalDays = {
@@ -97,6 +97,14 @@ const SubscriptionManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [preferredGateway, setPreferredGateway] = useState('auto');
+
+  const isCashfreeEnabled = paymentSettings?.cashfreeEnabled !== false;
+  const isRazorpayEnabled = paymentSettings?.razorpayEnabled === true;
+  const bothGatewaysEnabled = isCashfreeEnabled && isRazorpayEnabled;
+  const effectiveGateway = resolveEffectiveGateway(paymentSettings, preferredGateway);
+
   const currentPlan = subscription?.plan || null;
   const gateway = 'internal';
   const currentPlanId = String(currentPlan?._id || currentPlan?.id || subscription?.planId || '');
@@ -123,19 +131,25 @@ const SubscriptionManagement = () => {
     }
 
     try {
-      const [subscriptionRes, plansRes] = await Promise.all([
+      const [subscriptionRes, plansRes, settingsRes] = await Promise.allSettled([
         getVendorSubscription(),
         getVendorSubscriptionPlans(),
+        api.get('/settings/payment'),
       ]);
-      const subscriptionData = subscriptionRes?.data?.subscription || null;
+      const subscriptionData = subscriptionRes.status === 'fulfilled' ? (subscriptionRes.value?.data?.subscription || null) : null;
       setSubscription(subscriptionData);
-      const rawPlans = Array.isArray(plansRes?.data) ? plansRes.data : [];
+      const rawPlans = plansRes.status === 'fulfilled' && Array.isArray(plansRes.value?.data) ? plansRes.value.data : [];
       // If vendor already has an existing subscription or has used trial, filter out free/trial plans
       const availablePlans = subscriptionData
         ? rawPlans.filter((p) => (!p.isFree && !p.isTrial) || String(p._id || p.id) === String(subscriptionData?.plan?._id || subscriptionData?.plan?.id))
         : rawPlans;
       setPlans(availablePlans);
       setSelectedPlanId(String(subscriptionData?.plan?._id || subscriptionData?.plan?.id || ''));
+
+      if (settingsRes.status === 'fulfilled') {
+        const pSettings = settingsRes.value?.data?.data || settingsRes.value?.data || {};
+        setPaymentSettings(pSettings);
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -177,30 +191,18 @@ const SubscriptionManagement = () => {
       const email = vendor?.email || subscription?.vendor?.email || localStorage.getItem('vendor-email');
 
       if (!isFree) {
-        // ── Paid Plan Flow: Cashfree Checkout ──────────────────────────────
-        const sessionRes = await api.post('/payments/cashfree/session', {
-          subscriptionPlanId: planId,
-          ...(email ? { email } : {}),
-        });
-        const sessionData = sessionRes?.data?.data || sessionRes?.data || sessionRes || {};
-        const { paymentSessionId, orderId: cfOrderId, environment } = sessionData;
-
-        if (!paymentSessionId) {
-          throw new Error('Could not initiate payment session. Please try again.');
-        }
-
-        const cashfree = await getCashfreeInstance(environment || 'sandbox');
-        await cashfree.checkout({
-          paymentSessionId,
-          redirectTarget: "_modal",
+        const result = await executeSubscriptionPayment({
+          planId,
+          planName: plan?.name,
+          email,
+          name: vendor?.name || '',
+          phone: vendor?.phone || '',
+          preferredGateway,
+          paymentSettings,
         });
 
-        // Verify payment and activate subscription directly
-        const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-        const verifyData = verifyRes?.data?.data || verifyRes?.data || verifyRes || {};
-
-        if (verifyData.subscription) {
-          setSubscription(verifyData.subscription);
+        if (result.subscription) {
+          setSubscription(result.subscription);
         }
 
         toast.success('Subscription plan updated successfully.');
@@ -218,12 +220,16 @@ const SubscriptionManagement = () => {
         await loadSubscriptionData({ quiet: true });
       }
     } catch (error) {
-      const status = error?.response?.status;
-      const body = error?.response?.data;
-      if (status === 402 || body?.data?.paymentRequired) {
-        toast.error('Payment was not completed. Your plan has not been changed.');
+      if (error?.message === 'PAYMENT_DISMISSED' || error?.isDismissed) {
+        toast.error('Payment window was closed.');
       } else {
-        toast.error(body?.message || error.message || 'Could not update subscription.');
+        const status = error?.response?.status;
+        const body = error?.response?.data;
+        if (status === 402 || body?.data?.paymentRequired) {
+          toast.error('Payment was not completed. Your plan has not been changed.');
+        } else {
+          toast.error(body?.message || error.message || 'Could not update subscription.');
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -364,12 +370,14 @@ const SubscriptionManagement = () => {
             <h2 className="text-xl font-black text-slate-900">Available Plans</h2>
             <p className="mt-1 text-sm text-slate-500">Switch plans from here. Paid changes may open a secure payment step.</p>
           </div>
-          {isSubmitting ? (
-            <span className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700">
-              <FiLoader className="animate-spin" />
-              Preparing billing...
-            </span>
-          ) : null}
+          <div className="flex items-center gap-4">
+            {isSubmitting ? (
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-teal-700">
+                <FiLoader className="animate-spin" />
+                Preparing billing...
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {sortedPlans.length > 0 ? (

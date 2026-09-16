@@ -120,6 +120,7 @@ export const buildPublicCatalogGuard = async ({ experience, sellingChannel, incl
         vendorIds,
         filter: {
             isActive: true,
+            isVisible: { $ne: false },
             isDeleted: { $ne: true },
             vendorId: { $in: vendorIds },
             ...flagCondition,
@@ -137,6 +138,9 @@ export const isProductPubliclyVisible = async (product, { experience, sellingCha
     if (!product) return { visible: false, reason: 'PRODUCT_NOT_FOUND' };
     if (product.isActive === false || product.isDeleted === true) {
         return { visible: false, reason: 'PRODUCT_INACTIVE' };
+    }
+    if (product.isVisible === false) {
+        return { visible: false, reason: 'PRODUCT_HIDDEN' };
     }
 
     const vendorId = product.vendorId?._id || product.vendorId;

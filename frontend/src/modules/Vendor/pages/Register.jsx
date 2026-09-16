@@ -20,7 +20,7 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../../shared/utils/api';
-import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
+import { executeSubscriptionPayment, resolveEffectiveGateway } from '../../../shared/utils/subscriptionPayment';
 import { useSettingsStore } from '../../../shared/store/settingsStore';
 
 const STEPS = ['Plans', 'Registration', 'Payment', 'Thank You'];
@@ -51,6 +51,12 @@ const VendorRegister = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [paymentState, setPaymentState] = useState('idle');
+  const [preferredGateway, setPreferredGateway] = useState('auto');
+
+  const isCashfreeEnabled = settings?.payment?.cashfreeEnabled !== false;
+  const isRazorpayEnabled = settings?.payment?.razorpayEnabled === true;
+  const bothGatewaysEnabled = isCashfreeEnabled && isRazorpayEnabled;
+  const effectiveGateway = resolveEffectiveGateway(settings?.payment, preferredGateway);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -357,41 +363,32 @@ const VendorRegister = () => {
     setIsLoading(true);
     setPaymentState('idle');
     try {
-      const sessionRes = await api.post('/payments/cashfree/session', {
-        subscriptionPlanId: planToUse._id,
+      const result = await executeSubscriptionPayment({
+        planId: planToUse._id,
+        planName: planToUse.name,
         email: paymentEmail,
+        name: formData.name,
+        phone: formData.phone,
+        preferredGateway,
+        paymentSettings: settings?.payment,
+        onStatusChange: (status) => setPaymentState(status),
       });
-      const { paymentSessionId, orderId: cfOrderId, environment } = sessionRes.data?.data || sessionRes.data || sessionRes || {};
 
-      if (!paymentSessionId) {
-        throw new Error(sessionRes?.message || 'Could not initiate payment session.');
-      }
-
-      setPaymentState('checkout_open');
-      const cashfree = await getCashfreeInstance(environment || 'sandbox');
-      try {
-        await cashfree.checkout({
-          paymentSessionId,
-          redirectTarget: '_modal',
-        });
-      } catch (modalErr) {
-        console.warn('Cashfree modal notice:', modalErr);
-      }
-
-      setPaymentState('processing');
-      const verifyRes = await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-      const verifyData = verifyRes.data?.data || verifyRes.data || verifyRes || {};
-
-      if (verifyData.isPaid) {
+      if (result.isPaid) {
         await syncFromStatus(paymentEmail, plans);
       } else {
         setPaymentState('failed');
         toast.error('Payment was not completed. Please retry.');
       }
     } catch (error) {
-      console.error('Paid plan checkout error:', error);
-      setPaymentState('failed');
-      toast.error(error.response?.data?.message || error.message || 'Could not start payment.');
+      if (error?.message === 'PAYMENT_DISMISSED' || error?.isDismissed) {
+        setPaymentState('idle');
+        toast.error('Payment window was closed.');
+      } else {
+        console.error('Paid plan checkout error:', error);
+        setPaymentState('failed');
+        toast.error(error.response?.data?.message || error.message || 'Could not start payment.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1017,6 +1014,7 @@ const VendorRegister = () => {
                 )}
 
                 <div className="mt-6 flex flex-col gap-3">
+
                   {!selectedPlan?.isFree && !selectedPlan?.isTrial ? (
                     <button
                       type="button"

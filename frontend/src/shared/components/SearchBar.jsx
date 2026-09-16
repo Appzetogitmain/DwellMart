@@ -62,8 +62,9 @@ const SearchBar = () => {
       }
 
       try {
+        const currentExp = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('experience') || 'marketplace') : 'marketplace';
         const response = await api.get('/products', {
-          params: { q: searchQuery.trim(), page: 1, limit: MAX_SUGGESTIONS, sort: 'newest' },
+          params: { q: searchQuery.trim(), page: 1, limit: MAX_SUGGESTIONS, sort: 'newest', experience: currentExp },
         });
         const payload = response?.data ?? response;
         const products = Array.isArray(payload?.products) ? payload.products : [];

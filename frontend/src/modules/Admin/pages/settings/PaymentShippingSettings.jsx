@@ -86,7 +86,17 @@ const PaymentShippingSettings = () => {
         defaultShippingRate: shippingData.defaultShippingRate === '' ? 0 : Number(shippingData.defaultShippingRate),
       };
 
-      await updateSettings('payment', paymentData);
+      const sanitizedPayment = {
+        codEnabled: !!paymentData.codEnabled,
+        cardEnabled: !!paymentData.cardEnabled,
+        walletEnabled: !!paymentData.walletEnabled,
+        upiEnabled: !!paymentData.upiEnabled,
+        cashfreeEnabled: paymentData.cashfreeEnabled !== false,
+        razorpayEnabled: !!paymentData.razorpayEnabled,
+        defaultGateway: paymentData.defaultGateway || 'auto',
+      };
+
+      await updateSettings('payment', sanitizedPayment);
       await updateSettings('shipping', formattedShipping);
       toast.success('Settings saved successfully');
     } catch (error) {
@@ -187,8 +197,65 @@ const PaymentShippingSettings = () => {
                         onChange={handlePaymentChange}
                         className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 flex-shrink-0"
                       />
-                      <span className="text-sm font-semibold text-gray-700 truncate">UPI</span>
+                      <span className="text-sm font-semibold text-gray-700 truncate">UPI / QR Code</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Gateway Preference */}
+              <div className="border-t border-gray-200 pt-6 space-y-4">
+                <h3 className="text-lg font-bold text-gray-800">Gateway Preference</h3>
+                <p className="text-sm text-gray-600">
+                  When both gateways are enabled, select which gateway will automatically process online payments (customers will not be asked to choose).
+                </p>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Default Online Gateway
+                  </label>
+                  <AnimatedSelect
+                    name="defaultGateway"
+                    value={paymentData.defaultGateway || "cashfree"}
+                    onChange={handlePaymentChange}
+                    options={[
+                      { value: 'cashfree', label: 'Cashfree' },
+                      { value: 'razorpay', label: 'Razorpay' },
+                      { value: 'auto', label: 'Auto (Cashfree with Razorpay fallback)' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {/* Razorpay Payment Gateway */}
+              <div className="border-t border-gray-200 pt-6 space-y-4">
+                <h3 className="text-lg font-bold text-gray-800">Razorpay Payment Gateway</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 sm:p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <input
+                      type="checkbox"
+                      name="razorpayEnabled"
+                      checked={paymentData.razorpayEnabled || false}
+                      onChange={handlePaymentChange}
+                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 flex-shrink-0"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">Enable Razorpay PG</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cashfree Payment Gateway */}
+              <div className="border-t border-gray-200 pt-6 space-y-4">
+                <h3 className="text-lg font-bold text-gray-800">Cashfree Payment Gateway</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 sm:p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <input
+                      type="checkbox"
+                      name="cashfreeEnabled"
+                      checked={paymentData.cashfreeEnabled !== false}
+                      onChange={handlePaymentChange}
+                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 flex-shrink-0"
+                    />
+                    <span className="text-sm font-semibold text-gray-700">Enable Cashfree Payments PG</span>
                   </div>
                 </div>
               </div>

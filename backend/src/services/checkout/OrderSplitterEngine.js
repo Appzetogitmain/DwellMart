@@ -236,6 +236,9 @@ const computeGroupPricing = async (
             appliedTier:     pricing.appliedTier || null,
             unitRetailPrice: pricing.unitRetailPrice,
             savings:         pricing.savings || 0,
+            codAllowed:      product?.codAllowed !== false,
+            returnable:      product?.returnable !== false,
+            cancelable:      product?.cancelable !== false,
             // Parcel snapshot, normalised to kg/cm once here so every
             // downstream consumer reads one unit system. Omitted entirely when
             // the product carries no measurements, so `undefined` continues to
@@ -348,10 +351,18 @@ export const splitAndCreateOrders = async ({
     const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
     const [rawProducts, wholesaleEnabled] = await Promise.all([
         Product.find({ _id: { $in: productIds } })
-            .select('_id name images price taxRate taxIncluded retailEnabled wholesaleEnabled quickCommerceEnabled wholesale shipping vendorId stock stockQuantity')
+            .select('_id name images price taxRate taxIncluded retailEnabled wholesaleEnabled quickCommerceEnabled wholesale shipping vendorId stock stockQuantity codAllowed returnable cancelable')
             .lean(),
         isWholesaleMarketplaceEnabled(),
     ]);
+
+    if (['cod', 'cash'].includes(String(paymentMethod || '').trim().toLowerCase())) {
+        const nonCodProduct = rawProducts.find((p) => p.codAllowed === false);
+        if (nonCodProduct) {
+            throw new ApiError(400, `Product "${nonCodProduct.name || 'item'}" does not support Cash on Delivery. Please pay online.`);
+        }
+    }
+
     const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 
     const vendorIds = [...new Set(rawProducts.map((p) => p.vendorId ? new mongoose.Types.ObjectId(String(p.vendorId)) : null).filter(Boolean))];

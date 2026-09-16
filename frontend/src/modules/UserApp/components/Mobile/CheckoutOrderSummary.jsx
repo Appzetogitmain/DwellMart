@@ -181,6 +181,25 @@ const OrderSummary = ({
                             {formatVariantLabel(item?.variant) && (
                               <p className="text-[10px] text-slate-500">{formatVariantLabel(item?.variant)}</p>
                             )}
+                            {(item.returnable === false || item.cancelable === false || item.codAllowed === false) && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {item.returnable === false && (
+                                  <span className="inline-flex items-center text-[10px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                                    🚫 Non-Returnable
+                                  </span>
+                                )}
+                                {item.cancelable === false && (
+                                  <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    🚫 Non-Cancelable
+                                  </span>
+                                )}
+                                {item.codAllowed === false && (
+                                  <span className="inline-flex items-center text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                    💳 Online Payment Only
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

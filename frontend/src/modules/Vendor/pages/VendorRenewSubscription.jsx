@@ -8,7 +8,7 @@ import {
   getVendorSubscriptionPlans,
 } from '../services/vendorService';
 import api from '../../../shared/utils/api';
-import { getCashfreeInstance } from '../../../shared/utils/cashfreeLoader';
+import { executeSubscriptionPayment, resolveEffectiveGateway } from '../../../shared/utils/subscriptionPayment';
 
 import { useVendorAuthStore } from '../store/vendorAuthStore';
 
@@ -37,17 +37,34 @@ const VendorRenewSubscription = () => {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [preferredGateway, setPreferredGateway] = useState('auto');
+
+  const isCashfreeEnabled = paymentSettings?.cashfreeEnabled !== false;
+  const isRazorpayEnabled = paymentSettings?.razorpayEnabled === true;
+  const bothGatewaysEnabled = isCashfreeEnabled && isRazorpayEnabled;
+  const effectiveGateway = resolveEffectiveGateway(paymentSettings, preferredGateway);
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const response = await getVendorSubscriptionPlans();
-        const rawPlans = Array.isArray(response?.data) ? response.data : [];
-        // Renewals are strictly for paid plans — filter out free/trial plans
-        const paidPlans = rawPlans.filter(
-          (p) => !p.isFree && !p.isTrial && (Number(p?.pricing?.inr ?? p?.price_inr ?? 0) > 0 || Number(p?.pricing?.usd ?? p?.price_usd ?? 0) > 0)
-        );
-        setPlans(paidPlans);
+        const [plansRes, settingsRes] = await Promise.allSettled([
+          getVendorSubscriptionPlans(),
+          api.get('/settings/payment'),
+        ]);
+
+        if (plansRes.status === 'fulfilled') {
+          const rawPlans = Array.isArray(plansRes.value?.data) ? plansRes.value.data : [];
+          const paidPlans = rawPlans.filter(
+            (p) => !p.isFree && !p.isTrial && (Number(p?.pricing?.inr ?? p?.price_inr ?? 0) > 0 || Number(p?.pricing?.usd ?? p?.price_usd ?? 0) > 0)
+          );
+          setPlans(paidPlans);
+        }
+
+        if (settingsRes.status === 'fulfilled') {
+          const pSettings = settingsRes.value?.data?.data || settingsRes.value?.data || {};
+          setPaymentSettings(pSettings);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -73,40 +90,38 @@ const VendorRenewSubscription = () => {
     setIsSubmitting(true);
     try {
       if (!isFree) {
-        // ── Paid Plan Flow: Cashfree Checkout ──────────────────────────────
-        const sessionRes = await api.post('/payments/cashfree/session', {
-          subscriptionPlanId: selectedPlanId,
-          ...(email ? { email } : {}),
+        const result = await executeSubscriptionPayment({
+          planId: selectedPlanId,
+          planName: selectedPlan?.name,
+          email,
+          name: vendor?.name || '',
+          phone: vendor?.phone || '',
+          preferredGateway,
+          paymentSettings,
         });
-        const sessionData = sessionRes?.data?.data || sessionRes?.data || sessionRes || {};
-        const { paymentSessionId, orderId: cfOrderId, environment } = sessionData;
 
-        if (!paymentSessionId) {
-          throw new Error('Could not initiate payment session. Please try again.');
+        if (result.isPaid) {
+          toast.success('Subscription renewed successfully.');
+          navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
+        } else {
+          toast.error('Payment was not completed. Your plan has not been changed.');
         }
-
-        const cashfree = await getCashfreeInstance(environment || 'sandbox');
-        await cashfree.checkout({
-          paymentSessionId,
-          redirectTarget: "_modal",
-        });
-
-        await api.post('/payments/cashfree/verify', { orderId: cfOrderId });
-        toast.success('Subscription renewed successfully.');
-        navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
       } else {
-        // ── Free Plan Flow: Direct Activation ───────────────────────────────
         await changeVendorSubscriptionPlan(selectedPlanId);
         toast.success('Subscription updated successfully.');
         navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login', { replace: true });
       }
     } catch (error) {
-      const status = error?.response?.status;
-      const body = error?.response?.data;
-      if (status === 402 || body?.data?.paymentRequired) {
-        toast.error('Payment was not completed. Your plan has not been changed.');
+      if (error?.message === 'PAYMENT_DISMISSED' || error?.isDismissed) {
+        toast.error('Payment window was closed.');
       } else {
-        toast.error(body?.message || error.message || 'Could not update subscription.');
+        const status = error?.response?.status;
+        const body = error?.response?.data;
+        if (status === 402 || body?.data?.paymentRequired) {
+          toast.error('Payment was not completed. Your plan has not been changed.');
+        } else {
+          toast.error(body?.message || error.message || 'Could not update subscription.');
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -179,7 +194,9 @@ const VendorRenewSubscription = () => {
         )}
 
         {!isLoading ? (
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <button
               type="button"
               onClick={handleSubmit}
@@ -198,7 +215,8 @@ const VendorRenewSubscription = () => {
               {isLoggedIn ? 'Back to Dashboard' : 'Back to Login'}
             </button>
           </div>
-        ) : null}
+        </>
+      ) : null}
       </motion.div>
     </div>
   );

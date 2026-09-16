@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { FiSearch, FiFilter, FiX, FiMic, FiGrid, FiList, FiShoppingBag, FiChevronLeft, FiChevronRight, FiRefreshCw, FiGlobe, FiZap } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -138,11 +139,11 @@ const MobileSearch = ({ isShopPage = false }) => {
     if (urlDelivery && ['all', 'marketplace', 'express'].includes(urlDelivery)) {
       return urlDelivery;
     }
-    if (isShopPage && !urlDelivery) {
-      return 'all';
+    if (searchParams.get('experience') === EXPERIENCES.QUICK_COMMERCE) {
+      return 'express';
     }
-    return experience === EXPERIENCES.QUICK_COMMERCE ? 'express' : 'all';
-  }, [searchParams, isShopPage, experience]);
+    return 'all';
+  }, [searchParams]);
 
   const [deliveryMode, setDeliveryMode] = useState(initialDeliveryMode);
 
@@ -151,6 +152,10 @@ const MobileSearch = ({ isShopPage = false }) => {
     const urlDelivery = searchParams.get('delivery');
     if (urlDelivery && ['all', 'marketplace', 'express'].includes(urlDelivery)) {
       setDeliveryMode(urlDelivery);
+    } else if (searchParams.get('experience') === EXPERIENCES.QUICK_COMMERCE) {
+      setDeliveryMode('express');
+    } else if (!urlDelivery) {
+      setDeliveryMode('all');
     }
   }, [searchParams]);
 
@@ -163,7 +168,7 @@ const MobileSearch = ({ isShopPage = false }) => {
 
     if (mode === 'express') {
       setExperience(EXPERIENCES.QUICK_COMMERCE);
-    } else if (mode === 'marketplace') {
+    } else {
       setExperience(EXPERIENCES.MARKETPLACE);
     }
   }, [searchParams, setSearchParams, setExperience]);
@@ -416,6 +421,44 @@ const MobileSearch = ({ isShopPage = false }) => {
 
   const filterButtonRef = useRef(null);
 
+  const [draftMinPrice, setDraftMinPrice] = useState(searchParams.get('minPrice') || '');
+  const [draftMaxPrice, setDraftMaxPrice] = useState(searchParams.get('maxPrice') || '');
+
+  // Keep draft prices synchronized with searchParams
+  useEffect(() => {
+    setDraftMinPrice(searchParams.get('minPrice') || '');
+    setDraftMaxPrice(searchParams.get('maxPrice') || '');
+  }, [searchParams]);
+
+  const applyFilters = useCallback(() => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('sort', sortBy || 'newest');
+    newParams.delete('page');
+
+    const minTrimmed = String(draftMinPrice || '').trim();
+    const maxTrimmed = String(draftMaxPrice || '').trim();
+
+    if (minTrimmed) {
+      newParams.set('minPrice', minTrimmed);
+    } else {
+      newParams.delete('minPrice');
+    }
+
+    if (maxTrimmed) {
+      newParams.set('maxPrice', maxTrimmed);
+    } else {
+      newParams.delete('maxPrice');
+    }
+
+    setFilters((prev) => ({
+      ...prev,
+      minPrice: minTrimmed,
+      maxPrice: maxTrimmed,
+    }));
+    setSearchParams(newParams);
+    setShowFilters(false);
+  }, [searchParams, sortBy, draftMinPrice, draftMaxPrice, setSearchParams]);
+
   const handleFilterChange = (name, value) => {
     const normalizedValue = typeof value === 'string' ? value.trim() : value;
     setFilters({ ...filters, [name]: normalizedValue });
@@ -458,25 +501,23 @@ const MobileSearch = ({ isShopPage = false }) => {
     filters.minPrice || filters.maxPrice || filters.minRating || filters.category || filters.vendor ||
     filters.sellingChannel || filters.bulkDiscount || filters.hasMoq || searchQuery;
 
-  // Close filter dropdown when clicking outside
+  // Close desktop filter popover when clicking outside
   useEffect(() => {
+    if (!showFilters) return;
+
     const handleClickOutside = (event) => {
       if (
-        showFilters &&
         filterButtonRef.current &&
         !filterButtonRef.current.contains(event.target) &&
-        !event.target.closest(".filter-dropdown")
+        !event.target.closest('.filter-dropdown')
       ) {
         setShowFilters(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showFilters]);
 
@@ -522,6 +563,8 @@ const MobileSearch = ({ isShopPage = false }) => {
   };
 
   const clearFilters = () => {
+    setDraftMinPrice('');
+    setDraftMaxPrice('');
     setFilters({
       category: '',
       vendor: '',
@@ -646,15 +689,15 @@ const MobileSearch = ({ isShopPage = false }) => {
             </div>
 
             {/* Filter Toggle and View Mode */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-content-secondary">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs sm:text-sm text-content-secondary font-medium truncate min-w-0">
                 {t('Found')} {total} {t('product(s)')}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <select
                   value={sortBy}
                   onChange={(e) => handleSortChange(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs rounded-lg border border-border bg-surface text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  className="px-2 py-1.5 sm:px-2.5 sm:py-1.5 text-xs rounded-lg border border-border bg-surface text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand-primary max-w-[105px] sm:max-w-none truncate cursor-pointer"
                 >
                   <option value="newest">{t('Newest')}</option>
                   <option value="oldest">{t('Oldest')}</option>
@@ -663,354 +706,683 @@ const MobileSearch = ({ isShopPage = false }) => {
                   <option value="popular">{t('Popular')}</option>
                   <option value="rating">{t('Top Rated')}</option>
                 </select>
+
                 {/* View Toggle Buttons */}
-                <div className="flex items-center bg-surface-muted rounded-lg p-1">
+                <div className="flex items-center bg-surface-muted rounded-lg p-0.5 sm:p-1">
                   <button
+                    type="button"
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 rounded transition-colors ${viewMode === 'list'
-                      ? 'bg-surface text-brand-primary shadow-sm'
-                      : 'text-content-secondary'
-                      }`}
+                    className={`p-1.5 rounded transition-colors cursor-pointer ${
+                      viewMode === 'list'
+                        ? 'bg-surface text-brand-primary shadow-sm'
+                        : 'text-content-secondary'
+                    }`}
+                    aria-label="List view"
                   >
-                    <FiList className="text-lg" />
+                    <FiList className="text-base sm:text-lg" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 rounded transition-colors ${viewMode === 'grid'
-                      ? 'bg-surface text-brand-primary shadow-sm'
-                      : 'text-content-secondary'
-                      }`}
+                    className={`p-1.5 rounded transition-colors cursor-pointer ${
+                      viewMode === 'grid'
+                        ? 'bg-surface text-brand-primary shadow-sm'
+                        : 'text-content-secondary'
+                    }`}
+                    aria-label="Grid view"
                   >
-                    <FiGrid className="text-lg" />
+                    <FiGrid className="text-base sm:text-lg" />
                   </button>
                 </div>
+
                 <div ref={filterButtonRef} className="relative">
                   <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`flex items-center gap-2 px-4 py-2 glass-card rounded-xl hover:bg-surface/80 transition-colors ${showFilters ? "bg-surface/80" : ""
-                      }`}
+                    type="button"
+                    onClick={() => setShowFilters((prev) => !prev)}
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                      showFilters || hasActiveFilters
+                        ? "bg-brand-primary/10 border-brand-primary/40 text-brand-primary font-bold"
+                        : "bg-surface border-border text-content-secondary hover:bg-surface-muted hover:text-content"
+                    }`}
                   >
                     <FiFilter
-                      className={`text-lg transition-colors ${hasActiveFilters ? "text-brand-primary" : "text-content-secondary"
-                        }`}
+                      className={`text-sm sm:text-base shrink-0 ${hasActiveFilters ? "text-brand-primary" : "text-content-secondary"}`}
                     />
-                    <span className="font-semibold text-content-secondary text-sm">{t('Filters')}</span>
+                    <span className="font-semibold text-xs sm:text-sm">{t('Filters')}</span>
+                    {hasActiveFilters && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shrink-0" />
+                    )}
                   </button>
 
-                  {/* Filter Dropdown */}
+                  {/* Desktop Popover Filter Menu */}
                   <AnimatePresence>
                     {showFilters && (
-                      <>
-                        {/* Backdrop */}
+                      <div className="hidden sm:block">
                         <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          onClick={() => setShowFilters(false)}
-                          className="fixed inset-0 bg-black/20 z-[10000]"
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                          initial={{ opacity: 0, y: 8, scale: 0.98 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 30,
-                          }}
-                          className="filter-dropdown absolute right-0 top-full w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-surface rounded-2xl shadow-2xl border border-border z-[10001] overflow-hidden"
-                          style={{ marginTop: "10px" }}>
+                          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className="filter-dropdown absolute right-0 top-full mt-2 w-96 max-w-[420px] max-h-[80vh] bg-surface rounded-2xl shadow-2xl border border-border z-50 flex flex-col overflow-hidden"
+                        >
                           {/* Header */}
-                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-surface-muted">
-                            <div className="flex items-center gap-1.5">
-                              <FiFilter className="text-sm text-content-secondary" />
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-muted/50 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <FiFilter className="text-base text-brand-primary" />
                               <h3 className="text-sm font-bold text-content">
                                 {t('Filters')}
                               </h3>
                             </div>
                             <button
+                              type="button"
                               onClick={() => setShowFilters(false)}
-                              className="p-0.5 hover:bg-border rounded-full transition-colors">
-                              <FiX className="text-sm text-content-secondary" />
+                              className="p-1 hover:bg-surface-muted rounded-full transition-colors text-content-secondary hover:text-content cursor-pointer"
+                            >
+                              <FiX className="text-sm" />
                             </button>
                           </div>
 
-                          {/* Filter Content */}
-                          <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
-                            <div className="p-2 space-y-2">
-                              {/* Wholesale Filters — hidden unless the marketplace feature is on */}
-                              {wholesaleMarketplaceEnabled && (
-                                <div>
-                                  <h4 className="font-semibold text-content-secondary mb-1 text-xs">
-                                    {t('Selling Channel')}
-                                  </h4>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => setChannelFilter('retail')}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                                        filters.sellingChannel === 'retail'
-                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
-                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
-                                      }`}
-                                    >
-                                      {t('Retail Only')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setChannelFilter('wholesale')}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                                        filters.sellingChannel === 'wholesale'
-                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
-                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
-                                      }`}
-                                    >
-                                      {t('Wholesale Available')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleBooleanFilter('bulkDiscount')}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                                        filters.bulkDiscount
-                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
-                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
-                                      }`}
-                                    >
-                                      {t('Bulk Discount')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleBooleanFilter('hasMoq')}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                                        filters.hasMoq
-                                          ? 'bg-brand-primary text-content-inverse border-brand-primary'
-                                          : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
-                                      }`}
-                                    >
-                                      {t('MOQ Products')}
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Category Filter */}
+                          {/* Filter Content Body */}
+                          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-thin">
+                            {/* Wholesale Filters */}
+                            {wholesaleMarketplaceEnabled && (
                               <div>
-                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
-                                  {t('Category')}
+                                <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                                  {t('Selling Channel')}
                                 </h4>
-                                <div className="relative">
+                                <div className="flex flex-wrap gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setShowCategoryDropdown(!showCategoryDropdown);
-                                      setShowVendorDropdown(false);
-                                    }}
-                                    className="w-full px-3 py-2 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm flex items-center justify-between text-content-secondary"
+                                    onClick={() => setChannelFilter('retail')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                      filters.sellingChannel === 'retail'
+                                        ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                        : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                    }`}
                                   >
-                                    <span>{filters.category ? categories.find(c => normalizeId(c.id) === normalizeId(filters.category))?.name : t("All Categories")}</span>
-                                    <motion.div
-                                      animate={{ rotate: showCategoryDropdown ? 180 : 0 }}
-                                      transition={{ duration: 0.2 }}
-                                    >
-                                      <FiFilter className="text-content-muted text-xs" />
-                                    </motion.div>
+                                    {t('Retail Only')}
                                   </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setChannelFilter('wholesale')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                      filters.sellingChannel === 'wholesale'
+                                        ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                        : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                    }`}
+                                  >
+                                    {t('Wholesale Available')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBooleanFilter('bulkDiscount')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                      filters.bulkDiscount
+                                        ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                        : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                    }`}
+                                  >
+                                    {t('Bulk Discount')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleBooleanFilter('hasMoq')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                      filters.hasMoq
+                                        ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                        : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                                    }`}
+                                  >
+                                    {t('MOQ Products')}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
 
-                                  <AnimatePresence>
-                                    {showCategoryDropdown && (
-                                      <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="mt-1 bg-surface-muted rounded-xl border border-border-light overflow-hidden"
+                            {/* Category Filter */}
+                            <div>
+                              <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                                {t('Category')}
+                              </h4>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowCategoryDropdown(!showCategoryDropdown);
+                                    setShowVendorDropdown(false);
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm flex items-center justify-between text-content font-medium cursor-pointer"
+                                >
+                                  <span className="truncate">{filters.category ? categories.find(c => normalizeId(c.id) === normalizeId(filters.category))?.name : t("All Categories")}</span>
+                                  <motion.div
+                                    animate={{ rotate: showCategoryDropdown ? 180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <FiFilter className="text-content-muted text-xs shrink-0" />
+                                  </motion.div>
+                                </button>
+
+                                <AnimatePresence>
+                                  {showCategoryDropdown && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="mt-1 bg-surface-muted rounded-xl border border-border overflow-hidden max-h-52 overflow-y-auto"
+                                    >
+                                      <div
+                                        onClick={() => {
+                                          handleFilterChange("category", "");
+                                          setShowCategoryDropdown(false);
+                                        }}
+                                        className={`px-3.5 py-2.5 text-sm cursor-pointer hover:bg-surface transition-colors ${!filters.category ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
                                       >
+                                        {t('All Categories')}
+                                      </div>
+                                      {categories.map((cat) => (
                                         <div
+                                          key={cat.id}
                                           onClick={() => {
-                                            handleFilterChange("category", "");
+                                            handleFilterChange("category", normalizeId(cat.id));
                                             setShowCategoryDropdown(false);
                                           }}
-                                          className={`px-3 py-2 text-sm cursor-pointer hover:bg-surface transition-colors ${!filters.category ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                          className={`px-3.5 py-2.5 text-sm cursor-pointer hover:bg-surface transition-colors ${normalizeId(filters.category) === normalizeId(cat.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
                                         >
-                                          {t('All Categories')}
+                                          {cat.name}
                                         </div>
-                                        {categories.map((cat) => (
-                                          <div
-                                            key={cat.id}
-                                            onClick={() => {
-                                              handleFilterChange("category", normalizeId(cat.id));
-                                              setShowCategoryDropdown(false);
-                                            }}
-                                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-surface transition-colors ${normalizeId(filters.category) === normalizeId(cat.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
-                                          >
-                                            {cat.name}
-                                          </div>
-                                        ))}
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              </div>
-
-                              {/* Price Range */}
-                              <div>
-                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
-                                  {t('Price Range')}
-                                </h4>
-                                <div className="space-y-1.5">
-                                  <input
-                                    type="number"
-                                    placeholder={t("Min Price")}
-                                    value={filters.minPrice}
-                                    onChange={(e) =>
-                                      handleFilterChange("minPrice", e.target.value)
-                                    }
-                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder={t("Max Price")}
-                                    value={filters.maxPrice}
-                                    onChange={(e) =>
-                                      handleFilterChange("maxPrice", e.target.value)
-                                    }
-                                    className="w-full px-2 py-1.5 rounded-md border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-xs"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Vendor Filter */}
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <h4 className="font-bold text-content text-sm flex items-center gap-1.5">
-                                    <FiShoppingBag className="text-brand-primary" />
-                                    {t('Vendor')}
-                                  </h4>
-                                  <span className="text-xs text-brand-primary font-semibold bg-surface-muted px-2 py-0.5 rounded-full border border-border">
-                                    {approvedVendors.length}+ {t('Stores')}
-                                  </span>
-                                </div>
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setShowVendorDropdown(!showVendorDropdown);
-                                      setShowCategoryDropdown(false);
-                                    }}
-                                    className="w-full px-3 py-2.5 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm font-bold flex items-center justify-between text-content shadow-sm"
-                                  >
-                                    <span className="truncate pr-2">
-                                      {filters.vendor ? approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.storeName || approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.name : t("All Vendors")}
-                                    </span>
-                                    <motion.div
-                                      animate={{ rotate: showVendorDropdown ? 180 : 0 }}
-                                      transition={{ duration: 0.2 }}
-                                    >
-                                      <FiFilter className="text-brand-primary" />
+                                      ))}
                                     </motion.div>
-                                  </button>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
 
-                                  <AnimatePresence>
-                                    {showVendorDropdown && (
-                                      <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="mt-2 bg-surface-muted border border-border rounded-2xl overflow-hidden"
+                            {/* Price Range */}
+                            <div>
+                              <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                                {t('Price Range')}
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  type="number"
+                                  placeholder={t("Min Price")}
+                                  value={draftMinPrice}
+                                  onChange={(e) => setDraftMinPrice(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      applyFilters();
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 rounded-xl border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-sm"
+                                />
+                                <input
+                                  type="number"
+                                  placeholder={t("Max Price")}
+                                  value={draftMaxPrice}
+                                  onChange={(e) => setDraftMaxPrice(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      applyFilters();
+                                    }
+                                  }}
+                                  className="w-full px-3 py-2 rounded-xl border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-sm"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Vendor Filter */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-content-secondary text-xs uppercase tracking-wider flex items-center gap-1.5">
+                                  <FiShoppingBag className="text-brand-primary" />
+                                  {t('Vendor')}
+                                </h4>
+                                <span className="text-xs text-brand-primary font-semibold bg-surface-muted px-2 py-0.5 rounded-full border border-border">
+                                  {approvedVendors.length}+ {t('Stores')}
+                                </span>
+                              </div>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowVendorDropdown(!showVendorDropdown);
+                                    setShowCategoryDropdown(false);
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm font-semibold flex items-center justify-between text-content shadow-xs cursor-pointer"
+                                >
+                                  <span className="truncate pr-2">
+                                    {filters.vendor ? approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.storeName || approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.name : t("All Vendors")}
+                                  </span>
+                                  <motion.div
+                                    animate={{ rotate: showVendorDropdown ? 180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <FiFilter className="text-brand-primary shrink-0" />
+                                  </motion.div>
+                                </button>
+
+                                <AnimatePresence>
+                                  {showVendorDropdown && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      className="mt-2 bg-surface-muted border border-border rounded-xl overflow-hidden max-h-52 overflow-y-auto"
+                                    >
+                                      <div
+                                        onClick={() => {
+                                          handleFilterChange("vendor", "");
+                                          setShowVendorDropdown(false);
+                                        }}
+                                        className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b border-border-light flex items-center justify-between ${!filters.vendor ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
                                       >
+                                        <span>{t('All Vendors')}</span>
+                                        {!filters.vendor && <FiFilter className="text-brand-primary" />}
+                                      </div>
+                                      {approvedVendors.map((vendor) => (
                                         <div
+                                          key={vendor.id}
                                           onClick={() => {
-                                            handleFilterChange("vendor", "");
+                                            handleFilterChange("vendor", normalizeId(vendor.id));
                                             setShowVendorDropdown(false);
                                           }}
-                                          className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b border-border-light flex items-center justify-between ${!filters.vendor ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                          className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b last:border-0 border-border-light flex items-center justify-between ${normalizeId(filters.vendor) === normalizeId(vendor.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
                                         >
-                                          <span>{t('All Vendors')}</span>
-                                          {!filters.vendor && <FiFilter className="text-brand-primary" />}
-                                        </div>
-                                        {approvedVendors.map((vendor) => (
-                                          <div
-                                            key={vendor.id}
-                                            onClick={() => {
-                                              handleFilterChange("vendor", normalizeId(vendor.id));
-                                              setShowVendorDropdown(false);
-                                            }}
-                                            className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b last:border-0 border-border-light flex items-center justify-between ${normalizeId(filters.vendor) === normalizeId(vendor.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span>{vendor.storeName || vendor.name}</span>
-                                              {vendor.isVerified && <span className="text-status-info text-xs">✓</span>}
-                                            </div>
-                                            {normalizeId(filters.vendor) === normalizeId(vendor.id) && <FiFilter className="text-brand-primary" />}
+                                          <div className="flex items-center gap-2">
+                                            <span>{vendor.storeName || vendor.name}</span>
+                                            {vendor.isVerified && <span className="text-status-info text-xs">✓</span>}
                                           </div>
-                                        ))}
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
+                                          {normalizeId(filters.vendor) === normalizeId(vendor.id) && <FiFilter className="text-brand-primary" />}
+                                        </div>
+                                      ))}
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
+                            </div>
 
-                              {/* Rating Filter */}
-                              <div>
-                                <h4 className="font-semibold text-content-secondary mb-1 text-xs">
-                                  {t('Minimum Rating')}
-                                </h4>
-                                <div className="space-y-0.5">
-                                  {[4, 3, 2, 1].map((rating) => (
-                                    <label
-                                      key={rating}
-                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-surface-muted transition-colors">
-                                      <input
-                                        type="radio"
-                                        name="minRating"
-                                        value={rating}
-                                        checked={
+                            {/* Rating Filter */}
+                            <div>
+                              <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                                {t('Minimum Rating')}
+                              </h4>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {[4, 3, 2, 1].map((rating) => (
+                                  <label
+                                    key={rating}
+                                    className="flex items-center gap-2 cursor-pointer p-2 rounded-xl border border-border bg-surface hover:bg-surface-muted transition-colors"
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="minRating"
+                                      value={rating}
+                                      checked={filters.minRating === rating.toString()}
+                                      onChange={(e) => handleFilterChange("minRating", e.target.value)}
+                                      className="w-4 h-4 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
+                                      style={{
+                                        backgroundImage:
                                           filters.minRating === rating.toString()
-                                        }
-                                        onChange={(e) =>
-                                          handleFilterChange(
-                                            "minRating",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-3 h-3 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
-                                        style={{
-                                          backgroundImage:
-                                            filters.minRating === rating.toString()
-                                              ? "radial-gradient(circle, var(--color-brand-primary) 40%, transparent 40%)"
-                                              : "none",
-                                        }}
-                                      />
-                                      <span className="text-xs text-content-secondary">
-                                        {rating}+ {t('Stars')}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
+                                            ? "radial-gradient(circle, var(--color-brand-primary) 45%, transparent 45%)"
+                                            : "none",
+                                      }}
+                                    />
+                                    <span className="text-xs font-semibold text-content">
+                                      {rating}+ {t('Stars')}
+                                    </span>
+                                  </label>
+                                ))}
                               </div>
                             </div>
                           </div>
 
                           {/* Footer */}
-                          <div className="border-t border-border p-2 bg-surface-muted space-y-1.5">
+                          <div className="border-t border-border p-3 bg-surface shrink-0 flex items-center gap-3">
                             <button
+                              type="button"
                               onClick={clearFilters}
-                              className="w-full py-1.5 bg-border text-content-secondary rounded-md font-semibold text-xs hover:bg-border-strong transition-colors">
+                              className="flex-1 py-2 bg-surface-muted border border-border text-content-secondary rounded-xl font-bold text-xs hover:bg-border transition-colors cursor-pointer"
+                            >
                               {t('Clear All')}
                             </button>
                             <button
-                              onClick={() => setShowFilters(false)}
-                              className="w-full py-1.5 bg-brand-primary text-black rounded-md font-semibold text-xs hover:bg-brand-primaryHover transition-all">
+                              type="button"
+                              onClick={applyFilters}
+                              className="flex-1 py-2 bg-brand-primary text-black rounded-xl font-extrabold text-xs hover:bg-brand-primaryHover shadow-sm transition-all cursor-pointer"
+                            >
                               {t('Apply Filters')}
                             </button>
                           </div>
                         </motion.div>
-                      </>
+                      </div>
                     )}
                   </AnimatePresence>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Mobile Bottom Sheet Modal rendered in Portal */}
+          {typeof document !== 'undefined' && createPortal(
+            <AnimatePresence>
+              {showFilters && (
+                <div className="sm:hidden fixed inset-0 z-[100000] flex flex-col justify-end">
+                  {/* Backdrop */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowFilters(false)}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+                  />
+
+                  {/* Bottom Sheet Card */}
+                  <motion.div
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                    className="filter-dropdown relative w-full max-h-[85vh] bg-surface rounded-t-3xl shadow-2xl border-t border-border flex flex-col overflow-hidden z-10"
+                  >
+                    {/* Pull Handle */}
+                    <div className="w-12 h-1.5 bg-border rounded-full mx-auto my-2.5 shrink-0" />
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-muted/50 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <FiFilter className="text-base text-brand-primary" />
+                        <h3 className="text-base font-bold text-content">
+                          {t('Filters')}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters(false)}
+                        className="p-1.5 hover:bg-surface-muted rounded-full transition-colors text-content-secondary hover:text-content cursor-pointer"
+                      >
+                        <FiX className="text-lg" />
+                      </button>
+                    </div>
+
+                    {/* Filter Content */}
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-thin">
+                      {/* Wholesale Filters */}
+                      {wholesaleMarketplaceEnabled && (
+                        <div>
+                          <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                            {t('Selling Channel')}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setChannelFilter('retail')}
+                              className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                filters.sellingChannel === 'retail'
+                                  ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                  : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                              }`}
+                            >
+                              {t('Retail Only')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setChannelFilter('wholesale')}
+                              className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                filters.sellingChannel === 'wholesale'
+                                  ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                  : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                              }`}
+                            >
+                              {t('Wholesale Available')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleBooleanFilter('bulkDiscount')}
+                              className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                filters.bulkDiscount
+                                  ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                  : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                              }`}
+                            >
+                              {t('Bulk Discount')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toggleBooleanFilter('hasMoq')}
+                              className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                filters.hasMoq
+                                  ? 'bg-brand-primary text-black font-bold border-brand-primary shadow-xs'
+                                  : 'bg-surface-muted text-content-secondary border-border hover:bg-surface'
+                              }`}
+                            >
+                              {t('MOQ Products')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Category Filter */}
+                      <div>
+                        <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                          {t('Category')}
+                        </h4>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCategoryDropdown(!showCategoryDropdown);
+                              setShowVendorDropdown(false);
+                            }}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm flex items-center justify-between text-content font-medium cursor-pointer"
+                          >
+                            <span className="truncate">{filters.category ? categories.find(c => normalizeId(c.id) === normalizeId(filters.category))?.name : t("All Categories")}</span>
+                            <motion.div
+                              animate={{ rotate: showCategoryDropdown ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <FiFilter className="text-content-muted text-xs shrink-0" />
+                            </motion.div>
+                          </button>
+
+                          <AnimatePresence>
+                            {showCategoryDropdown && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="mt-1 bg-surface-muted rounded-xl border border-border overflow-hidden max-h-52 overflow-y-auto"
+                              >
+                                <div
+                                  onClick={() => {
+                                    handleFilterChange("category", "");
+                                    setShowCategoryDropdown(false);
+                                  }}
+                                  className={`px-3.5 py-2.5 text-sm cursor-pointer hover:bg-surface transition-colors ${!filters.category ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                >
+                                  {t('All Categories')}
+                                </div>
+                                {categories.map((cat) => (
+                                  <div
+                                    key={cat.id}
+                                    onClick={() => {
+                                      handleFilterChange("category", normalizeId(cat.id));
+                                      setShowCategoryDropdown(false);
+                                    }}
+                                    className={`px-3.5 py-2.5 text-sm cursor-pointer hover:bg-surface transition-colors ${normalizeId(filters.category) === normalizeId(cat.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                  >
+                                    {cat.name}
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+
+                      {/* Price Range */}
+                      <div>
+                        <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                          {t('Price Range')}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder={t("Min Price")}
+                            value={draftMinPrice}
+                            onChange={(e) => setDraftMinPrice(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                applyFilters();
+                              }
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-sm"
+                          />
+                          <input
+                            type="number"
+                            placeholder={t("Max Price")}
+                            value={draftMaxPrice}
+                            onChange={(e) => setDraftMaxPrice(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                applyFilters();
+                              }
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-border bg-surface focus:outline-none focus:ring-1 focus:ring-brand-primary text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Vendor Filter */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold text-content-secondary text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <FiShoppingBag className="text-brand-primary" />
+                            {t('Vendor')}
+                          </h4>
+                          <span className="text-xs text-brand-primary font-semibold bg-surface-muted px-2 py-0.5 rounded-full border border-border">
+                            {approvedVendors.length}+ {t('Stores')}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowVendorDropdown(!showVendorDropdown);
+                              setShowCategoryDropdown(false);
+                            }}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-brand-primary text-sm font-semibold flex items-center justify-between text-content shadow-xs cursor-pointer"
+                          >
+                            <span className="truncate pr-2">
+                              {filters.vendor ? approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.storeName || approvedVendors.find(v => normalizeId(v.id) === normalizeId(filters.vendor))?.name : t("All Vendors")}
+                            </span>
+                            <motion.div
+                              animate={{ rotate: showVendorDropdown ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <FiFilter className="text-brand-primary shrink-0" />
+                            </motion.div>
+                          </button>
+
+                          <AnimatePresence>
+                            {showVendorDropdown && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="mt-2 bg-surface-muted border border-border rounded-xl overflow-hidden max-h-52 overflow-y-auto"
+                              >
+                                <div
+                                  onClick={() => {
+                                    handleFilterChange("vendor", "");
+                                    setShowVendorDropdown(false);
+                                  }}
+                                  className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b border-border-light flex items-center justify-between ${!filters.vendor ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                >
+                                  <span>{t('All Vendors')}</span>
+                                  {!filters.vendor && <FiFilter className="text-brand-primary" />}
+                                </div>
+                                {approvedVendors.map((vendor) => (
+                                  <div
+                                    key={vendor.id}
+                                    onClick={() => {
+                                      handleFilterChange("vendor", normalizeId(vendor.id));
+                                      setShowVendorDropdown(false);
+                                    }}
+                                    className={`p-3 text-sm cursor-pointer hover:bg-surface transition-colors border-b last:border-0 border-border-light flex items-center justify-between ${normalizeId(filters.vendor) === normalizeId(vendor.id) ? "bg-surface text-brand-primary font-bold" : "text-content-secondary"}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span>{vendor.storeName || vendor.name}</span>
+                                      {vendor.isVerified && <span className="text-status-info text-xs">✓</span>}
+                                    </div>
+                                    {normalizeId(filters.vendor) === normalizeId(vendor.id) && <FiFilter className="text-brand-primary" />}
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+
+                      {/* Rating Filter */}
+                      <div>
+                        <h4 className="font-semibold text-content-secondary mb-2 text-xs uppercase tracking-wider">
+                          {t('Minimum Rating')}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[4, 3, 2, 1].map((rating) => (
+                            <label
+                              key={rating}
+                              className="flex items-center gap-2 cursor-pointer p-2 rounded-xl border border-border bg-surface hover:bg-surface-muted transition-colors"
+                            >
+                              <input
+                                type="radio"
+                                name="minRating"
+                                value={rating}
+                                checked={filters.minRating === rating.toString()}
+                                onChange={(e) => handleFilterChange("minRating", e.target.value)}
+                                className="w-4 h-4 appearance-none rounded-full border-2 border-border bg-surface checked:bg-surface checked:border-brand-primary relative cursor-pointer"
+                                style={{
+                                  backgroundImage:
+                                    filters.minRating === rating.toString()
+                                      ? "radial-gradient(circle, var(--color-brand-primary) 45%, transparent 45%)"
+                                      : "none",
+                                }}
+                              />
+                              <span className="text-xs font-semibold text-content">
+                                {rating}+ {t('Stars')}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-border p-3 sm:p-4 bg-surface shrink-0 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="flex-1 py-3 bg-surface-muted border border-border text-content-secondary rounded-xl font-bold text-sm hover:bg-border transition-colors cursor-pointer"
+                      >
+                        {t('Clear All')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={applyFilters}
+                        className="flex-1 py-3 bg-brand-primary text-black rounded-xl font-extrabold text-sm hover:bg-brand-primaryHover shadow-sm transition-all cursor-pointer"
+                      >
+                        {t('Apply Filters')}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>,
+            document.body
+          )}
 
           {/* Products List */}
           <div className="px-3 py-4 md:px-4 lg:p-6">

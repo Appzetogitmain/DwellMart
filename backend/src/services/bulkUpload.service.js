@@ -982,7 +982,7 @@ export const validateBulkUpload = async ({
             shipping: shippingParse.shipping,
             taxRate: gstNum,
             taxIncluded: taxIncludedStr === 'yes' || taxIncludedStr === 'true',
-            isActive: statusStr === 'active' || statusStr === 'in_stock',
+            isActive: !['inactive', 'draft', 'unpublished', 'disabled'].includes(statusStr),
             tags: tagsStr ? tagsStr.split(',').map((t) => t.trim()).filter(Boolean) : [],
             images: imagesList,
             image: imagesList[0] || '',

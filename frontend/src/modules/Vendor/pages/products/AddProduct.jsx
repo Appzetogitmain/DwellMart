@@ -11,6 +11,7 @@ import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import WholesalePricingSection from "../../../../shared/components/WholesalePricingSection";
 import ShippingSection from "../../components/ProductSections/ShippingSection";
+import VisibilitySection from "../../components/ProductSections/VisibilitySection";
 import QuickCommerceProductSection from "../../../../shared/components/QuickCommerceProductSection";
 import toast from "react-hot-toast";
 import {
@@ -1240,61 +1241,7 @@ const AddProduct = () => {
         </div>
 
         {/* Options */}
-        <div>
-          <h2 className="text-base font-bold text-gray-800 mb-2">
-            Product Options
-          </h2>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="flashSale"
-                checked={formData.flashSale}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-xs font-semibold text-gray-700">
-                Flash Sale
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="isNewArrival"
-                checked={formData.isNewArrival}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-xs font-semibold text-gray-700">
-                New Arrival
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="isFeatured"
-                checked={formData.isFeatured}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-xs font-semibold text-gray-700">
-                Featured Product
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                name="isVisible"
-                checked={formData.isVisible}
-                onChange={handleChange}
-                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-              />
-              <span className="text-xs font-semibold text-gray-700">
-                Visible to Customers
-              </span>
-            </label>
-          </div>
-        </div>
+        <VisibilitySection formData={formData} handleChange={handleChange} />
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-gray-200">

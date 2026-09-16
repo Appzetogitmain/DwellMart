@@ -114,6 +114,14 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         return res.status(422).json(new ApiResponse(422, validation, firstError));
     }
 
+    // 2b. Validate COD item eligibility
+    if (String(normalized || '').toLowerCase() === 'cod') {
+        if (!validation.summary?.codAllowed) {
+            const nonCodNames = validation.summary?.nonCodItems?.join(', ') || 'one or more items';
+            throw new ApiError(400, `Cash on Delivery is not available for: ${nonCodNames}. Please choose an online payment method.`);
+        }
+    }
+
     // 3. Resolve coupon (optional)
     let resolvedCoupon = null;
     // Why a requested coupon was not applied, so the customer is told rather

@@ -17,9 +17,9 @@ const RouteWrapper = ({ children }) => {
     };
   }, []);
   
-  // Return children with location key to force remount on route change
-  // Using a div with no styling to avoid layout interference
-  return <div key={`${location.pathname}${location.search}:${catalogTick}`} style={{ width: '100%', height: '100%' }}>{children}</div>;
+  // Return children with location pathname key to force remount on path change
+  // Without location.search so filter/query updates update in-place rather than unmounting
+  return <div key={`${location.pathname}:${catalogTick}`} style={{ width: '100%', height: '100%' }}>{children}</div>;
 };
 
 export default RouteWrapper;

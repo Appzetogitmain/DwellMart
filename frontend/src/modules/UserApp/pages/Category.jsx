@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { FiFilter, FiArrowLeft, FiGrid, FiList, FiX, FiSearch } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
@@ -316,11 +317,12 @@ const MobileCategory = () => {
     filters.bulkDiscount ||
     filters.hasMoq;
 
-  // Close filter dropdown when clicking outside
+  // Close desktop filter popover when clicking outside
   useEffect(() => {
+    if (!showFilters) return;
+
     const handleClickOutside = (event) => {
       if (
-        showFilters &&
         filterButtonRef.current &&
         !filterButtonRef.current.contains(event.target) &&
         !event.target.closest(".filter-dropdown")
@@ -330,11 +332,8 @@ const MobileCategory = () => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [showFilters]);
 
@@ -419,227 +418,431 @@ const MobileCategory = () => {
                   {categoryProducts.length} {categoryProducts.length !== 1 ? t("products") : t("product")} {t('available')}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {/* View Toggle Buttons */}
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center bg-gray-100 rounded-lg p-0.5 sm:p-1">
                   <button
+                    type="button"
                     onClick={() => setViewMode("list")}
-                    className={`p-1.5 rounded transition-colors ${viewMode === "list"
+                    className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === "list"
                       ? "bg-white text-primary-600 shadow-sm"
                       : "text-gray-600"
-                      }`}>
-                    <FiList className="text-lg" />
+                      }`}
+                    aria-label="List view"
+                  >
+                    <FiList className="text-base sm:text-lg" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewMode("grid")}
-                    className={`p-1.5 rounded transition-colors ${viewMode === "grid"
+                    className={`p-1.5 rounded transition-colors cursor-pointer ${viewMode === "grid"
                       ? "bg-white text-primary-600 shadow-sm"
                       : "text-gray-600"
-                      }`}>
-                    <FiGrid className="text-lg" />
+                      }`}
+                    aria-label="Grid view"
+                  >
+                    <FiGrid className="text-base sm:text-lg" />
                   </button>
                 </div>
+
                 <div ref={filterButtonRef} className="relative">
                   <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`p-2.5 glass-card rounded-xl hover:bg-white/80 transition-colors ${showFilters ? "bg-white/80" : ""
-                      }`}>
+                    type="button"
+                    onClick={() => setShowFilters((prev) => !prev)}
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                      showFilters || hasActiveFilters
+                        ? "bg-primary-50 border-primary-300 text-primary-700 font-bold"
+                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                      }`}
+                  >
                     <FiFilter
-                      className={`text-lg transition-colors ${hasActiveFilters ? "text-blue-600" : "text-gray-600"
-                        }`}
+                      className={`text-sm sm:text-base shrink-0 ${hasActiveFilters ? "text-primary-600" : "text-gray-600"}`}
                     />
+                    <span className="font-semibold text-xs sm:text-sm">{t('Filters')}</span>
+                    {hasActiveFilters && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary-600 shrink-0" />
+                    )}
                   </button>
 
-                  {/* Filter Dropdown */}
+                  {/* Desktop Dropdown Popover */}
                   <AnimatePresence>
                     {showFilters && (
-                      <>
-                        {/* Backdrop */}
+                      <div className="hidden sm:block">
                         <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          onClick={() => setShowFilters(false)}
-                          className="fixed inset-0 bg-black/20 z-[10000]"
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                          initial={{ opacity: 0, y: 8, scale: 0.98 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 30,
-                          }}
-                          className="filter-dropdown absolute right-0 top-full w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-[10001] overflow-hidden"
-                          style={{ marginTop: "-50px" }}>
+                          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className="filter-dropdown absolute right-0 top-full mt-2 w-96 max-w-[420px] max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col overflow-hidden"
+                        >
                           {/* Header */}
-                          <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-gray-50">
-                            <div className="flex items-center gap-1.5">
-                              <FiFilter className="text-sm text-gray-700" />
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <FiFilter className="text-base text-primary-600" />
                               <h3 className="text-sm font-bold text-gray-800">
                                 {t('Filters')}
                               </h3>
                             </div>
                             <button
+                              type="button"
                               onClick={() => setShowFilters(false)}
-                              className="p-0.5 hover:bg-gray-200 rounded-full transition-colors">
-                              <FiX className="text-sm text-gray-600" />
+                              className="p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-600 cursor-pointer"
+                            >
+                              <FiX className="text-sm" />
                             </button>
                           </div>
 
                           {/* Filter Content */}
-                          <div className="max-h-[50vh] overflow-y-auto scrollbar-hide">
-                            <div className="p-2 space-y-2">
-                              {/* Category Switcher */}
+                          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-thin">
+                            {/* Category Switcher */}
+                            <div>
+                              <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                                {t('Switch Category')}
+                              </h4>
+                              <select
+                                value={categoryId}
+                                onChange={(e) => {
+                                  const newId = e.target.value;
+                                  if (newId) navigate(`/category/${newId}`);
+                                  setShowFilters(false);
+                                }}
+                                className="w-full px-3.5 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs font-medium text-gray-800"
+                              >
+                                {translatedRootCategories.map((cat) => (
+                                  <option key={cat.id} value={normalizeId(cat.id)}>
+                                    {cat.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Wholesale facets */}
+                            {wholesaleMarketplaceEnabled && (
                               <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
-                                  {t('Switch Category')}
+                                <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                                  {t('Selling Channel')}
                                 </h4>
-                                <select
-                                  value={categoryId}
-                                  onChange={(e) => {
-                                    const newId = e.target.value;
-                                    if (newId) navigate(`/category/${newId}`);
-                                    setShowFilters(false);
-                                  }}
-                                  className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
-                                >
-                                  {translatedRootCategories.map((cat) => (
-                                    <option key={cat.id} value={normalizeId(cat.id)}>
-                                      {cat.name}
-                                    </option>
+                                <div className="flex flex-wrap gap-2">
+                                  {[
+                                    { key: 'channel-retail', label: t('Retail Only'), active: filters.sellingChannel === 'retail', onClick: () => setChannelFilter('retail') },
+                                    { key: 'channel-wholesale', label: t('Wholesale Available'), active: filters.sellingChannel === 'wholesale', onClick: () => setChannelFilter('wholesale') },
+                                    { key: 'bulk', label: t('Bulk Discount'), active: filters.bulkDiscount, onClick: () => toggleWholesaleFilter('bulkDiscount') },
+                                    { key: 'moq', label: t('MOQ Products'), active: filters.hasMoq, onClick: () => toggleWholesaleFilter('hasMoq') },
+                                  ].map((chip) => (
+                                    <button
+                                      key={chip.key}
+                                      type="button"
+                                      onClick={chip.onClick}
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                        chip.active
+                                          ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                                          : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                                      }`}
+                                    >
+                                      {chip.label}
+                                    </button>
                                   ))}
-                                </select>
-                              </div>
-
-                              {/* Wholesale facets */}
-                              {wholesaleMarketplaceEnabled && (
-                                <div>
-                                  <h4 className="font-semibold text-gray-700 mb-1 text-xs">
-                                    {t('Selling Channel')}
-                                  </h4>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {[
-                                      { key: 'channel-retail', label: t('Retail Only'), active: filters.sellingChannel === 'retail', onClick: () => setChannelFilter('retail') },
-                                      { key: 'channel-wholesale', label: t('Wholesale Available'), active: filters.sellingChannel === 'wholesale', onClick: () => setChannelFilter('wholesale') },
-                                      { key: 'bulk', label: t('Bulk Discount'), active: filters.bulkDiscount, onClick: () => toggleWholesaleFilter('bulkDiscount') },
-                                      { key: 'moq', label: t('MOQ Products'), active: filters.hasMoq, onClick: () => toggleWholesaleFilter('hasMoq') },
-                                    ].map((chip) => (
-                                      <button
-                                        key={chip.key}
-                                        type="button"
-                                        onClick={chip.onClick}
-                                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
-                                          chip.active
-                                            ? "bg-primary-600 text-white border-primary-600"
-                                            : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                                        }`}
-                                      >
-                                        {chip.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Price Range */}
-                              <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
-                                  {t('Price Range')}
-                                </h4>
-                                <div className="space-y-1.5">
-                                  <input
-                                    type="number"
-                                    placeholder={t("Min Price")}
-                                    value={filters.minPrice}
-                                    onChange={(e) =>
-                                      handleFilterChange(
-                                        "minPrice",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
-                                  />
-                                  <input
-                                    type="number"
-                                    placeholder={t("Max Price")}
-                                    value={filters.maxPrice}
-                                    onChange={(e) =>
-                                      handleFilterChange(
-                                        "maxPrice",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="w-full px-2 py-1.5 rounded-md border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
-                                  />
                                 </div>
                               </div>
+                            )}
 
-                              {/* Rating Filter */}
-                              <div>
-                                <h4 className="font-semibold text-gray-700 mb-1 text-xs">
-                                  {t('Minimum Rating')}
-                                </h4>
-                                <div className="space-y-0.5">
-                                  {[4, 3, 2, 1].map((rating) => (
-                                    <label
-                                      key={rating}
-                                      className="flex items-center gap-1.5 cursor-pointer p-1 rounded-md hover:bg-gray-50 transition-colors">
-                                      <input
-                                        type="radio"
-                                        name="minRating"
-                                        value={rating}
-                                        checked={
+                            {/* Price Range */}
+                            <div>
+                              <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                                {t('Price Range')}
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  type="number"
+                                  placeholder={t("Min Price")}
+                                  value={filters.minPrice}
+                                  onChange={(e) =>
+                                    handleFilterChange(
+                                      "minPrice",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                />
+                                <input
+                                  type="number"
+                                  placeholder={t("Max Price")}
+                                  value={filters.maxPrice}
+                                  onChange={(e) =>
+                                    handleFilterChange(
+                                      "maxPrice",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-xs"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Rating Filter */}
+                            <div>
+                              <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                                {t('Minimum Rating')}
+                              </h4>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {[4, 3, 2, 1].map((rating) => (
+                                  <label
+                                    key={rating}
+                                    className="flex items-center gap-2 cursor-pointer p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="minRating"
+                                      value={rating}
+                                      checked={
+                                        filters.minRating ===
+                                        rating.toString()
+                                      }
+                                      onChange={(e) =>
+                                        handleFilterChange(
+                                          "minRating",
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-4 h-4 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-primary-500 relative cursor-pointer"
+                                      style={{
+                                        backgroundImage:
                                           filters.minRating ===
-                                          rating.toString()
-                                        }
-                                        onChange={(e) =>
-                                          handleFilterChange(
-                                            "minRating",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-3 h-3 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-primary-500 relative cursor-pointer"
-                                        style={{
-                                          backgroundImage:
-                                            filters.minRating ===
-                                              rating.toString()
-                                              ? "radial-gradient(circle, #10b981 40%, transparent 40%)"
-                                              : "none",
-                                        }}
-                                      />
-                                      <span className="text-xs text-gray-700">
-                                        {rating}+ {t('Stars')}
-                                      </span>
-                                    </label>
-                                  ))}
-                                </div>
+                                            rating.toString()
+                                            ? "radial-gradient(circle, #10b981 45%, transparent 45%)"
+                                            : "none",
+                                      }}
+                                    />
+                                    <span className="text-xs font-semibold text-gray-700">
+                                      {rating}+ {t('Stars')}
+                                    </span>
+                                  </label>
+                                ))}
                               </div>
                             </div>
                           </div>
 
                           {/* Footer */}
-                          <div className="border-t border-gray-200 p-2 bg-gray-50 space-y-1.5">
+                          <div className="border-t border-gray-200 p-3 bg-white shrink-0 flex items-center gap-3">
                             <button
+                              type="button"
                               onClick={clearFilters}
-                              className="w-full py-1.5 bg-gray-200 text-gray-700 rounded-md font-semibold text-xs hover:bg-gray-300 transition-colors">
+                              className="flex-1 py-2 bg-gray-100 border border-gray-200 text-gray-700 rounded-xl font-bold text-xs hover:bg-gray-200 transition-colors cursor-pointer"
+                            >
                               {t('Clear All')}
                             </button>
                             <button
+                              type="button"
                               onClick={() => setShowFilters(false)}
-                              className="w-full py-1.5 gradient-green text-white rounded-md font-semibold text-xs hover:shadow-glow-green transition-all">
+                              className="flex-1 py-2 gradient-green text-white rounded-xl font-extrabold text-xs hover:shadow-glow-green transition-all cursor-pointer"
+                            >
                               {t('Apply Filters')}
                             </button>
                           </div>
                         </motion.div>
-                      </>
+                      </div>
                     )}
                   </AnimatePresence>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Mobile Bottom Sheet Modal rendered in Portal */}
+          {typeof document !== 'undefined' && createPortal(
+            <AnimatePresence>
+              {showFilters && (
+                <div className="sm:hidden fixed inset-0 z-[100000] flex flex-col justify-end">
+                  {/* Backdrop */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowFilters(false)}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+                  />
+
+                  {/* Bottom Sheet Modal */}
+                  <motion.div
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                    className="filter-dropdown relative w-full max-h-[85vh] bg-white rounded-t-3xl shadow-2xl border-t border-gray-200 flex flex-col overflow-hidden z-10"
+                  >
+                    {/* Mobile Pull Handle */}
+                    <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto my-2.5 shrink-0" />
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <FiFilter className="text-base text-primary-600" />
+                        <h3 className="text-base font-bold text-gray-800">
+                          {t('Filters')}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters(false)}
+                        className="p-1.5 hover:bg-gray-200 rounded-full transition-colors text-gray-600 cursor-pointer"
+                      >
+                        <FiX className="text-lg" />
+                      </button>
+                    </div>
+
+                    {/* Filter Content */}
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-thin">
+                      {/* Category Switcher */}
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                          {t('Switch Category')}
+                        </h4>
+                        <select
+                          value={categoryId}
+                          onChange={(e) => {
+                            const newId = e.target.value;
+                            if (newId) navigate(`/category/${newId}`);
+                            setShowFilters(false);
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium text-gray-800"
+                        >
+                          {translatedRootCategories.map((cat) => (
+                            <option key={cat.id} value={normalizeId(cat.id)}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Wholesale facets */}
+                      {wholesaleMarketplaceEnabled && (
+                        <div>
+                          <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                            {t('Selling Channel')}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { key: 'channel-retail', label: t('Retail Only'), active: filters.sellingChannel === 'retail', onClick: () => setChannelFilter('retail') },
+                              { key: 'channel-wholesale', label: t('Wholesale Available'), active: filters.sellingChannel === 'wholesale', onClick: () => setChannelFilter('wholesale') },
+                              { key: 'bulk', label: t('Bulk Discount'), active: filters.bulkDiscount, onClick: () => toggleWholesaleFilter('bulkDiscount') },
+                              { key: 'moq', label: t('MOQ Products'), active: filters.hasMoq, onClick: () => toggleWholesaleFilter('hasMoq') },
+                            ].map((chip) => (
+                              <button
+                                key={chip.key}
+                                type="button"
+                                onClick={chip.onClick}
+                                className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all cursor-pointer ${
+                                  chip.active
+                                    ? "bg-primary-600 text-white border-primary-600 shadow-xs"
+                                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                                }`}
+                              >
+                                {chip.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price Range */}
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                          {t('Price Range')}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="number"
+                            placeholder={t("Min Price")}
+                            value={filters.minPrice}
+                            onChange={(e) =>
+                              handleFilterChange(
+                                "minPrice",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-sm"
+                          />
+                          <input
+                            type="number"
+                            placeholder={t("Max Price")}
+                            value={filters.maxPrice}
+                            onChange={(e) =>
+                              handleFilterChange(
+                                "maxPrice",
+                                e.target.value
+                              )
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Rating Filter */}
+                      <div>
+                        <h4 className="font-semibold text-gray-700 mb-2 text-xs uppercase tracking-wider">
+                          {t('Minimum Rating')}
+                        </h4>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[4, 3, 2, 1].map((rating) => (
+                            <label
+                              key={rating}
+                              className="flex items-center gap-2 cursor-pointer p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                            >
+                              <input
+                                type="radio"
+                                name="minRating"
+                                value={rating}
+                                checked={
+                                  filters.minRating ===
+                                  rating.toString()
+                                }
+                                onChange={(e) =>
+                                  handleFilterChange(
+                                    "minRating",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-4 h-4 appearance-none rounded-full border-2 border-gray-300 bg-white checked:bg-white checked:border-primary-500 relative cursor-pointer"
+                                style={{
+                                  backgroundImage:
+                                    filters.minRating ===
+                                      rating.toString()
+                                      ? "radial-gradient(circle, #10b981 45%, transparent 45%)"
+                                      : "none",
+                                }}
+                              />
+                              <span className="text-xs font-semibold text-gray-700">
+                                {rating}+ {t('Stars')}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="border-t border-gray-200 p-3 sm:p-4 bg-white shrink-0 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="flex-1 py-3 bg-gray-100 border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors cursor-pointer"
+                      >
+                        {t('Clear All')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters(false)}
+                        className="flex-1 py-3 gradient-green text-white rounded-xl font-extrabold text-sm hover:shadow-glow-green transition-all cursor-pointer"
+                      >
+                        {t('Apply Filters')}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>,
+            document.body
+          )}
 
           {/* Products List */}
           <div className="px-4 py-4">

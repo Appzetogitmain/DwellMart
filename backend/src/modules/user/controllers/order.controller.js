@@ -40,7 +40,7 @@ import { getReturnWindowHours, getEstimatedDeliveryDays } from '../../../service
 import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
 import logger from '../../../utils/logger.js';
 import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
-import { channelAuthorityMode, legacyChannelsForVendor } from '../../../services/vendorChannel.service.js';
+import { channelAuthorityMode, legacyChannelsForVendor } from '../../../services/vendorChannel.service.js';
 
 const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
 const normalizeAxisName = (value) =>
@@ -204,7 +204,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
     const rawProducts = await Product.find({ _id: { $in: productIds } }).select(
         '_id name image vendorId price stock stockQuantity taxRate taxIncluded ' +
         'quickCommerceEnabled retailEnabled wholesaleEnabled category experience ' +
-        'quickCommerce variants wholesale'
+        'quickCommerce variants wholesale codAllowed returnable cancelable'
     ).lean();
 
     const fetchedProductMap = new Map(rawProducts.map((p) => [String(p._id), p]));
@@ -359,6 +359,10 @@ export const placeOrder = asyncHandler(async (req, res) => {
             vendorWholesaleEnabled: isWholesaleEnabled && vendorWholesaleActive,
         });
 
+        if (['cash', 'cod'].includes(String(normalizedPaymentMethod || '').toLowerCase()) && product.codAllowed === false) {
+            throw new ApiError(400, `Product "${product.name}" does not support Cash on Delivery. Please select an online payment method.`);
+        }
+
         const orderChannel = isQuickCommerceOrder
             ? 'quickCommerce'
             : (pricing.pricingType !== 'retail' || product.retailEnabled === false ? 'wholesale' : 'retail');
@@ -369,7 +373,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             : vendor?.channels?.[orderChannel]?.status === 'active';
         if (!orderChannelActive) {
             throw new ApiError(409, `${vendor.storeName} is not accepting new ${orderChannel === 'quickCommerce' ? 'Quick Commerce' : orderChannel} orders.`);
-        }
+        }
         if (!pricing.eligible) {
             throw new ApiError(
                 422,
@@ -406,6 +410,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
             appliedTier: pricing.appliedTier || undefined,
             unitRetailPrice: pricing.unitRetailPrice,
             savings: pricing.savings,
+            codAllowed: product.codAllowed !== false,
+            returnable: product.returnable !== false,
+            cancelable: product.cancelable !== false,
         };
         enrichedItems.push(enriched);
 
@@ -905,6 +912,13 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 );
             }
 
+            // Check if any items in the order are non-cancelable
+            const nonCancelableItems = (order.items || []).filter((item) => item.cancelable === false);
+            if (nonCancelableItems.length > 0) {
+                const names = nonCancelableItems.map((i) => i.name || 'item').join(', ');
+                throw new ApiError(400, `This order contains non-cancelable items (${names}) and cannot be cancelled.`);
+            }
+
             // A Quick Commerce order that the store has already prepared cannot
             // simply be withdrawn — the goods exist and someone absorbs their
             // cost. That distinction is recorded below via
@@ -1164,6 +1178,9 @@ export const createReturnRequest = asyncHandler(async (req, res) => {
             if (!orderItem) {
                 throw new ApiError(400, `Product ${productId} is not valid for this return request.`);
             }
+            if (orderItem.returnable === false) {
+                throw new ApiError(400, `Product "${orderItem.name || productId}" is marked as non-returnable.`);
+            }
 
             const requestedQty = Number(inputItem?.quantity || 0);
             const maxQty = Number(orderItem?.quantity || 0);
@@ -1179,12 +1196,18 @@ export const createReturnRequest = asyncHandler(async (req, res) => {
             };
         });
     } else {
-        normalizedItems = vendorScopedItems.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            quantity: Number(item.quantity || 1),
-            reason: String(req.body.reason || '').trim(),
-        }));
+        const nonReturnable = vendorScopedItems.filter((item) => item.returnable === false);
+        if (nonReturnable.length === vendorScopedItems.length) {
+            throw new ApiError(400, 'All items from this vendor are marked as non-returnable.');
+        }
+        normalizedItems = vendorScopedItems
+            .filter((item) => item.returnable !== false)
+            .map((item) => ({
+                productId: item.productId,
+                name: item.name,
+                quantity: Number(item.quantity || 1),
+                reason: String(req.body.reason || '').trim(),
+            }));
     }
 
     const existingOpen = await ReturnRequest.findOne({
