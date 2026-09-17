@@ -73,6 +73,20 @@ const PendingApprovals = () => {
       };
     }
 
+    if (vendor?.documents?.aadhar) {
+      return {
+        label: "Aadhar Card",
+        url: vendor.documents.aadhar?.url || vendor.documents.aadhar,
+      };
+    }
+
+    if (vendor?.documents?.pan) {
+      return {
+        label: "PAN Card",
+        url: vendor.documents.pan?.url || vendor.documents.pan,
+      };
+    }
+
     return null;
   };
 

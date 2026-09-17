@@ -142,6 +142,12 @@ const uploadVendorDocument = async ({ file, documentType }) => {
     if (documentType === 'uin' || documentType === 'enrolmentId') {
         return { uin: documentUrl, enrolmentId: documentUrl };
     }
+    if (documentType === 'aadhar' || documentType === 'aadharCard') {
+        return { aadhar: documentUrl };
+    }
+    if (documentType === 'pan' || documentType === 'panCard') {
+        return { pan: documentUrl };
+    }
 
     return {
         tradeLicense: {

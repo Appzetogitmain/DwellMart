@@ -828,12 +828,14 @@ const VendorRegister = () => {
                         <option value="gst">GST</option>
                         <option value="msme">MSME</option>
                         <option value="uin">Enrolment ID/UIN</option>
+                        <option value="aadhar">Aadhar Card</option>
+                        <option value="pan">PAN Card</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="mb-1.5 block text-sm font-medium text-gray-600">
-                        {documentType === 'gst' ? 'GST Document' : documentType === 'msme' ? 'MSME Document' : documentType === 'uin' ? 'Enrolment ID/UIN Document' : 'Trade Licence Document'}
+                        {documentType === 'gst' ? 'GST Document' : documentType === 'msme' ? 'MSME Document' : documentType === 'uin' ? 'Enrolment ID/UIN Document' : documentType === 'aadhar' ? 'Aadhar Card Document' : documentType === 'pan' ? 'PAN Card Document' : 'Trade Licence Document'}
                       </label>
                       <input
                         type="file"

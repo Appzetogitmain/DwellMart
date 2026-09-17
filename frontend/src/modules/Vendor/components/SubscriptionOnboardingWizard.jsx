@@ -64,7 +64,7 @@ const SubscriptionOnboardingWizard = ({
     'Free', 'Popular', 'per', 'Selected', 'Choose Plan',
     'Back to plans', 'Full name', 'Company name', 'Company Name', 'Store name', 'Email', 'Phone',
     'Store description', 'Street', 'City', 'State', 'Zip code', 'Country',
-    'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST', 'MSME', 'Enrolment ID/UIN',
+    'Password', 'Confirm password', 'Hide', 'Show', 'Trade Licence', 'GST', 'MSME', 'Enrolment ID/UIN', 'Aadhar Card', 'PAN Card',
     'I agree to the', 'Terms & Conditions', 'Register and Continue to Payment',
     'Complete your subscription', 'Activate your free trial', 'Start your free trial without any payment required.',
     'Billing becomes active only after webhook confirmation updates MongoDB.',
@@ -805,6 +805,8 @@ const SubscriptionOnboardingWizard = ({
                         <option value="gst">{t('GST')}</option>
                         <option value="msme">{t('MSME')}</option>
                         <option value="uin">{t('Enrolment ID/UIN')}</option>
+                        <option value="aadhar">{t('Aadhar Card')}</option>
+                        <option value="pan">{t('PAN Card')}</option>
                       </select>
                       <input type="file" accept=".pdf,.doc,.docx,image/*" onChange={(event) => setDocumentFile(event.target.files?.[0] || null)} className="flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white" />
                     </div>

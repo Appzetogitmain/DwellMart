@@ -193,6 +193,18 @@ const VendorDetail = () => {
         url: getFullUrl(vendor.documents.uin || vendor.documents.enrolmentId),
         fileType: "document",
       }
+    : (vendor?.documents?.aadhar?.url || vendor?.documents?.aadhar)
+    ? {
+        label: "Aadhar Card",
+        url: getFullUrl(vendor.documents.aadhar?.url || vendor.documents.aadhar),
+        fileType: vendor.documents.aadhar?.fileType || "document",
+      }
+    : (vendor?.documents?.pan?.url || vendor?.documents?.pan)
+    ? {
+        label: "PAN Card",
+        url: getFullUrl(vendor.documents.pan?.url || vendor.documents.pan),
+        fileType: vendor.documents.pan?.fileType || "document",
+      }
     : null;
 
   // Per-channel approval: the admin decides which requested channels to grant.
