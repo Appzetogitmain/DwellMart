@@ -13,14 +13,23 @@
  * The store has always exposed `getCartCountForExperience` for exactly this
  * purpose; nothing had ever called it.
  */
-import { FiShoppingBag, FiZap, FiArrowRight } from "react-icons/fi";
+import { FiShoppingBag, FiZap, FiBox, FiArrowRight } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../store/useStore";
 import { useExperienceStore } from "../../store/experienceStore";
 import { EXPERIENCES } from "../../utils/experience";
 
-const OTHER = {
+const BASKET_CONFIGS = {
   [EXPERIENCES.MARKETPLACE]: {
+    experience: EXPERIENCES.MARKETPLACE,
+    label: "Retail Store",
+    Icon: FiShoppingBag,
+    path: "/home",
+    tone: "border-amber-500/40 bg-amber-500/10",
+    accent: "text-amber-300",
+    iconWrap: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+  },
+  [EXPERIENCES.QUICK_COMMERCE]: {
     experience: EXPERIENCES.QUICK_COMMERCE,
     label: "Express",
     Icon: FiZap,
@@ -29,14 +38,14 @@ const OTHER = {
     accent: "text-emerald-300",
     iconWrap: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
   },
-  [EXPERIENCES.QUICK_COMMERCE]: {
-    experience: EXPERIENCES.MARKETPLACE,
-    label: "Marketplace",
-    Icon: FiShoppingBag,
-    path: "/categories",
-    tone: "border-amber-500/40 bg-amber-500/10",
-    accent: "text-amber-300",
-    iconWrap: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+  [EXPERIENCES.WHOLESALE]: {
+    experience: EXPERIENCES.WHOLESALE,
+    label: "B2B Wholesale",
+    Icon: FiBox,
+    path: "/wholesale",
+    tone: "border-blue-500/40 bg-blue-500/10",
+    accent: "text-blue-300",
+    iconWrap: "bg-blue-500/15 text-blue-300 border border-blue-500/30",
   },
 };
 
@@ -56,43 +65,57 @@ const OtherBasketNotice = ({ closeCartOnSwitch = true, className = "" }) => {
   const toggleCart = useUIStore((state) => state.toggleCart);
   const isCartOpen = useUIStore((state) => state.isCartOpen);
 
-  const config = OTHER[cartExperience] ?? OTHER[EXPERIENCES.MARKETPLACE];
-  const count = getCartCountForExperience(config.experience);
+  const otherExperiences = Object.keys(BASKET_CONFIGS).filter(
+    (exp) => exp !== cartExperience
+  );
 
-  if (!count) return null;
+  const notices = otherExperiences
+    .map((exp) => ({
+      config: BASKET_CONFIGS[exp],
+      count: getCartCountForExperience(exp),
+    }))
+    .filter((entry) => entry.count > 0);
 
-  const { Icon } = config;
-
-  const handleSwitch = () => {
-    setExperience(config.experience);
-    if (closeCartOnSwitch && isCartOpen) toggleCart();
-    navigate(config.path);
-  };
+  if (notices.length === 0) return null;
 
   return (
-    <button
-      type="button"
-      onClick={handleSwitch}
-      className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 ${config.tone} ${className}`}
-    >
-      <span className={`shrink-0 w-9 h-9 rounded-lg grid place-items-center ${config.iconWrap}`}>
-        <Icon className="w-4.5 h-4.5" />
-      </span>
+    <div className={`space-y-2 ${className}`}>
+      {notices.map(({ config, count }) => {
+        const { Icon } = config;
+        const handleSwitch = () => {
+          setExperience(config.experience);
+          if (closeCartOnSwitch && isCartOpen) toggleCart();
+          navigate(config.path);
+        };
 
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-white">
-          {count} {count === 1 ? "item" : "items"} in your {config.label} basket
-        </span>
-        <span className="block text-xs text-gray-300">
-          Saved for you — they weren&apos;t removed.
-        </span>
-      </span>
+        return (
+          <button
+            key={config.experience}
+            type="button"
+            onClick={handleSwitch}
+            className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-white/30 ${config.tone}`}
+          >
+            <span className={`shrink-0 w-9 h-9 rounded-lg grid place-items-center ${config.iconWrap}`}>
+              <Icon className="w-4.5 h-4.5" />
+            </span>
 
-      <span className={`shrink-0 flex items-center gap-1 text-xs font-semibold ${config.accent}`}>
-        Switch
-        <FiArrowRight className="w-3.5 h-3.5" />
-      </span>
-    </button>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-white">
+                {count} {count === 1 ? "item" : "items"} in your {config.label} basket
+              </span>
+              <span className="block text-xs text-gray-300">
+                Saved for you — they weren&apos;t removed.
+              </span>
+            </span>
+
+            <span className={`shrink-0 flex items-center gap-1 text-xs font-semibold ${config.accent}`}>
+              Switch
+              <FiArrowRight className="w-3.5 h-3.5" />
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 };
 

@@ -52,6 +52,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     categoryId: null,
     subcategoryId: null,
     brandId: null,
+    gender: "all",
     vendorId: "",
     quickCommerceEnabled: false,
     quickCommerceCategoryId: null,
@@ -162,6 +163,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               ? productCategoryId
               : product.subcategoryId || null,
             brandId: productBrandId || null,
+            gender: product.gender || "all",
             vendorId: productVendorId || "",
             quickCommerceEnabled: product.quickCommerceEnabled === true,
             quickCommerceCategoryId: extractId(product.quickCommerceCategoryId) || null,
@@ -233,6 +235,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
         categoryId: null,
         subcategoryId: null,
         brandId: null,
+        gender: "all",
         vendorId: "",
         quickCommerceEnabled: false,
         quickCommerceCategoryId: null,
@@ -926,6 +929,27 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                                 value: String(brand.id),
                                 label: brand.name,
                               })),
+                          ]}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Target Audience / Gender
+                        </label>
+                        <AnimatedSelect
+                          name="gender"
+                          value={formData.gender || "all"}
+                          onChange={handleChange}
+                          placeholder="Select Target Audience"
+                          options={[
+                            { value: "all", label: "All / General" },
+                            { value: "men", label: "Men" },
+                            { value: "women", label: "Women" },
+                            { value: "kids", label: "Kids" },
+                            { value: "boys", label: "Boys" },
+                            { value: "girls", label: "Girls" },
+                            { value: "unisex", label: "Unisex" },
                           ]}
                         />
                       </div>

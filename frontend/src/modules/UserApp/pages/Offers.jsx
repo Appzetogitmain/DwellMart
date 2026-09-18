@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { FiArrowLeft, FiFilter, FiGrid, FiList, FiX, FiTag } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useExperienceStore } from "../../../shared/store/experienceStore";
+import { EXPERIENCES } from "../../../shared/utils/experience";
 import { motion, AnimatePresence } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
@@ -79,6 +81,9 @@ const MobileOffers = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { experience: activeExp } = useExperienceStore();
+  const currentExperience = searchParams.get('experience') || activeExp || EXPERIENCES.MARKETPLACE;
   const { categories: storeCategories, initialize: initializeCategories } = useCategoryStore();
   const [liveOffers, setLiveOffers] = useState([]);
   const [availableCoupons, setAvailableCoupons] = useState([]);
@@ -92,8 +97,8 @@ const MobileOffers = () => {
   });
 
   useEffect(() => {
-    initializeCategories();
-  }, [initializeCategories]);
+    initializeCategories(currentExperience);
+  }, [initializeCategories, currentExperience]);
 
   const categories = useMemo(() => {
     const activeStoreCategories = storeCategories.filter((cat) => cat.isActive !== false);
@@ -108,63 +113,80 @@ const MobileOffers = () => {
 
     const loadLiveOffers = async () => {
       try {
-        const campaignListResponse = await api.get("/campaigns", {
-          params: { type: "flash_sale,daily_deal,special_offer,festival", limit: 20 },
-        });
-        const campaignsPayload = campaignListResponse?.data ?? campaignListResponse;
-        const campaignSlugs = (Array.isArray(campaignsPayload) ? campaignsPayload : [])
-          .map((campaign) => String(campaign?.slug || "").trim())
-          .filter(Boolean);
-
-        const uniqueSlugs = [...new Set(campaignSlugs)].slice(0, 20);
         let products = [];
 
-        if (uniqueSlugs.length) {
-          const campaignDetails = await Promise.allSettled(
-            uniqueSlugs.map((slug) => api.get(`/campaigns/${slug}`))
-          );
+        if (currentExperience === EXPERIENCES.WHOLESALE) {
+          // B2B Wholesale offers: products with tiered volume discounts or bulk deals
+          const wholesaleRes = await api.get("/products", {
+            params: {
+              experience: "wholesale",
+              page: 1,
+              limit: 40,
+              bulkDiscount: "true",
+            },
+          });
+          const payload = wholesaleRes?.data ?? wholesaleRes;
+          const items = Array.isArray(payload?.products) ? payload.products : [];
+          products = items.map(normalizeProduct).filter((p) => p.id);
+        } else {
+          // Standard Retail Campaigns & Flash Sale Offers
+          const campaignListResponse = await api.get("/campaigns", {
+            params: { type: "flash_sale,daily_deal,special_offer,festival", limit: 20 },
+          });
+          const campaignsPayload = campaignListResponse?.data ?? campaignListResponse;
+          const campaignSlugs = (Array.isArray(campaignsPayload) ? campaignsPayload : [])
+            .map((campaign) => String(campaign?.slug || "").trim())
+            .filter(Boolean);
 
-          const productsById = new Map();
-          campaignDetails
-            .filter((item) => item.status === "fulfilled")
-            .forEach((item) => {
-              const payload = item.value?.data ?? item.value;
-              const campaignProducts = Array.isArray(payload?.products) ? payload.products : [];
-              campaignProducts.forEach((product) => {
-                const normalized = normalizeProduct(product);
-                if (!normalized.id) return;
-                if (!productsById.has(normalized.id)) {
-                  productsById.set(normalized.id, normalized);
-                }
+          const uniqueSlugs = [...new Set(campaignSlugs)].slice(0, 20);
+
+          if (uniqueSlugs.length) {
+            const campaignDetails = await Promise.allSettled(
+              uniqueSlugs.map((slug) => api.get(`/campaigns/${slug}`))
+            );
+
+            const productsById = new Map();
+            campaignDetails
+              .filter((item) => item.status === "fulfilled")
+              .forEach((item) => {
+                const payload = item.value?.data ?? item.value;
+                const campaignProducts = Array.isArray(payload?.products) ? payload.products : [];
+                campaignProducts.forEach((product) => {
+                  const normalized = normalizeProduct(product);
+                  if (!normalized.id) return;
+                  if (!productsById.has(normalized.id)) {
+                    productsById.set(normalized.id, normalized);
+                  }
+                });
               });
-            });
-          products = Array.from(productsById.values());
-        }
-
-        // Fallback: If no campaign products found, fetch flash sales & active catalog products
-        if (!products.length) {
-          const [flashRes, allProductsRes] = await Promise.allSettled([
-            api.get("/flash-sale"),
-            api.get("/products", { params: { limit: 30 } })
-          ]);
-
-          const map = new Map();
-          if (flashRes.status === "fulfilled") {
-            const rawFlash = flashRes.value?.data ?? flashRes.value;
-            const flashList = Array.isArray(rawFlash) ? rawFlash : [];
-            flashList.forEach((p) => {
-              const norm = normalizeProduct(p);
-              if (norm.id) map.set(norm.id, norm);
-            });
+            products = Array.from(productsById.values());
           }
-          if (allProductsRes.status === "fulfilled") {
-            const rawProds = allProductsRes.value?.data?.products || allProductsRes.value?.products || (Array.isArray(allProductsRes.value?.data) ? allProductsRes.value.data : []);
-            (Array.isArray(rawProds) ? rawProds : []).forEach((p) => {
-              const norm = normalizeProduct(p);
-              if (norm.id && !map.has(norm.id)) map.set(norm.id, norm);
-            });
+
+          // Fallback: If no campaign products found, fetch flash sales & active retail catalog products
+          if (!products.length) {
+            const [flashRes, allProductsRes] = await Promise.allSettled([
+              api.get("/flash-sale"),
+              api.get("/products", { params: { limit: 30, experience: "marketplace" } })
+            ]);
+
+            const map = new Map();
+            if (flashRes.status === "fulfilled") {
+              const rawFlash = flashRes.value?.data ?? flashRes.value;
+              const flashList = Array.isArray(rawFlash) ? rawFlash : [];
+              flashList.forEach((p) => {
+                const norm = normalizeProduct(p);
+                if (norm.id) map.set(norm.id, norm);
+              });
+            }
+            if (allProductsRes.status === "fulfilled") {
+              const rawProds = allProductsRes.value?.data?.products || allProductsRes.value?.products || (Array.isArray(allProductsRes.value?.data) ? allProductsRes.value.data : []);
+              (Array.isArray(rawProds) ? rawProds : []).forEach((p) => {
+                const norm = normalizeProduct(p);
+                if (norm.id && !map.has(norm.id)) map.set(norm.id, norm);
+              });
+            }
+            products = Array.from(map.values());
           }
-          products = Array.from(map.values());
         }
 
         if (!cancelled) {

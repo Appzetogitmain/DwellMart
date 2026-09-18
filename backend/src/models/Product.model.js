@@ -38,6 +38,12 @@ const productSchema = new mongoose.Schema(
         categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true, index: true },
         brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', index: true },
         vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: true, index: true },
+        gender: {
+            type: String,
+            enum: ['men', 'women', 'kids', 'boys', 'girls', 'unisex', 'all'],
+            default: 'all',
+            index: true,
+        },
         stock: {
             type: String,
             enum: ['in_stock', 'low_stock', 'out_of_stock'],
@@ -201,6 +207,12 @@ productSchema.index({ brandId: 1, createdAt: -1 });
 productSchema.index({ stock: 1, createdAt: -1 });
 productSchema.index({ vendorId: 1, createdAt: -1 });
 productSchema.index({ vendorId: 1, stock: 1, createdAt: -1 });
+productSchema.index({ isActive: 1, gender: 1 });
+productSchema.index({ isActive: 1, gender: 1, categoryId: 1 });
+productSchema.index({ isActive: 1, 'variants.sizes': 1 });
+productSchema.index({ isActive: 1, 'variants.colors': 1 });
+productSchema.index({ isActive: 1, 'wholesale.moq': 1 });
+productSchema.index({ isActive: 1, 'quickCommerce.packSize': 1 });
 
 /**
  * Product channel flags (quickCommerceEnabled, retailEnabled, wholesaleEnabled)

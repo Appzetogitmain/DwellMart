@@ -706,7 +706,7 @@ const MobileHome = () => {
             </div>
           </div>
 
-          {/* Experience Selection Section — Quick Commerce & Marketplace Experience Selector */}
+          {/* Experience Switcher / Toggle Section — positioned directly below Hero Banner */}
           <ExperienceSwitcher />
 
           {/* Brand Logos Scroll */}

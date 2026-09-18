@@ -74,6 +74,7 @@ const ProductForm = () => {
     categoryId: null,
     subcategoryId: null,
     brandId: null,
+    gender: "all",
     stock: "in_stock",
     stockQuantity: "",
     totalAllowedQuantity: "",
@@ -246,6 +247,7 @@ const ProductForm = () => {
       categoryId: isSubcategory ? normalizedParentCategoryId : normalizedCategoryId || null,
       subcategoryId: isSubcategory ? normalizedCategoryId : normalizedSubcategoryId || null,
       brandId: normalizedBrandId || null,
+      gender: product.gender || "all",
       stock: product.stock || "in_stock",
       stockQuantity: product.stockQuantity || "",
       totalAllowedQuantity: product.totalAllowedQuantity || "",
@@ -554,6 +556,7 @@ const ProductForm = () => {
       categoryId: finalCategoryId,
       subcategoryId: formData.subcategoryId ? formData.subcategoryId : null,
       brandId: formData.brandId ? formData.brandId : null,
+      gender: formData.gender || "all",
       faqs: (formData.faqs || [])
         .map((faq) => ({
           question: String(faq?.question || "").trim(),

@@ -50,6 +50,8 @@ export const setExperience = (experience) => {
 };
 
 export const isQuickCommerce = () => getExperience() === EXPERIENCES.QUICK_COMMERCE;
+export const isWholesale = () => getExperience() === EXPERIENCES.WHOLESALE;
+export const isRetail = () => getExperience() === EXPERIENCES.MARKETPLACE;
 
 /**
  * Customer location for Quick Commerce serviceability.

@@ -31,6 +31,10 @@ export const useSettingsStore = create((set, get) => ({
   settings: {
     general: defaultGeneralSettings,
     shipping: defaultShippingSettings,
+    features: {
+      wholesaleMarketplaceEnabled: true,
+      quickCommerceEnabled: true,
+    },
   },
   isLoading: false,
   isInitialized: false,

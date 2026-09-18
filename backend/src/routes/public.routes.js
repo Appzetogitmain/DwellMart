@@ -193,17 +193,23 @@ const getActiveSaleProductIds = async (type = null) => {
     return collectCampaignProductIds(campaigns);
 };
 
-// GET /api/products — list with filters
-const listProducts = asyncHandler(async (req, res) => {
+// Helper to assemble full catalog filter from query params
+const buildCatalogQueryFilter = async (req) => {
     const {
-        page = 1,
-        limit = 12,
         category,
         brand,
+        brands,
+        gender,
+        genders,
+        sizes,
+        size,
+        colors,
+        color,
+        packSize,
+        packSizes,
         vendor,
         search,
         q,
-        sort = 'newest',
         flashSale,
         isNewArrival,
         isFeatured,
@@ -213,14 +219,13 @@ const listProducts = asyncHandler(async (req, res) => {
         sellingChannel,
         bulkDiscount,
         hasMoq,
+        minMoq,
+        maxMoq,
+        inStock,
+        minDiscount,
         delivery,
-    } = req.query;
-    const numericPage = Math.max(Number(page) || 1, 1);
-    const numericLimit = Math.min(Math.max(Number(limit) || 12, 1), 100);
-    const skip = (numericPage - 1) * numericLimit;
+    } = req.query || {};
 
-    // Resolve the category subtree before building the filter, so the builder
-    // can place the ids on whichever category field the experience uses.
     let categoryIds;
     if (category) {
         const rawCategory = String(category).trim();
@@ -246,15 +251,9 @@ const listProducts = asyncHandler(async (req, res) => {
 
     const requestExperience = getRequestExperience(req);
 
-    // Quick Commerce results must only include stores that can actually deliver
-    // to this customer. Resolving the serviceable vendor set here (rather than
-    // filtering after the fact) means an out-of-range store can never leak into
-    // a listing. An empty array is a valid answer meaning "nothing reaches you".
     let serviceableVendorIds;
     if (requestExperience === EXPERIENCES.QUICK_COMMERCE) {
-        serviceableVendorIds = await resolveQuickCommerceVendorIds(req.query);
-        // When location hint is missing or unserviceable fallback to active verified vendors
-        // so customers can still browse Express items catalog cleanly.
+        serviceableVendorIds = await resolveQuickCommerceVendorIds(req.query || {});
         if (serviceableVendorIds === undefined || (Array.isArray(serviceableVendorIds) && serviceableVendorIds.length === 0)) {
             const allQcVendors = await Vendor.find({
                 isVerified: true,
@@ -275,13 +274,11 @@ const listProducts = asyncHandler(async (req, res) => {
             isActive: { $ne: false },
             [`channels.${channelPath}.status`]: 'active',
         }).select('_id').lean();
-        serviceableVendorIds = eligibleVendors.map((vendor) => String(vendor._id));
+        serviceableVendorIds = eligibleVendors.map((v) => String(v._id));
     }
 
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
 
-    // All catalog reads go through the shared builder — it owns the experience
-    // flag and the correct category field (see catalogQuery.service.js).
     const filter = buildCatalogFilter({
         experience: requestExperience,
         categoryIds,
@@ -289,23 +286,108 @@ const listProducts = asyncHandler(async (req, res) => {
         wholesaleMarketplaceEnabled: wholesaleEnabled,
     });
 
-    if (brand) {
-        const rawBrand = String(brand).trim();
-        if (mongoose.Types.ObjectId.isValid(rawBrand)) {
-            filter.brandId = rawBrand;
-        } else {
-            const matchedBrand = await Brand.findOne({
+    // Multi-brand filtering (by ID or slug)
+    const rawBrandInput = brands || brand;
+    if (rawBrandInput) {
+        const brandTokens = (Array.isArray(rawBrandInput) ? rawBrandInput : String(rawBrandInput).split(','))
+            .map((b) => b.trim())
+            .filter(Boolean);
+
+        const objectIds = [];
+        const slugOrNames = [];
+
+        for (const token of brandTokens) {
+            if (mongoose.Types.ObjectId.isValid(token)) {
+                objectIds.push(new mongoose.Types.ObjectId(token));
+            } else {
+                slugOrNames.push(token);
+            }
+        }
+
+        if (slugOrNames.length > 0) {
+            const matchedBrands = await Brand.find({
                 $or: [
-                    { slug: rawBrand },
-                    { id: rawBrand },
-                    { name: new RegExp(`^${rawBrand.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+                    { slug: { $in: slugOrNames } },
+                    { name: { $in: slugOrNames.map((s) => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) } },
                 ],
             }).select('_id').lean();
-            filter.brandId = matchedBrand ? String(matchedBrand._id) : null;
+            matchedBrands.forEach((b) => objectIds.push(b._id));
+        }
+
+        if (objectIds.length > 0) {
+            filter.brandId = { $in: objectIds };
+        } else {
+            filter.brandId = null;
         }
     }
 
-    // An explicit vendor filter must still respect serviceability.
+    // Gender filter (men, women, kids, boys, girls, unisex)
+    const rawGenderInput = genders || gender;
+    if (rawGenderInput) {
+        const genderTokens = (Array.isArray(rawGenderInput) ? rawGenderInput : String(rawGenderInput).split(','))
+            .map((g) => g.trim().toLowerCase())
+            .filter(Boolean);
+        if (genderTokens.length > 0) {
+            filter.gender = { $in: genderTokens };
+        }
+    }
+
+    // Sizes filter (variants.sizes)
+    const rawSizesInput = sizes || size;
+    if (rawSizesInput) {
+        const sizeTokens = (Array.isArray(rawSizesInput) ? rawSizesInput : String(rawSizesInput).split(','))
+            .map((s) => s.trim())
+            .filter(Boolean);
+        if (sizeTokens.length > 0) {
+            filter['variants.sizes'] = { $in: sizeTokens };
+        }
+    }
+
+    // Colors filter (variants.colors)
+    const rawColorsInput = colors || color;
+    if (rawColorsInput) {
+        const colorTokens = (Array.isArray(rawColorsInput) ? rawColorsInput : String(rawColorsInput).split(','))
+            .map((c) => c.trim())
+            .filter(Boolean);
+        if (colorTokens.length > 0) {
+            filter['variants.colors'] = {
+                $in: colorTokens.map((c) => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')),
+            };
+        }
+    }
+
+    // Pack sizes (Quick Commerce)
+    const rawPackSizeInput = packSizes || packSize;
+    if (rawPackSizeInput) {
+        const packTokens = (Array.isArray(rawPackSizeInput) ? rawPackSizeInput : String(rawPackSizeInput).split(','))
+            .map((p) => p.trim())
+            .filter(Boolean);
+        if (packTokens.length > 0) {
+            filter['quickCommerce.packSize'] = { $in: packTokens };
+        }
+    }
+
+    // In Stock Only
+    if (inStock === 'true' || inStock === true) {
+        filter.stock = { $ne: 'out_of_stock' };
+        filter.stockQuantity = { $gt: 0 };
+    }
+
+    // Minimum Discount percentage
+    if (minDiscount && Number(minDiscount) > 0) {
+        const discRatio = Number(minDiscount) / 100;
+        andCondition(filter, {
+            originalPrice: { $gt: 0 },
+            $expr: {
+                $gte: [
+                    { $divide: [{ $subtract: ['$originalPrice', '$price'] }, '$originalPrice'] },
+                    discRatio,
+                ],
+            },
+        });
+    }
+
+    // Vendor filter
     if (vendor) {
         const rawVendor = String(vendor).trim();
         const vendorId = mongoose.Types.ObjectId.isValid(rawVendor) ? rawVendor : null;
@@ -318,6 +400,7 @@ const listProducts = asyncHandler(async (req, res) => {
             filter.vendorId = vendorId;
         }
     }
+
     if (flashSale === 'true') filter.flashSale = true;
     if (isNewArrival === 'true') filter.isNewArrival = true;
     if (isFeatured === 'true') filter.isFeatured = true;
@@ -328,18 +411,15 @@ const listProducts = asyncHandler(async (req, res) => {
     } else if (delivery === 'standard') {
         filter.quickCommerceEnabled = { $ne: true };
     }
-    // Wholesale facets are Marketplace-only concepts; applying them inside
-    // Quick Commerce would silently contradict the experience filter.
-    if (getRequestExperience(req) === EXPERIENCES.MARKETPLACE) {
+
+    // Wholesale facets: applicable on WHOLESALE or MARKETPLACE (retail) experiences
+    if (requestExperience === EXPERIENCES.WHOLESALE || requestExperience === EXPERIENCES.MARKETPLACE) {
         if (!wholesaleEnabled) {
-            // When wholesale feature flag is OFF, wholesale facet searches return no results
-            if (sellingChannel === 'wholesale' || bulkDiscount === 'true' || hasMoq === 'true') {
+            if (requestExperience === EXPERIENCES.WHOLESALE || sellingChannel === 'wholesale' || bulkDiscount === 'true' || hasMoq === 'true') {
                 filter._id = { $in: [] };
             }
         } else {
-            // Legacy products have no wholesale fields, so "retail" matches anything
-            // not explicitly wholesale-only.
-            if (sellingChannel === 'wholesale') {
+            if (requestExperience === EXPERIENCES.WHOLESALE || sellingChannel === 'wholesale') {
                 filter.wholesaleEnabled = true;
             } else if (sellingChannel === 'retail') {
                 filter.retailEnabled = { $ne: false };
@@ -352,26 +432,51 @@ const listProducts = asyncHandler(async (req, res) => {
                 filter.wholesaleEnabled = true;
                 filter['wholesale.moqEnabled'] = true;
             }
+            if (minMoq || maxMoq) {
+                filter.wholesaleEnabled = true;
+                filter['wholesale.moq'] = {
+                    ...(minMoq && { $gte: Number(minMoq) }),
+                    ...(maxMoq && { $lte: Number(maxMoq) }),
+                };
+            }
         }
     }
+
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
         const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-        // Must AND with the existing filter: on Quick Commerce `buildCatalogFilter`
-        // already owns `$or` for the category tree, and assigning here erased it —
-        // a category listing with a search term returned products from every
-        // other category.
         andCondition(filter, { $or: [{ name: safeRegex }, { tags: safeRegex }] });
     }
 
     const activeSaleProductIds = await getActiveSaleProductIds();
     if (activeSaleProductIds.length) {
-        // AND, not assign: assigning cancelled the `_id: { $in: [] }` kill
-        // switch set when the wholesale feature flag is off.
         andCondition(filter, { _id: { $nin: activeSaleProductIds } });
     }
 
-    const sortMap = { newest: { createdAt: -1 }, oldest: { createdAt: 1 }, 'price-asc': { price: 1 }, 'price-desc': { price: -1 }, popular: { reviewCount: -1 }, rating: { rating: -1 } };
+    return { filter, requestExperience, wholesaleEnabled, serviceableVendorIds, categoryIds };
+};
+
+// GET /api/products — list with filters
+const listProducts = asyncHandler(async (req, res) => {
+    const {
+        page = 1,
+        limit = 12,
+        sort = 'newest',
+    } = req.query;
+    const numericPage = Math.max(Number(page) || 1, 1);
+    const numericLimit = Math.min(Math.max(Number(limit) || 12, 1), 100);
+    const skip = (numericPage - 1) * numericLimit;
+
+    const { filter } = await buildCatalogQueryFilter(req);
+
+    const sortMap = {
+        newest: { createdAt: -1 },
+        oldest: { createdAt: 1 },
+        'price-asc': { price: 1 },
+        'price-desc': { price: -1 },
+        popular: { reviewCount: -1 },
+        rating: { rating: -1 },
+    };
 
     const [products, total] = await Promise.all([
         Product.find(filter)
@@ -391,8 +496,240 @@ const listProducts = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, limit: numericLimit, pages }, 'Products fetched.'));
 });
 
+// Helper to safely cast string IDs to mongoose.Types.ObjectId for aggregation pipelines
+const castFilterForAggregation = (query) => {
+    if (!query || typeof query !== 'object') return query;
+    const result = { ...query };
+
+    const toObjectId = (val) => {
+        if (!val) return val;
+        if (val instanceof mongoose.Types.ObjectId) return val;
+        if (typeof val === 'string' && mongoose.Types.ObjectId.isValid(val) && val.length === 24) {
+            return new mongoose.Types.ObjectId(val);
+        }
+        return val;
+    };
+
+    const castIdField = (fieldVal) => {
+        if (!fieldVal) return fieldVal;
+        if (typeof fieldVal === 'string' || fieldVal instanceof mongoose.Types.ObjectId) {
+            return toObjectId(fieldVal);
+        }
+        if (Array.isArray(fieldVal)) {
+            return fieldVal.map(toObjectId);
+        }
+        if (typeof fieldVal === 'object') {
+            const inner = { ...fieldVal };
+            if (Array.isArray(inner.$in)) {
+                inner.$in = inner.$in.map(toObjectId);
+            }
+            if (Array.isArray(inner.$nin)) {
+                inner.$nin = inner.$nin.map(toObjectId);
+            }
+            if (inner.$eq) {
+                inner.$eq = toObjectId(inner.$eq);
+            }
+            if (inner.$ne) {
+                inner.$ne = toObjectId(inner.$ne);
+            }
+            return inner;
+        }
+        return fieldVal;
+    };
+
+    ['vendorId', 'categoryId', 'quickCommerceCategoryId', 'brandId', '_id'].forEach((key) => {
+        if (result[key] !== undefined) {
+            result[key] = castIdField(result[key]);
+        }
+    });
+
+    if (Array.isArray(result.$or)) {
+        result.$or = result.$or.map((clause) => castFilterForAggregation(clause));
+    }
+    if (Array.isArray(result.$and)) {
+        result.$and = result.$and.map((clause) => castFilterForAggregation(clause));
+    }
+
+    return result;
+};
+
+// GET /api/products/facets — dynamic faceted filters aggregation
+const getProductFacets = asyncHandler(async (req, res) => {
+    const {
+        category,
+        search,
+        q,
+        delivery,
+        sellingChannel,
+        experience,
+        lat,
+        lng,
+    } = req.query;
+
+    const { filter: baseFilter, requestExperience } = await buildCatalogQueryFilter({
+        ...req,
+        query: {
+            category,
+            search,
+            q,
+            delivery,
+            sellingChannel,
+            experience,
+            lat,
+            lng,
+        },
+    });
+
+    const aggregationMatchFilter = castFilterForAggregation(baseFilter);
+
+    const facetResults = await Product.aggregate([
+        { $match: aggregationMatchFilter },
+        {
+            $facet: {
+                genders: [
+                    { $match: { gender: { $exists: true, $nin: [null, 'all'] } } },
+                    { $sortByCount: '$gender' },
+                ],
+                brands: [
+                    { $match: { brandId: { $exists: true, $ne: null } } },
+                    { $sortByCount: '$brandId' },
+                    { $limit: 40 },
+                ],
+                sizes: [
+                    { $unwind: '$variants.sizes' },
+                    { $match: { 'variants.sizes': { $nin: [null, ''] } } },
+                    { $sortByCount: '$variants.sizes' },
+                    { $limit: 30 },
+                ],
+                colors: [
+                    { $unwind: '$variants.colors' },
+                    { $match: { 'variants.colors': { $nin: [null, ''] } } },
+                    { $sortByCount: '$variants.colors' },
+                    { $limit: 25 },
+                ],
+                packSizes: [
+                    { $match: { 'quickCommerce.packSize': { $exists: true, $nin: [null, ''] } } },
+                    { $sortByCount: '$quickCommerce.packSize' },
+                    { $limit: 20 },
+                ],
+                priceStats: [
+                    {
+                        $group: {
+                            _id: null,
+                            minPrice: { $min: '$price' },
+                            maxPrice: { $max: '$price' },
+                            count: { $sum: 1 },
+                        },
+                    },
+                ],
+                moqStats: [
+                    { $match: { 'wholesale.moq': { $exists: true, $gt: 0 } } },
+                    {
+                        $bucket: {
+                            groupBy: '$wholesale.moq',
+                            boundaries: [1, 10, 50, 100, 500],
+                            default: '500+',
+                            output: { count: { $sum: 1 } },
+                        },
+                    },
+                ],
+            },
+        },
+    ]);
+
+    const facets = facetResults[0] || {};
+
+    // Populate Brand names & logos
+    const rawBrands = facets.brands || [];
+    const brandIds = rawBrands.map((b) => b._id).filter(Boolean);
+    const brandsData = brandIds.length
+        ? await Brand.find({ _id: { $in: brandIds } }).select('_id name logo slug').lean()
+        : [];
+    const brandMap = new Map(brandsData.map((b) => [String(b._id), b]));
+
+    const populatedBrands = rawBrands
+        .map((b) => {
+            const info = brandMap.get(String(b._id));
+            if (!info?.name) return null;
+            return {
+                id: String(b._id),
+                name: info.name,
+                slug: info.slug || '',
+                logo: info.logo || '',
+                count: b.count,
+            };
+        })
+        .filter(Boolean);
+
+    const genderLabels = {
+        men: 'Men',
+        women: 'Women',
+        kids: 'Kids',
+        boys: 'Boys',
+        girls: 'Girls',
+        unisex: 'Unisex',
+    };
+
+    const formattedGenders = (facets.genders || []).map((g) => ({
+        id: g._id,
+        label: genderLabels[g._id] || g._id,
+        count: g.count,
+    }));
+
+    const formattedSizes = (facets.sizes || []).map((s) => ({
+        id: s._id,
+        label: s._id,
+        count: s.count,
+    }));
+
+    const formattedColors = (facets.colors || []).map((c) => ({
+        id: c._id,
+        label: c._id,
+        count: c.count,
+    }));
+
+    const formattedPackSizes = (facets.packSizes || []).map((p) => ({
+        id: p._id,
+        label: p._id,
+        count: p.count,
+    }));
+
+    const moqLabels = {
+        1: 'Under 10 pcs',
+        10: '10 - 49 pcs',
+        50: '50 - 99 pcs',
+        100: '100 - 499 pcs',
+        '500+': '500+ pcs',
+    };
+
+    const formattedMoqBuckets = (facets.moqStats || []).map((m) => ({
+        id: String(m._id),
+        label: moqLabels[m._id] || `${m._id}+ pcs`,
+        count: m.count,
+    }));
+
+    const priceStats = facets.priceStats?.[0] || { minPrice: 0, maxPrice: 10000, count: 0 };
+
+    res.status(200).json(new ApiResponse(200, {
+        experience: requestExperience,
+        genders: formattedGenders,
+        brands: populatedBrands,
+        sizes: formattedSizes,
+        colors: formattedColors,
+        packSizes: formattedPackSizes,
+        moqBuckets: formattedMoqBuckets,
+        priceRange: {
+            min: priceStats.minPrice ?? 0,
+            max: priceStats.maxPrice ?? 10000,
+        },
+        totalMatches: priceStats.count ?? 0,
+    }, 'Product facets computed.'));
+});
+
 router.get('/', listCache, listProducts);
 router.get('/products', listCache, listProducts);
+router.get('/products/facets', listCache, getProductFacets);
+router.get('/facets', listCache, getProductFacets);
 
 // GET /api/products/flash-sale
 router.get('/flash-sale', marketingCache, asyncHandler(async (req, res) => {

@@ -62,6 +62,25 @@ const GeneralSection = ({ formData, handleChange, brands }) => (
         />
       </div>
 
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">Target Audience / Gender</label>
+        <AnimatedSelect
+          name="gender"
+          value={formData.gender || "all"}
+          onChange={handleChange}
+          placeholder="Select Target Audience"
+          options={[
+            { value: "all", label: "All / General" },
+            { value: "men", label: "Men" },
+            { value: "women", label: "Women" },
+            { value: "kids", label: "Kids" },
+            { value: "boys", label: "Boys" },
+            { value: "girls", label: "Girls" },
+            { value: "unisex", label: "Unisex" },
+          ]}
+        />
+      </div>
+
       <div className="md:col-span-2">
         <label className="block text-xs font-semibold text-gray-700 mb-1">Description</label>
         <textarea

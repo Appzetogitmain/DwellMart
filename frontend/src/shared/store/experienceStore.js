@@ -185,5 +185,7 @@ export const useExperienceStore = create((set, get) => ({
   },
 
   isQuickCommerce: () => get().experience === EXPERIENCES.QUICK_COMMERCE,
+  isWholesale: () => get().experience === EXPERIENCES.WHOLESALE,
+  isRetail: () => get().experience === EXPERIENCES.MARKETPLACE,
   hasLocation: () => Object.keys(getLocationQueryParams(get().location)).length > 0,
 }));

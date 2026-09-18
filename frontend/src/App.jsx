@@ -122,6 +122,7 @@ import AppBootstrap from "./shared/components/AppBootstrap";
 // Mobile App Routes
 import MobileHome from "./modules/UserApp/pages/Home";
 import QuickCommerceHome from "./modules/UserApp/pages/QuickCommerceHome";
+import WholesaleHome from "./modules/UserApp/pages/WholesaleHome";
 import QuickCommerceCategoriesPage from "./modules/UserApp/pages/QuickCommerceCategoriesPage";
 import MobileProductDetail from "./modules/UserApp/pages/ProductDetail";
 import MobileSeller from "./modules/UserApp/pages/Seller";
@@ -244,6 +245,15 @@ const QuickCommerceRoute = ({ children }) => {
   return children;
 };
 
+const WholesaleRoute = ({ children }) => {
+  const { settings } = useSettingsStore();
+  const wholesaleEnabled = settings?.features?.wholesaleMarketplaceEnabled !== false;
+  if (!wholesaleEnabled) {
+    return <Navigate to="/home" replace />;
+  }
+  return children;
+};
+
 // Inner component that has access to useLocation
 const AppRoutes = () => {
   return (
@@ -286,6 +296,26 @@ const AppRoutes = () => {
             <QuickCommerceRoute>
               <QuickCommerceCategoriesPage />
             </QuickCommerceRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/wholesale"
+        element={
+          <RouteWrapper>
+            <WholesaleRoute>
+              <WholesaleHome />
+            </WholesaleRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/b2b"
+        element={
+          <RouteWrapper>
+            <WholesaleRoute>
+              <WholesaleHome />
+            </WholesaleRoute>
           </RouteWrapper>
         }
       />

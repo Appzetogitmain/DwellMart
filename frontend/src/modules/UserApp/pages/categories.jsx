@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useExperienceStore } from "../../../shared/store/experienceStore";
+import { EXPERIENCES } from "../../../shared/utils/experience";
 import {
   FiArrowLeft,
   FiFilter,
@@ -154,6 +156,9 @@ const MobileCategories = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { experience: activeExp } = useExperienceStore();
+  const currentExperience = searchParams.get('experience') || activeExp || EXPERIENCES.MARKETPLACE;
   const {
     categories,
     initialize,
@@ -162,10 +167,10 @@ const MobileCategories = () => {
     hasSubDepartments,
   } = useCategoryStore();
 
-  // Initialize store on mount
+  // Initialize store on mount or experience change
   useEffect(() => {
-    initialize("marketplace");
-  }, [initialize]);
+    initialize(currentExperience);
+  }, [initialize, currentExperience]);
 
   // Root Categories
   const [translatedRootCategories, setTranslatedRootCategories] = useState([]);
@@ -330,6 +335,7 @@ const MobileCategories = () => {
             page: 1,
             limit: 200,
             sort: "newest",
+            experience: currentExperience,
           },
         });
         const payload = response?.data ?? response;

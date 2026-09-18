@@ -60,19 +60,25 @@ export const buildCatalogFilter = ({
                 { categoryId: category },
             ];
         }
+    } else if (resolvedExperience === EXPERIENCES.WHOLESALE) {
+        if (!wholesaleMarketplaceEnabled) {
+            filter._id = { $in: [] };
+        } else {
+            filter.wholesaleEnabled = true;
+        }
+
+        if (Array.isArray(categoryIds)) {
+            filter.categoryId = { $in: categoryIds };
+        } else if (category) {
+            filter.categoryId = category;
+        }
     } else {
-        // Marketplace: retail is opt-out (legacy products have no flag), so
+        // Marketplace (B2C Retail): retail is opt-out (legacy products have no flag), so
         // "not explicitly false" is the correct test.
-        // P1-10 FIX: Only apply this filter when the caller is NOT on the wholesale channel.
-        // If the caller requests wholesale products (extra?.sellingChannel === 'wholesale' or
-        // extra?.wholesaleEnabled === true), wholesale-only products (retailEnabled: false)
-        // must be visible. Otherwise wholesale-only products are forever invisible.
         const isWholesaleChannel = extra?.wholesaleEnabled === true;
         if (!isWholesaleChannel) {
-            // Retail channel: exclude pure wholesale-only products
             filter.retailEnabled = { $ne: false };
         }
-        // Wholesale channel: show all products that have wholesaleEnabled: true (set by caller via extra)
 
         if (Array.isArray(categoryIds)) {
             filter.categoryId = { $in: categoryIds };
@@ -81,7 +87,6 @@ export const buildCatalogFilter = ({
         }
 
         if (!wholesaleMarketplaceEnabled && extra?.wholesaleEnabled) {
-            // Caller explicitly requested wholesale products when wholesale is OFF -> return no results
             filter._id = { $in: [] };
         }
     }
@@ -100,7 +105,9 @@ export const getCategoryFieldForExperience = (experience) =>
         : 'categoryId';
 
 /** Product flag backing a given experience. */
-export const getChannelFieldForExperience = (experience) =>
-    normalizeExperience(experience) === EXPERIENCES.QUICK_COMMERCE
-        ? 'quickCommerceEnabled'
-        : 'retailEnabled';
+export const getChannelFieldForExperience = (experience) => {
+    const exp = normalizeExperience(experience);
+    if (exp === EXPERIENCES.QUICK_COMMERCE) return 'quickCommerceEnabled';
+    if (exp === EXPERIENCES.WHOLESALE) return 'wholesaleEnabled';
+    return 'retailEnabled';
+};

@@ -291,8 +291,12 @@ const MobileProductDetail = () => {
 
   // ── Wholesale bulk pricing (preview only; checkout re-derives server-side) ──
   const { settings } = useSettingsStore();
-  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled === true;
-  const vendorWholesaleEnabled = wholesaleMarketplaceEnabled && vendor?.sellingChannels?.wholesale?.enabled === true;
+  const wholesaleMarketplaceEnabled = settings?.features?.wholesaleMarketplaceEnabled !== false;
+  const vendorWholesaleEnabled =
+    wholesaleMarketplaceEnabled &&
+    (vendor?.vendorType === "wholesale" ||
+     vendor?.sellingChannels?.wholesale?.enabled === true ||
+     vendor?.sellingChannels?.wholesale?.enabled !== false);
   const wholesaleTiers = useMemo(
     () => (wholesaleMarketplaceEnabled ? normalizeTiers(product?.wholesale?.priceTiers) : []),
     [wholesaleMarketplaceEnabled, product?.wholesale?.priceTiers]
@@ -317,10 +321,10 @@ const MobileProductDetail = () => {
   const isWholesaleOnly = hasWholesale && !isRetailAvailable;
   const belowMinimumOrder = isBelowMinimumOrder(bulkPricing);
 
-  // Wholesale-only products have a hard purchase floor. Hybrid products do not —
-  // they simply fall back to retail pricing below the tier threshold.
+  // Wholesale-only products or active wholesale shopping experience enforce MOQ floor.
+  const isWholesaleContext = activeExperience === 'wholesale' || isWholesaleOnly;
   const minimumPurchaseQuantity = useMemo(() => {
-    if (!isWholesaleOnly) return 1;
+    if (!isWholesaleContext && !isWholesaleOnly) return 1;
     const moqEnabled = product?.wholesale?.moqEnabled === true;
     const rawMoq = Number(product?.wholesale?.moq);
     const lowestTier = wholesaleTiers[0]?.minQty;
@@ -328,7 +332,7 @@ const MobileProductDetail = () => {
       ? Math.max(rawMoq, lowestTier || 1)
       : lowestTier;
     return Number.isFinite(floor) && floor > 1 ? floor : 1;
-  }, [isWholesaleOnly, product?.wholesale?.moqEnabled, product?.wholesale?.moq, wholesaleTiers]);
+  }, [isWholesaleContext, isWholesaleOnly, product?.wholesale?.moqEnabled, product?.wholesale?.moq, wholesaleTiers]);
 
   // Open the page at a purchasable quantity instead of an unusable default of 1.
   useEffect(() => {
@@ -597,8 +601,11 @@ const MobileProductDetail = () => {
   }, [product, selectedVariant]);
 
   const currentPrice = useMemo(() => {
+    if (hasWholesale && bulkPricing?.unitPrice) {
+      return bulkPricing.unitPrice;
+    }
     return resolveVariantPrice(product, selectedVariant);
-  }, [product, selectedVariant]);
+  }, [product, selectedVariant, hasWholesale, bulkPricing]);
 
   const selectedAvailableStock = useMemo(() => {
     const variantKey = getVariantSignature(selectedVariant || {});

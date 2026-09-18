@@ -22,30 +22,54 @@ const ExperienceSwitcher = ({ className = "" }) => {
     initialize();
   }, [initialize]);
 
-  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled === true;
-
-  if (!quickCommerceEnabled) return null;
+  const quickCommerceEnabled = settings?.features?.quickCommerceEnabled !== false;
+  const wholesaleEnabled = settings?.features?.wholesaleMarketplaceEnabled !== false;
 
   const options = [
-    {
-      value: EXPERIENCES.QUICK_COMMERCE,
-      title: "Dwell Mart Express",
-      subtitle: "Groceries, Food, Pharmacy & Daily Essentials",
-      icon: FiZap,
-      tag: "10-30 Mins",
-      tagIcon: FiClock,
-      path: "/quick",
-    },
+    ...(quickCommerceEnabled
+      ? [
+          {
+            value: EXPERIENCES.QUICK_COMMERCE,
+            title: "Dwell Mart Express",
+            subtitle: "Groceries, Food, Pharmacy & Daily Essentials",
+            icon: FiZap,
+            tag: "10-30 Mins",
+            tagIcon: FiClock,
+            path: "/quick",
+            badge: "Instant",
+            badgeColor: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+          },
+        ]
+      : []),
     {
       value: EXPERIENCES.MARKETPLACE,
-      title: "Marketplace",
-      subtitle: "B2B & B2C • Fashion, Electronics, Home & Everything Else",
+      title: "Retail Store",
+      subtitle: "Consumer Shopping • Single Items",
       icon: FiShoppingBag,
       tag: "Pan-India",
       tagIcon: FiPackage,
-      path: "/categories",
+      path: "/home",
+      badge: "B2C",
+      badgeColor: "bg-blue-500/10 text-blue-600 border-blue-500/20",
     },
+    ...(wholesaleEnabled
+      ? [
+          {
+            value: EXPERIENCES.WHOLESALE,
+            title: "Wholesale Hub",
+            subtitle: "Bulk Factory Sourcing • MOQ & Tiers",
+            icon: FiPackage,
+            tag: "Bulk / Cargo",
+            tagIcon: FiPackage,
+            path: "/wholesale",
+            badge: "B2B",
+            badgeColor: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+          },
+        ]
+      : []),
   ];
+
+  if (options.length <= 1) return null;
 
   const handleSwitch = (option) => {
     setExperience(option.value);
@@ -54,7 +78,7 @@ const ExperienceSwitcher = ({ className = "" }) => {
 
   return (
     <section className={`w-full px-4 sm:px-6 my-2 sm:my-3 ${className}`}>
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+      <div className={`max-w-7xl mx-auto grid grid-cols-1 ${options.length === 3 ? "lg:grid-cols-3 md:grid-cols-2" : "md:grid-cols-2"} gap-3 sm:gap-4`}>
         {options.map((option) => {
           const isActive = experience === option.value;
           const Icon = option.icon;
@@ -114,6 +138,10 @@ const ExperienceSwitcher = ({ className = "" }) => {
                         >
                           B2C
                         </span>
+                      </div>
+                    )}
+                    {option.value === EXPERIENCES.WHOLESALE && (
+                      <div className="flex items-center gap-1">
                         <span
                           className={`px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${
                             isActive
