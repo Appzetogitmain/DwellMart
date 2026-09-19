@@ -68,10 +68,11 @@ const checkoutSessionSchema = new mongoose.Schema(
         gatewaySessionId:   { type: String, trim: true },   // e.g. Cashfree payment_session_id
         gatewayReference:   { type: String, trim: true },   // final transaction reference
         codDetails: {
-            advancePaid:       { type: Number, default: 0 },
-            cashOnDeliveryDue: { type: Number, default: 0 },
-            advancePaymentId:  { type: String, trim: true },
-            advanceGateway:    { type: String, trim: true },
+            advancePaid:              { type: Number, default: 0 },
+            cashOnDeliveryDue:        { type: Number, default: 0 },
+            cashCollectedAtDelivery:  { type: Number, default: 0 },
+            advancePaymentId:         { type: String, trim: true },
+            advanceGateway:           { type: String, trim: true },
         },
 
         // Allocation Ledger — one entry per generated Order

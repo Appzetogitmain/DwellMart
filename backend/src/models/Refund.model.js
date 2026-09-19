@@ -3,14 +3,15 @@ import mongoose from 'mongoose';
 export const REFUND_STATUSES = [
     'requested',   // recorded, nothing sent to the gateway yet
     'initiated',   // accepted by the gateway, settling
-    'succeeded',   // gateway confirmed
+    'succeeded',   // gateway confirmed (or hybrid: both gateway & cash confirmed)
     'failed',      // gateway rejected; retryable
     'cancelled',   // withdrawn before initiation
     'manual_settled', // COD/offline, settled outside the gateway with a proof reference
+    'partially_settled', // hybrid: gateway succeeded, cash pending manual settlement
     'legacy_unverified', // pre-dates this ledger; money movement NOT established
 ];
 
-export const REFUND_METHODS = ['gateway', 'manual_bank', 'manual_cash', 'unknown'];
+export const REFUND_METHODS = ['gateway', 'manual_bank', 'manual_cash', 'hybrid', 'unknown'];
 
 /**
  * Records one reversal effect so partial failure is visible and resumable.
@@ -48,12 +49,19 @@ const refundSchema = new mongoose.Schema(
         vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', default: null, index: true },
 
         amount: { type: Number, required: true, min: 0 },
+        gatewayAmount: { type: Number, default: 0 },
+        cashAmount: { type: Number, default: 0 },
         currency: { type: String, default: 'INR' },
         reason: { type: String, required: true, trim: true },
         refundType: { type: String, enum: ['full', 'partial', 'item_level'], default: 'full' },
         method: { type: String, enum: REFUND_METHODS, default: 'gateway' },
 
         status: { type: String, enum: REFUND_STATUSES, default: 'requested', index: true },
+
+        /** Offline cash portion settlement state when method is hybrid. */
+        cashStatus: { type: String, enum: ['pending', 'settled'], default: 'pending' },
+        cashSettledAt: { type: Date, default: null },
+        cashProofRef: { type: String, default: '' },
 
         /**
          * Our idempotency key AND the gateway's refund_id. Reused verbatim on
@@ -99,7 +107,7 @@ refundSchema.index(
     { orderId: 1 },
     {
         unique: true,
-        partialFilterExpression: { status: { $in: ['requested', 'initiated'] } },
+        partialFilterExpression: { status: { $in: ['requested', 'initiated', 'partially_settled'] } },
         name: 'unique_open_refund_per_order',
     }
 );

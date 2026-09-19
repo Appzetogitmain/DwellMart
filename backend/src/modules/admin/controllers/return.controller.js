@@ -3,6 +3,7 @@ import Order from '../../../models/Order.model.js';
 import User from '../../../models/User.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { requestAndTryExecute } from '../../../services/refund/RefundOrchestrator.service.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { ApiResponse } from '../../../utils/ApiResponse.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
@@ -249,6 +250,22 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
                         await product.save();
                     });
                     await Promise.all(stockRestores);
+
+                    // Issue the refund via RefundOrchestrator
+                    const refundAmount = Number(request.refundAmount || 0);
+                    if (refundAmount > 0 && order.paymentStatus !== 'pending') {
+                        const isSingleVendorOrder = !order.vendorItems || order.vendorItems.length <= 1;
+                        await requestAndTryExecute({
+                            orderId: order._id,
+                            amount: refundAmount,
+                            reason: `Return completed by admin for order ${order.orderId}`,
+                            returnRequestId: request._id,
+                            refundType: isSingleVendorOrder ? 'full' : 'partial',
+                            initiatedBy: req.user?.id || null,
+                        }).catch((err) => {
+                            console.error(`[AdminReturn] Refund request failed for ${order.orderId}: ${err?.message}`);
+                        });
+                    }
                 }
             }
         }

@@ -1134,10 +1134,20 @@ export const createReturnRequest = asyncHandler(async (req, res) => {
         throw new ApiError(409, 'An active return request already exists for this vendor in the selected order.');
     }
 
+    const vendorGroup = (order.vendorItems || []).find((g) => String(g?.vendorId || '') === String(vendorId));
+    const vendorSubtotal = Number(
+        vendorGroup?.subtotal || vendorScopedItems.reduce((s, it) => s + Number(it?.price || 0) * Number(it?.quantity || 1), 0)
+    );
+    const vendorDiscount = Number(vendorGroup?.discount || 0);
+    const discountRatio = vendorSubtotal > 0 ? Math.min(1, Math.max(0, vendorDiscount / vendorSubtotal)) : 0;
+
     const refundAmount = normalizedItems.reduce((sum, item) => {
         const orderItem = vendorScopedItems.find((it) => String(it?.productId || '') === String(item.productId || ''));
         const unitPrice = Number(orderItem?.price || 0);
-        return sum + unitPrice * Number(item.quantity || 0);
+        const lineSubtotal = unitPrice * Number(item.quantity || 0);
+        const lineDiscount = Number((lineSubtotal * discountRatio).toFixed(2));
+        const netLineRefund = Math.max(0, Number((lineSubtotal - lineDiscount).toFixed(2)));
+        return sum + netLineRefund;
     }, 0);
 
     const request = await ReturnRequest.create({

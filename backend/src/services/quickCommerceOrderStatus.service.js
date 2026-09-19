@@ -114,6 +114,13 @@ export const applyQuickCommerceStatus = (order, nextStatus) => {
         if (['pending', 'partially_paid'].includes(order.paymentStatus) && ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase())) {
             order.paymentStatus = 'paid';
             if (order.codDetails) {
+                if (!order.codDetails.cashCollectedAtDelivery || order.codDetails.cashCollectedAtDelivery === 0) {
+                    order.codDetails.cashCollectedAtDelivery = Number(
+                        order.codDetails.cashOnDeliveryDue != null
+                            ? order.codDetails.cashOnDeliveryDue
+                            : (order.total || 0)
+                    );
+                }
                 order.codDetails.cashOnDeliveryDue = 0;
             }
         }

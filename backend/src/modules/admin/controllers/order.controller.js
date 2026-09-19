@@ -224,6 +224,13 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
         if (['pending', 'partially_paid'].includes(order.paymentStatus) && ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase())) {
             order.paymentStatus = 'paid';
             if (order.codDetails) {
+                if (!order.codDetails.cashCollectedAtDelivery || order.codDetails.cashCollectedAtDelivery === 0) {
+                    order.codDetails.cashCollectedAtDelivery = Number(
+                        order.codDetails.cashOnDeliveryDue != null
+                            ? order.codDetails.cashOnDeliveryDue
+                            : (order.total || 0)
+                    );
+                }
                 order.codDetails.cashOnDeliveryDue = 0;
             }
         }
@@ -285,11 +292,28 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
     if (nextStatus === 'cancelled') {
         const session = await mongoose.startSession();
+        let refundContext = null;
         try {
             await session.withTransaction(async () => {
                 if (previousStatus !== 'cancelled' && ['pending', 'confirmed', 'processing', 'packed', 'shipped'].includes(previousStatus)) {
                     // P2-DB-02 FIX: Restore inventory via batched 2-query optimization (replaces 2N sequential queries)
                     await restoreOrderInventory(order.items, { session });
+                }
+
+                // Capture refundable context inside transaction for post-commit execution
+                if (['paid', 'partially_paid', 'partially_refunded'].includes(String(order.paymentStatus || ''))) {
+                    const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
+                    const paidAmount = isCod
+                        ? Number(order.codDetails?.advancePaid || 0)
+                        : Number(order.total || 0);
+                    const refundable = Math.max(0, paidAmount - Number(order.refundedAmount || 0));
+                    if (refundable > 0) {
+                        refundContext = {
+                            orderId: order._id,
+                            orderNumber: order.orderId,
+                            amount: refundable,
+                        };
+                    }
                 }
 
                 await order.save({ session });
@@ -326,6 +350,19 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             });
         } finally {
             await session.endSession();
+        }
+
+        // Refund cancelled paid / partially-paid order post-commit
+        if (refundContext && refundContext.amount > 0) {
+            await requestAndTryExecute({
+                orderId: refundContext.orderId,
+                amount: refundContext.amount,
+                reason: `Order ${refundContext.orderNumber} cancelled by admin`,
+                refundType: 'full',
+                initiatedBy: req.user?.id || null,
+            }).catch((err) => {
+                console.error(`[AdminOrderCancel] Refund request failed for ${refundContext.orderNumber}: ${err?.message}`);
+            });
         }
     } else {
         await order.save();
@@ -587,13 +624,21 @@ export const deliveryOverride = asyncHandler(async (req, res) => {
         await order.save();
 
         if (order.paymentStatus !== 'pending') {
-            refundRecord = await requestAndTryExecute({
-                orderId: order._id,
-                amount: order.total,
-                reason: String(reason || `Admin override: ${action}`).trim(),
-                refundType: 'full',
-                initiatedBy: req.user.id,
-            });
+            const { getRefundableAmount } = await import('../../../services/refund/RefundOrchestrator.service.js');
+            const refundableAmount = await getRefundableAmount(order);
+            if (refundableAmount > 0) {
+                try {
+                    refundRecord = await requestAndTryExecute({
+                        orderId: order._id,
+                        amount: refundableAmount,
+                        reason: String(reason || `Admin override: ${action}`).trim(),
+                        refundType: 'full',
+                        initiatedBy: req.user.id,
+                    });
+                } catch (refErr) {
+                    console.error(`[AdminOverride] Refund failed for ${order.orderId}: ${refErr?.message}`);
+                }
+            }
         }
     } else {
         await order.save();

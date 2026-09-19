@@ -158,16 +158,45 @@ export const processPartialFulfilment = async ({
 
     await order.save();
 
-    // Actually enqueue the refund. Never throws into the fulfilment flow: a
-    // refund problem must not undo a recorded partial fulfilment, it belongs in
-    // the admin refund queue.
+    // Reconcile COD cash due vs online advance for unavailable items
+    const isCodOrder = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
+    let refundAmountToQueue = 0;
+
+    if (isCodOrder) {
+        const currentDue = Number(
+            order.codDetails?.cashOnDeliveryDue != null
+                ? order.codDetails.cashOnDeliveryDue
+                : (order.total || 0)
+        );
+        if (totalRefundAmount <= currentDue) {
+            // Customer owes less cash at delivery; no gateway refund needed.
+            if (order.codDetails) {
+                order.codDetails.cashOnDeliveryDue = round2(currentDue - totalRefundAmount);
+            }
+            refundAmountToQueue = 0;
+        } else {
+            // Unavailable amount exceeds remaining cash due: clear cash due to 0.
+            const excess = round2(totalRefundAmount - currentDue);
+            if (order.codDetails) {
+                order.codDetails.cashOnDeliveryDue = 0;
+            }
+            // Excess is refundable from the captured online advance.
+            const advancePaid = Number(order.codDetails?.advancePaid || 0);
+            refundAmountToQueue = round2(Math.min(excess, advancePaid));
+        }
+    } else {
+        // Prepaid order: entire unavailable amount is refunded via gateway.
+        refundAmountToQueue = totalRefundAmount;
+    }
+
+    // Actually enqueue the refund when money needs to move.
     let refundRecord = null;
-    if (totalRefundAmount > 0 && order.paymentStatus !== 'pending') {
+    if (refundAmountToQueue > 0 && order.paymentStatus !== 'pending') {
         try {
             const { requestAndTryExecute } = await import('./refund/RefundOrchestrator.service.js');
             refundRecord = await requestAndTryExecute({
                 orderId: order._id,
-                amount: totalRefundAmount,
+                amount: refundAmountToQueue,
                 reason: `Items unavailable on order ${order.orderId}`,
                 refundType: 'partial',
             });
@@ -178,6 +207,8 @@ export const processPartialFulfilment = async ({
         } catch (err) {
             console.error(`[Partial Fulfilment] Refund request failed for ${order.orderId}: ${err?.message}`);
         }
+    } else if (isCodOrder && totalRefundAmount > 0) {
+        order.fulfilmentOutcome.refundStatus = 'processed';
     }
 
     // Trigger notification to customer.

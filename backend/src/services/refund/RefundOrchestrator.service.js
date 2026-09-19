@@ -80,56 +80,143 @@ const buildIdempotencyKey = ({ orderId, returnRequestId, amount }) =>
         .slice(0, 40);
 
 /**
- * Resolve how to refund this order.
- *
- * Pure COD/cash orders → manual cash settlement (no gateway payment to reverse).
- * COD-with-advance orders → the advance portion was captured online; refund via gateway.
- * All online payment orders → gateway.
+ * Detailed refundable breakdown across gateway and cash channels.
  */
-const resolveRefundMethod = (order) => {
-    const method = String(order?.paymentMethod || '').toLowerCase();
-    if (method === 'cod' || method === 'cash') {
-        // If the customer paid an online advance (codDetails.advancePaid > 0),
-        // that portion lives in the payment gateway and must be reversed there.
-        const advancePaid = Number(order.codDetails?.advancePaid || 0);
-        if (advancePaid > 0) return 'gateway';
-        // Pure COD — no gateway capture exists; settle manually.
-        return 'manual_cash';
+export const getRefundableBreakdown = async (order) => {
+    const isValidId = mongoose.isValidObjectId(order?._id);
+    const existingRefunds = isValidId
+        ? await Refund.find({
+            orderId: order._id,
+            status: { $in: ['succeeded', 'manual_settled', 'initiated', 'partially_settled'] },
+        }).select('amount method gatewayAmount cashAmount status').lean()
+        : [];
+
+    let gatewayRefunded = 0;
+    let cashRefunded = 0;
+    for (const r of existingRefunds) {
+        if (r.method === 'hybrid') {
+            gatewayRefunded += Number(r.gatewayAmount || 0);
+            cashRefunded += Number(r.cashAmount || 0);
+        } else if (r.method === 'manual_cash' || r.method === 'manual_bank') {
+            cashRefunded += Number(r.cashAmount || r.amount || 0);
+        } else {
+            gatewayRefunded += Number(r.gatewayAmount || r.amount || 0);
+        }
     }
-    return 'gateway';
+    gatewayRefunded = roundMoney(gatewayRefunded);
+    cashRefunded = roundMoney(cashRefunded);
+
+    const isCod = ['cod', 'cash'].includes(String(order?.paymentMethod || '').toLowerCase());
+    const advancePaid = roundMoney(Number(order?.codDetails?.advancePaid || 0));
+    const cashCollected = roundMoney(Number(order?.codDetails?.cashCollectedAtDelivery || 0));
+    const orderTotal = roundMoney(Number(order?.total || 0));
+
+    if (isCod) {
+        // Gateway ceiling is the advance actually captured online.
+        const gatewayRefundable = roundMoney(Math.max(0, advancePaid - gatewayRefunded));
+        // Cash ceiling is the cash actually collected at delivery.
+        const cashRefundable = roundMoney(Math.max(0, cashCollected - cashRefunded));
+        const totalRefundable = roundMoney(gatewayRefundable + cashRefundable);
+        return {
+            totalRefundable,
+            gatewayRefundable,
+            cashRefundable,
+            advancePaid,
+            cashCollected,
+            gatewayRefunded,
+            cashRefunded,
+            isCod: true,
+        };
+    }
+
+    // Prepaid
+    const gatewayRefundable = roundMoney(Math.max(0, orderTotal - gatewayRefunded));
+    return {
+        totalRefundable: gatewayRefundable,
+        gatewayRefundable,
+        cashRefundable: 0,
+        advancePaid: 0,
+        cashCollected: 0,
+        gatewayRefunded,
+        cashRefunded: 0,
+        isCod: false,
+    };
 };
 
 /**
- * How much of this order may still be refunded via gateway.
+ * How much of this order may still be refunded in total.
  * Guards against cumulative over-refunding across several partial refunds.
- *
- * For COD orders with an online advance payment (partially_paid), only the
- * advance portion (`codDetails.advancePaid`) was captured via the gateway —
- * the `cashOnDeliveryDue` portion was paid in cash and is reconciled through
- * the rider cash ledger, not through a gateway refund. Using `order.total`
- * as the ceiling here would allow refunding money that was never gateway-captured.
  */
 export const getRefundableAmount = async (order) => {
-    const alreadyRefunded = await Refund.aggregate([
-        {
-            $match: {
-                orderId: order._id,
-                status: { $in: ['succeeded', 'manual_settled', 'initiated'] },
-            },
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]);
-    const refunded = roundMoney(alreadyRefunded[0]?.total || 0);
+    const breakdown = await getRefundableBreakdown(order);
+    return breakdown.totalRefundable;
+};
 
-    // For COD orders where an online advance was collected, the gateway-refundable
-    // ceiling is the advance amount only. Pure-COD and online-payment orders use order.total.
-    const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
-    const advancePaid = Number(order.codDetails?.advancePaid || 0);
-    const refundableCeiling = (isCod && advancePaid > 0)
-        ? advancePaid
-        : Number(order.total || 0);
+/**
+ * Resolve refund allocation between gateway and cash channels.
+ */
+export const resolveRefundAllocation = (order, requestedAmount, breakdown) => {
+    const isCod = breakdown.isCod;
+    const amount = roundMoney(requestedAmount);
 
-    return roundMoney(Math.max(0, refundableCeiling - refunded));
+    if (!isCod) {
+        return {
+            method: 'gateway',
+            gatewayAmount: amount,
+            cashAmount: 0,
+        };
+    }
+
+    // Pure COD (no advance paid)
+    if (breakdown.advancePaid <= 0) {
+        return {
+            method: 'manual_cash',
+            gatewayAmount: 0,
+            cashAmount: amount,
+        };
+    }
+
+    // COD with advance:
+    // Case 1: Pre-delivery cancellation (no cash collected)
+    if (breakdown.cashCollected <= 0 || order.status === 'cancelled') {
+        const gwAmt = roundMoney(Math.min(amount, breakdown.gatewayRefundable));
+        return {
+            method: 'gateway',
+            gatewayAmount: gwAmt,
+            cashAmount: 0,
+        };
+    }
+
+    // Case 2: Post-delivery return (cash collected at delivery)
+    // Return obligation refunds the cash collected for goods first.
+    // Online advance fees remain with the delivered order unless return amount exceeds cash collected.
+    const cashAmt = roundMoney(Math.min(amount, breakdown.cashRefundable));
+    const remainder = roundMoney(Math.max(0, amount - cashAmt));
+    const gwAmt = roundMoney(Math.min(remainder, breakdown.gatewayRefundable));
+
+    let method = 'manual_cash';
+    if (gwAmt > 0 && cashAmt > 0) {
+        method = 'hybrid';
+    } else if (gwAmt > 0) {
+        method = 'gateway';
+    }
+
+    return {
+        method,
+        gatewayAmount: gwAmt,
+        cashAmount: cashAmt,
+    };
+};
+
+// Backward-compatible resolveRefundMethod helper
+const resolveRefundMethod = (order) => {
+    const isCod = ['cod', 'cash'].includes(String(order?.paymentMethod || '').toLowerCase());
+    if (!isCod) return 'gateway';
+    const advancePaid = Number(order?.codDetails?.advancePaid || 0);
+    const cashCollected = Number(order?.codDetails?.cashCollectedAtDelivery || 0);
+    if (advancePaid > 0 && cashCollected > 0) return 'hybrid';
+    if (advancePaid > 0) return 'gateway';
+    return 'manual_cash';
 };
 
 // ── 1. Request ────────────────────────────────────────────────────────────────
@@ -162,11 +249,11 @@ export const requestRefund = async ({
         throw new ApiError(400, 'Refund amount must be greater than zero.');
     }
 
-    const refundable = await getRefundableAmount(order);
-    if (requestedAmount > refundable) {
+    const breakdown = await getRefundableBreakdown(order);
+    if (requestedAmount > breakdown.totalRefundable) {
         throw new ApiError(
             400,
-            `Refund amount exceeds the refundable balance for this order (max ₹${refundable}).`
+            `Refund amount exceeds the refundable balance for this order (max ₹${breakdown.totalRefundable}).`
         );
     }
 
@@ -174,6 +261,7 @@ export const requestRefund = async ({
         throw new ApiError(400, 'A refund reason is required.');
     }
 
+    const allocation = resolveRefundAllocation(order, requestedAmount, breakdown);
     const idempotencyKey = buildIdempotencyKey({ orderId: order._id, returnRequestId, amount: requestedAmount });
 
     const existing = await Refund.findOne({ idempotencyKey });
@@ -189,11 +277,14 @@ export const requestRefund = async ({
             userId: order.userId || null,
             vendorId: order.vendorId || order.vendorItems?.[0]?.vendorId || null,
             amount: requestedAmount,
+            gatewayAmount: allocation.gatewayAmount,
+            cashAmount: allocation.cashAmount,
             currency: 'INR',
             reason: String(reason).trim(),
             refundType,
-            method: resolveRefundMethod(order),
+            method: allocation.method,
             status: 'requested',
+            cashStatus: allocation.cashAmount > 0 ? 'pending' : 'settled',
             idempotencyKey,
             gatewayOrderId: order.checkoutSessionId ? null : order.orderId,
             initiatedBy,
@@ -204,7 +295,7 @@ export const requestRefund = async ({
         // caught a concurrent request. Both are the correct outcome.
         if (err?.code === 11000) {
             const found = await Refund.findOne({ idempotencyKey })
-                || await Refund.findOne({ orderId: order._id, status: { $in: ['requested', 'initiated'] } });
+                || await Refund.findOne({ orderId: order._id, status: { $in: ['requested', 'initiated', 'partially_settled'] } });
             if (found) return { refund: found, created: false };
         }
         throw err;
@@ -258,12 +349,24 @@ export const executeRefund = async (refundId) => {
         });
     }
 
-    // COD never had a gateway payment; it must be settled by hand.
-    if (refund.method !== 'gateway') {
+    // COD manual payments never had a gateway payment; they must be settled by hand.
+    if (refund.method === 'manual_cash' || refund.method === 'manual_bank') {
         return revert({
             status: 'requested',
             initiatedAt: null,
             failureReason: 'This order was paid in cash. Settle the refund manually and record the proof reference.',
+        });
+    }
+
+    const gatewayAmountToSend = roundMoney(
+        refund.gatewayAmount != null ? refund.gatewayAmount : refund.amount
+    );
+
+    if (gatewayAmountToSend <= 0) {
+        return revert({
+            status: 'requested',
+            initiatedAt: null,
+            failureReason: 'This refund has no online gateway portion to execute. Settle the cash portion manually.',
         });
     }
 
@@ -306,7 +409,7 @@ export const executeRefund = async (refundId) => {
                 paymentId: paymentRef,
                 orderId: gatewayOrderId,
                 receipt: refund.idempotencyKey,
-                amount: refund.amount,
+                amount: gatewayAmountToSend,
                 notes: { reason: refund.reason },
             });
         } else {
@@ -315,12 +418,18 @@ export const executeRefund = async (refundId) => {
                 // The gateway's refund_id IS our idempotency key — a retry reuses it
                 // and the gateway rejects the duplicate rather than paying twice.
                 refundId: refund.idempotencyKey,
-                amount: refund.amount,
+                amount: gatewayAmountToSend,
                 note: refund.reason,
             });
         }
 
         const settledNow = ['SUCCESS', 'PROCESSED'].includes(String(result.status || '').toUpperCase());
+        const hasPendingCash = Number(refund.cashAmount || 0) > 0 && refund.cashStatus !== 'settled';
+
+        let nextStatus = 'initiated';
+        if (settledNow) {
+            nextStatus = hasPendingCash ? 'partially_settled' : 'succeeded';
+        }
 
         await Refund.updateOne(
             { _id: refund._id },
@@ -330,13 +439,14 @@ export const executeRefund = async (refundId) => {
                     gatewayRefundId: result.cfRefundId || result.refundId || null,
                     gatewayStatus: result.status || null,
                     gatewayRaw: result.raw || {},
-                    ...(settledNow ? { status: 'succeeded', settledAt: new Date() } : {}),
+                    status: nextStatus,
+                    ...(nextStatus === 'succeeded' ? { settledAt: new Date() } : {}),
                     failureReason: '',
                 },
             }
         );
 
-        if (settledNow) await applyRefundReversals(refund._id);
+        if (nextStatus === 'succeeded') await applyRefundReversals(refund._id);
 
         return Refund.findById(refund._id);
     } catch (err) {
@@ -396,12 +506,25 @@ export const settleRefundFromGateway = async ({ gatewayRefundId, refundIdKey, st
 
     if (normalized === 'SUCCESS') {
         if (refund.status === 'succeeded') return refund; // already settled
+        const hasPendingCash = Number(refund.cashAmount || 0) > 0 && refund.cashStatus !== 'settled';
+        const nextStatus = hasPendingCash ? 'partially_settled' : 'succeeded';
+
         await Refund.updateOne(
             { _id: refund._id },
-            { $set: { status: 'succeeded', settledAt: new Date(), gatewayStatus: normalized, gatewayRaw: raw } }
+            {
+                $set: {
+                    status: nextStatus,
+                    gatewayStatus: normalized,
+                    gatewayRaw: raw,
+                    ...(nextStatus === 'succeeded' ? { settledAt: new Date() } : {}),
+                },
+            }
         );
-        await applyRefundReversals(refund._id);
-        await notifyCustomerRefundSettled(refund).catch(() => null);
+
+        if (nextStatus === 'succeeded') {
+            await applyRefundReversals(refund._id);
+            await notifyCustomerRefundSettled(refund).catch(() => null);
+        }
         return Refund.findById(refund._id);
     }
 
@@ -432,25 +555,41 @@ export const markRefundManuallySettled = async ({ refundId, proofRef, actorId, n
         throw new ApiError(400, 'A payment proof reference is required to record a manual settlement.');
     }
 
-    const refund = await Refund.findOneAndUpdate(
-        { _id: refundId, status: { $in: ['requested', 'failed'] } },
+    const refund = await Refund.findById(refundId);
+    if (!refund) throw new ApiError(404, 'Refund not found.');
+
+    const allowedStatuses = ['requested', 'initiated', 'partially_settled', 'failed'];
+    if (!allowedStatuses.includes(refund.status)) {
+        throw new ApiError(409, `Refund is not in a state that can be manually settled (current status: ${refund.status}).`);
+    }
+
+    const isHybrid = refund.method === 'hybrid';
+    const gatewayDone = !isHybrid || Number(refund.gatewayAmount || 0) <= 0 || ['SUCCESS', 'PROCESSED'].includes(String(refund.gatewayStatus || '').toUpperCase());
+
+    const nextStatus = gatewayDone ? (isHybrid ? 'succeeded' : 'manual_settled') : 'partially_settled';
+
+    const updated = await Refund.findOneAndUpdate(
+        { _id: refundId },
         {
             $set: {
-                status: 'manual_settled',
-                settledAt: new Date(),
+                status: nextStatus,
+                cashStatus: 'settled',
+                cashSettledAt: new Date(),
+                cashProofRef: String(proofRef).trim(),
                 manualProofRef: String(proofRef).trim(),
-                initiatedBy: actorId || null,
+                initiatedBy: actorId || refund.initiatedBy || null,
                 failureReason: note ? String(note).slice(0, 500) : '',
+                ...(nextStatus === 'succeeded' || nextStatus === 'manual_settled' ? { settledAt: new Date() } : {}),
             },
         },
         { new: true }
     );
 
-    if (!refund) throw new ApiError(409, 'Refund is not in a state that can be manually settled.');
-
-    await applyRefundReversals(refund._id);
-    await notifyCustomerRefundSettled(refund).catch(() => null);
-    return refund;
+    if (nextStatus === 'succeeded' || nextStatus === 'manual_settled') {
+        await applyRefundReversals(updated._id);
+        await notifyCustomerRefundSettled(updated).catch(() => null);
+    }
+    return updated;
 };
 
 // ── 5. Reversals ──────────────────────────────────────────────────────────────
@@ -482,10 +621,49 @@ export const applyRefundReversals = async (refundId) => {
             const filter = { orderId: order._id, status: { $nin: ['cancelled', 'paid'] } };
             if (refund.vendorId) filter.vendorId = refund.vendorId;
 
-            const result = await Commission.updateMany(filter, {
-                $set: { status: 'cancelled', paidAt: null, settlementId: null },
-            });
-            await mark('commission', { status: 'done', ref: `modified:${result.modifiedCount}` });
+            if (refund.refundType === 'full') {
+                const result = await Commission.updateMany(filter, {
+                    $set: { status: 'cancelled', paidAt: null, settlementId: null },
+                });
+                await mark('commission', { status: 'done', ref: `modified:${result.modifiedCount}` });
+            } else {
+                // Partial return: prorate commission (Defect 8)
+                const comms = await Commission.find(filter);
+                let modifiedCount = 0;
+                for (const comm of comms) {
+                    let returnedSubtotal = 0;
+                    if (refund.returnRequestId) {
+                        const { ReturnRequest } = await import('../../models/ReturnRequest.model.js');
+                        const retReq = await ReturnRequest.findById(refund.returnRequestId).lean();
+                        if (retReq && Array.isArray(retReq.items)) {
+                            for (const it of retReq.items) {
+                                const oi = (order.items || []).find((o) => String(o.productId) === String(it.productId));
+                                returnedSubtotal += Number(oi?.price || 0) * Number(it.quantity || 1);
+                            }
+                        }
+                    }
+                    if (returnedSubtotal <= 0) {
+                        returnedSubtotal = Number(refund.amount || 0);
+                    }
+
+                    const newSubtotal = roundMoney(Math.max(0, comm.subtotal - returnedSubtotal));
+                    if (newSubtotal <= 0) {
+                        comm.status = 'cancelled';
+                        comm.paidAt = null;
+                        comm.settlementId = null;
+                    } else {
+                        const rate = Number(comm.commissionRate || 10);
+                        const newComm = roundMoney((newSubtotal * rate) / 100);
+                        const newEarnings = roundMoney(newSubtotal - newComm);
+                        comm.subtotal = newSubtotal;
+                        comm.commission = newComm;
+                        comm.vendorEarnings = newEarnings;
+                    }
+                    await comm.save();
+                    modifiedCount++;
+                }
+                await mark('commission', { status: 'done', ref: `prorated:${modifiedCount}` });
+            }
         } catch (err) {
             await mark('commission', { status: 'failed', error: String(err?.message || err).slice(0, 300) });
         }
@@ -515,23 +693,16 @@ export const applyRefundReversals = async (refundId) => {
         try {
             const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
             if (isCod && order.deliveryBoyId && order.status === 'delivered') {
-                // For a COD order with online advance payment, the rider collected
-                // `cashOnDeliveryDue` at delivery — NOT the full order.total or the
-                // gateway refund amount (advancePaid). The cash ledger must be reversed
-                // for the amount the rider physically collected in cash.
-                //
-                // For pure COD (no advance), the rider collected the full order; in
-                // that case `refund.amount` (the total refund requested) is correct.
-                const advancePaid = Number(order.codDetails?.advancePaid || 0);
-                const cashCollected = advancePaid > 0
-                    ? Number(order.codDetails?.cashOnDeliveryDue || 0)
-                    : Math.abs(refund.amount);
+                const cashCollected = Number(order.codDetails?.cashCollectedAtDelivery || 0);
+                const cashToDebit = refund.cashAmount > 0
+                    ? refund.cashAmount
+                    : (refund.method === 'manual_cash' ? Math.min(refund.amount, cashCollected || refund.amount) : 0);
 
                 const { postCashAdjustment } = await import('../deliveryCash.service.js');
-                if (cashCollected > 0) {
+                if (cashToDebit > 0) {
                     await postCashAdjustment({
                         deliveryBoyId: order.deliveryBoyId,
-                        amount: -cashCollected,
+                        amount: -cashToDebit,
                         reason: `Return/refund ${refund.refundNumber} for order ${order.orderId}`,
                         adminId: refund.initiatedBy || null,
                     });
@@ -545,7 +716,6 @@ export const applyRefundReversals = async (refundId) => {
         }
     }
 
-
     // 5d. Order refund totals ------------------------------------------------
     try {
         const succeeded = await Refund.aggregate([
@@ -554,22 +724,18 @@ export const applyRefundReversals = async (refundId) => {
         ]);
         const refundedTotal = roundMoney(succeeded[0]?.total || 0);
 
-        // For COD orders where an online advance was captured, the maximum that
-        // can ever be refunded through the gateway is `advancePaid`. Using
-        // `order.total` as the ceiling would mean this order's paymentStatus
-        // could never reach `'refunded'` (since order.total > advancePaid).
         const isCodOrder = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
         const advancePaid = Number(order.codDetails?.advancePaid || 0);
-        const refundCeiling = (isCodOrder && advancePaid > 0)
-            ? advancePaid
-            : roundMoney(order.total || 0);
+        const cashCollected = Number(order.codDetails?.cashCollectedAtDelivery || 0);
+
+        const totalPaid = isCodOrder
+            ? roundMoney(advancePaid + cashCollected)
+            : roundMoney(Number(order.total || 0));
 
         order.refundedAmount = refundedTotal;
-        // Derived, never set directly — this is what let a flag claim a refund
-        // that had not happened.
         if (refundedTotal <= 0) {
             // leave as-is
-        } else if (refundedTotal + 0.01 >= refundCeiling) {
+        } else if (refundedTotal + 0.01 >= totalPaid && totalPaid > 0) {
             order.paymentStatus = 'refunded';
         } else {
             order.paymentStatus = 'partially_refunded';
@@ -578,7 +744,6 @@ export const applyRefundReversals = async (refundId) => {
     } catch (err) {
         console.error(`[Refund] Failed to update order totals for ${refund.refundNumber}: ${err?.message}`);
     }
-
 
     const finalRefund = await Refund.findById(refund._id).lean();
     const failedReversals = Object.entries(finalRefund.reversals || {})
@@ -625,8 +790,6 @@ export const notifyCustomerRefundInitiated = async (refund) => {
         recipientId: refund.userId,
         recipientType: 'user',
         title: 'Refund initiated',
-        // Deliberately does not say the money has arrived. The previous flows
-        // claimed completion at the moment a flag was set.
         message:
             `A refund of ₹${roundMoney(refund.amount).toFixed(2)} for order ${refund.orderNumber} has been initiated `
             + 'and is being processed.',
@@ -646,7 +809,11 @@ export const requestAndTryExecute = async (params) => {
     if (created) await notifyCustomerRefundInitiated(refund).catch(() => null);
 
     const policy = await getRefundPolicy();
-    if (policy.executionEnabled && refund.status === 'requested' && refund.method === 'gateway') {
+    const shouldExecute = policy.executionEnabled && refund.status === 'requested' && (
+        refund.method === 'gateway' || (refund.method === 'hybrid' && Number(refund.gatewayAmount || 0) > 0)
+    );
+
+    if (shouldExecute) {
         try {
             return await executeRefund(refund._id);
         } catch (err) {

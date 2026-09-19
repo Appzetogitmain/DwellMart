@@ -16,6 +16,22 @@ test('Razorpay Service - Credentials resolution', async () => {
   assert.ok(creds.environment === 'test' || creds.environment === 'live', 'Should have a valid environment');
 });
 
+test('Razorpay Service - Webhook secret credentials resolution', async () => {
+  const dummySecret = 'test_dummy_wh_secret_abc';
+  const orig = process.env.RAZORPAY_WEBHOOK_SECRET;
+  try {
+    process.env.RAZORPAY_WEBHOOK_SECRET = dummySecret;
+    const creds = await getRazorpayCredentials();
+    assert.strictEqual(creds.webhookSecret, dummySecret, 'Must read RAZORPAY_WEBHOOK_SECRET from environment');
+  } finally {
+    if (orig !== undefined) {
+      process.env.RAZORPAY_WEBHOOK_SECRET = orig;
+    } else {
+      delete process.env.RAZORPAY_WEBHOOK_SECRET;
+    }
+  }
+});
+
 test('Razorpay Service - Client payment signature verification', async () => {
   const testKeySecret = 'test_secret_12345';
   process.env.RAZORPAY_KEY_SECRET = testKeySecret;

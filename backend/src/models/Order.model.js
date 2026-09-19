@@ -231,10 +231,11 @@ const orderSchema = new mongoose.Schema(
          * Cash on Delivery details (advance fee payment tracking & doorstep cash due).
          */
         codDetails: {
-            advancePaid:       { type: Number, default: 0 },
-            cashOnDeliveryDue: { type: Number, default: 0 },
-            advancePaymentId:  { type: String, trim: true },
-            advanceGateway:    { type: String, trim: true },
+            advancePaid:              { type: Number, default: 0 },
+            cashOnDeliveryDue:        { type: Number, default: 0 },
+            cashCollectedAtDelivery:  { type: Number, default: 0 },
+            advancePaymentId:         { type: String, trim: true },
+            advanceGateway:           { type: String, trim: true },
         },
         /**
          * Quick Commerce packaging fee, at order level.
