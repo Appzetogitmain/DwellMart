@@ -27,6 +27,9 @@ const defaultShippingSettings = {
   shippingMethods: ['standard'],
 };
 
+// In-flight initialization Promise lock to prevent concurrent duplicate API requests
+let inFlightInitPromise = null;
+
 export const useSettingsStore = create((set, get) => ({
   settings: {
     general: defaultGeneralSettings,
@@ -39,66 +42,89 @@ export const useSettingsStore = create((set, get) => ({
   isLoading: false,
   isInitialized: false,
 
-  // Initialize and fetch settings from API
+  // Initialize and fetch settings from API (single-flight deduplicated)
   initialize: async () => {
-    if (get().isInitialized && get().settings?.general?.storeName && get().settings?.shipping?.freeShippingThreshold !== undefined) return;
+    if (get().isInitialized && get().settings?.general?.storeName && get().settings?.shipping?.freeShippingThreshold !== undefined) {
+      return get().settings;
+    }
+
+    if (inFlightInitPromise) {
+      return inFlightInitPromise;
+    }
+
     set({ isLoading: true });
-    try {
-      const isAdmin = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem('adminToken'));
-      const endpoint = isAdmin ? "/admin/settings/general" : "/settings/general";
-      const res = await api.get(endpoint);
-      const data = res?.data || res || {};
-      const mergedGeneral = {
-        ...defaultGeneralSettings,
-        ...data,
-        socialMedia: {
-          ...defaultGeneralSettings.socialMedia,
-          ...(data.socialMedia || {}),
-        },
-      };
 
-      let features = {};
-      let reviews = {};
-      let shipping = { ...defaultShippingSettings };
+    inFlightInitPromise = (async () => {
       try {
-        const fRes = await api.get("/settings/features");
-        features = fRes?.data || fRes || {};
-      } catch (e) {}
+        const isAdmin = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem('adminToken'));
+        const endpoint = isAdmin ? "/admin/settings/general" : "/settings/general";
+        const res = await api.get(endpoint);
+        const data = res?.data || res || {};
+        const mergedGeneral = {
+          ...defaultGeneralSettings,
+          ...data,
+          socialMedia: {
+            ...defaultGeneralSettings.socialMedia,
+            ...(data.socialMedia || {}),
+          },
+        };
 
-      try {
-        const rRes = await api.get("/settings/reviews");
-        reviews = rRes?.data || rRes || {};
-      } catch (e) {}
+        let features = {};
+        let reviews = {};
+        let shipping = { ...defaultShippingSettings };
+        try {
+          const fRes = await api.get("/settings/features");
+          features = fRes?.data || fRes || {};
+        } catch (e) {}
 
-      try {
-        const sEndpoint = isAdmin ? "/admin/settings/shipping" : "/settings/shipping";
-        const sRes = await api.get(sEndpoint);
-        const sData = sRes?.data?.value || sRes?.data?.data || sRes?.data || sRes || {};
-        if (sData && typeof sData === 'object' && Object.keys(sData).length > 0) {
-          shipping = {
-            ...shipping,
-            ...sData,
-            freeShippingThreshold: sData.freeShippingThreshold !== undefined ? Number(sData.freeShippingThreshold) : shipping.freeShippingThreshold,
-            defaultShippingRate: sData.defaultShippingRate !== undefined ? Number(sData.defaultShippingRate) : shipping.defaultShippingRate,
-          };
-        }
-      } catch (e) {}
+        try {
+          const rRes = await api.get("/settings/reviews");
+          reviews = rRes?.data || rRes || {};
+        } catch (e) {}
 
-      set({
-        settings: {
+        try {
+          const sEndpoint = isAdmin ? "/admin/settings/shipping" : "/settings/shipping";
+          const sRes = await api.get(sEndpoint);
+          const sData = sRes?.data?.value || sRes?.data?.data || sRes?.data || sRes || {};
+          if (sData && typeof sData === 'object' && Object.keys(sData).length > 0) {
+            shipping = {
+              ...shipping,
+              ...sData,
+              freeShippingThreshold: sData.freeShippingThreshold !== undefined ? Number(sData.freeShippingThreshold) : shipping.freeShippingThreshold,
+              defaultShippingRate: sData.defaultShippingRate !== undefined ? Number(sData.defaultShippingRate) : shipping.defaultShippingRate,
+            };
+          }
+        } catch (e) {}
+
+        const finalSettings = {
           ...get().settings,
           general: mergedGeneral,
           features,
           reviews,
           shipping,
-        },
-        isLoading: false,
-        isInitialized: true,
-      });
-    } catch (error) {
-      set({ isLoading: false, isInitialized: true });
-    }
+        };
+
+        set({
+          settings: finalSettings,
+          isLoading: false,
+          isInitialized: true,
+        });
+
+        return finalSettings;
+      } catch (error) {
+        // Do not permanently mark initialization as successful on error; allow retry
+        set({ isLoading: false, isInitialized: false });
+        return get().settings;
+      } finally {
+        inFlightInitPromise = null;
+      }
+    })();
+
+    return inFlightInitPromise;
   },
+
+  // Alias for backward compatibility
+  initializeSettings: async () => get().initialize(),
 
   // Save general settings via API
   updateGeneralSettings: async (generalData) => {

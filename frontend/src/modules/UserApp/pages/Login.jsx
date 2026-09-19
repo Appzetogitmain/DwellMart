@@ -33,7 +33,7 @@ const MobileLogin = () => {
     'Password is required',
     'Password must be at least 6 characters',
     'Remember me',
-    'Forget password?',
+    'Forgot password?',
     'Logging in...',
     'Log In',
     "Don't have an account?",
@@ -255,7 +255,7 @@ const MobileLogin = () => {
                     to="/forgot-password"
                     className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 font-medium transition-colors"
                   >
-                    {t('Forget password?')}
+                    {t('Forgot password?')}
                   </Link>
                 </div>
 

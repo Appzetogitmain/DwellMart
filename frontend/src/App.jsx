@@ -12,8 +12,8 @@ import CartDrawer from "./shared/components/Cart/CartDrawer";
 import ProtectedRoute from "./shared/components/Auth/ProtectedRoute";
 import ErrorBoundary from "./shared/components/ErrorBoundary/ErrorBoundary";
 import { ToastProvider } from "./shared/components/ui/Toast";
-import AdminLogin from "./modules/Admin/pages/Login";
 // ─── Admin module — lazy (large chunk, only loaded after /admin/login) ────────
+const AdminLogin = lazy(() => import("./modules/Admin/pages/Login"));
 const AdminProtectedRoute = lazy(() => import("./modules/Admin/components/AdminProtectedRoute"));
 const AdminLayout = lazy(() => import("./modules/Admin/components/Layout/AdminLayout"));
 const Dashboard = lazy(() => import("./modules/Admin/pages/Dashboard"));
@@ -160,13 +160,13 @@ import ShopWithConfidence from "./modules/UserApp/pages/ShopWithConfidence";
 import StaticPage from "./modules/UserApp/pages/StaticPage";
 import Shop from "./modules/UserApp/pages/Shop";
 import CustomerSupport from "./modules/UserApp/pages/Support";
-// ─── Delivery Routes — auth pages eager, app pages lazy ─────────────────────
-import DeliveryLogin from "./modules/Delivery/pages/Login";
-import DeliveryRegister from "./modules/Delivery/pages/Register";
-import DeliveryCashSettlements from "./modules/Delivery/pages/CashSettlements";
-import DeliveryWallet from "./modules/Delivery/pages/Wallet";
-import DeliveryPrivacyPolicy from "./modules/Delivery/pages/PrivacyPolicy";
-import DeliveryContactUs from "./modules/Delivery/pages/ContactUs";
+// ─── Delivery Routes — lazy loaded ──────────────────────────────────────────
+const DeliveryLogin = lazy(() => import("./modules/Delivery/pages/Login"));
+const DeliveryRegister = lazy(() => import("./modules/Delivery/pages/Register"));
+const DeliveryCashSettlements = lazy(() => import("./modules/Delivery/pages/CashSettlements"));
+const DeliveryWallet = lazy(() => import("./modules/Delivery/pages/Wallet"));
+const DeliveryPrivacyPolicy = lazy(() => import("./modules/Delivery/pages/PrivacyPolicy"));
+const DeliveryContactUs = lazy(() => import("./modules/Delivery/pages/ContactUs"));
 const DeliveryProtectedRoute = lazy(() => import("./modules/Delivery/components/DeliveryProtectedRoute"));
 const DeliveryLayout = lazy(() => import("./modules/Delivery/components/Layout/DeliveryLayout"));
 const DeliveryDashboard = lazy(() => import("./modules/Delivery/pages/Dashboard"));
@@ -175,14 +175,14 @@ const DeliveryOrderDetail = lazy(() => import("./modules/Delivery/pages/OrderDet
 const DeliveryProfile = lazy(() => import("./modules/Delivery/pages/Profile"));
 const DeliveryNotifications = lazy(() => import("./modules/Delivery/pages/Notifications"));
 const DeliverySupport = lazy(() => import("./modules/Delivery/pages/Support"));
-// ─── Vendor Routes — auth pages eager, app pages lazy ────────────────────────
-import VendorLogin from "./modules/Vendor/pages/Login";
-import VendorRegister from "./modules/Vendor/pages/Register";
-import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
-import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
-import VendorRenewSubscription from "./modules/Vendor/pages/VendorRenewSubscription";
-import VendorPrivacyPolicy from "./modules/Vendor/pages/PrivacyPolicy";
-import VendorContactUs from "./modules/Vendor/pages/ContactUs";
+// ─── Vendor Routes — lazy loaded ───────────────────────────────────────────
+const VendorLogin = lazy(() => import("./modules/Vendor/pages/Login"));
+const VendorRegister = lazy(() => import("./modules/Vendor/pages/Register"));
+const VendorForgotPassword = lazy(() => import("./modules/Vendor/pages/ForgotPassword"));
+const VendorResetPassword = lazy(() => import("./modules/Vendor/pages/ResetPassword"));
+const VendorRenewSubscription = lazy(() => import("./modules/Vendor/pages/VendorRenewSubscription"));
+const VendorPrivacyPolicy = lazy(() => import("./modules/Vendor/pages/PrivacyPolicy"));
+const VendorContactUs = lazy(() => import("./modules/Vendor/pages/ContactUs"));
 const VendorProtectedRoute = lazy(() => import("./modules/Vendor/components/VendorProtectedRoute"));
 const VendorActionRoute = lazy(() => import("./modules/Vendor/components/VendorActionRoute"));
 const VendorLayout = lazy(() => import("./modules/Vendor/components/Layout/VendorLayout"));

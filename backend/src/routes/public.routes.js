@@ -4,6 +4,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
@@ -28,6 +29,7 @@ import { checkDeliverability } from '../services/shipping/deliverability.service
 import { buildCatalogFilter } from '../services/catalogQuery.service.js';
 import { findNearbyVendors, findVendorsByPincode } from '../services/quickCommerce.service.js';
 import { isWholesaleMarketplaceEnabled, isQuickCommerceEnabled } from '../services/featureFlags.service.js';
+import { cacheWrap, cacheInvalidatePrefix } from '../utils/ttlCache.js';
 import {
     buildPublicCatalogGuard,
     isProductPubliclyVisible,
@@ -177,21 +179,47 @@ const collectCampaignProductIds = (campaigns = []) => {
     return [...idSet];
 };
 
-const getActiveSaleProductIds = async (type = null) => {
-    const now = new Date();
-    const query = {
-        ...activeCampaignWindowQuery(now),
-        type: type
-            ? String(type || '').trim()
-            : { $in: EXCLUSIVE_SALE_CAMPAIGN_TYPES },
-    };
+const VENDOR_CACHE_TTL_MS = 60_000; // 60s TTL for public catalog eligible vendor lookups
+const CAMPAIGN_CACHE_TTL_MS = 15_000; // 15s bounded TTL for active sale campaign product IDs
 
-    const campaigns = await Campaign.find(query)
-        .select('productIds')
-        .lean();
-
-    return collectCampaignProductIds(campaigns);
+export const getEligibleVendorIds = async (channelPath) => {
+    const cacheKey = `vendors:eligible:${channelPath}`;
+    return cacheWrap(cacheKey, VENDOR_CACHE_TTL_MS, async () => {
+        const query = {
+            status: 'approved',
+            isActive: { $ne: false },
+            [`channels.${channelPath}.status`]: 'active',
+        };
+        if (channelPath === 'quickCommerce') {
+            query.isVerified = true;
+        }
+        const eligibleVendors = await Vendor.find(query).select('_id').lean();
+        return eligibleVendors.map((v) => String(v._id));
+    });
 };
+
+export const invalidateEligibleVendorsCache = () => cacheInvalidatePrefix('vendors:eligible');
+
+const getActiveSaleProductIds = async (type = null) => {
+    const cacheKey = type ? `campaigns:activeSaleProductIds:${type}` : 'campaigns:activeSaleProductIds:all';
+    return cacheWrap(cacheKey, CAMPAIGN_CACHE_TTL_MS, async () => {
+        const now = new Date();
+        const query = {
+            ...activeCampaignWindowQuery(now),
+            type: type
+                ? String(type || '').trim()
+                : { $in: EXCLUSIVE_SALE_CAMPAIGN_TYPES },
+        };
+
+        const campaigns = await Campaign.find(query)
+            .select('productIds')
+            .lean();
+
+        return collectCampaignProductIds(campaigns);
+    });
+};
+
+export const invalidateCampaignProductIdsCache = () => cacheInvalidatePrefix('campaigns:activeSaleProductIds');
 
 // Helper to assemble full catalog filter from query params
 const buildCatalogQueryFilter = async (req) => {
@@ -255,13 +283,7 @@ const buildCatalogQueryFilter = async (req) => {
     if (requestExperience === EXPERIENCES.QUICK_COMMERCE) {
         serviceableVendorIds = await resolveQuickCommerceVendorIds(req.query || {});
         if (serviceableVendorIds === undefined || (Array.isArray(serviceableVendorIds) && serviceableVendorIds.length === 0)) {
-            const allQcVendors = await Vendor.find({
-                isVerified: true,
-                isActive: { $ne: false },
-                status: 'approved',
-                'channels.quickCommerce.status': 'active',
-            }).select('_id').lean();
-            serviceableVendorIds = allQcVendors.map((v) => String(v._id));
+            serviceableVendorIds = await getEligibleVendorIds('quickCommerce');
         }
     }
 
@@ -269,12 +291,7 @@ const buildCatalogQueryFilter = async (req) => {
         const channelPath = requestExperience === EXPERIENCES.WHOLESALE || sellingChannel === 'wholesale'
             ? 'wholesale'
             : 'retail';
-        const eligibleVendors = await Vendor.find({
-            status: 'approved',
-            isActive: { $ne: false },
-            [`channels.${channelPath}.status`]: 'active',
-        }).select('_id').lean();
-        serviceableVendorIds = eligibleVendors.map((v) => String(v._id));
+        serviceableVendorIds = await getEligibleVendorIds(channelPath);
     }
 
     const wholesaleEnabled = await isWholesaleMarketplaceEnabled();
@@ -456,6 +473,36 @@ const buildCatalogQueryFilter = async (req) => {
     return { filter, requestExperience, wholesaleEnabled, serviceableVendorIds, categoryIds };
 };
 
+const CATALOG_COUNT_CACHE_TTL_MS = 30_000;
+
+export const invalidateCatalogCountCache = () => cacheInvalidatePrefix('catalog:count:');
+
+const canonicalizeFilter = (val) => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'boolean' || typeof val === 'number' || typeof val === 'string') return val;
+    if (val instanceof RegExp) return `__REGEX__:${val.source}:${val.flags}`;
+    if (val instanceof Date) return `__DATE__:${val.toISOString()}`;
+    if (typeof val?.toHexString === 'function') return String(val.toHexString());
+    if (Array.isArray(val)) return val.map(canonicalizeFilter);
+    if (typeof val === 'object') {
+        const sortedKeys = Object.keys(val).sort();
+        const result = {};
+        for (const k of sortedKeys) {
+            const v = val[k];
+            if (v !== undefined) {
+                result[k] = canonicalizeFilter(v);
+            }
+        }
+        return result;
+    }
+    return String(val);
+};
+
+const getCatalogCountCacheKey = (filter) => {
+    const canonical = JSON.stringify(canonicalizeFilter(filter));
+    return 'catalog:count:' + crypto.createHash('sha256').update(canonical).digest('hex');
+};
+
 // GET /api/products — list with filters
 const listProducts = asyncHandler(async (req, res) => {
     const {
@@ -478,6 +525,8 @@ const listProducts = asyncHandler(async (req, res) => {
         rating: { rating: -1 },
     };
 
+    const countCacheKey = getCatalogCountCacheKey(filter);
+
     const [products, total] = await Promise.all([
         Product.find(filter)
             .select(PRODUCT_LIST_SELECT)
@@ -488,7 +537,7 @@ const listProducts = asyncHandler(async (req, res) => {
             .skip(skip)
             .limit(numericLimit)
             .lean(),
-        Product.countDocuments(filter),
+        cacheWrap(countCacheKey, CATALOG_COUNT_CACHE_TTL_MS, () => Product.countDocuments(filter)),
     ]);
 
     const pages = Math.max(1, Math.ceil(total / numericLimit));

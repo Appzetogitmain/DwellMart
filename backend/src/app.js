@@ -238,12 +238,37 @@ app.use(
     })
 );
 
+// Helper to safely encode HTML special characters and prevent XSS injection
+const escapeHtml = (str) =>
+    String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+
 // Fallback for missing uploaded static files
 app.use('/uploads', (req, res) => {
     if (req.accepts('html')) {
-        const filename = req.path.split('/').pop() || 'file';
+        let rawFilename = req.path.split('/').pop() || 'file';
+        try {
+            rawFilename = decodeURIComponent(rawFilename);
+        } catch {
+            // Keep rawFilename if URI component is malformed
+        }
+        const safeFilename = escapeHtml(rawFilename);
+        const clientUrl = (process.env.CLIENT_URL || '').replace(/\/$/, '') || '/';
+        const safeReturnUrl = escapeHtml(clientUrl);
+
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';");
+        res.setHeader(
+            'Content-Security-Policy',
+            "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox"
+        );
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+
         return res.status(404).send(`
             <!DOCTYPE html>
             <html lang="en">
@@ -259,46 +284,20 @@ app.use('/uploads', (req, res) => {
                     p { font-size: 0.875rem; color: rgba(255,255,255,0.7); line-height: 1.6; margin: 0 0 1rem; }
                     .filename { font-family: monospace; background: rgba(255,255,255,0.08); padding: 0.2rem 0.5rem; border-radius: 0.375rem; color: #ffd042; font-size: 0.8rem; word-break: break-all; }
                     .actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
-                    .btn { cursor: pointer; border: none; background: #ffc101; color: #000000; font-weight: 700; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; transition: background 0.2s; }
+                    .btn { cursor: pointer; border: none; display: inline-block; text-decoration: none; background: #ffc101; color: #000000; font-weight: 700; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; transition: background 0.2s; }
                     .btn:hover { background: #ffd042; }
-                    .btn-secondary { cursor: pointer; border: none; display: inline-block; text-decoration: none; background: rgba(255, 255, 255, 0.1); color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-size: 0.875rem; transition: background 0.2s; }
-                    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
                 </style>
             </head>
             <body>
                 <div class="card">
                     <div class="icon">!</div>
                     <h1>Document File Unavailable</h1>
-                    <p>The document file <span class="filename">${filename}</span> is not available on the server.</p>
+                    <p>The document file <span class="filename">${safeFilename}</span> is not available on the server.</p>
                     <p>This file was uploaded during initial testing before upload directories were initialized. The vendor can re-upload the document from their portal.</p>
                     <div class="actions">
-                        <button type="button" id="closeBtn" class="btn">Close Window</button>
-                        <button type="button" id="returnBtn" class="btn-secondary">Return to Admin Panel</button>
+                        <a href="${safeReturnUrl}" class="btn">Return to Storefront</a>
                     </div>
                 </div>
-                <script>
-                    document.getElementById('returnBtn').addEventListener('click', function() {
-                        if (document.referrer && document.referrer.length > 5) {
-                            window.location.href = document.referrer;
-                        } else {
-                            window.location.href = 'http://localhost:3000/admin/vendors';
-                        }
-                    });
-                    document.getElementById('closeBtn').addEventListener('click', function() {
-                        try {
-                            window.close();
-                        } catch (e) {}
-                        setTimeout(function() {
-                            if (!window.closed) {
-                                if (document.referrer && document.referrer.length > 5) {
-                                    window.location.href = document.referrer;
-                                } else {
-                                    window.location.href = 'http://localhost:3000/admin/vendors';
-                                }
-                            }
-                        }, 100);
-                    });
-                </script>
             </body>
             </html>
         `);

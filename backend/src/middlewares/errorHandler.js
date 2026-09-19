@@ -46,7 +46,7 @@ const errorHandler = (err, req, res, next) => {
         console.error(`[ReqID: ${requestId}] [${req.method} ${req.originalUrl}]`, err);
     }
 
-    // Standardized Enterprise Response Payload
+    // Standardized Enterprise Response Payload (stack traces and internal details strictly server-side)
     const response = {
         success: false,
         code: error.code || ERROR_CODES.SERVER_ERROR,
@@ -54,13 +54,6 @@ const errorHandler = (err, req, res, next) => {
         requestId,
         timestamp,
         ...(error.errors?.length > 0 && { errors: error.errors }),
-        ...(process.env.NODE_ENV === 'development' && {
-            debug: {
-                name: err.name,
-                rawMessage: err.message,
-                stack: err.stack,
-            }
-        }),
     };
 
     res.status(error.statusCode || 500).json(response);

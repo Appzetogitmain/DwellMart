@@ -348,7 +348,7 @@ const MobileHome = () => {
     try {
       const [productsRes, vendorsRes, brandsRes, bannersRes, testimonialsRes] =
         await Promise.allSettled([
-          api.get("/products", { params: { page: 1, limit: 120 } }),
+          api.get("/products", { params: { page: 1, limit: 36 } }),
           api.get("/vendors/best-sellers", {
             params: { limit: 8 },
           }),

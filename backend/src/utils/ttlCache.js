@@ -11,6 +11,7 @@
  */
 
 const store = new Map();
+const inFlight = new Map();
 
 /** Read a live value, or undefined when absent or expired. */
 export const cacheGet = (key) => {
@@ -34,7 +35,10 @@ export const cacheSet = (key, value, ttlMs) => {
     return value;
 };
 
-export const cacheInvalidate = (key) => store.delete(key);
+export const cacheInvalidate = (key) => {
+    inFlight.delete(key);
+    return store.delete(key);
+};
 
 /** Drop every key beginning with `prefix` — used when a settings category changes. */
 export const cacheInvalidatePrefix = (prefix) => {
@@ -45,13 +49,21 @@ export const cacheInvalidatePrefix = (prefix) => {
             removed += 1;
         }
     }
+    for (const key of inFlight.keys()) {
+        if (key.startsWith(prefix)) {
+            inFlight.delete(key);
+        }
+    }
     return removed;
 };
 
-export const cacheClear = () => store.clear();
+export const cacheClear = () => {
+    inFlight.clear();
+    store.clear();
+};
 
 /**
- * Read-through helper.
+ * Read-through helper with single-flight in-flight deduplication.
  *
  * A `ttlMs` of 0 bypasses the cache entirely, which is how caching is disabled
  * at runtime during an incident without a deploy.
@@ -60,9 +72,23 @@ export const cacheWrap = async (key, ttlMs, loader) => {
     if (!Number.isFinite(ttlMs) || ttlMs <= 0) return loader();
     const hit = cacheGet(key);
     if (hit !== undefined) return hit;
-    const value = await loader();
-    cacheSet(key, value, ttlMs);
-    return value;
+
+    if (inFlight.has(key)) {
+        return inFlight.get(key);
+    }
+
+    const promise = (async () => {
+        try {
+            const value = await loader();
+            cacheSet(key, value, ttlMs);
+            return value;
+        } finally {
+            inFlight.delete(key);
+        }
+    })();
+
+    inFlight.set(key, promise);
+    return promise;
 };
 
-export const cacheStats = () => ({ size: store.size });
+export const cacheStats = () => ({ size: store.size, inFlight: inFlight.size });

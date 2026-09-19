@@ -5,12 +5,23 @@ import { FiHome, FiGrid, FiSearch, FiHeart, FiUser } from "react-icons/fi";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
 import useKeyboardVisible from "../../hooks/useKeyboardVisible";
+import { usePageTranslation } from "../../../../hooks/usePageTranslation";
+
+const NAV_TRANSLATION_KEYS = [
+  "Home",
+  "Categories",
+  "Search",
+  "Wishlist",
+  "Account",
+  "Mobile Navigation",
+];
 
 const MobileBottomNav = () => {
   const location = useLocation();
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const { isAuthenticated } = useAuthStore();
   const isKeyboardVisible = useKeyboardVisible();
+  const { getTranslatedText: t } = usePageTranslation(NAV_TRANSLATION_KEYS);
 
   if (isKeyboardVisible) {
     return null;
@@ -57,16 +68,24 @@ const MobileBottomNav = () => {
   };
 
   const navContent = (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-l border-r border-accent-200/30 z-[9999] safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.05)] md:hidden">
+    <nav
+      aria-label={t("Mobile Navigation")}
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-l border-r border-accent-200/30 z-[9999] safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.05)] md:hidden">
       <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
+          const translatedLabel = t(item.label);
+          const accessibleName = item.badge
+            ? `${translatedLabel} (${item.badge > 9 ? "9+" : item.badge})`
+            : translatedLabel;
 
           return (
             <Link
               key={item.path}
               to={item.path}
+              aria-label={accessibleName}
+              aria-current={active ? "page" : undefined}
               className="flex items-center justify-center flex-1 h-full relative">
               <motion.div
                 className="relative flex items-center justify-center w-12 h-12"
@@ -75,6 +94,7 @@ const MobileBottomNav = () => {
                 {active && (
                   <motion.div
                     layoutId="activeTab"
+                    aria-hidden="true"
                     className="absolute inset-0 bg-primary-50 rounded-full"
                     initial={false}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -89,6 +109,7 @@ const MobileBottomNav = () => {
                   animate={active ? "active" : "inactive"}
                   transition={{ duration: 0.2 }}>
                   <Icon
+                    aria-hidden="true"
                     className="text-2xl"
                     style={{
                       fill: "none",
@@ -102,6 +123,7 @@ const MobileBottomNav = () => {
                 {item.badge && (
                   <motion.span
                     key={item.badge}
+                    aria-hidden="true"
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-white shadow-md z-20 flex items-center justify-center"

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
@@ -21,6 +22,8 @@ import { marketplaceEventBus, MARKETPLACE_EVENTS } from '../../../services/event
 import { emitToRoom, emitToUserRoom } from '../../../socket.js';
 import Shipment from '../../../models/Shipment.model.js';
 import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.service.js';
+import { reverseCouponUsage } from '../../../services/coupon.service.js';
+import { restoreOrderInventory } from '../../../services/inventoryRestoration.service.js';
 import { parsePagination } from '../../../utils/pagination.js';
 
 /**
@@ -274,44 +277,52 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
         }
     }
 
-    if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'confirmed', 'processing', 'packed', 'shipped'].includes(previousStatus)) {
-        for (const item of order.items || []) {
-            const product = await Product.findById(item.productId);
-            if (!product) continue;
-            
-            product.stockQuantity += Number(item.quantity || 0);
-            
-            // Restore variant specific stock if applicable
-            if (item.variantKey && product.variants?.stockMap) {
-                const currentVariantStock = product.variants.stockMap.get(item.variantKey) || 0;
-                product.variants.stockMap.set(item.variantKey, currentVariantStock + Number(item.quantity || 0));
-            }
-            
-            if (product.stockQuantity <= 0) product.stock = 'out_of_stock';
-            else if (product.stockQuantity <= product.lowStockThreshold) product.stock = 'low_stock';
-            else product.stock = 'in_stock';
-            await product.save();
-        }
-    }
-
-    await order.save();
-
     if (nextStatus === 'cancelled') {
-        // Reverse vendor earnings visibility for this order.
-        // Keep it idempotent by only updating commissions not already cancelled.
-        await Commission.updateMany(
-            {
-                orderId: order._id,
-                status: { $ne: 'cancelled' },
-            },
-            {
-                $set: {
-                    status: 'cancelled',
-                    paidAt: null,
-                    settlementId: null,
-                },
-            }
-        );
+        const session = await mongoose.startSession();
+        try {
+            await session.withTransaction(async () => {
+                if (previousStatus !== 'cancelled' && ['pending', 'confirmed', 'processing', 'packed', 'shipped'].includes(previousStatus)) {
+                    // P2-DB-02 FIX: Restore inventory via batched 2-query optimization (replaces 2N sequential queries)
+                    await restoreOrderInventory(order.items, { session });
+                }
+
+                await order.save({ session });
+
+                // Reverse vendor earnings visibility for this order.
+                // Keep it idempotent by only updating commissions not already cancelled.
+                await Commission.updateMany(
+                    {
+                        orderId: order._id,
+                        status: { $ne: 'cancelled' },
+                    },
+                    {
+                        $set: {
+                            status: 'cancelled',
+                            paidAt: null,
+                            settlementId: null,
+                        },
+                    },
+                    { session }
+                );
+
+                // P2-BIZ-01 FIX: Reverse coupon consumption on order cancellation
+                if (order.couponCode) {
+                    await reverseCouponUsage(
+                        order.couponCode,
+                        {
+                            userId: order.userId?._id || order.userId,
+                            orderId: order._id,
+                            checkoutSessionId: order.checkoutSessionId,
+                        },
+                        { session }
+                    );
+                }
+            });
+        } finally {
+            await session.endSession();
+        }
+    } else {
+        await order.save();
     }
 
     const notificationTasks = [];

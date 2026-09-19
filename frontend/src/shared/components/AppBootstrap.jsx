@@ -13,7 +13,7 @@ const BRANDS_CACHE_KEY = "user-catalog-brands-cache";
 // Sized to stay well inside the ~5MB localStorage budget. 500 products of full
 // documents regularly exceeded it, and the resulting QuotaExceededError took
 // the entire sync down with it.
-const PRODUCT_CACHE_LIMIT = 100;
+const PRODUCT_CACHE_LIMIT = 36;
 const VENDOR_CACHE_LIMIT = 60;
 
 const normalizeProduct = (raw) => {

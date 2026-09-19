@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Coupon from '../models/Coupon.model.js';
 import CouponUsage from '../models/CouponUsage.model.js';
 import ApiError from '../utils/ApiError.js';
@@ -144,3 +145,147 @@ export const incrementCouponUsage = async (codeOrId, context = {}) => {
 
     await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
 };
+
+/**
+ * Reverse coupon consumption on order cancellation.
+ *
+ * Idempotently removes or reverses CouponUsage and decrements Coupon.usedCount.
+ * For multi-order splits, only reverses when all sibling orders in the
+ * checkout session are cancelled.
+ *
+ * @param {string|mongoose.Types.ObjectId} codeOrId
+ * @param {{
+ *   userId?: string|mongoose.Types.ObjectId,
+ *   orderId?: string|mongoose.Types.ObjectId,
+ *   checkoutSessionId?: string|mongoose.Types.ObjectId,
+ *   isLegacy?: boolean,
+ *   isRetry?: boolean
+ * }} [context]
+ * @param {{ session?: import('mongoose').ClientSession }} [options]
+ * @returns {Promise<{ reversed: boolean, reason?: string, removedUsage?: boolean, decremented?: boolean }>}
+ */
+export const reverseCouponUsage = async (codeOrId, context = {}, options = {}) => {
+    if (!codeOrId) return { reversed: false, reason: 'NO_CODE' };
+
+    const session = options.session || null;
+
+    // 1. Resolve coupon (handles both code and _id, active and inactive)
+    let couponQuery = Coupon.findOne({ code: String(codeOrId).toUpperCase() });
+    if (session) couponQuery = couponQuery.session(session);
+    let coupon = await couponQuery;
+
+    if (!coupon && String(codeOrId).match(/^[a-fA-F0-9]{24}$/)) {
+        let byIdQuery = Coupon.findById(codeOrId);
+        if (session) byIdQuery = byIdQuery.session(session);
+        coupon = await byIdQuery;
+    }
+
+    // 2. Resolve checkout session (if provided) and check for active sibling orders
+    let sessionObjectId = null;
+    let sessionCode = null;
+    let sessionOrderIds = [];
+
+    if (context.checkoutSessionId) {
+        if (mongoose.isValidObjectId(context.checkoutSessionId)) {
+            sessionObjectId = new mongoose.Types.ObjectId(String(context.checkoutSessionId));
+        } else {
+            sessionCode = String(context.checkoutSessionId);
+        }
+
+        try {
+            const { default: CheckoutSession } = await import('../models/CheckoutSession.model.js');
+            let csQuery = sessionObjectId
+                ? CheckoutSession.findById(sessionObjectId)
+                : CheckoutSession.findOne({ sessionId: sessionCode });
+            if (session) csQuery = csQuery.session(session);
+            const csDoc = await csQuery.lean();
+            if (csDoc) {
+                sessionObjectId = csDoc._id;
+                sessionCode = csDoc.sessionId;
+                if (Array.isArray(csDoc.orderIds)) {
+                    sessionOrderIds = csDoc.orderIds;
+                }
+            }
+        } catch {
+            // CheckoutSession lookup fallback
+        }
+
+        if (sessionObjectId) {
+            const { default: Order } = await import('../models/Order.model.js');
+            let siblingQuery = Order.exists({
+                checkoutSessionId: sessionObjectId,
+                _id: { $ne: context.orderId },
+                status: { $ne: 'cancelled' },
+            });
+            if (session) siblingQuery = siblingQuery.session(session);
+            const hasActiveSiblings = await siblingQuery;
+
+            if (hasActiveSiblings) {
+                return { reversed: false, reason: 'ACTIVE_SIBLING_ORDERS_EXIST' };
+            }
+        }
+    }
+
+    // 3. Remove CouponUsage record idempotently
+    let removedUsage = false;
+    const hasUsageTarget = Boolean(context.orderId || context.checkoutSessionId);
+    if (hasUsageTarget) {
+        const usageFilters = [];
+        if (context.orderId) {
+            usageFilters.push({ orderId: context.orderId });
+        }
+        if (sessionCode) {
+            usageFilters.push({ checkoutSessionId: sessionCode });
+        }
+        if (sessionObjectId) {
+            usageFilters.push({ checkoutSessionId: String(sessionObjectId) });
+        }
+        if (context.checkoutSessionId && String(context.checkoutSessionId) !== sessionCode) {
+            usageFilters.push({ checkoutSessionId: String(context.checkoutSessionId) });
+        }
+        if (sessionOrderIds.length > 0) {
+            usageFilters.push({ orderId: { $in: sessionOrderIds } });
+        }
+
+        const couponFilter = coupon ? { couponId: coupon._id } : { code: String(codeOrId).toUpperCase() };
+        const deleteQuery = {
+            ...couponFilter,
+            $or: usageFilters,
+        };
+        if (context.userId) {
+            deleteQuery.userId = context.userId;
+        }
+
+        const deleteResult = await CouponUsage.deleteMany(
+            deleteQuery,
+            session ? { session } : {}
+        );
+        removedUsage = (deleteResult?.deletedCount || 0) > 0;
+    }
+
+    // 4. Decrement global usedCount (guarded with usedCount > 0)
+    let decremented = false;
+    if (coupon) {
+        // Idempotency rule:
+        // - If usage was targeted (orderId or checkoutSessionId provided), decrement ONLY if
+        //   usage was actually found and removed (or if explicitly marked legacy without usage row).
+        // - If no usage was targeted (direct code decrement), decrement if not marked retry.
+        const shouldDecrement = removedUsage || (!hasUsageTarget && !context.isRetry) || (context.isLegacy && !context.isRetry);
+        if (shouldDecrement) {
+            const updateRes = await Coupon.updateOne(
+                { _id: coupon._id, usedCount: { $gt: 0 } },
+                { $inc: { usedCount: -1 } },
+                session ? { session } : {}
+            );
+            decremented = (updateRes?.modifiedCount || 0) > 0;
+        }
+    }
+
+    return {
+        reversed: removedUsage || decremented,
+        removedUsage,
+        decremented,
+        ...(coupon ? {} : { reason: 'COUPON_NOT_FOUND' }),
+    };
+};
+

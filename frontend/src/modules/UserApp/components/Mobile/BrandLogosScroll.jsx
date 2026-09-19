@@ -16,23 +16,41 @@ const BrandLogosScroll = ({ brands = null }) => {
         : fallbackBrands;
 
     useEffect(() => {
-        if (!containerRef.current) return;
+        const el = containerRef.current;
+        if (!el) return;
+
+        let isMounted = true;
 
         const calculateWidth = () => {
+            if (!isMounted || !containerRef.current) return;
             const available = containerRef.current.clientWidth;
             if (available > 0) {
                 const gap = 10; // 10px gap
                 const columns = 4; // exactly 4 brands visible without cut-off
                 // subtract 2px to ensure no rounding overflow
                 const computed = Math.floor((available - (gap * (columns - 1)) - 2) / columns);
-                setCardWidth(Math.max(computed, 64));
+                if (isMounted) {
+                    setCardWidth(Math.max(computed, 64));
+                }
             }
         };
 
         calculateWidth();
-        const ro = new ResizeObserver(calculateWidth);
-        ro.observe(containerRef.current);
-        return () => ro.disconnect();
+
+        if (typeof ResizeObserver === 'undefined') return;
+
+        const ro = new ResizeObserver(() => {
+            if (isMounted) {
+                calculateWidth();
+            }
+        });
+
+        ro.observe(el);
+
+        return () => {
+            isMounted = false;
+            ro.disconnect();
+        };
     }, []);
 
     return (

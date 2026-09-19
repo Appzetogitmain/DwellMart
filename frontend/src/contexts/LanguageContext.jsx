@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { isRTL, languageCodeMap, normalizeLanguageCode } from '../utils/languageUtils';
 
 const LanguageContext = createContext(null);
@@ -47,14 +47,16 @@ export const LanguageProvider = ({ children }) => {
         }, 500);
     }, []);
 
+    const value = useMemo(() => ({
+        language,
+        languages: availableLanguages,
+        changeLanguage,
+        isChangingLanguage,
+        isRTL: isRTL(language),
+    }), [language, isChangingLanguage, changeLanguage]);
+
     return (
-        <LanguageContext.Provider value={{
-            language,
-            languages: availableLanguages,
-            changeLanguage,
-            isChangingLanguage,
-            isRTL: isRTL(language)
-        }}>
+        <LanguageContext.Provider value={value}>
             {children}
         </LanguageContext.Provider>
     );

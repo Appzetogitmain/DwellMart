@@ -4,6 +4,8 @@ import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
 import Product from '../../../models/Product.model.js';
 import Coupon from '../../../models/Coupon.model.js';
+import { reverseCouponUsage } from '../../../services/coupon.service.js';
+import { restoreOrderInventory, resolveOrderItemVariantKey } from '../../../services/inventoryRestoration.service.js';
 import Commission from '../../../models/Commission.model.js';
 import ReturnRequest from '../../../models/ReturnRequest.model.js';
 import Admin from '../../../models/Admin.model.js';
@@ -42,82 +44,8 @@ import logger from '../../../utils/logger.js';
 import { notifyVendorOfNewQuickCommerceOrder } from '../../../services/quickCommerceAlerts.service.js';
 import { channelAuthorityMode, legacyChannelsForVendor } from '../../../services/vendorChannel.service.js';
 
-const normalizeVariantPart = (value) => String(value || '').trim().toLowerCase();
-const normalizeAxisName = (value) =>
-    String(value || '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '_');
-const createDynamicVariantKey = (selection = {}) =>
-    Object.entries(selection || {})
-        .map(([axis, value]) => [normalizeAxisName(axis), normalizeVariantPart(value)])
-        .filter(([axis, value]) => axis && value)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([axis, value]) => `${axis}=${value}`)
-        .join('|');
-
-const toVariantPriceEntries = (variantPrices) => {
-    if (!variantPrices) return [];
-    if (variantPrices instanceof Map) return Array.from(variantPrices.entries());
-    if (typeof variantPrices === 'object') return Object.entries(variantPrices);
-    return [];
-};
-
-const toVariantStockEntries = (stockMap) => {
-    if (!stockMap) return [];
-    if (stockMap instanceof Map) return Array.from(stockMap.entries());
-    if (typeof stockMap === 'object') return Object.entries(stockMap);
-    return [];
-};
-
 // resolveVariantSelection is imported from pricingEngine.service.js
-
-const resolveOrderItemVariantKey = (product, orderItem) => {
-    const explicitKey = String(orderItem?.variantKey || '').trim();
-    if (explicitKey) return explicitKey;
-
-    const stockEntries = toVariantStockEntries(product?.variants?.stockMap).map(([k]) => String(k).trim());
-    const priceEntries = toVariantPriceEntries(product?.variants?.prices).map(([k]) => String(k).trim());
-    const existingKeys = [...new Set([...stockEntries, ...priceEntries])];
-    if (!existingKeys.length) return null;
-
-    const dynamicSelection = Object.entries(orderItem?.variant || {}).reduce((acc, [axis, value]) => {
-        const axisKey = normalizeAxisName(axis);
-        const selectedValue = String(value || '').trim();
-        if (axisKey && selectedValue) acc[axisKey] = selectedValue;
-        return acc;
-    }, {});
-    const dynamicKey = createDynamicVariantKey(dynamicSelection);
-    if (dynamicKey) {
-        const exactDynamic = existingKeys.find((key) => key === dynamicKey);
-        if (exactDynamic) return exactDynamic;
-        const normalizedDynamic = existingKeys.find(
-            (key) => normalizeVariantPart(key) === normalizeVariantPart(dynamicKey)
-        );
-        if (normalizedDynamic) return normalizedDynamic;
-    }
-
-    const size = normalizeVariantPart(orderItem?.variant?.size);
-    const color = normalizeVariantPart(orderItem?.variant?.color);
-    if (!size && !color) return null;
-
-    const candidates = [
-        `${size}|${color}`,
-        `${size}-${color}`,
-        `${size}_${color}`,
-        `${size}:${color}`,
-        size && !color ? size : null,
-        color && !size ? color : null,
-    ].filter(Boolean);
-
-    for (const candidate of candidates) {
-        const exact = existingKeys.find((key) => key === candidate);
-        if (exact) return exact;
-        const normalized = existingKeys.find((key) => normalizeVariantPart(key) === normalizeVariantPart(candidate));
-        if (normalized) return normalized;
-    }
-    return null;
-};
+// resolveOrderItemVariantKey is imported from inventoryRestoration.service.js
 
 // POST /api/user/orders
 export const placeOrder = asyncHandler(async (req, res) => {
@@ -974,36 +902,8 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             }
             await order.save({ session });
 
-            // Restore stock and status
-            for (const item of order.items) {
-                const quantity = Number(item.quantity || 0);
-                if (quantity <= 0) continue;
-
-                const productSnapshot = await Product.findById(item.productId)
-                    .select('variants.stockMap variants.prices')
-                    .session(session)
-                    .lean();
-                const variantKey = resolveOrderItemVariantKey(productSnapshot, item);
-
-                const incUpdate = { stockQuantity: quantity };
-                if (variantKey) {
-                    incUpdate[`variants.stockMap.${variantKey}`] = quantity;
-                }
-
-                const product = await Product.findByIdAndUpdate(item.productId, { $inc: incUpdate }, { new: true, session });
-                if (!product) continue;
-
-                const nextStockState =
-                    product.stockQuantity <= 0
-                        ? 'out_of_stock'
-                        : (product.stockQuantity <= product.lowStockThreshold ? 'low_stock' : 'in_stock');
-
-                await Product.updateOne(
-                    { _id: product._id },
-                    { $set: { stock: nextStockState } },
-                    { session }
-                );
-            }
+            // P2-DB-02 FIX: Restore inventory via batched 2-query optimization (replaces 3N sequential queries)
+            await restoreOrderInventory(order.items, { session });
 
             // Reverse vendor earnings visibility for this order.
             await Commission.updateMany(
@@ -1020,6 +920,19 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 },
                 { session }
             );
+
+            // P2-BIZ-01 FIX: Reverse coupon consumption on order cancellation
+            if (order.couponCode) {
+                await reverseCouponUsage(
+                    order.couponCode,
+                    {
+                        userId: order.userId,
+                        orderId: order._id,
+                        checkoutSessionId: order.checkoutSessionId,
+                    },
+                    { session }
+                );
+            }
         });
     } finally {
         await session.endSession();
