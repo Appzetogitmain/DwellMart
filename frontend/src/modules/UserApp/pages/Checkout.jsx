@@ -192,7 +192,7 @@ const MobileCheckout = () => {
     zipCode: "",
     state: "",
     country: "",
-    paymentMethod: "cash",
+    paymentMethod: "card",
   });
 
   useEffect(() => {
@@ -242,12 +242,12 @@ const MobileCheckout = () => {
           if (currentMethod === 'bank') isCurrentMethodEnabled = false;
           
           if (!isCurrentMethodEnabled) {
-             const availableMethods = ["card", "cash", "wallet", "upi"].filter(method => {
+             const availableMethods = ["card", "upi", "wallet", "cash"].filter(method => {
                 if (method === 'cash') return payload.codEnabled !== false;
                 if (!onlineAllowed) return false;
                 if (method === 'card') return payload.cardEnabled !== false;
-                if (method === 'wallet') return payload.walletEnabled !== false;
                 if (method === 'upi') return payload.upiEnabled !== false;
+                if (method === 'wallet') return payload.walletEnabled !== false;
                 return true;
              });
              if (availableMethods.length > 0) {
