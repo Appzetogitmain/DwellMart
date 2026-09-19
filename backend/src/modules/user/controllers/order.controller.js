@@ -820,7 +820,7 @@ const CUSTOMER_CANCELLABLE_STATUSES = ['pending', 'processing', 'approved', 'con
  * `pending` payment means nothing was ever taken.
  */
 const requiresRefundOnCancel = (order) =>
-    ['paid', 'partially_refunded'].includes(String(order?.paymentStatus || ''));
+    ['paid', 'partially_refunded', 'partially_paid'].includes(String(order?.paymentStatus || ''));
 
 export const cancelOrder = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
@@ -847,13 +847,11 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 throw new ApiError(400, `This order contains non-cancelable items (${names}) and cannot be cancelled.`);
             }
 
-            // A Quick Commerce order that the store has already prepared cannot
-            // simply be withdrawn — the goods exist and someone absorbs their
-            // cost. That distinction is recorded below via
+            // Quick Commerce orders keep the cancellation stage for the audit
+            // trail. An order cancelled post-preparation is marked
             // `cancelledAfterPreparation`; blocking it outright would leave the
-            // customer with no route at all.
-
-            // Capture bulk vendor groups before mutation so affected vendors can
+            // customer trapped if the store took an hour to prepare.
+            // Riders assigned to this order are released AFTER commit; they will
             // be notified once the cancellation is committed.
             cancelledOrderRef = {
                 orderId: order.orderId,
@@ -865,10 +863,13 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             // Captured inside the transaction, acted on after it commits: a
             // refund must never be issued for a cancellation that rolled back.
             if (requiresRefundOnCancel(order)) {
+                const paidAmount = order.paymentStatus === 'partially_paid'
+                    ? Number(order.codDetails?.advancePaid || 0)
+                    : Number(order.total || 0);
                 refundContext = {
                     orderId: order._id,
                     orderNumber: order.orderId,
-                    amount: Number(order.total || 0) - Number(order.refundedAmount || 0),
+                    amount: Math.max(0, paidAmount - Number(order.refundedAmount || 0)),
                 };
             }
             cancelledBulkGroups = (order.vendorItems || [])

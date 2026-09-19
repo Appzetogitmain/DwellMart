@@ -89,7 +89,10 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
             );
         }
 
-        const amount = roundMoney(session.summary?.grandTotal ?? session.grandTotal ?? 0);
+        const isCod = session.paymentMethod === 'cod';
+        const amount = isCod
+            ? roundMoney(session.summary?.advanceRequired || 0)
+            : roundMoney(session.summary?.grandTotal ?? session.grandTotal ?? 0);
         if (amount <= 0) {
             throw new ApiError(400, 'Invalid payment amount for CheckoutSession.');
         }
@@ -383,7 +386,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             gatewayAmount = roundMoney((orderDoc.amount_paid || orderDoc.amount || 0) / 100);
         }
 
-        const expectedAmount = roundMoney(checkoutSession.summary?.grandTotal ?? checkoutSession.grandTotal ?? 0);
+        const isCod = checkoutSession.paymentMethod === 'cod';
+        const expectedAmount = isCod
+            ? roundMoney(checkoutSession.summary?.advanceRequired || 0)
+            : roundMoney(checkoutSession.summary?.grandTotal ?? checkoutSession.grandTotal ?? 0);
 
         if (isPaid && Math.abs(gatewayAmount - expectedAmount) > 0.01) {
             console.error(
@@ -393,9 +399,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         }
 
         if (isPaid) {
+            const finalPaymentStatus = isCod ? 'partially_paid' : 'paid';
             const claimResult = await claimCheckoutSessionForProcessing(checkoutSession.sessionId, {
                 paymentDetails: {
-                    paymentStatus: 'paid',
+                    paymentStatus: finalPaymentStatus,
                     gatewayName: 'razorpay',
                     gatewayOrderId: rzpOrderId || checkoutSession.gatewayOrderId,
                     gatewayReference: rzpPaymentId,
@@ -408,9 +415,23 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                 if (existingOrders.length > 0 && claimResult.session?.status !== 'completed') {
                     await CheckoutSession.updateOne(
                         { _id: claimResult.session._id },
-                        { $set: { status: 'completed', completedAt: new Date(), orderIds: existingOrders.map((o) => o._id) } }
+                        {
+                            $set: {
+                                status: 'completed',
+                                completedAt: new Date(),
+                                paymentStatus: finalPaymentStatus,
+                                orderIds: existingOrders.map((o) => o._id),
+                                ...(isCod ? {
+                                    'codDetails.advancePaid': expectedAmount,
+                                    'codDetails.cashOnDeliveryDue': roundMoney((checkoutSession.summary?.grandTotal || 0) - expectedAmount),
+                                    'codDetails.advancePaymentId': rzpPaymentId || null,
+                                    'codDetails.advanceGateway': 'razorpay',
+                                } : {}),
+                            },
+                        }
                     );
                     claimResult.session.status = 'completed';
+                    claimResult.session.paymentStatus = finalPaymentStatus;
                 }
                 const sanitized = sanitizeCheckoutSessionResponse(claimResult.session, existingOrders, isOwner);
                 return res.status(200).json(
@@ -443,9 +464,16 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                         $set: {
                             status: 'completed',
                             completedAt: new Date(),
+                            paymentStatus: finalPaymentStatus,
                             orderIds: orders.map((o) => o._id),
                             gatewayReference: rzpPaymentId || null,
                             gatewayOrderId: rzpOrderId || checkoutSession.gatewayOrderId,
+                            ...(isCod ? {
+                                'codDetails.advancePaid': expectedAmount,
+                                'codDetails.cashOnDeliveryDue': roundMoney((checkoutSession.summary?.grandTotal || 0) - expectedAmount),
+                                'codDetails.advancePaymentId': rzpPaymentId || null,
+                                'codDetails.advanceGateway': 'razorpay',
+                            } : {}),
                         },
                     }
                 );
@@ -491,12 +519,15 @@ export const handleWebhook = asyncHandler(async (req, res) => {
     const signature = req.headers['x-razorpay-signature'];
     const rawBody = req.rawBody || JSON.stringify(req.body);
 
-    if (signature) {
-        const isValid = await verifyRazorpayWebhookSignature({ rawBody, signature });
-        if (!isValid) {
-            console.warn('[Razorpay Webhook] Invalid webhook signature received.');
-            return res.status(400).json({ status: 'invalid_signature' });
-        }
+    if (!signature || typeof signature !== 'string' || !signature.trim()) {
+        console.warn('[Razorpay Webhook] Missing or empty webhook signature received.');
+        return res.status(400).json({ status: 'invalid_signature' });
+    }
+
+    const isValid = await verifyRazorpayWebhookSignature({ rawBody, signature: signature.trim() });
+    if (!isValid) {
+        console.warn('[Razorpay Webhook] Invalid webhook signature received.');
+        return res.status(400).json({ status: 'invalid_signature' });
     }
 
     const event = req.body?.event;

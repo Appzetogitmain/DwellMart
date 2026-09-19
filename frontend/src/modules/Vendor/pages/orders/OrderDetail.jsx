@@ -433,6 +433,40 @@ const OrderDetail = () => {
                                                 )}
                                             </span>
                                         </div>
+                                        {(Number(order?.fees?.handlingFee) > 0 || Number(order?.fees?.platformFee) > 0 || Number(order?.fees?.codFee) > 0) && (
+                                            <div className="pt-2 border-t border-dashed border-gray-100 text-xs text-gray-500 space-y-1">
+                                                {Number(order?.fees?.handlingFee) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span>Handling Fee:</span>
+                                                        <span>{formatPrice(order.fees.handlingFee)}</span>
+                                                    </div>
+                                                )}
+                                                {Number(order?.fees?.platformFee) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span>Platform Fee:</span>
+                                                        <span>{formatPrice(order.fees.platformFee)}</span>
+                                                    </div>
+                                                )}
+                                                {Number(order?.fees?.codFee) > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span>COD Charges:</span>
+                                                        <span>{formatPrice(order.fees.codFee)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {(order?.paymentStatus === 'partially_paid' || Number(order?.codDetails?.advancePaid) > 0) && (
+                                            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs space-y-1">
+                                                <div className="flex justify-between font-semibold text-emerald-700">
+                                                    <span>Advance Paid (Online):</span>
+                                                    <span>{formatPrice(order?.codDetails?.advancePaid || 0)}</span>
+                                                </div>
+                                                <div className="flex justify-between font-bold text-amber-900">
+                                                    <span>Cash on Delivery Due:</span>
+                                                    <span>{formatPrice(order?.codDetails?.cashOnDeliveryDue ?? Math.max(0, (order?.total || 0) - (order?.codDetails?.advancePaid || 0)))}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </>
                                 );
                             })()}

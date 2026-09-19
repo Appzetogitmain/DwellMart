@@ -342,13 +342,25 @@ const MobileCheckout = () => {
   // Mirror the backend's per-product tax arithmetic (inclusive vs exclusive)
   // so the displayed total matches the amount actually charged.
   const { displayTax: tax, taxAddedToTotal } = calculateCartTax(items, getLineUnitPrice);
-  const finalTotal = calculateCartTotal({
+  const platformFee = Math.max(0, Number(paymentSettings?.platformFee) || 0);
+  const handlingFee = Math.max(0, Number(paymentSettings?.handlingFee) || 0);
+  const isCod = ['cash', 'cod'].includes(String(formData.paymentMethod || '').toLowerCase());
+  const codFee = isCod ? Math.max(0, Number(paymentSettings?.codFee) || 0) : 0;
+  const codAdvancePaymentEnabled = paymentSettings?.codAdvancePaymentEnabled !== false;
+
+  const baseFinalTotal = calculateCartTotal({
     subtotal: total,
     discount,
     shipping,
     packagingFee,
     taxAddedToTotal,
   });
+  const finalTotal = Math.max(0, baseFinalTotal + platformFee + handlingFee + codFee);
+
+  const advanceRequired = isCod
+    ? (codAdvancePaymentEnabled ? Math.min(finalTotal, codFee + handlingFee + platformFee) : 0)
+    : finalTotal;
+  const codDue = isCod ? Math.max(0, finalTotal - advanceRequired) : 0;
 
   // A pincode alone cannot produce a distance, so it cannot produce a fee or an
   // ETA. `placeOrder` requires coordinates for the same reason.
@@ -848,9 +860,13 @@ const MobileCheckout = () => {
           }
         }
 
-        // 2. Payment Gateway (for online payments)
+        // 2. Payment Gateway (for online payments & COD upfront advance fee)
         const isOnlinePayment = ['card', 'upi', 'wallet', 'netbanking'].includes(String(formData.paymentMethod).toLowerCase());
-        if (isOnlinePayment) {
+        const isCodPayment = ['cash', 'cod'].includes(String(formData.paymentMethod).toLowerCase());
+        const advanceRequiredAmount = Number(sessionSummary?.advanceRequired !== undefined ? sessionSummary.advanceRequired : advanceRequired);
+        const requiresAdvancePayment = isCodPayment && advanceRequiredAmount > 0;
+
+        if (isOnlinePayment || requiresAdvancePayment) {
           if (effectiveGateway === 'razorpay') {
             const sessionRes = await api.post('/payments/razorpay/session', {
               checkoutSessionId: sessionId,
@@ -869,7 +885,9 @@ const MobileCheckout = () => {
                 currency: currency || 'INR',
                 order_id: rzpOrderId,
                 name: 'DwellMart',
-                description: `Order Payment (${sessionId.slice(-8)})`,
+                description: requiresAdvancePayment
+                  ? `COD Advance Fee Payment (${sessionId.slice(-8)})`
+                  : `Order Payment (${sessionId.slice(-8)})`,
                 prefill: {
                   name: formData.name || user?.name || '',
                   email: formData.email || user?.email || '',
@@ -904,9 +922,9 @@ const MobileCheckout = () => {
               return;
             }
 
-            // Payment verified as PAID!
+            // Payment verified as PAID / PARTIALLY_PAID!
             clearCart();
-            toast.success(t('Payment successful! Order placed.'));
+            toast.success(requiresAdvancePayment ? t('Advance fee paid! COD order placed successfully.') : t('Payment successful! Order placed.'));
             const orders = verifyData.orders || [];
             if (orders.length === 1) {
               navigate(`/order-confirmation/${orders[0].orderId}`);
@@ -943,9 +961,9 @@ const MobileCheckout = () => {
             return;
           }
 
-          // Payment verified as PAID!
+          // Payment verified as PAID / PARTIALLY_PAID!
           clearCart();
-          toast.success(t('Payment successful! Order placed.'));
+          toast.success(requiresAdvancePayment ? t('Advance fee paid! COD order placed successfully.') : t('Payment successful! Order placed.'));
           const orders = verifyData.orders || [];
           if (orders.length === 1) {
             navigate(`/order-confirmation/${orders[0].orderId}`);
@@ -1365,6 +1383,22 @@ const MobileCheckout = () => {
                       })}
                     </div>
 
+                    {/* COD Advance Payment Notice */}
+                    {formData.paymentMethod === 'cash' && advanceRequired > 0 && (
+                      <div className="mb-6 p-4 bg-amber-50/90 border-2 border-amber-300 rounded-xl text-xs space-y-2 text-amber-950 shadow-xs">
+                        <div className="font-extrabold flex items-center gap-2 text-amber-900 text-sm">
+                          <span>⚠️ {t("COD Online Advance Payment Required")}</span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-amber-900">
+                          To place this Cash on Delivery order, an advance fee of <strong>{formatPrice(advanceRequired)}</strong> ({t("COD charges")} + {t("handling")} + {t("platform fee")}) must be paid online via UPI/Card to confirm your booking.
+                        </p>
+                        <div className="flex items-center justify-between pt-1 border-t border-amber-200 text-xs font-bold text-amber-950">
+                          <span>Pay Online Now: <strong className="text-emerald-700">{formatPrice(advanceRequired)}</strong></span>
+                          <span>Pay on Delivery (Cash): <strong>{formatPrice(codDue)}</strong></span>
+                        </div>
+                      </div>
+                    )}
+
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}
                     <div className="mb-6 space-y-3">
@@ -1648,6 +1682,12 @@ const MobileCheckout = () => {
                         discount={discount}
                         shipping={shipping}
                         packagingFee={packagingFee}
+                        platformFee={platformFee}
+                        handlingFee={handlingFee}
+                        codFee={codFee}
+                        isCod={isCod}
+                        advanceRequired={advanceRequired}
+                        codDue={codDue}
                         tax={tax}
                         finalTotal={finalTotal}
                         bulkSavings={bulkSavings}
@@ -1670,6 +1710,12 @@ const MobileCheckout = () => {
                       discount={discount}
                       shipping={shipping}
                       packagingFee={packagingFee}
+                      platformFee={platformFee}
+                      handlingFee={handlingFee}
+                      codFee={codFee}
+                      isCod={isCod}
+                      advanceRequired={advanceRequired}
+                      codDue={codDue}
                       tax={tax}
                       finalTotal={finalTotal}
                       bulkSavings={bulkSavings}
@@ -1713,7 +1759,13 @@ const MobileCheckout = () => {
                         type="submit"
                         disabled={isPlacingOrder}
                         className="w-full bg-brand-primary text-black py-3.5 rounded-xl font-bold text-lg shadow-lg hover:bg-brand-primaryHover transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50">
-                        {step === 2 ? (isPlacingOrder ? t("Placing Order...") : t("Place Order")) : t("Continue to Payment")}
+                        {step === 2
+                          ? (isPlacingOrder
+                              ? t("Placing Order...")
+                              : (isCod && advanceRequired > 0
+                                  ? `${t("Pay")} ${formatPrice(advanceRequired)} ${t("& Place COD Order")}`
+                                  : t("Place Order")))
+                          : t("Continue to Payment")}
                       </button>
                       {step === 2 && (
                         <button
@@ -1760,7 +1812,13 @@ const MobileCheckout = () => {
                   type="submit"
                   disabled={isPlacingOrder}
                   className="flex-1 bg-brand-primary text-black py-3 rounded-xl font-semibold hover:bg-brand-primaryHover transition-all duration-300 disabled:opacity-50">
-                  {step === 2 ? (isPlacingOrder ? "Placing..." : "Place Order") : "Continue"}
+                  {step === 2
+                    ? (isPlacingOrder
+                        ? t("Placing...")
+                        : (isCod && advanceRequired > 0
+                            ? `${t("Pay")} ${formatPrice(advanceRequired)} ${t("& Place COD")}`
+                            : t("Place Order")))
+                    : t("Continue")}
                 </button>
               </div>
             </div>

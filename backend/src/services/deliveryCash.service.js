@@ -224,7 +224,9 @@ export const recordCodCollection = async ({ order, deliveryBoyId }) => {
         return existing;
     }
 
-    const payableAmount = Number(order.total || 0);
+    const payableAmount = order.codDetails?.cashOnDeliveryDue != null
+        ? Number(order.codDetails.cashOnDeliveryDue)
+        : Number(order.total || 0);
     if (payableAmount <= 0) return null;
 
     try {

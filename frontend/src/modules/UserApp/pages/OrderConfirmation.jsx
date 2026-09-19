@@ -137,6 +137,7 @@ const MobileOrderConfirmation = () => {
     const session = sessionOrders?.session || sessionOrders;
     const ledger = session?.paymentAllocationLedger || [];
     const orderIds = session?.orderIds || [];
+    const sessionSummary = session?.summary || {};
     return (
       <PageTransition>
         <MobileLayout showBottomNav={false} showCartBar={false}>
@@ -147,6 +148,23 @@ const MobileOrderConfirmation = () => {
                 title={t('Order Confirmed!')}
                 description={`${t('Your purchase')} (${sessionId}) — ${orderIds.length} ${t('sub-orders created')}.`}
               />
+
+              {/* COD Advance payment summary banner if applicable */}
+              {(session?.paymentStatus === 'partially_paid' || Number(sessionSummary.advanceRequired) > 0) && (
+                <Card variant="default" padding="md">
+                  <div className="text-xs space-y-2">
+                    <p className="font-bold text-textColor-primary uppercase tracking-wide">Payment Breakdown</p>
+                    <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span>Online Advance Paid:</span>
+                      <span>{formatPrice(sessionSummary.advanceRequired || 0)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-amber-600 dark:text-amber-400">
+                      <span>Cash on Delivery Due:</span>
+                      <span>{formatPrice(sessionSummary.codDue || 0)}</span>
+                    </div>
+                  </div>
+                </Card>
+              )}
 
               {/* Sub-orders by fulfillment group */}
               {ledger.map((entry, i) => {
@@ -215,7 +233,6 @@ const MobileOrderConfirmation = () => {
         </MobileLayout>
       </PageTransition>
     );
-
   }
 
   return (
@@ -257,11 +274,49 @@ const MobileOrderConfirmation = () => {
                   <span className="text-textColor-muted font-medium">{t('Payment Method')}</span>
                   <span className="font-bold text-textColor-primary capitalize">
                     {order.paymentMethod === 'card' ? t('Credit/Debit Card') :
-                      order.paymentMethod === 'cash' ? t('Cash on Delivery') :
+                      order.paymentMethod === 'cash' || order.paymentMethod === 'cod' ? t('Cash on Delivery') :
                         order.paymentMethod === 'bank' ? t('Bank Transfer') :
                           (order.paymentMethod || t('N/A'))}
                   </span>
                 </div>
+
+                {/* Fees breakdown if configured */}
+                {(Number(order.fees?.handlingFee) > 0 || Number(order.fees?.platformFee) > 0 || Number(order.fees?.codFee) > 0) && (
+                  <div className="text-xs text-textColor-muted space-y-1.5 pt-2 border-t border-dashed border-borderToken-default">
+                    {Number(order.fees?.handlingFee) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Handling Fee</span>
+                        <span className="font-semibold text-textColor-primary">{formatPrice(order.fees.handlingFee)}</span>
+                      </div>
+                    )}
+                    {Number(order.fees?.platformFee) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Platform Fee</span>
+                        <span className="font-semibold text-textColor-primary">{formatPrice(order.fees.platformFee)}</span>
+                      </div>
+                    )}
+                    {Number(order.fees?.codFee) > 0 && (
+                      <div className="flex justify-between">
+                        <span>COD Charges</span>
+                        <span className="font-semibold text-textColor-primary">{formatPrice(order.fees.codFee)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* COD Advance payment breakdown */}
+                {(order.paymentStatus === 'partially_paid' || Number(order.codDetails?.advancePaid) > 0) && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1.5 mt-2">
+                    <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span>Advance Paid Online:</span>
+                      <span>{formatPrice(order.codDetails?.advancePaid || 0)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-amber-600 dark:text-amber-400">
+                      <span>Cash on Delivery Due:</span>
+                      <span>{formatPrice(order.codDetails?.cashOnDeliveryDue ?? Math.max(0, (order.total || 0) - (order.codDetails?.advancePaid || 0)))}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -344,4 +399,3 @@ const MobileOrderConfirmation = () => {
 };
 
 export default MobileOrderConfirmation;
-

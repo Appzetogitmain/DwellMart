@@ -207,6 +207,7 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
         customerLocation,
         coupon: resolvedCoupon,
         shippingOption,
+        paymentMethod: normalized,
     });
 
     // 6. Create CheckoutSession document
@@ -301,9 +302,17 @@ export const confirmCheckout = asyncHandler(async (req, res) => {
         throw new ApiError(409, `CheckoutSession is in "${session.status}" state and cannot be confirmed.`);
     }
 
-    // For online payments, orders must be confirmed via Cashfree verify/webhook AFTER payment is captured
+    // For online payments, orders must be confirmed via payment gateway verify/webhook AFTER payment is captured
     if (session.paymentMethod !== 'cod' && session.paymentStatus !== 'paid') {
         throw new ApiError(400, 'Online payment is pending. Orders cannot be created until payment is verified.');
+    }
+
+    // For COD orders with advance fee requirement, ensure advance fee has been captured online
+    if (session.paymentMethod === 'cod') {
+        const advanceRequired = Number(session.summary?.advanceRequired || 0);
+        if (advanceRequired > 0 && session.paymentStatus !== 'partially_paid' && session.paymentStatus !== 'paid') {
+            throw new ApiError(400, `An online advance fee of ₹${advanceRequired} is required to place a COD order.`);
+        }
     }
 
     // COD path — create orders immediately

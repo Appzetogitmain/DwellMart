@@ -233,8 +233,21 @@ const OrderDetail = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
-                  <Badge variant={order.paymentStatus === 'paid' ? 'delivered' : order.paymentStatus === 'pending' ? 'pending' : 'cancelled'} className="text-xs">
-                    {order.paymentStatus || (order.paymentMethod === 'cash' ? 'Pending' : 'Paid')}
+                  <Badge
+                    variant={
+                      order.paymentStatus === 'paid'
+                        ? 'delivered'
+                        : order.paymentStatus === 'partially_paid'
+                          ? 'warning'
+                          : order.paymentStatus === 'pending'
+                            ? 'pending'
+                            : 'cancelled'
+                    }
+                    className="text-xs capitalize"
+                  >
+                    {order.paymentStatus === 'partially_paid'
+                      ? 'Partially Paid'
+                      : (order.paymentStatus || (order.paymentMethod === 'cash' || order.paymentMethod === 'cod' ? 'Pending' : 'Paid'))}
                   </Badge>
                 </div>
               </div>
@@ -493,10 +506,45 @@ const OrderDetail = () => {
                 <span className="text-gray-600">Shipping</span>
                 <span className="font-semibold">{formatCurrency(shipping)}</span>
               </div>
+              {Number(order.fees?.handlingFee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Handling Fee</span>
+                  <span className="font-semibold">{formatCurrency(order.fees.handlingFee)}</span>
+                </div>
+              )}
+              {Number(order.fees?.platformFee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Platform Fee</span>
+                  <span className="font-semibold">{formatCurrency(order.fees.platformFee)}</span>
+                </div>
+              )}
+              {Number(order.fees?.codFee) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">COD Charges</span>
+                  <span className="font-semibold">{formatCurrency(order.fees.codFee)}</span>
+                </div>
+              )}
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="font-bold text-gray-800">Total</span>
                 <span className="font-bold text-lg text-gray-800">{formatCurrency(order.total)}</span>
               </div>
+              {(order.paymentStatus === 'partially_paid' || Number(order.codDetails?.advancePaid) > 0) && (
+                <div className="mt-2 pt-2 border-t border-dashed border-gray-200 space-y-1 text-xs">
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Advance Paid (Online)</span>
+                    <span className="font-bold">{formatCurrency(order.codDetails?.advancePaid || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-amber-600 font-bold">
+                    <span>Cash to Collect (COD)</span>
+                    <span className="font-extrabold">{formatCurrency(order.codDetails?.cashOnDeliveryDue ?? Math.max(0, (order.total || 0) - (order.codDetails?.advancePaid || 0)))}</span>
+                  </div>
+                  {order.codDetails?.advancePaymentId && (
+                    <p className="text-[10px] text-gray-400 truncate">
+                      Gateway Ref: {order.codDetails.advancePaymentId} ({order.codDetails.advanceGateway || 'online'})
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

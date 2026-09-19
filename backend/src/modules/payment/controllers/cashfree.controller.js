@@ -86,7 +86,10 @@ export const createPaymentSession = asyncHandler(async (req, res) => {
             );
         }
 
-        const amount = roundMoney(session.summary?.grandTotal ?? session.grandTotal ?? 0);
+        const isCod = session.paymentMethod === 'cod';
+        const amount = isCod
+            ? roundMoney(session.summary?.advanceRequired || 0)
+            : roundMoney(session.summary?.grandTotal ?? session.grandTotal ?? 0);
         if (amount <= 0) {
             throw new ApiError(400, 'Invalid payment amount for CheckoutSession.');
         }
@@ -324,7 +327,10 @@ export const verifyPayment = asyncHandler(async (req, res) => {
             // No payment attempts yet
         }
 
-        const expectedAmount = roundMoney(checkoutSession.summary?.grandTotal ?? 0);
+        const isCod = checkoutSession.paymentMethod === 'cod';
+        const expectedAmount = isCod
+            ? roundMoney(checkoutSession.summary?.advanceRequired || 0)
+            : roundMoney(checkoutSession.summary?.grandTotal ?? 0);
         const gatewayAmount = roundMoney(cfOrder?.order_amount ?? 0);
         const isPaid = (cfOrder?.order_status === 'PAID' || (Array.isArray(payments) && payments.some(p => p.payment_status === 'SUCCESS')));
 
@@ -334,8 +340,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
         }
 
         if (isPaid) {
+            const finalPaymentStatus = isCod ? 'partially_paid' : 'paid';
             const claimResult = await claimCheckoutSessionForProcessing(checkoutSession.sessionId, {
-                paymentDetails: { paymentStatus: 'paid' },
+                paymentDetails: { paymentStatus: finalPaymentStatus },
             });
 
             if (!claimResult.claimed) {
@@ -344,9 +351,23 @@ export const verifyPayment = asyncHandler(async (req, res) => {
                 if (existingOrders.length > 0 && claimResult.session?.status !== 'completed') {
                     await CheckoutSession.updateOne(
                         { _id: claimResult.session._id },
-                        { $set: { status: 'completed', completedAt: new Date(), orderIds: existingOrders.map(o => o._id) } }
+                        {
+                            $set: {
+                                status: 'completed',
+                                completedAt: new Date(),
+                                paymentStatus: finalPaymentStatus,
+                                orderIds: existingOrders.map(o => o._id),
+                                ...(isCod ? {
+                                    'codDetails.advancePaid': expectedAmount,
+                                    'codDetails.cashOnDeliveryDue': roundMoney((checkoutSession.summary?.grandTotal || 0) - expectedAmount),
+                                    'codDetails.advancePaymentId': String(cfOrder?.cf_order_id || lookupId),
+                                    'codDetails.advanceGateway': 'cashfree',
+                                } : {}),
+                            },
+                        }
                     );
                     claimResult.session.status = 'completed';
+                    claimResult.session.paymentStatus = finalPaymentStatus;
                 }
                 const sanitized = sanitizeCheckoutSessionResponse(claimResult.session, existingOrders, isOwner);
                 return res.status(200).json(
@@ -371,7 +392,20 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 
                 await CheckoutSession.updateOne(
                     { _id: checkoutSession._id },
-                    { $set: { status: 'completed', completedAt: new Date(), orderIds: orders.map(o => o._id) } }
+                    {
+                        $set: {
+                            status: 'completed',
+                            completedAt: new Date(),
+                            paymentStatus: finalPaymentStatus,
+                            orderIds: orders.map(o => o._id),
+                            ...(isCod ? {
+                                'codDetails.advancePaid': expectedAmount,
+                                'codDetails.cashOnDeliveryDue': roundMoney((checkoutSession.summary?.grandTotal || 0) - expectedAmount),
+                                'codDetails.advancePaymentId': String(cfOrder?.cf_order_id || lookupId),
+                                'codDetails.advanceGateway': 'cashfree',
+                            } : {}),
+                        },
+                    }
                 );
 
                 // P1-04 FIX: Increment coupon usage after successful order creation (online payment path)

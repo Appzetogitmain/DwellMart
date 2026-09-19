@@ -425,6 +425,24 @@ export const splitAndCreateOrders = async ({
                 couponType: coupon?.type,
             });
 
+            // ── Read Payment & Fee Settings ─────────────────────────────────────
+            const paymentSettingsDoc = await Settings.findOne({ key: 'payment' }).session(dbSession).lean();
+            const paymentSettings = paymentSettingsDoc?.value || {};
+            const platformFee = Math.max(0, Number(paymentSettings.platformFee) || 0);
+            const handlingFee = Math.max(0, Number(paymentSettings.handlingFee) || 0);
+            const isCod = String(paymentMethod || '').toLowerCase() === 'cod' || String(paymentMethod || '').toLowerCase() === 'cash';
+            const codFee = isCod ? Math.max(0, Number(paymentSettings.codFee) || 0) : 0;
+            const codAdvancePaymentEnabled = paymentSettings.codAdvancePaymentEnabled !== false;
+
+            let totalFgCount = 0;
+            for (const vendorGroups of Object.values(grouped)) {
+                totalFgCount += Object.keys(vendorGroups).length;
+            }
+            let currentFgIndex = 0;
+            let allocatedPlatformFee = 0;
+            let allocatedHandlingFee = 0;
+            let allocatedCodFee = 0;
+
             for (const [ft, vendorGroups] of Object.entries(grouped)) {
                 for (const [vendorId, groupData] of Object.entries(vendorGroups)) {
                     const vendorDoc  = vendorMap.get(vendorId) || null;
@@ -491,6 +509,40 @@ export const splitAndCreateOrders = async ({
                     const orderId = generateOrderId(ft);
                     const pricingTypes = pricedItems.map((i) => ({ pricingType: i.pricingType }));
 
+                    currentFgIndex++;
+                    const isLastGroup = currentFgIndex === totalFgCount;
+
+                    let fgPlatformFee = 0;
+                    let fgHandlingFee = 0;
+                    let fgCodFee = 0;
+
+                    if (isLastGroup) {
+                        fgPlatformFee = roundMoney(platformFee - allocatedPlatformFee);
+                        fgHandlingFee = roundMoney(handlingFee - allocatedHandlingFee);
+                        fgCodFee = roundMoney(codFee - allocatedCodFee);
+                    } else {
+                        fgPlatformFee = cartSubtotalForCoupon > 0 ? roundMoney(platformFee * (fgSubtotal / cartSubtotalForCoupon)) : 0;
+                        fgHandlingFee = cartSubtotalForCoupon > 0 ? roundMoney(handlingFee * (fgSubtotal / cartSubtotalForCoupon)) : 0;
+                        fgCodFee = cartSubtotalForCoupon > 0 ? roundMoney(codFee * (fgSubtotal / cartSubtotalForCoupon)) : 0;
+                        allocatedPlatformFee += fgPlatformFee;
+                        allocatedHandlingFee += fgHandlingFee;
+                        allocatedCodFee += fgCodFee;
+                    }
+
+                    const fgFees = {
+                        platformFee: fgPlatformFee,
+                        handlingFee: fgHandlingFee,
+                        codFee: fgCodFee,
+                    };
+                    const orderTotal = roundMoney(pricing.total + fgPlatformFee + fgHandlingFee + fgCodFee);
+
+                    const isPartiallyPaid = session.paymentStatus === 'partially_paid';
+                    const isPaid = session.paymentStatus === 'paid';
+                    const fgAdvanceRequired = (isCod && codAdvancePaymentEnabled)
+                        ? roundMoney(fgPlatformFee + fgHandlingFee + fgCodFee)
+                        : 0;
+                    const fgCashDue = isCod ? roundMoney(orderTotal - fgAdvanceRequired) : 0;
+
                     const orderPayload = {
                         orderId,
                         userId: userId ? new mongoose.Types.ObjectId(userId) : null,
@@ -520,17 +572,24 @@ export const splitAndCreateOrders = async ({
                         // when the booking fails.
                         deliverability: deliverabilityStamp(deliverability),
                         paymentMethod,
-                        paymentStatus: session.paymentStatus === 'paid' ? 'paid' : 'pending',
-                        status:        session.paymentStatus === 'paid' ? 'confirmed' : 'pending',
+                        paymentStatus: session.paymentStatus === 'paid' ? 'paid' : (isPartiallyPaid ? 'partially_paid' : 'pending'),
+                        status:        session.paymentStatus === 'paid' ? 'confirmed' : (isPartiallyPaid ? 'confirmed' : 'pending'),
                         subtotal:      pricing.subtotal,
                         shipping:      pricing.shipping,
                         tax:           pricing.tax,
                         packagingFee:  pricing.packagingFee || 0,
+                        fees:          fgFees,
+                        codDetails: {
+                            advancePaid:       (isPartiallyPaid || isPaid) ? fgAdvanceRequired : 0,
+                            cashOnDeliveryDue: (isPartiallyPaid || isPaid) ? fgCashDue : orderTotal,
+                            advancePaymentId:  session.gatewayReference || session.metadata?.advancePaymentId || null,
+                            advanceGateway:    session.metadata?.advanceGateway || 'online',
+                        },
                         // This order's own discount. Previously omitted entirely,
                         // so every splitter-created order recorded discount: 0
                         // while finance reports summed exactly this field.
                         discount:      pricing.discount,
-                        total:         pricing.total,
+                        total:         orderTotal,
                         totalSavings:  pricing.savings,
                         orderType:     deriveOrderType(pricingTypes),
                         // Enterprise Marketplace linkage
@@ -578,7 +637,7 @@ export const splitAndCreateOrders = async ({
                         vendorId:           fgDoc.vendorId,
                         vendorName,
                         fulfillmentType:    ft,
-                        amount:             pricing.total,
+                        amount:             orderTotal,
                         captured:           0,
                         refunded:           0,
                         pendingSettlement:  0,
@@ -600,6 +659,11 @@ export const splitAndCreateOrders = async ({
 
             // ── 5. Update CheckoutSession ────────────────────────────────────────
             const grandTotal = ledger.reduce((s, l) => s + l.amount, 0);
+            const sessionAdvanceRequired = (isCod && codAdvancePaymentEnabled)
+                ? roundMoney(platformFee + handlingFee + codFee)
+                : 0;
+            const sessionCodDue = isCod ? roundMoney(grandTotal - sessionAdvanceRequired) : 0;
+
             await CheckoutSession.updateOne(
                 { _id: session._id },
                 {
@@ -608,6 +672,11 @@ export const splitAndCreateOrders = async ({
                         orderIds:                createdOrders.map((o) => o._id),
                         paymentAllocationLedger: ledger,
                         status:                  'processing',
+                        'summary.platformFee':   roundMoney(platformFee),
+                        'summary.handlingFee':   roundMoney(handlingFee),
+                        'summary.codFee':        roundMoney(codFee),
+                        'summary.advanceRequired': roundMoney(sessionAdvanceRequired),
+                        'summary.codDue':        roundMoney(sessionCodDue),
                         'summary.grandTotal':    grandTotal,
                     },
                 },
@@ -688,6 +757,7 @@ export const calculateCheckoutSessionSummary = async ({
     coupon = null,
     shippingAmount = 0,
     shippingOption = 'standard',
+    paymentMethod = 'card',
 }) => {
     const rawProducts = await Product.find({
         _id: { $in: items.map((i) => i.productId || i.id).filter(Boolean) },
@@ -738,6 +808,14 @@ export const calculateCheckoutSessionSummary = async ({
 
     const settingsDoc = await Settings.findOne({ key: 'quick_commerce' }).lean();
     const settings = settingsDoc?.value || {};
+
+    const paymentSettingsDoc = await Settings.findOne({ key: 'payment' }).lean();
+    const paymentSettings = paymentSettingsDoc?.value || {};
+    const platformFee = Math.max(0, Number(paymentSettings.platformFee) || 0);
+    const handlingFee = Math.max(0, Number(paymentSettings.handlingFee) || 0);
+    const isCod = String(paymentMethod || '').toLowerCase() === 'cod' || String(paymentMethod || '').toLowerCase() === 'cash';
+    const codFee = isCod ? Math.max(0, Number(paymentSettings.codFee) || 0) : 0;
+    const codAdvancePaymentEnabled = paymentSettings.codAdvancePaymentEnabled !== false;
 
     // The wholesale flag MUST come from the same source `splitAndCreateOrders`
     // uses. This previously read Settings{key:'wholesale'} — a key with no
@@ -819,7 +897,11 @@ export const calculateCheckoutSessionSummary = async ({
             grandTotalRaw += finalPricing.total;
         }
     }
-    const grandTotal = roundMoney(Math.max(0, grandTotalRaw));
+    const grandTotal = roundMoney(Math.max(0, grandTotalRaw + platformFee + handlingFee + codFee));
+    const advanceRequired = isCod
+        ? (codAdvancePaymentEnabled ? roundMoney(Math.min(grandTotal, codFee + handlingFee + platformFee)) : 0)
+        : grandTotal;
+    const codDue = isCod ? roundMoney(Math.max(0, grandTotal - advanceRequired)) : 0;
 
     return {
         subtotal: roundMoney(totalSubtotal),
@@ -827,6 +909,11 @@ export const calculateCheckoutSessionSummary = async ({
         totalShipping: roundMoney(totalShipping),
         packagingFee: roundMoney(totalPackaging),
         totalPackagingFee: roundMoney(totalPackaging),
+        platformFee: roundMoney(platformFee),
+        handlingFee: roundMoney(handlingFee),
+        codFee: roundMoney(codFee),
+        advanceRequired: roundMoney(advanceRequired),
+        codDue: roundMoney(codDue),
         tax: roundMoney(totalTax),
         totalTax: roundMoney(totalTax),
         discount: roundMoney(totalDiscount),

@@ -94,6 +94,10 @@ const PaymentShippingSettings = () => {
         cashfreeEnabled: paymentData.cashfreeEnabled !== false,
         razorpayEnabled: !!paymentData.razorpayEnabled,
         defaultGateway: paymentData.defaultGateway || 'auto',
+        platformFee: paymentData.platformFee === '' || paymentData.platformFee === undefined ? 0 : Math.max(0, Number(paymentData.platformFee)),
+        handlingFee: paymentData.handlingFee === '' || paymentData.handlingFee === undefined ? 0 : Math.max(0, Number(paymentData.handlingFee)),
+        codFee: paymentData.codFee === '' || paymentData.codFee === undefined ? 0 : Math.max(0, Number(paymentData.codFee)),
+        codAdvancePaymentEnabled: paymentData.codAdvancePaymentEnabled !== undefined ? !!paymentData.codAdvancePaymentEnabled : true,
       };
 
       await updateSettings('payment', sanitizedPayment);
@@ -200,6 +204,88 @@ const PaymentShippingSettings = () => {
                       <span className="text-sm font-semibold text-gray-700 truncate">UPI / QR Code</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Order Fees & COD Advance Deposit Configuration */}
+              <div className="border-t border-gray-200 pt-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Order Fees & COD Settings</h3>
+                  <p className="text-sm text-gray-600">
+                    Configure platform fee, handling charges, and Cash on Delivery upfront payment rules.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Handling Fee (₹)
+                    </label>
+                    <input
+                      type="number"
+                      name="handlingFee"
+                      min="0"
+                      step="1"
+                      value={paymentData.handlingFee !== undefined ? paymentData.handlingFee : 0}
+                      onChange={handlePaymentChange}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Applied to all orders (prepaid & COD)</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Platform Fee (₹)
+                    </label>
+                    <input
+                      type="number"
+                      name="platformFee"
+                      min="0"
+                      step="1"
+                      value={paymentData.platformFee !== undefined ? paymentData.platformFee : 0}
+                      onChange={handlePaymentChange}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Applied to all orders (prepaid & COD)</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      COD Fee / Charges (₹)
+                    </label>
+                    <input
+                      type="number"
+                      name="codFee"
+                      min="0"
+                      step="1"
+                      value={paymentData.codFee !== undefined ? paymentData.codFee : 0}
+                      onChange={handlePaymentChange}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Applied only to COD orders</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="codAdvancePaymentEnabled"
+                      name="codAdvancePaymentEnabled"
+                      checked={paymentData.codAdvancePaymentEnabled !== false}
+                      onChange={handlePaymentChange}
+                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 flex-shrink-0"
+                    />
+                    <label htmlFor="codAdvancePaymentEnabled" className="text-sm font-semibold text-gray-800 cursor-pointer">
+                      Require Online Advance Fee Payment for COD Orders
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-600 pl-7">
+                    When enabled, customers must pay the combined fee (<strong>COD Fee + Handling Fee + Platform Fee</strong>) online via UPI/Card before placing a COD order. The remaining order balance will be collected in cash at delivery. If disabled, 100% of the amount is collected at delivery.
+                  </p>
                 </div>
               </div>
 

@@ -111,6 +111,12 @@ export const applyQuickCommerceStatus = (order, nextStatus) => {
     if (nextStatus === QUICK_COMMERCE_ORDER_STATUS.PICKED_UP) order.quickCommerce.pickedUpAt = now;
     if (nextStatus === QUICK_COMMERCE_ORDER_STATUS.DELIVERED) {
         order.deliveredAt = now;
+        if (['pending', 'partially_paid'].includes(order.paymentStatus) && ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase())) {
+            order.paymentStatus = 'paid';
+            if (order.codDetails) {
+                order.codDetails.cashOnDeliveryDue = 0;
+            }
+        }
         // The promise made at checkout, judged against what actually happened.
         const promisedAt = order.quickCommerce.promisedAt
             ? new Date(order.quickCommerce.promisedAt).getTime()

@@ -58,6 +58,12 @@ const OrderSummary = ({
   bulkSavings = 0,
   packagingFee = 0,
   quickEstimate = null,
+  platformFee = 0,
+  handlingFee = 0,
+  codFee = 0,
+  isCod = false,
+  advanceRequired = 0,
+  codDue = 0,
 }) => {
   const { getTranslatedText: t } = usePageTranslation([
     "Order Summary",
@@ -69,7 +75,12 @@ const OrderSummary = ({
     "FREE",
     "Tax",
     "Total",
-    "Bulk Savings"
+    "Bulk Savings",
+    "Platform Fee",
+    "Handling Fee",
+    "COD Charges",
+    "Advance to Pay Now",
+    "Due on Delivery (Cash)"
   ]);
 
   const { translateArray } = useDynamicTranslation();
@@ -266,10 +277,47 @@ const OrderSummary = ({
           <span className="font-bold text-slate-900"><Price amount={tax} /></span>
         </div>
 
+        {handlingFee > 0 && (
+          <div className="flex justify-between text-slate-600 font-medium">
+            <span>{t('Handling Fee')}</span>
+            <span className="font-bold text-slate-900"><Price amount={handlingFee} /></span>
+          </div>
+        )}
+
+        {platformFee > 0 && (
+          <div className="flex justify-between text-slate-600 font-medium">
+            <span>{t('Platform Fee')}</span>
+            <span className="font-bold text-slate-900"><Price amount={platformFee} /></span>
+          </div>
+        )}
+
+        {isCod && codFee > 0 && (
+          <div className="flex justify-between text-amber-700 font-medium">
+            <span>{t('COD Charges')}</span>
+            <span className="font-bold text-amber-800"><Price amount={codFee} /></span>
+          </div>
+        )}
+
         <div className="flex justify-between items-center text-base font-extrabold text-slate-900 pt-3 border-t border-slate-200">
           <span>Grand Total</span>
           <Price amount={finalTotal} className="text-amber-600 text-lg font-extrabold" />
         </div>
+
+        {isCod && advanceRequired > 0 && (
+          <div className="mt-3 p-3 bg-amber-50/80 border border-amber-300 rounded-xl space-y-2 text-xs">
+            <div className="flex items-center justify-between text-amber-900 font-bold">
+              <span>💳 {t('Advance to Pay Now')} (Online):</span>
+              <span className="text-sm text-emerald-700 font-extrabold"><Price amount={advanceRequired} /></span>
+            </div>
+            <div className="flex items-center justify-between text-slate-700 font-medium">
+              <span>💵 {t('Due on Delivery (Cash)')}:</span>
+              <span className="font-bold text-slate-900"><Price amount={codDue} /></span>
+            </div>
+            <p className="text-[10px] text-amber-800 leading-tight pt-1 border-t border-amber-200">
+              Advance fee includes COD Charges ({formatPrice(codFee)}), Handling Fee ({formatPrice(handlingFee)}), and Platform Fee ({formatPrice(platformFee)}).
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

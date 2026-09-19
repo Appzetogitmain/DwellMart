@@ -221,6 +221,12 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     if (nextStatus === 'delivered') {
         order.deliveredAt = new Date();
         order.cancelledAt = null;
+        if (['pending', 'partially_paid'].includes(order.paymentStatus) && ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase())) {
+            order.paymentStatus = 'paid';
+            if (order.codDetails) {
+                order.codDetails.cashOnDeliveryDue = 0;
+            }
+        }
     } else if (nextStatus === 'cancelled') {
         order.cancelledAt = new Date();
     } else if (nextStatus === 'returned') {

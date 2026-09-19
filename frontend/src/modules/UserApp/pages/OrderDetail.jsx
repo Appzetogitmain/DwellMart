@@ -557,9 +557,19 @@ const MobileOrderDetail = () => {
                     <span>{t('Payment Method:')}</span>
                     <span className="font-semibold text-content capitalize">
                       {order.paymentMethod === 'card' ? t('Credit/Debit Card') :
-                        order.paymentMethod === 'cash' ? t('Cash on Delivery') :
+                        order.paymentMethod === 'cash' || order.paymentMethod === 'cod' ? t('Cash on Delivery') :
                           order.paymentMethod === 'bank' ? t('Bank Transfer') :
                             (order.paymentMethod || t('N/A'))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Payment Status:</span>
+                    <span className="font-semibold text-content capitalize">
+                      {order.paymentStatus === 'partially_paid' ? (
+                        <span className="text-amber-500 font-bold">Partially Paid (Advance Paid Online)</span>
+                      ) : (
+                        order.paymentStatus || (order.paymentMethod === 'cash' || order.paymentMethod === 'cod' ? 'Pending (COD)' : 'Paid')
+                      )}
                     </span>
                   </div>
                   {order.trackingNumber && (
@@ -597,10 +607,40 @@ const MobileOrderDetail = () => {
                     <span>{t('Tax')}</span>
                     <Price amount={order.tax} />
                   </div>
+                  {Number(order.fees?.handlingFee) > 0 && (
+                    <div className="flex justify-between text-content-secondary">
+                      <span>Handling Fee</span>
+                      <Price amount={order.fees.handlingFee} />
+                    </div>
+                  )}
+                  {Number(order.fees?.platformFee) > 0 && (
+                    <div className="flex justify-between text-content-secondary">
+                      <span>Platform Fee</span>
+                      <Price amount={order.fees.platformFee} />
+                    </div>
+                  )}
+                  {Number(order.fees?.codFee) > 0 && (
+                    <div className="flex justify-between text-content-secondary">
+                      <span>COD Charges</span>
+                      <Price amount={order.fees.codFee} />
+                    </div>
+                  )}
                   <div className="flex justify-between text-lg font-bold text-content pt-2 border-t border-border">
                     <span>{t('Total')}</span>
                     <Price amount={order.total} className="text-brand-primary" />
                   </div>
+                  {(order.paymentStatus === 'partially_paid' || Number(order.codDetails?.advancePaid) > 0) && (
+                    <div className="pt-2 border-t border-dashed border-border space-y-1.5 text-xs">
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span>Advance Paid Online</span>
+                        <Price amount={order.codDetails?.advancePaid || 0} />
+                      </div>
+                      <div className="flex justify-between text-amber-500 font-bold text-sm">
+                        <span>Cash on Delivery Due</span>
+                        <Price amount={order.codDetails?.cashOnDeliveryDue ?? Math.max(0, (order.total || 0) - (order.codDetails?.advancePaid || 0))} />
+                      </div>
+                    </div>
+                  )}
                   {Number(order.totalSavings) > 0 && (
                     <div className="flex justify-between text-sm font-semibold text-status-success pt-1">
                       <span>{t('Bulk Savings')}</span>

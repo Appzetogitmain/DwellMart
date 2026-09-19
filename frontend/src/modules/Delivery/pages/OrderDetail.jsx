@@ -334,16 +334,47 @@ const DeliveryOrderDetail = () => {
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between text-slate-300">
               <span>Subtotal</span>
-              <span className="font-semibold text-white">{formatPrice(order.amount)}</span>
+              <span className="font-semibold text-white">{formatPrice(order.amount ?? order.subtotal ?? 0)}</span>
             </div>
             <div className="flex items-center justify-between text-slate-300">
               <span>Delivery Fee</span>
-              <span className="font-semibold text-white">{formatPrice(order.deliveryFee)}</span>
+              <span className="font-semibold text-white">{formatPrice(order.deliveryFee ?? order.shipping ?? 0)}</span>
             </div>
+            {(Number(order.fees?.handlingFee) > 0 || Number(order.fees?.platformFee) > 0 || Number(order.fees?.codFee) > 0) && (
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Order Fees (Handling/Platform/COD)</span>
+                <span className="font-semibold text-white">
+                  {formatPrice((Number(order.fees?.handlingFee) || 0) + (Number(order.fees?.platformFee) || 0) + (Number(order.fees?.codFee) || 0))}
+                </span>
+              </div>
+            )}
             <div className="pt-2 border-t border-slate-700 flex items-center justify-between">
-              <span className="font-extrabold text-white text-sm">Total Collectable</span>
-              <span className="font-extrabold text-amber-400 text-lg">{formatPrice(order.total)}</span>
+              <span className="font-extrabold text-white text-sm">Total Collectable Cash</span>
+              <span className="font-extrabold text-amber-400 text-lg">
+                {formatPrice(
+                  order.paymentStatus === 'paid'
+                    ? 0
+                    : (order.codDetails?.cashOnDeliveryDue ?? order.total)
+                )}
+              </span>
             </div>
+            {order.paymentStatus === 'paid' && (
+              <p className="text-[11px] text-emerald-400 font-semibold text-right">
+                ✓ Prepaid in full — do not collect cash from customer.
+              </p>
+            )}
+            {(order.paymentStatus === 'partially_paid' || Number(order.codDetails?.advancePaid) > 0) && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
+                <div className="flex justify-between text-emerald-400 font-medium">
+                  <span>Customer Paid Online:</span>
+                  <span>{formatPrice(order.codDetails?.advancePaid || 0)}</span>
+                </div>
+                <div className="flex justify-between text-amber-300 font-bold">
+                  <span>Cash to Collect at Doorstep:</span>
+                  <span>{formatPrice(order.codDetails?.cashOnDeliveryDue ?? Math.max(0, (order.total || 0) - (order.codDetails?.advancePaid || 0)))}</span>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 

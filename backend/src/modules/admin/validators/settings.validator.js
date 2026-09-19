@@ -53,6 +53,10 @@ const paymentSchema = Joi.object({
     cashfreeEnabled: booleanFlag,
     razorpayEnabled: booleanFlag,
     defaultGateway: Joi.string().valid('auto', 'razorpay', 'cashfree', '').allow(null),
+    platformFee: Joi.number().min(0).max(100000).allow(null),
+    handlingFee: Joi.number().min(0).max(100000).allow(null),
+    codFee: Joi.number().min(0).max(100000).allow(null),
+    codAdvancePaymentEnabled: booleanFlag,
 }).unknown(true);
 
 /**

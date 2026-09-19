@@ -194,7 +194,7 @@ const orderSchema = new mongoose.Schema(
         paymentMethod: { type: String, enum: ['card', 'cash', 'bank', 'wallet', 'upi', 'cod'] },
         paymentStatus: {
             type: String,
-            enum: ['pending', 'paid', 'failed', 'refunded', 'partially_refunded'],
+            enum: ['pending', 'paid', 'partially_paid', 'failed', 'refunded', 'partially_refunded'],
             default: 'pending',
         },
         status: {
@@ -218,6 +218,24 @@ const orderSchema = new mongoose.Schema(
         subtotal: { type: Number, default: 0 },
         shipping: { type: Number, default: 0 },
         tax: { type: Number, default: 0 },
+        /**
+         * Order-level fees configured by Admin:
+         * Handling charges (all orders), Platform fee (all orders), and COD charges (COD only).
+         */
+        fees: {
+            platformFee: { type: Number, default: 0 },
+            handlingFee: { type: Number, default: 0 },
+            codFee:      { type: Number, default: 0 },
+        },
+        /**
+         * Cash on Delivery details (advance fee payment tracking & doorstep cash due).
+         */
+        codDetails: {
+            advancePaid:       { type: Number, default: 0 },
+            cashOnDeliveryDue: { type: Number, default: 0 },
+            advancePaymentId:  { type: String, trim: true },
+            advanceGateway:    { type: String, trim: true },
+        },
         /**
          * Quick Commerce packaging fee, at order level.
          *

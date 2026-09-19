@@ -221,7 +221,9 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
     if (!order) throw new ApiError(404, 'Order not found.');
     const orderObj = order.toObject();
     const isCod = ['cod', 'cash'].includes(String(orderObj.paymentMethod || '').toLowerCase());
-    orderObj.codAmount = isCod ? Number(orderObj.total || 0) : 0;
+    orderObj.codAmount = isCod
+        ? (orderObj.codDetails?.cashOnDeliveryDue != null ? Number(orderObj.codDetails.cashOnDeliveryDue) : Number(orderObj.total || 0))
+        : 0;
 
     res.status(200).json(new ApiResponse(200, orderObj, 'Order detail fetched.'));
 });
@@ -335,6 +337,12 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     }
     if (status === 'delivered') {
         order.deliveredAt = new Date();
+        if (['pending', 'partially_paid'].includes(order.paymentStatus) && ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase())) {
+            order.paymentStatus = 'paid';
+            if (order.codDetails) {
+                order.codDetails.cashOnDeliveryDue = 0;
+            }
+        }
         ensureVendorCommissionsForOrder(order).catch((err) => {
             console.warn(`[Delivery Commission] Failed to ensure commission for order ${order.orderId || order._id}: ${err.message}`);
         });

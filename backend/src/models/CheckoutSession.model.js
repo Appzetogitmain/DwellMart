@@ -59,7 +59,7 @@ const checkoutSessionSchema = new mongoose.Schema(
         },
         paymentStatus: {
             type: String,
-            enum: ['pending', 'initiated', 'paid', 'failed', 'refunded', 'partially_refunded'],
+            enum: ['pending', 'initiated', 'paid', 'partially_paid', 'failed', 'refunded', 'partially_refunded'],
             default: 'pending',
             index: true,
         },
@@ -67,6 +67,12 @@ const checkoutSessionSchema = new mongoose.Schema(
         gatewayOrderId:     { type: String, trim: true },   // e.g. Cashfree order_id
         gatewaySessionId:   { type: String, trim: true },   // e.g. Cashfree payment_session_id
         gatewayReference:   { type: String, trim: true },   // final transaction reference
+        codDetails: {
+            advancePaid:       { type: Number, default: 0 },
+            cashOnDeliveryDue: { type: Number, default: 0 },
+            advancePaymentId:  { type: String, trim: true },
+            advanceGateway:    { type: String, trim: true },
+        },
 
         // Allocation Ledger — one entry per generated Order
         paymentAllocationLedger: [paymentAllocationSchema],
@@ -78,6 +84,11 @@ const checkoutSessionSchema = new mongoose.Schema(
             totalTax:          { type: Number, default: 0 },
             totalDiscount:     { type: Number, default: 0 },
             totalPackagingFee: { type: Number, default: 0 },
+            platformFee:       { type: Number, default: 0 },
+            handlingFee:       { type: Number, default: 0 },
+            codFee:            { type: Number, default: 0 },
+            advanceRequired:   { type: Number, default: 0 },
+            codDue:            { type: Number, default: 0 },
             totalSavings:      { type: Number, default: 0 },
             grandTotal:        { type: Number, default: 0 },
         },

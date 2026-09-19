@@ -79,16 +79,35 @@ const buildIdempotencyKey = ({ orderId, returnRequestId, amount }) =>
         .digest('hex')
         .slice(0, 40);
 
-/** COD and cash orders have no gateway payment to reverse. */
+/**
+ * Resolve how to refund this order.
+ *
+ * Pure COD/cash orders → manual cash settlement (no gateway payment to reverse).
+ * COD-with-advance orders → the advance portion was captured online; refund via gateway.
+ * All online payment orders → gateway.
+ */
 const resolveRefundMethod = (order) => {
     const method = String(order?.paymentMethod || '').toLowerCase();
-    if (method === 'cod' || method === 'cash') return 'manual_cash';
+    if (method === 'cod' || method === 'cash') {
+        // If the customer paid an online advance (codDetails.advancePaid > 0),
+        // that portion lives in the payment gateway and must be reversed there.
+        const advancePaid = Number(order.codDetails?.advancePaid || 0);
+        if (advancePaid > 0) return 'gateway';
+        // Pure COD — no gateway capture exists; settle manually.
+        return 'manual_cash';
+    }
     return 'gateway';
 };
 
 /**
- * How much of this order may still be refunded.
+ * How much of this order may still be refunded via gateway.
  * Guards against cumulative over-refunding across several partial refunds.
+ *
+ * For COD orders with an online advance payment (partially_paid), only the
+ * advance portion (`codDetails.advancePaid`) was captured via the gateway —
+ * the `cashOnDeliveryDue` portion was paid in cash and is reconciled through
+ * the rider cash ledger, not through a gateway refund. Using `order.total`
+ * as the ceiling here would allow refunding money that was never gateway-captured.
  */
 export const getRefundableAmount = async (order) => {
     const alreadyRefunded = await Refund.aggregate([
@@ -101,7 +120,16 @@ export const getRefundableAmount = async (order) => {
         { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     const refunded = roundMoney(alreadyRefunded[0]?.total || 0);
-    return roundMoney(Math.max(0, Number(order.total || 0) - refunded));
+
+    // For COD orders where an online advance was collected, the gateway-refundable
+    // ceiling is the advance amount only. Pure-COD and online-payment orders use order.total.
+    const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
+    const advancePaid = Number(order.codDetails?.advancePaid || 0);
+    const refundableCeiling = (isCod && advancePaid > 0)
+        ? advancePaid
+        : Number(order.total || 0);
+
+    return roundMoney(Math.max(0, refundableCeiling - refunded));
 };
 
 // ── 1. Request ────────────────────────────────────────────────────────────────
@@ -487,15 +515,27 @@ export const applyRefundReversals = async (refundId) => {
         try {
             const isCod = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
             if (isCod && order.deliveryBoyId && order.status === 'delivered') {
-                // The rider collected cash for an order that is being refunded;
-                // the platform's claim on that cash is reduced accordingly.
+                // For a COD order with online advance payment, the rider collected
+                // `cashOnDeliveryDue` at delivery — NOT the full order.total or the
+                // gateway refund amount (advancePaid). The cash ledger must be reversed
+                // for the amount the rider physically collected in cash.
+                //
+                // For pure COD (no advance), the rider collected the full order; in
+                // that case `refund.amount` (the total refund requested) is correct.
+                const advancePaid = Number(order.codDetails?.advancePaid || 0);
+                const cashCollected = advancePaid > 0
+                    ? Number(order.codDetails?.cashOnDeliveryDue || 0)
+                    : Math.abs(refund.amount);
+
                 const { postCashAdjustment } = await import('../deliveryCash.service.js');
-                await postCashAdjustment({
-                    deliveryBoyId: order.deliveryBoyId,
-                    amount: -Math.abs(refund.amount),
-                    reason: `Refund ${refund.refundNumber} for order ${order.orderId}`,
-                    adminId: refund.initiatedBy || null,
-                });
+                if (cashCollected > 0) {
+                    await postCashAdjustment({
+                        deliveryBoyId: order.deliveryBoyId,
+                        amount: -cashCollected,
+                        reason: `Return/refund ${refund.refundNumber} for order ${order.orderId}`,
+                        adminId: refund.initiatedBy || null,
+                    });
+                }
                 await mark('codLedger', { status: 'done', ref: String(order.deliveryBoyId) });
             } else {
                 await mark('codLedger', { status: 'skipped', ref: 'not a delivered COD order' });
@@ -505,6 +545,7 @@ export const applyRefundReversals = async (refundId) => {
         }
     }
 
+
     // 5d. Order refund totals ------------------------------------------------
     try {
         const succeeded = await Refund.aggregate([
@@ -512,14 +553,23 @@ export const applyRefundReversals = async (refundId) => {
             { $group: { _id: null, total: { $sum: '$amount' } } },
         ]);
         const refundedTotal = roundMoney(succeeded[0]?.total || 0);
-        const orderTotal = roundMoney(order.total || 0);
+
+        // For COD orders where an online advance was captured, the maximum that
+        // can ever be refunded through the gateway is `advancePaid`. Using
+        // `order.total` as the ceiling would mean this order's paymentStatus
+        // could never reach `'refunded'` (since order.total > advancePaid).
+        const isCodOrder = ['cod', 'cash'].includes(String(order.paymentMethod || '').toLowerCase());
+        const advancePaid = Number(order.codDetails?.advancePaid || 0);
+        const refundCeiling = (isCodOrder && advancePaid > 0)
+            ? advancePaid
+            : roundMoney(order.total || 0);
 
         order.refundedAmount = refundedTotal;
         // Derived, never set directly — this is what let a flag claim a refund
         // that had not happened.
         if (refundedTotal <= 0) {
             // leave as-is
-        } else if (refundedTotal + 0.01 >= orderTotal) {
+        } else if (refundedTotal + 0.01 >= refundCeiling) {
             order.paymentStatus = 'refunded';
         } else {
             order.paymentStatus = 'partially_refunded';
@@ -528,6 +578,7 @@ export const applyRefundReversals = async (refundId) => {
     } catch (err) {
         console.error(`[Refund] Failed to update order totals for ${refund.refundNumber}: ${err?.message}`);
     }
+
 
     const finalRefund = await Refund.findById(refund._id).lean();
     const failedReversals = Object.entries(finalRefund.reversals || {})
