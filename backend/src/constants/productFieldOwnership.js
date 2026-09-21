@@ -46,9 +46,9 @@ export const SHARED_PRODUCT_FIELDS = Object.freeze([
     'name', 'description', 'unit', 'sku', 'tags',
     'image', 'images',
     // Classification
-    'categoryId', 'subcategoryId', 'brandId',
+    'categoryId', 'subcategoryId', 'brandId', 'gender',
     // Commercials (base price; channel pricing lives in channel-owned data)
-    'price', 'originalPrice', 'taxRate', 'taxIncluded', 'hsnCode',
+    'price', 'originalPrice', 'taxRate', 'taxIncluded', 'hsnCode', 'costPrice',
     // Inventory (shared pool in V1 — see InventoryReservationService)
     'stock', 'stockQuantity', 'lowStockThreshold',
     'minimumOrderQuantity', 'totalAllowedQuantity',

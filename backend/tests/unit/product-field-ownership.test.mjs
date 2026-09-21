@@ -16,8 +16,8 @@ import { getVendorCapabilities } from '../../src/constants/vendorCapabilities.js
  * workspace, so this is what the guard actually receives from the real UI.
  */
 const PRODUCT_FORM_PAYLOAD_KEYS = [
-    'name', 'unit', 'price', 'originalPrice', 'image', 'images',
-    'categoryId', 'subcategoryId', 'brandId',
+    'name', 'unit', 'price', 'originalPrice', 'costPrice', 'image', 'images',
+    'categoryId', 'subcategoryId', 'brandId', 'gender',
     'stock', 'stockQuantity', 'totalAllowedQuantity', 'minimumOrderQuantity',
     'warrantyPeriod', 'guaranteePeriod', 'hsnCode',
     'flashSale', 'isNewArrival', 'isFeatured', 'isVisible',
