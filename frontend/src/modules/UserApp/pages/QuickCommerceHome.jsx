@@ -384,25 +384,25 @@ const QuickCommerceHome = () => {
               title="⭐ Featured Products"
               products={featured}
               isLoading={isLoadingFeatured}
-              onSeeAll={() => navigate("/quick/categories")}
+              onSeeAll={() => navigate("/search?delivery=express&sort=newest")}
             />
             <ProductShelf
               title="🔥 Best Sellers"
               products={bestSellers}
               isLoading={isLoadingBest}
-              onSeeAll={() => navigate("/quick/categories")}
+              onSeeAll={() => navigate("/search?delivery=express&sort=popular")}
             />
             <ProductShelf
               title="📈 Trending Now"
               products={trending}
               isLoading={isLoadingTrending}
-              onSeeAll={() => navigate("/quick/categories")}
+              onSeeAll={() => navigate("/search?delivery=express&sort=rating")}
             />
             <ProductShelf
               title="🆕 Recently Added"
               products={recentlyAdded}
               isLoading={isLoadingRecent}
-              onSeeAll={() => navigate("/quick/categories")}
+              onSeeAll={() => navigate("/search?delivery=express&sort=newest")}
             />
           </div>
 

@@ -369,25 +369,25 @@ const WholesaleHome = () => {
               title="⭐ Featured Wholesale Deals"
               products={featured}
               isLoading={isLoadingFeatured}
-              onSeeAll={() => navigate("/categories?experience=wholesale")}
+              onSeeAll={() => navigate("/search?experience=wholesale&sort=newest")}
             />
             <ProductShelf
               title="🔥 Best Sellers in Bulk"
               products={bestSellers}
               isLoading={isLoadingBest}
-              onSeeAll={() => navigate("/categories?experience=wholesale")}
+              onSeeAll={() => navigate("/search?experience=wholesale&sort=popular")}
             />
             <ProductShelf
               title="📈 Trending B2B Sourcing"
               products={trending}
               isLoading={isLoadingTrending}
-              onSeeAll={() => navigate("/categories?experience=wholesale")}
+              onSeeAll={() => navigate("/search?experience=wholesale&sort=rating")}
             />
             <ProductShelf
               title="🆕 Factory Direct New Arrivals"
               products={recentlyAdded}
               isLoading={isLoadingRecent}
-              onSeeAll={() => navigate("/categories?experience=wholesale")}
+              onSeeAll={() => navigate("/search?experience=wholesale&sort=newest")}
             />
           </div>
 
