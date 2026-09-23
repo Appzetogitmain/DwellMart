@@ -98,10 +98,9 @@ const ManageCategories = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
-      deleteCategory(id);
-      toast.success('Category deleted');
+      await deleteCategory(id);
     }
   };
 
