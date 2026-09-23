@@ -576,6 +576,16 @@ const sanitizeCategoryPayload = (payload = {}) => {
         sanitized.supportedExperiences = [normalizeExperience(sanitized.experience)];
     }
 
+    // Unify Marketplace and Wholesale experiences so standard catalog categories serve both channels
+    if (Array.isArray(sanitized.supportedExperiences)) {
+        const hasMarketplace = sanitized.supportedExperiences.includes(EXPERIENCES.MARKETPLACE);
+        const hasWholesale = sanitized.supportedExperiences.includes(EXPERIENCES.WHOLESALE);
+        if (hasMarketplace || hasWholesale) {
+            if (!hasMarketplace) sanitized.supportedExperiences.push(EXPERIENCES.MARKETPLACE);
+            if (!hasWholesale) sanitized.supportedExperiences.push(EXPERIENCES.WHOLESALE);
+        }
+    }
+
     if (Object.prototype.hasOwnProperty.call(sanitized, 'displayOrder')) {
         sanitized.displayOrder = Number(sanitized.displayOrder) || 0;
     }
@@ -601,7 +611,11 @@ export const getAllCategories = asyncHandler(async (req, res) => {
     const requestedExp = req.query?.experience ? normalizeExperience(req.query.experience) : null;
     const filter = {};
     if (requestedExp) {
-        filter.supportedExperiences = requestedExp;
+        if (requestedExp === EXPERIENCES.MARKETPLACE || requestedExp === EXPERIENCES.WHOLESALE) {
+            filter.supportedExperiences = { $in: [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE] };
+        } else {
+            filter.supportedExperiences = requestedExp;
+        }
     }
     const categories = await Category.find(filter).sort({ displayOrder: 1, order: 1, name: 1 });
     res.status(200).json(new ApiResponse(200, categories, 'Categories fetched.'));

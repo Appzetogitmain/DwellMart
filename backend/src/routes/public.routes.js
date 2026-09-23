@@ -1034,7 +1034,13 @@ const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
         }
     }
 
-    const filter = { isActive: true, supportedExperiences: exp };
+    const filter = {
+        isActive: true,
+        supportedExperiences:
+            exp === EXPERIENCES.QUICK_COMMERCE
+                ? EXPERIENCES.QUICK_COMMERCE
+                : { $in: [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE] },
+    };
 
     const categories = await Category.find(filter)
         .sort({ displayOrder: 1, order: 1, name: 1 })

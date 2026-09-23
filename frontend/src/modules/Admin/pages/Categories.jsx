@@ -207,9 +207,8 @@ const Categories = () => {
               onChange={(e) => setSelectedExperience(e.target.value)}
               options={[
                 { value: "all", label: "All Experiences" },
+                { value: "marketplace", label: "Marketplace (Retail & Wholesale)" },
                 { value: "quick_commerce", label: "Quick Commerce" },
-                { value: "marketplace", label: "Marketplace" },
-                { value: "wholesale", label: "Wholesale" },
               ]}
               className="flex-shrink-0 min-w-[160px]"
             />

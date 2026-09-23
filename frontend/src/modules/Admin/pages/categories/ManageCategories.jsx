@@ -146,7 +146,7 @@ const ManageCategories = () => {
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-700 mr-1">Category Tree:</span>
           {[
-            { value: 'marketplace', label: '🛒 Marketplace' },
+            { value: 'marketplace', label: '🛒 Marketplace (Retail & Wholesale)' },
             { value: 'quick_commerce', label: '⚡ Quick Commerce' },
           ].map((option) => (
             <button

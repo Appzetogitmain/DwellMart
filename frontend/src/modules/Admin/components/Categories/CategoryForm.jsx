@@ -34,16 +34,21 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
     isActive: true,
     order: 0,
     displayOrder: 0,
-    supportedExperiences: ["marketplace"],
+    supportedExperiences: ["marketplace", "wholesale"],
   });
 
   const sanitizeExperiences = (experiences, fallback = "marketplace") => {
     const validSet = new Set(["marketplace", "quick_commerce", "wholesale"]);
     if (!Array.isArray(experiences)) {
-      return [fallback];
+      return fallback === "marketplace" ? ["marketplace", "wholesale"] : [fallback];
     }
     const filtered = experiences.filter((e) => typeof e === "string" && validSet.has(e.trim().toLowerCase()));
-    return filtered.length > 0 ? [...new Set(filtered)] : [fallback];
+    const result = filtered.length > 0 ? [...new Set(filtered)] : (fallback === "marketplace" ? ["marketplace", "wholesale"] : [fallback]);
+    if (result.includes("marketplace") || result.includes("wholesale")) {
+      if (!result.includes("marketplace")) result.push("marketplace");
+      if (!result.includes("wholesale")) result.push("wholesale");
+    }
+    return result;
   };
 
   // Revoke object URL on unmount or when replaced to prevent memory leaks
@@ -84,7 +89,13 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
         isActive: true,
         order: 0,
         displayOrder: 0,
-        supportedExperiences: sanitizeExperiences(experience ? [experience] : ["marketplace"]),
+        supportedExperiences: sanitizeExperiences(
+          experience
+            ? experience === "quick_commerce"
+              ? ["quick_commerce"]
+              : ["marketplace", "wholesale"]
+            : ["marketplace", "wholesale"]
+        ),
       });
     }
   }, [category, parentId, experience]);
@@ -100,12 +111,25 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
   const handleExperienceToggle = (exp) => {
     setFormData((prev) => {
       const current = sanitizeExperiences(prev.supportedExperiences, "marketplace");
-      const updated = current.includes(exp)
-        ? current.filter((item) => item !== exp)
-        : [...current, exp];
+      let updated;
+      if (exp === "marketplace") {
+        const isCurrentlyActive = current.includes("marketplace") || current.includes("wholesale");
+        if (isCurrentlyActive) {
+          updated = current.filter((item) => item !== "marketplace" && item !== "wholesale");
+        } else {
+          updated = [...current, "marketplace", "wholesale"];
+        }
+      } else {
+        const isCurrentlyActive = current.includes(exp);
+        if (isCurrentlyActive) {
+          updated = current.filter((item) => item !== exp);
+        } else {
+          updated = [...current, exp];
+        }
+      }
       return {
         ...prev,
-        supportedExperiences: sanitizeExperiences(updated, "marketplace"),
+        supportedExperiences: updated,
       };
     });
   };
@@ -479,34 +503,47 @@ const CategoryForm = ({ category, parentId, experience, onClose, onSave }) => {
                   Supported Experiences <span className="text-red-500">*</span>
                 </h3>
                 <p className="text-xs text-gray-500 mb-3">
-                  Select which shopping experiences this category should appear in.
+                  Select which fulfillment channel this category serves.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { key: "quick_commerce", label: "⚡ Quick Commerce (Express)" },
-                    { key: "marketplace", label: "📦 Marketplace (B2C)" },
-                    { key: "wholesale", label: "🏬 Wholesale (B2B)" },
-                  ].map((exp) => {
-                    const isChecked = (formData.supportedExperiences || []).includes(exp.key);
-                    return (
-                      <label
-                        key={exp.key}
-                        className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
-                          isChecked
-                            ? "border-primary-500 bg-primary-50/50 shadow-xs"
-                            : "border-gray-200 hover:border-gray-300 bg-gray-50/50"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleExperienceToggle(exp.key)}
-                          className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 cursor-pointer"
-                        />
+                    {
+                      key: "marketplace",
+                      label: "📦 Marketplace (Retail & Wholesale)",
+                      description: "Shared standard catalog serving both B2C Retail and B2B Wholesale buyers",
+                      isChecked: (formData.supportedExperiences || []).some(
+                        (e) => e === "marketplace" || e === "wholesale"
+                      ),
+                    },
+                    {
+                      key: "quick_commerce",
+                      label: "⚡ Quick Commerce (Express Delivery)",
+                      description: "Hyperlocal dark-store catalog for 10-15 minute grocery & essentials",
+                      isChecked: (formData.supportedExperiences || []).includes("quick_commerce"),
+                    },
+                  ].map((exp) => (
+                    <label
+                      key={exp.key}
+                      className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        exp.isChecked
+                          ? "border-primary-500 bg-primary-50/50 shadow-xs"
+                          : "border-gray-200 hover:border-gray-300 bg-gray-50/50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={exp.isChecked}
+                        onChange={() => handleExperienceToggle(exp.key)}
+                        className="w-4 h-4 mt-0.5 text-primary-600 rounded focus:ring-primary-500 cursor-pointer"
+                      />
+                      <div className="flex flex-col">
                         <span className="text-xs font-bold text-gray-800 select-none">{exp.label}</span>
-                      </label>
-                    );
-                  })}
+                        <span className="text-[11px] text-gray-500 select-none mt-0.5 leading-snug">
+                          {exp.description}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
                 </div>
               </div>
 
