@@ -340,30 +340,7 @@ export const seedCategoriesInDb = async () => {
     }
   }
 
-  const allCategories = await Category.find({
-    supportedExperiences: { $in: SUPPORTED_EXPERIENCES }
-  }).select('_id name parentId');
-
-  const idsToDelete = allCategories
-    .filter(c => !validCategoryIds.has(String(c._id)))
-    .map(c => c._id);
-
-  if (idsToDelete.length > 0) {
-    const defaultFallbackCat =
-      await Category.findOne({ supportedExperiences: MARKETPLACE_EXPERIENCE, parentId: { $ne: null } })
-      || await Category.findOne({ supportedExperiences: MARKETPLACE_EXPERIENCE });
-    if (defaultFallbackCat) {
-      await Product.updateMany(
-        { categoryId: { $in: idsToDelete } },
-        { categoryId: defaultFallbackCat._id }
-      );
-    }
-
-    const deleteResult = await Category.deleteMany({ _id: { $in: idsToDelete } });
-    deletedCount = deleteResult.deletedCount || idsToDelete.length;
-  }
-
-  return { createdCount, updatedCount, deletedCount };
+  return { createdCount, updatedCount, deletedCount: 0 };
 };
 
 const runScript = async () => {

@@ -135,10 +135,14 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
             return categoryCache.get(cacheKey);
         }
 
+        const expFilter = (exp === EXPERIENCES.MARKETPLACE || exp === EXPERIENCES.WHOLESALE)
+            ? { $in: [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE] }
+            : exp;
+
         const found = await Category.findOne({
-            name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^$\{}()|[\]\\]/g, '\\$&')}$`, 'i') },
+            name: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
             parentId: parentId || null,
-            supportedExperiences: exp
+            supportedExperiences: expFilter
         });
 
         if (found) {
@@ -163,6 +167,9 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
         
         const rawExperience = String(row['Supported Experience'] || row['Experience'] || defaultExperience || '').trim();
         const experience = normalizeExperience(rawExperience) || EXPERIENCES.MARKETPLACE;
+        const experiencesToSet = (experience === EXPERIENCES.MARKETPLACE || experience === EXPERIENCES.WHOLESALE)
+            ? [EXPERIENCES.MARKETPLACE, EXPERIENCES.WHOLESALE]
+            : [experience];
 
         const description = String(row['Description'] || '').trim();
         const displayOrder = parseInt(row['Display Order'] || row['Order'], 10) || 0;
@@ -191,7 +198,7 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                     displayOrder: displayOrder || 0,
                     isActive,
                     image: mainCatImageUrl,
-                    supportedExperiences: [experience]
+                    supportedExperiences: experiencesToSet
                 });
                 saveCategoryToCache(mainCat, experience);
                 createdCount++;
@@ -204,6 +211,15 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                 if (!mainCat.description && description) {
                     mainCat.description = description;
                     touched = true;
+                }
+                if (experience === EXPERIENCES.MARKETPLACE || experience === EXPERIENCES.WHOLESALE) {
+                    const currentExps = new Set(mainCat.supportedExperiences || []);
+                    if (!currentExps.has(EXPERIENCES.MARKETPLACE) || !currentExps.has(EXPERIENCES.WHOLESALE)) {
+                        currentExps.add(EXPERIENCES.MARKETPLACE);
+                        currentExps.add(EXPERIENCES.WHOLESALE);
+                        mainCat.supportedExperiences = Array.from(currentExps);
+                        touched = true;
+                    }
                 }
                 if (touched) {
                     await mainCat.save();
@@ -225,7 +241,7 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                         displayOrder: displayOrder || 0,
                         isActive,
                         image: subCatImageUrl,
-                        supportedExperiences: [experience]
+                        supportedExperiences: experiencesToSet
                     });
                     saveCategoryToCache(subCat, experience);
                     createdCount++;
@@ -238,6 +254,15 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                     if (!subCat.description && description) {
                         subCat.description = description;
                         touched = true;
+                    }
+                    if (experience === EXPERIENCES.MARKETPLACE || experience === EXPERIENCES.WHOLESALE) {
+                        const currentExps = new Set(subCat.supportedExperiences || []);
+                        if (!currentExps.has(EXPERIENCES.MARKETPLACE) || !currentExps.has(EXPERIENCES.WHOLESALE)) {
+                            currentExps.add(EXPERIENCES.MARKETPLACE);
+                            currentExps.add(EXPERIENCES.WHOLESALE);
+                            subCat.supportedExperiences = Array.from(currentExps);
+                            touched = true;
+                        }
                     }
                     if (touched) {
                         await subCat.save();
@@ -259,7 +284,7 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                         displayOrder: displayOrder || 0,
                         isActive,
                         image: childCatImageUrl,
-                        supportedExperiences: [experience]
+                        supportedExperiences: experiencesToSet
                     });
                     saveCategoryToCache(childCat, experience);
                     createdCount++;
@@ -276,6 +301,15 @@ export const processCategoryImport = async ({ buffer, defaultExperience = EXPERI
                     if (displayOrder && childCat.displayOrder !== displayOrder) {
                         childCat.displayOrder = displayOrder;
                         touched = true;
+                    }
+                    if (experience === EXPERIENCES.MARKETPLACE || experience === EXPERIENCES.WHOLESALE) {
+                        const currentExps = new Set(childCat.supportedExperiences || []);
+                        if (!currentExps.has(EXPERIENCES.MARKETPLACE) || !currentExps.has(EXPERIENCES.WHOLESALE)) {
+                            currentExps.add(EXPERIENCES.MARKETPLACE);
+                            currentExps.add(EXPERIENCES.WHOLESALE);
+                            childCat.supportedExperiences = Array.from(currentExps);
+                            touched = true;
+                        }
                     }
                     if (touched) {
                         await childCat.save();

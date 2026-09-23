@@ -636,23 +636,6 @@ export const seedCategoriesInDb = async () => {
     let createdCount = 0;
     let updatedCount = 0;
 
-    // ── 0. Purge Obsolete Category Documents ──────────────────────────────────
-    const validSlugs = getValidSlugsSet();
-    const obsoleteDocs = await Category.find({ slug: { $nin: Array.from(validSlugs) } });
-    if (obsoleteDocs.length > 0) {
-        const obsoleteIds = obsoleteDocs.map(d => d._id);
-        console.log(`🧹 Purging ${obsoleteDocs.length} obsolete legacy categories...`);
-        await mongoose.model('Product').updateMany(
-            { categoryId: { $in: obsoleteIds } },
-            { $set: { categoryId: null } }
-        );
-        await mongoose.model('Product').updateMany(
-            { quickCommerceCategoryId: { $in: obsoleteIds } },
-            { $set: { quickCommerceCategoryId: null } }
-        );
-        await Category.deleteMany({ _id: { $in: obsoleteIds } });
-    }
-
     // ── 0. Cleanup Legacy Duplicate Slugs ──────────────────────────────────────
     const duplicateGroups = await Category.aggregate([
         { $group: { _id: '$slug', count: { $sum: 1 }, ids: { $push: '$_id' }, exps: { $push: '$supportedExperiences' }, legacyExps: { $push: '$experience' } } },
