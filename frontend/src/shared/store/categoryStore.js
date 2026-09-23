@@ -244,7 +244,7 @@ export const useCategoryStore = create(
       },
     }),
     {
-      name: 'category-storage-v2',
+      name: 'category-storage-v3',
       storage: createJSONStorage(() => localStorage),
     }
   )

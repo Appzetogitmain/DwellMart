@@ -731,7 +731,9 @@ export const seedCategoriesInDb = async () => {
             level1Doc.name = mainCat.name;
             level1Doc.supportedExperiences = Array.from(new Set([...(level1Doc.supportedExperiences || []), ...defaultExp]));
             level1Doc.displayOrder = mainCat.displayOrder;
-            if (mainCat.image) level1Doc.image = mainCat.image;
+            if (mainCat.image && (!level1Doc.image || !level1Doc.image.includes('cloudinary'))) {
+                level1Doc.image = mainCat.image;
+            }
             level1Doc.parentId = null;
             await level1Doc.save();
             updatedCount++;
@@ -759,7 +761,7 @@ export const seedCategoriesInDb = async () => {
                 level2Doc.parentId = level1Doc._id;
                 level2Doc.supportedExperiences = Array.from(new Set([...(level2Doc.supportedExperiences || []), ...l2Exp]));
                 level2Doc.displayOrder = l2Order++;
-                if (l2Image) level2Doc.image = l2Image;
+                if (l2Image && (!level2Doc.image || !level2Doc.image.includes('cloudinary'))) level2Doc.image = l2Image;
                 await level2Doc.save();
                 updatedCount++;
             } else {
@@ -786,7 +788,7 @@ export const seedCategoriesInDb = async () => {
                         level3Doc.parentId = level2Doc._id;
                         level3Doc.supportedExperiences = Array.from(new Set([...(level3Doc.supportedExperiences || []), ...l3Exp]));
                         level3Doc.displayOrder = l3Order++;
-                        if (l3Image) level3Doc.image = l3Image;
+                        if (l3Image && (!level3Doc.image || !level3Doc.image.includes('cloudinary'))) level3Doc.image = l3Image;
                         await level3Doc.save();
                         updatedCount++;
                     } else {
