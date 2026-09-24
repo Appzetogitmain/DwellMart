@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import Category from '../models/Category.model.js';
-import Product from '../models/Product.model.js';
-import { EXPERIENCES } from '../constants/experiences.js';
+import Category from '../src/models/Category.model.js';
+import Product from '../src/models/Product.model.js';
+import { EXPERIENCES } from '../src/constants/experiences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
