@@ -3,12 +3,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import Category from '../models/Category.model.js';
-import Product from '../models/Product.model.js';
-import { EXPERIENCES } from '../constants/experiences.js';
+import Category from '../src/models/Category.model.js';
+import Product from '../src/models/Product.model.js';
+import { EXPERIENCES } from '../src/constants/experiences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const createSlug = (name) =>
     name
@@ -638,7 +638,7 @@ export const seedCategoriesInDb = async () => {
     let updatedCount = 0;
 
     // ── 0. Check for Standalone Unified Categories Catalog (JSON) ─────────────
-    const unifiedJsonPath = path.resolve(__dirname, '../data/categories_unified.json');
+    const unifiedJsonPath = path.resolve(__dirname, '../src/data/categories_unified.json');
     if (fs.existsSync(unifiedJsonPath)) {
         console.log('📦 Loading unified category catalog from categories_unified.json...');
         const unifiedCategories = JSON.parse(fs.readFileSync(unifiedJsonPath, 'utf8'));
