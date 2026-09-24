@@ -7,14 +7,15 @@ import { openRazorpayCheckout } from './razorpayLoader';
  * and optional user preference.
  */
 export const resolveEffectiveGateway = (paymentSettings = {}, preferredGateway = 'auto') => {
-  const isCashfreeEnabled = paymentSettings.cashfreeEnabled !== false;
-  const isRazorpayEnabled = paymentSettings.razorpayEnabled === true;
+  const safeSettings = paymentSettings || {};
+  const isCashfreeEnabled = safeSettings.cashfreeEnabled !== false;
+  const isRazorpayEnabled = safeSettings.razorpayEnabled === true;
 
   if (isCashfreeEnabled && isRazorpayEnabled) {
     if (preferredGateway && preferredGateway !== 'auto') {
       return preferredGateway;
     }
-    if (paymentSettings.defaultGateway === 'cashfree') {
+    if (safeSettings.defaultGateway === 'cashfree') {
       return 'cashfree';
     }
     return 'razorpay';

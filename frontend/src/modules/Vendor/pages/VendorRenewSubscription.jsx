@@ -37,7 +37,7 @@ const VendorRenewSubscription = () => {
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [paymentSettings, setPaymentSettings] = useState({});
   const [preferredGateway, setPreferredGateway] = useState('auto');
 
   const isCashfreeEnabled = paymentSettings?.cashfreeEnabled !== false;

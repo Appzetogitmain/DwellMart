@@ -97,7 +97,7 @@ const SubscriptionManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [paymentSettings, setPaymentSettings] = useState({});
   const [preferredGateway, setPreferredGateway] = useState('auto');
 
   const isCashfreeEnabled = paymentSettings?.cashfreeEnabled !== false;
