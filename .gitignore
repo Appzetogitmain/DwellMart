@@ -130,3 +130,11 @@ temp_*
 **/scripts/executeFreshSlateApproachA.mjs
 **/scripts/dryRun*.mjs
 **/scripts/inspectDates*.mjs
+
+# Test files
+**/*.test.js
+**/*.test.mjs
+**/*.test.cjs
+**/*.spec.js
+**/*.spec.mjs
+**/*.spec.cjs
