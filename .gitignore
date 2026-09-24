@@ -130,3 +130,4 @@ temp_*
 **/scripts/executeFreshSlateApproachA.mjs
 **/scripts/dryRun*.mjs
 **/scripts/inspectDates*.mjs
+backend/scripts/crops/

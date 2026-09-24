@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Category from '../models/Category.model.js';
 import Product from '../models/Product.model.js';
@@ -635,6 +636,92 @@ const getValidSlugsSet = () => {
 export const seedCategoriesInDb = async () => {
     let createdCount = 0;
     let updatedCount = 0;
+
+    // ── 0. Check for Standalone Unified Categories Catalog (JSON) ─────────────
+    const unifiedJsonPath = path.resolve(__dirname, '../data/categories_unified.json');
+    if (fs.existsSync(unifiedJsonPath)) {
+        console.log('📦 Loading unified category catalog from categories_unified.json...');
+        const unifiedCategories = JSON.parse(fs.readFileSync(unifiedJsonPath, 'utf8'));
+
+        const roots = unifiedCategories.filter(c => !c.parentId);
+        const children = unifiedCategories.filter(c => c.parentId);
+        const oldIdToNewDoc = new Map();
+
+        for (const cat of roots) {
+            let doc = await Category.findOne({ slug: cat.slug });
+            if (doc) {
+                doc.name = cat.name;
+                doc.description = cat.description || '';
+                doc.image = cat.image || '';
+                doc.displayOrder = cat.displayOrder ?? 0;
+                doc.order = cat.order ?? 0;
+                doc.isActive = cat.isActive ?? true;
+                doc.supportedExperiences = cat.supportedExperiences;
+                doc.parentId = null;
+                await doc.save();
+                updatedCount++;
+            } else {
+                doc = await Category.create({
+                    name: cat.name,
+                    slug: cat.slug,
+                    description: cat.description || '',
+                    image: cat.image || '',
+                    displayOrder: cat.displayOrder ?? 0,
+                    order: cat.order ?? 0,
+                    isActive: cat.isActive ?? true,
+                    supportedExperiences: cat.supportedExperiences,
+                    parentId: null
+                });
+                createdCount++;
+            }
+            oldIdToNewDoc.set(String(cat._id), doc);
+        }
+
+        let pending = [...children];
+        let iterations = 0;
+        while (pending.length > 0 && iterations < 10) {
+            iterations++;
+            const remaining = [];
+            for (const cat of pending) {
+                const parentDoc = oldIdToNewDoc.get(String(cat.parentId));
+                if (!parentDoc) {
+                    remaining.push(cat);
+                    continue;
+                }
+                let doc = await Category.findOne({ slug: cat.slug });
+                if (doc) {
+                    doc.name = cat.name;
+                    doc.description = cat.description || '';
+                    doc.image = cat.image || '';
+                    doc.displayOrder = cat.displayOrder ?? 0;
+                    doc.order = cat.order ?? 0;
+                    doc.isActive = cat.isActive ?? true;
+                    doc.supportedExperiences = cat.supportedExperiences;
+                    doc.parentId = parentDoc._id;
+                    await doc.save();
+                    updatedCount++;
+                } else {
+                    doc = await Category.create({
+                        name: cat.name,
+                        slug: cat.slug,
+                        description: cat.description || '',
+                        image: cat.image || '',
+                        displayOrder: cat.displayOrder ?? 0,
+                        order: cat.order ?? 0,
+                        isActive: cat.isActive ?? true,
+                        supportedExperiences: cat.supportedExperiences,
+                        parentId: parentDoc._id
+                    });
+                    createdCount++;
+                }
+                oldIdToNewDoc.set(String(cat._id), doc);
+            }
+            pending = remaining;
+        }
+
+        const total = await Category.countDocuments({});
+        return { createdCount, updatedCount, total };
+    }
 
     // ── 0. Cleanup Legacy Duplicate Slugs ──────────────────────────────────────
     const duplicateGroups = await Category.aggregate([

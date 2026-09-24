@@ -14,7 +14,13 @@ const CategoryTree = ({ categories, onEdit, onDelete, onAddSubcategory, level = 
   };
 
   const getChildren = (parentId) => {
-    return categories.filter((cat) => cat.parentId === parentId);
+    return categories
+      .filter((cat) => String(cat.parentId || '') === String(parentId || ''))
+      .sort((a, b) => {
+        const orderA = a.displayOrder ?? a.order ?? 0;
+        const orderB = b.displayOrder ?? b.order ?? 0;
+        return orderA - orderB;
+      });
   };
 
   const renderCategory = (category) => {
@@ -247,7 +253,11 @@ const CategoryTree = ({ categories, onEdit, onDelete, onAddSubcategory, level = 
 
   const rootCategories = categories
     .filter((cat) => !cat.parentId)
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+    .sort((a, b) => {
+      const orderA = a.displayOrder ?? a.order ?? 0;
+      const orderB = b.displayOrder ?? b.order ?? 0;
+      return orderA - orderB;
+    });
 
   return (
     <div className="space-y-2 sm:space-y-1">
