@@ -9,6 +9,7 @@ import {
     updateStatusService,
     markReadService,
 } from '../services/support.service.js';
+import { uploadLocalFileToCloudinaryAndCleanupWithType } from '../services/upload.service.js';
 
 const normalizeRole = (role) => {
     const raw = String(role || '').toLowerCase();
@@ -223,7 +224,7 @@ export const deleteMessage = asyncHandler(async (req, res) => {
 
 // POST /api/support/upload-attachment
 export const uploadAttachment = asyncHandler(async (req, res) => {
-    if (!req.file) {
+    if (!req.file?.path) {
         throw new ApiError(400, 'No file uploaded.');
     }
 
@@ -234,14 +235,17 @@ export const uploadAttachment = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Invalid file type. Only JPG, PNG, WEBP, and PDF files are allowed.');
     }
 
-    const fileUrl = `/uploads/tmp/${req.file.filename}`;
-    const fileType = isPdf ? 'document' : 'image';
+    const uploaded = await uploadLocalFileToCloudinaryAndCleanupWithType(
+        req.file.path,
+        'support',
+        isPdf ? 'raw' : 'image'
+    );
 
     const attachment = {
-        url: fileUrl,
-        filename: req.file.originalname,
-        fileType,
-        size: req.file.size,
+        url: uploaded.url,
+        filename: uploaded.fileName || req.file.originalname,
+        fileType: isPdf ? 'document' : 'image',
+        size: uploaded.size || req.file.size,
     };
 
     res.status(200).json(new ApiResponse(200, attachment, 'Attachment uploaded successfully.'));
