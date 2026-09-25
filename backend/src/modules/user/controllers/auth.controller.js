@@ -21,7 +21,11 @@ import { buildPhoneFields } from '../../../utils/phone.js';
 
 const extractCloudinaryPublicId = (url = '') => {
     const raw = String(url || '').trim();
-    if (!raw || !raw.includes('/upload/')) return null;
+    if (!raw) return null;
+    if (raw.includes('/images/')) {
+        return raw.split('/images/')[1] || null;
+    }
+    if (!raw.includes('/upload/')) return raw;
     try {
         const afterUpload = raw.split('/upload/')[1] || '';
         const withoutTransform = afterUpload.includes('/') ? afterUpload.substring(afterUpload.indexOf('/') + 1) : afterUpload;

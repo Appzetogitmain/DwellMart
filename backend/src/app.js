@@ -29,6 +29,8 @@ import deviceTokenRoutes from './modules/notifications/routes/deviceToken.routes
 // Config imports
 import { getTransactionSupport } from './config/db.js';
 import { collectEnvViolations } from './config/env.js';
+import { STORAGE_ROOT, initStorageDirectories } from './config/storage.js';
+import storageExampleRoutes from './modules/storage/routes/storageExample.routes.js';
 
 // Middleware imports
 import requestIdMiddleware from './middlewares/requestId.js';
@@ -53,6 +55,7 @@ fs.mkdirSync(uploadsRoot, { recursive: true });
 fs.mkdirSync(deliveryDocsRoot, { recursive: true });
 fs.mkdirSync(vendorDocsRoot, { recursive: true });
 fs.mkdirSync(tmpUploadsRoot, { recursive: true });
+initStorageDirectories();
 
 const isValidDeliveryDocToken = (relativePath, rawToken) => {
     if (!rawToken) return false;
@@ -210,6 +213,20 @@ app.use(
  */
 const PRIVATE_UPLOAD_DIRS = ['/delivery-docs/', '/tmp/'];
 
+// VPS Image & Document Storage: /images/<type>/<year>/<month>/<file>
+app.use(
+    '/images',
+    express.static(STORAGE_ROOT, {
+        maxAge: '1y',
+        setHeaders: (res) => {
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        },
+    })
+);
+
 app.use(
     '/uploads',
     (req, res, next) => {
@@ -323,6 +340,7 @@ app.use('/api/integrations', whatsappWebhookRoutes);
 app.use('/api/v1/translate', translationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/device-tokens', deviceTokenRoutes);
+app.use('/api/storage-example', storageExampleRoutes);
 app.use('/api/support', supportRoutes);
 
 // ─── Error Handling ──────────────────────────────────────────────────────────
