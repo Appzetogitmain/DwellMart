@@ -243,17 +243,35 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 // PUT /api/user/auth/profile
 export const updateProfile = asyncHandler(async (req, res) => {
-    const { name, phone } = req.body;
+    const { name, phone, email } = req.body;
     const normalizedName = String(name || '').trim();
     const { phone: normalizedPhone, phoneE164 } = buildPhoneFields(phone);
 
-    const current = await User.findById(req.user.id).select('phoneE164');
+    const current = await User.findById(req.user.id).select('email phoneE164');
     if (!current) throw new ApiError(404, 'User not found.');
 
     const updatePayload = {
         name: normalizedName,
         phone: normalizedPhone || undefined,
     };
+
+    if (email) {
+        const normalizedEmail = String(email).trim().toLowerCase();
+        if (normalizedEmail !== current.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(normalizedEmail)) {
+                throw new ApiError(400, 'Please provide a valid email address.');
+            }
+            const existing = await User.findOne({
+                email: normalizedEmail,
+                _id: { $ne: req.user.id },
+            });
+            if (existing) {
+                throw new ApiError(409, 'This email address is already in use by another account.');
+            }
+            updatePayload.email = normalizedEmail;
+        }
+    }
 
     // Changing the number invalidates any prior proof of ownership: the new
     // number has not been verified, and password reset trusts that flag.

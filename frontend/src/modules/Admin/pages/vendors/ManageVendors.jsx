@@ -25,7 +25,7 @@ const ManageVendors = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { admin, can } = useAdminAuthStore();
-  const { vendors, initialize, updateVendorStatus, updateCommissionRate, deleteVendor } =
+  const { vendors, initialize, updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
     useVendorStore();
 
   const urlPage = parseInt(searchParams.get("page") || "1", 10);
@@ -37,12 +37,13 @@ const ManageVendors = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [actionModal, setActionModal] = useState({
     isOpen: false,
-    type: null, // 'approve', 'activate', 'suspend', 'commission', 'hard_delete'
+    type: null, // 'approve', 'activate', 'suspend', 'commission', 'hard_delete', 'email'
     vendorId: null,
     vendorName: null,
   });
   const [commissionRate, setCommissionRate] = useState("");
   const [statusReason, setStatusReason] = useState("");
+  const [newVendorEmail, setNewVendorEmail] = useState("");
   const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
 
   // Sync state if URL changes (e.g. back/forward button)
@@ -154,7 +155,30 @@ const ManageVendors = () => {
       key: "email",
       label: "Email",
       sortable: true,
-      render: (value) => <span className="text-sm text-gray-700">{value}</span>,
+      render: (value, row) => (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm text-gray-700">{value}</span>
+          {(admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_EDIT)) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setNewVendorEmail(row.email || "");
+                setActionModal({
+                  isOpen: true,
+                  type: "email",
+                  vendorId: row.id,
+                  vendorName: row.storeName || row.name,
+                });
+              }}
+              className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+              title="Edit Vendor Email"
+            >
+              <FiEdit className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      ),
     },
     {
       key: "status",
@@ -419,8 +443,59 @@ const ManageVendors = () => {
     }
   };
 
+  const handleVendorEmailUpdate = async () => {
+    const trimmed = newVendorEmail.trim().toLowerCase();
+    if (!trimmed) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    try {
+      const updated = await updateVendorEmail(actionModal.vendorId, trimmed);
+      if (updated) {
+        toast.success("Vendor email updated successfully");
+        setActionModal({
+          isOpen: false,
+          type: null,
+          vendorId: null,
+          vendorName: null,
+        });
+        setNewVendorEmail("");
+        initialize();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update vendor email");
+    }
+  };
+
   const getModalContent = () => {
     switch (actionModal.type) {
+      case "email":
+        return {
+          title: "Update Vendor Email",
+          message: `Change email address for "${actionModal.vendorName}"`,
+          confirmText: "Save Email",
+          onConfirm: handleVendorEmailUpdate,
+          type: "info",
+          confirmDisabled: !newVendorEmail.trim(),
+          customContent: (
+            <div className="mt-4">
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                New Email Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={newVendorEmail}
+                onChange={(e) => setNewVendorEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="vendor@example.com"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                The vendor will use this email address to log in.
+              </p>
+            </div>
+          ),
+        };
       case "approve":
         return {
           title: "Approve Vendor?",

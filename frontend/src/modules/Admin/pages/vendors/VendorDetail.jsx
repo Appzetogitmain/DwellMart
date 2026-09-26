@@ -35,7 +35,7 @@ const VendorDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { admin, can } = useAdminAuthStore();
-  const { getVendor, updateVendorStatus, updateCommissionRate, deleteVendor } =
+  const { getVendor, updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
     useVendorStore();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -60,6 +60,9 @@ const VendorDetail = () => {
   const [isSavingQuickCommerce, setIsSavingQuickCommerce] = useState(false);
   const [isEditingCommission, setIsEditingCommission] = useState(false);
   const [commissionRate, setCommissionRate] = useState("");
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editableEmail, setEditableEmail] = useState("");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -67,6 +70,31 @@ const VendorDetail = () => {
   const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const isSameVendorId = (a, b) => String(a) === String(b);
+
+  const handleSaveEmail = async () => {
+    const trimmed = editableEmail.trim().toLowerCase();
+    if (!trimmed) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (trimmed === vendor.email) {
+      setIsEditingEmail(false);
+      return;
+    }
+    try {
+      setIsSavingEmail(true);
+      const updated = await updateVendorEmail(id, trimmed);
+      if (updated) {
+        setVendor((prev) => ({ ...prev, email: trimmed }));
+        toast.success("Vendor email updated successfully");
+      }
+      setIsEditingEmail(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update vendor email");
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
 
   useEffect(() => {
     const fetchVendorData = async () => {
@@ -80,6 +108,7 @@ const VendorDetail = () => {
       if (data) {
         setVendor(data);
         setCommissionRate(((data.commissionRate || 0) * 100).toFixed(1));
+        setEditableEmail(data.email || "");
 
         // 2. Fetch Vendor Orders (all pages)
         try {
@@ -609,12 +638,61 @@ const VendorDetail = () => {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <FiMail className="text-gray-400 mt-1" />
-                      <div>
-                        <p className="text-xs text-gray-600">Email</p>
-                        <p className="font-semibold text-gray-800">
-                          {vendor.email}
-                        </p>
+                      <FiMail className="text-gray-400 mt-1 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-gray-600">Email</p>
+                          {(admin?.role === "superadmin" || can(PERMISSIONS.VENDORS_EDIT)) && !isEditingEmail && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditableEmail(vendor.email || "");
+                                setIsEditingEmail(true);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium transition-colors"
+                            >
+                              <FiEdit className="w-3 h-3" />
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                        {isEditingEmail ? (
+                          <div className="mt-1 space-y-2">
+                            <input
+                              type="email"
+                              value={editableEmail}
+                              onChange={(e) => setEditableEmail(e.target.value)}
+                              className="w-full px-2.5 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                              placeholder="vendor@example.com"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={isSavingEmail}
+                                onClick={handleSaveEmail}
+                                className="px-2.5 py-1 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded-md font-medium transition-colors disabled:opacity-50"
+                              >
+                                {isSavingEmail ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isSavingEmail}
+                                onClick={() => {
+                                  setEditableEmail(vendor.email || "");
+                                  setIsEditingEmail(false);
+                                }}
+                                className="px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded-md font-medium transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="font-semibold text-gray-800 truncate">
+                            {vendor.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-start gap-3">

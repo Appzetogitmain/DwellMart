@@ -882,8 +882,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           value={formData.name}
                           onChange={handleChange}
                           required
-                          disabled={isVendorProductEdit}
-                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
 
@@ -908,7 +907,6 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           subcategoryId={formData.subcategoryId}
                           onChange={handleChange}
                           required
-                          disabled={isVendorProductEdit}
                         />
                       </div>
 

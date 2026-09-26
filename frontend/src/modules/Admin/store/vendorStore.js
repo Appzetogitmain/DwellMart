@@ -4,6 +4,7 @@ import {
   getVendorById,
   updateVendorStatus as updateVendorStatusApi,
   updateCommissionRate as updateCommissionRateApi,
+  updateVendorEmail as updateVendorEmailApi,
   deleteVendor as deleteVendorApi,
 } from "../services/adminService";
 
@@ -125,6 +126,28 @@ export const useVendorStore = create((set, get) => ({
       return true;
     } catch {
       return false;
+    }
+  },
+
+  updateVendorEmail: async (id, email) => {
+    try {
+      const response = await updateVendorEmailApi(id, email);
+      const vendor = normalizeVendor(response?.data ?? response);
+      if (!vendor) return false;
+      set((state) => ({
+        vendors: state.vendors.map((v) =>
+          String(v.id || v._id) === String(id) ? { ...v, ...vendor } : v
+        ),
+        selectedVendor:
+          state.selectedVendor &&
+          String(state.selectedVendor.id || state.selectedVendor._id) ===
+          String(id)
+            ? { ...state.selectedVendor, ...vendor }
+            : state.selectedVendor,
+      }));
+      return vendor;
+    } catch (err) {
+      throw err;
     }
   },
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud, FiX, FiFolder } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
@@ -7,6 +7,7 @@ import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProductFormModal from "../../components/ProductFormModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
+import CategorySelector from "../../components/CategorySelector";
 import PermissionGuard from "../../../../shared/components/PermissionGuard";
 import BulkUploadModal from "../../../../shared/components/BulkUploadModal";
 import ImportHistoryModal from "../../../../shared/components/ImportHistoryModal";
@@ -15,7 +16,7 @@ import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpe
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { getAllProducts, deleteProduct, exportProductsCatalog, getProductsMissingShipping } from "../../services/adminService";
+import { getAllProducts, deleteProduct, exportProductsCatalog, getProductsMissingShipping, updateProduct } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageProducts = () => {
@@ -57,6 +58,62 @@ const ManageProducts = () => {
     isOpen: false,
     productId: null,
   });
+  const [quickEditModal, setQuickEditModal] = useState({
+    isOpen: false,
+    product: null,
+    type: null, // 'name' | 'category'
+  });
+  const [quickEditName, setQuickEditName] = useState("");
+  const [quickEditCategory, setQuickEditCategory] = useState({
+    categoryId: "",
+    subcategoryId: "",
+  });
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
+
+  const handleOpenQuickEdit = (product, type) => {
+    setQuickEditModal({ isOpen: true, product, type });
+    if (type === "name") {
+      setQuickEditName(product.name || "");
+    } else {
+      const catId = product.categoryId?._id || product.categoryId || "";
+      setQuickEditCategory({
+        categoryId: catId,
+        subcategoryId: "",
+      });
+    }
+  };
+
+  const handleSaveQuickEdit = async () => {
+    if (!quickEditModal.product) return;
+    try {
+      setIsQuickSaving(true);
+      if (quickEditModal.type === "name") {
+        const trimmed = quickEditName.trim();
+        if (!trimmed || trimmed.length < 2) {
+          toast.error("Product name must be at least 2 characters");
+          setIsQuickSaving(false);
+          return;
+        }
+        await updateProduct(quickEditModal.product.id, { name: trimmed });
+        toast.success("Product renamed successfully");
+      } else if (quickEditModal.type === "category") {
+        const finalCat = quickEditCategory.subcategoryId || quickEditCategory.categoryId;
+        if (!finalCat) {
+          toast.error("Please select a category");
+          setIsQuickSaving(false);
+          return;
+        }
+        await updateProduct(quickEditModal.product.id, { categoryId: finalCat });
+        toast.success("Category updated successfully");
+      }
+      setQuickEditModal({ isOpen: false, product: null, type: null });
+      loadProducts();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to update product");
+    } finally {
+      setIsQuickSaving(false);
+    }
+  };
 
   useEffect(() => {
     initCategories();
@@ -131,11 +188,53 @@ const ManageProducts = () => {
             }}
           />
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium">{value}</span>
+            <span className="font-medium text-gray-900">{value}</span>
             <ProductWholesaleBadge product={row} />
+            <PermissionGuard permission="products.edit">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenQuickEdit(row, "name");
+                }}
+                className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                title="Rename Product"
+              >
+                <FiEdit className="w-3.5 h-3.5" />
+              </button>
+            </PermissionGuard>
           </div>
         </div>
       ),
+    },
+    {
+      key: "categoryId",
+      label: "Category",
+      sortable: false,
+      render: (value, row) => {
+        const catName = row.categoryId?.name || (typeof value === "object" ? value?.name : null);
+        return (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 bg-gray-100 px-2.5 py-1 rounded-md">
+              <FiFolder className="w-3 h-3 text-gray-400" />
+              {catName || "Uncategorized"}
+            </span>
+            <PermissionGuard permission="products.edit">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenQuickEdit(row, "category");
+                }}
+                className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                title="Change Category"
+              >
+                <FiEdit className="w-3.5 h-3.5" />
+              </button>
+            </PermissionGuard>
+          </div>
+        );
+      },
     },
     {
       key: "price",
@@ -417,6 +516,87 @@ const ManageProducts = () => {
         onClose={() => setIsHistoryModalOpen(false)}
         mode="admin"
       />
+
+      {/* Quick Edit Modal */}
+      {quickEditModal.isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-4"
+          onClick={() => !isQuickSaving && setQuickEditModal({ isOpen: false, product: null, type: null })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-bold text-gray-900">
+                {quickEditModal.type === "name" ? "Rename Product" : "Edit Product Category"}
+              </h3>
+              <button
+                type="button"
+                disabled={isQuickSaving}
+                onClick={() => setQuickEditModal({ isOpen: false, product: null, type: null })}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+              Target Product: <span className="font-semibold text-gray-800">{quickEditModal.product?.name}</span>
+            </div>
+
+            {quickEditModal.type === "name" ? (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Product Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={quickEditName}
+                  onChange={(e) => setQuickEditName(e.target.value)}
+                  className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
+                  placeholder="Enter new product name"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Select Category <span className="text-red-500">*</span>
+                </label>
+                <CategorySelector
+                  value={quickEditCategory.categoryId}
+                  subcategoryId={quickEditCategory.subcategoryId}
+                  onChange={(e) => {
+                    const { name, value } = e.target;
+                    setQuickEditCategory((prev) => ({ ...prev, [name]: value }));
+                  }}
+                  required
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isQuickSaving}
+                onClick={() => setQuickEditModal({ isOpen: false, product: null, type: null })}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isQuickSaving}
+                onClick={handleSaveQuickEdit}
+                className="px-5 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors font-semibold shadow-sm disabled:opacity-50"
+              >
+                {isQuickSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
