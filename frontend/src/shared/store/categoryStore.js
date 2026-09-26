@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { categories as initialCategories } from '../../data/categories';
 import {
   getAllCategories,
@@ -12,9 +11,24 @@ import {
 } from '../../modules/Admin/services/adminService';
 import { toastService } from '../utils/toastService';
 
+// Automatically clean up legacy bloated category cache keys from localStorage to prevent QuotaExceededError
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('category-storage')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    // Ignore storage errors in restricted contexts
+  }
+}
+
 export const useCategoryStore = create(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       categories: [],
       isLoading: false,
       // Which category tree is currently loaded. Null means the default
@@ -242,10 +256,5 @@ export const useCategoryStore = create(
           return false;
         }
       },
-    }),
-    {
-      name: 'category-storage-v7',
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
+    })
 );

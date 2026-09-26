@@ -22,4 +22,9 @@ npm install
 pm2 restart dwellmart-backend || pm2 start src/server.js --name dwellmart-backend
 pm2 save
 
+# NGINX CONFIGURATION & CSP
+echo "🌐 Updating Nginx Configuration..."
+sudo cp ../nginx/dwellmart.conf /etc/nginx/sites-available/dwellmart.conf
+sudo nginx -t && sudo systemctl reload nginx
+
 echo "✅ Deploy finished successfully!"
