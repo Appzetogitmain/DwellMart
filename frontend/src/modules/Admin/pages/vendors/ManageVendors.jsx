@@ -7,6 +7,7 @@ import {
   FiXCircle,
   FiDollarSign,
   FiTrash2,
+  FiEdit,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
