@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
 /**
  * Wrapper component that ensures consistent route container styling
@@ -6,6 +7,13 @@ import { useLocation } from 'react-router-dom';
  */
 const RouteWrapper = ({ children }) => {
   const location = useLocation();
+
+  // Track SPA pageviews with Meta Pixel on route changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+      window.fbq('track', 'PageView');
+    }
+  }, [location.pathname]);
 
   // Return children with location pathname key to force remount only on distinct path change
   // Without location.search so filter/query updates update in-place rather than unmounting
