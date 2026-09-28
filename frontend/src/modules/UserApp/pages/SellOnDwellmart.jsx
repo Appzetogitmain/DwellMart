@@ -51,6 +51,21 @@ const SellOnDwellmart = () => {
   const [statsData, setStatsData] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 
+  // Track Meta Pixel custom event for Vendor Register page visit
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+      if (!window.__vendorRegisterPixelTracked) {
+        window.fbq('trackCustom', 'VendorRegisterPageVisit');
+        window.__vendorRegisterPixelTracked = true;
+      }
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.__vendorRegisterPixelTracked = false;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     const loadStats = async () => {

@@ -26,7 +26,8 @@
       fbq('init', '2995244780830323');
       fbq('track', 'PageView');
 
-      if (window.location.pathname === '/vendor/register' || window.location.pathname === '/vendor/register/') {
+      var initialPath = (window.location.pathname || '').replace(/\/+$/, '') || '/';
+      if (initialPath === '/vendor/register' || initialPath === '/sell-on-dwellmart') {
         fbq('trackCustom', 'VendorRegisterPageVisit');
         window.__vendorRegisterPixelTracked = true;
       }
