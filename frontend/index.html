@@ -25,6 +25,11 @@
       'https://connect.facebook.net/en_US/fbevents.js');
       fbq('init', '2995244780830323');
       fbq('track', 'PageView');
+
+      if (window.location.pathname === '/vendor/register' || window.location.pathname === '/vendor/register/') {
+        fbq('trackCustom', 'VendorRegisterPageVisit');
+        window.__vendorRegisterPixelTracked = true;
+      }
     </script>
     <!-- End Meta Pixel Code -->
   </head>
