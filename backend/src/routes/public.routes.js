@@ -270,8 +270,18 @@ const buildCatalogQueryFilter = async (req) => {
         }
 
         if (targetId) {
-            const childCategories = await Category.find({ parentId: targetId }).select('_id').lean();
-            categoryIds = [targetId, ...childCategories.map((cat) => String(cat._id))];
+            const allIds = [String(targetId)];
+            let currentLevel = [targetId];
+            while (currentLevel.length > 0) {
+                const children = await Category.find({
+                    parentId: { $in: currentLevel },
+                    isActive: { $ne: false },
+                }).select('_id').lean();
+                if (!children.length) break;
+                currentLevel = children.map((cat) => cat._id);
+                allIds.push(...children.map((cat) => String(cat._id)));
+            }
+            categoryIds = allIds;
         } else {
             categoryIds = [];
         }
