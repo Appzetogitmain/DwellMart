@@ -65,7 +65,9 @@ export const createProductSchema = Joi.object({
     cancelable: Joi.boolean().optional(),
     taxIncluded: Joi.boolean().optional(),
     image: Joi.string().allow('').optional(),
-    images: Joi.array().items(Joi.string()).optional(),
+    images: Joi.array().items(Joi.string()).max(3).messages({
+        'array.max': 'A product can have a maximum of 3 gallery images (4 total including main image)',
+    }).optional(),
     tags: Joi.array().items(Joi.string()).optional(),
     seoTitle: Joi.string().allow('', null).optional(),
     seoDescription: Joi.string().allow('', null).optional(),
@@ -146,7 +148,9 @@ export const updateProductSchema = Joi.object({
     cancelable: Joi.boolean().optional(),
     taxIncluded: Joi.boolean().optional(),
     image: Joi.string().allow('', null).optional(),
-    images: Joi.array().items(Joi.string()).optional(),
+    images: Joi.array().items(Joi.string()).max(3).messages({
+        'array.max': 'A product can have a maximum of 3 gallery images (4 total including main image)',
+    }).optional(),
     tags: Joi.array().items(Joi.string()).optional(),
     seoTitle: Joi.string().allow('', null).optional(),
     seoDescription: Joi.string().allow('', null).optional(),

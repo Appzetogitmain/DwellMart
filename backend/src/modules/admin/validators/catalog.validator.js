@@ -54,7 +54,9 @@ const productBaseSchema = {
     originalPrice: Joi.number().min(0).allow(null, '').optional(),
     costPrice: Joi.number().min(0).allow(null, '').optional(),
     unit: Joi.string().trim().max(40).pattern(/^(?!\d+$).+$/).message('Unit cannot be a numeric value alone').allow('', null).optional(),
-    images: Joi.array().items(Joi.string().trim()).allow(null).optional(),
+    images: Joi.array().items(Joi.string().trim()).max(3).messages({
+        'array.max': 'A product can have a maximum of 3 gallery images (4 total including main image)',
+    }).allow(null).optional(),
     image: Joi.string().trim().allow('', null).optional(),
     categoryId: objectId,
     brandId: objectId.allow(null, '').optional(),

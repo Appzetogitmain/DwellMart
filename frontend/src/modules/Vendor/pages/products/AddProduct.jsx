@@ -236,9 +236,20 @@ const AddProduct = () => {
     }
   };
 
+  const MAX_GALLERY_IMAGES = 3;
+
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
+
+    const currentCount = (formData.images || []).length;
+    const remainingSlots = MAX_GALLERY_IMAGES - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed (4 total including main image).`);
+      e.target.value = "";
+      return;
+    }
 
     const validFiles = files.filter((file) => {
       if (!file.type.startsWith("image/")) {
@@ -252,11 +263,20 @@ const AddProduct = () => {
       return true;
     });
 
-    if (validFiles.length === 0) return;
+    if (validFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
+
+    let filesToUpload = validFiles;
+    if (validFiles.length > remainingSlots) {
+      toast.error(`You can only add ${remainingSlots} more gallery image(s). Only the first ${remainingSlots} will be uploaded.`);
+      filesToUpload = validFiles.slice(0, remainingSlots);
+    }
 
     setIsUploadingMedia(true);
     try {
-      const res = await uploadVendorImages(validFiles, "vendors/products");
+      const res = await uploadVendorImages(filesToUpload, "vendors/products");
       const uploaded = res?.data ?? res;
       const uploadedUrls = Array.isArray(uploaded)
         ? uploaded.map((u) => u?.url).filter(Boolean)
@@ -264,13 +284,14 @@ const AddProduct = () => {
 
       setFormData((prev) => ({
         ...prev,
-        images: [...prev.images, ...uploadedUrls],
+        images: [...(prev.images || []), ...uploadedUrls].slice(0, MAX_GALLERY_IMAGES),
       }));
       toast.success(`${uploadedUrls.length} image(s) added to gallery`);
     } catch {
       // errors handled by api.js
     } finally {
       setIsUploadingMedia(false);
+      e.target.value = "";
     }
   };
 
@@ -452,6 +473,11 @@ const AddProduct = () => {
 
     if (!formData.name || !formData.price || !formData.stockQuantity || !formData.categoryId) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if ((formData.images || []).length > 3) {
+      toast.error("You can upload a maximum of 3 gallery images (4 total including main image).");
       return;
     }
 
@@ -818,12 +844,17 @@ const AddProduct = () => {
 
             {/* Product Gallery */}
             <div className="bg-white rounded-lg p-3 border border-primary-200">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">
-                Product Gallery
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Product Gallery
+                </h3>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-100 text-primary-800">
+                  {(formData.images || []).length}/3 images
+                </span>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Upload Gallery Images (Multiple)
+                  Upload Gallery Images (Max 3, Total 4 including Main Image)
                 </label>
                 <div className="relative">
                   <input
@@ -833,13 +864,20 @@ const AddProduct = () => {
                     onChange={handleGalleryUpload}
                     className="hidden"
                     id="gallery-upload"
+                    disabled={isUploadingMedia || (formData.images || []).length >= 3}
                   />
                   <label
-                    htmlFor="gallery-upload"
-                    className="flex items-center justify-center gap-2 w-full px-3 py-2 border-2 border-dashed border-primary-300 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-colors bg-white">
-                    <FiUpload className="text-base text-primary-600" />
+                    htmlFor={(formData.images || []).length >= 3 ? undefined : "gallery-upload"}
+                    className={`flex items-center justify-center gap-2 w-full px-3 py-2 border-2 border-dashed rounded-lg transition-colors bg-white ${
+                      (formData.images || []).length >= 3
+                        ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                        : "border-primary-300 cursor-pointer hover:border-primary-500 hover:bg-primary-50"
+                    }`}>
+                    <FiUpload className={`text-base ${(formData.images || []).length >= 3 ? "text-gray-400" : "text-primary-600"}`} />
                     <span className="text-xs font-medium text-gray-700">
-                      Choose Gallery Images
+                      {(formData.images || []).length >= 3
+                        ? "Gallery Limit Reached (3/3) - Remove an image to change"
+                        : "Choose Gallery Images (Max 3)"}
                     </span>
                   </label>
                 </div>

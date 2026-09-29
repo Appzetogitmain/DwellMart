@@ -319,23 +319,52 @@ const ProductForm = () => {
     } catch { /* errors handled by api.js */ } finally { setIsUploadingMedia(false); }
   };
 
+  const MAX_GALLERY_IMAGES = 3;
+
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+
+    const currentCount = (formData.images || []).length;
+    const remainingSlots = MAX_GALLERY_IMAGES - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed (4 total including main image).`);
+      e.target.value = "";
+      return;
+    }
+
     const validFiles = files.filter((file) => {
       if (!file.type.startsWith("image/")) { toast.error(`${file.name} is not an image file`); return false; }
       if (file.size > 5 * 1024 * 1024) { toast.error(`${file.name} size should be less than 5MB`); return false; }
       return true;
     });
-    if (!validFiles.length) return;
+
+    if (!validFiles.length) {
+      e.target.value = "";
+      return;
+    }
+
+    let filesToUpload = validFiles;
+    if (validFiles.length > remainingSlots) {
+      toast.error(`You can only add ${remainingSlots} more gallery image(s). Only the first ${remainingSlots} will be uploaded.`);
+      filesToUpload = validFiles.slice(0, remainingSlots);
+    }
+
     setIsUploadingMedia(true);
     try {
-      const res = await uploadVendorImages(validFiles, "vendors/products");
+      const res = await uploadVendorImages(filesToUpload, "vendors/products");
       const uploaded = res?.data ?? res;
       const uploadedUrls = Array.isArray(uploaded) ? uploaded.map((u) => u?.url).filter(Boolean) : [];
-      setFormData((prev) => ({ ...prev, images: [...prev.images, ...uploadedUrls] }));
+      setFormData((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...uploadedUrls].slice(0, MAX_GALLERY_IMAGES),
+      }));
       toast.success(`${uploadedUrls.length} image(s) added to gallery`);
-    } catch { /* errors handled by api.js */ } finally { setIsUploadingMedia(false); }
+    } catch { /* errors handled by api.js */ } finally {
+      setIsUploadingMedia(false);
+      e.target.value = "";
+    }
   };
 
   const removeGalleryImage = (index) =>
@@ -475,6 +504,11 @@ const ProductForm = () => {
 
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedStockQuantity)) {
       toast.error("Please enter valid numeric values");
+      return;
+    }
+
+    if ((formData.images || []).length > 3) {
+      toast.error("You can have a maximum of 3 gallery images (4 total including main image).");
       return;
     }
 
