@@ -1,8 +1,9 @@
 #!/bin/bash
 echo "🚀 Deploying DwellMart to dwellmart.in..."
 
-# Navigate to project directory
-cd ~/dwellmart || cd ~/DwellMart
+# Navigate to project directory (supports AWS EC2 /var/www and home directories)
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "$PROJECT_DIR" || cd /var/www/DwellMart || cd /var/www/dwellmart || cd ~/dwellmart || cd ~/DwellMart
 git fetch origin main
 git reset --hard origin/main
 
