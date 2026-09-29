@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   FiChevronDown,
   FiChevronRight,
@@ -38,6 +38,37 @@ const CategorySelector = ({
   const containerRef = useRef(null);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  const [placement, setPlacement] = useState({
+    openUpward: false,
+    maxHeight: 460,
+    alignRight: false,
+  });
+
+  const updateDropdownPlacement = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+
+    const spaceBelow = vh - rect.bottom - 16;
+    const spaceAbove = rect.top - 16;
+
+    // Prefer upward if space below is tight (< 380px) and space above has more room
+    const preferUpward = spaceBelow < 380 && spaceAbove > spaceBelow;
+    const availableHeight = preferUpward ? spaceAbove : spaceBelow;
+    const calculatedMaxHeight = Math.max(260, Math.min(480, Math.floor(availableHeight)));
+
+    // Check if dropdown would overflow the right edge of viewport
+    const dropdownExpectedWidth = Math.min(820, vw - 24);
+    const wouldOverflowRight = rect.left + dropdownExpectedWidth > vw - 16;
+
+    setPlacement({
+      openUpward: preferUpward,
+      maxHeight: calculatedMaxHeight,
+      alignRight: wouldOverflowRight && rect.right >= dropdownExpectedWidth,
+    });
+  }, []);
 
   // Map for fast category lookup
   const categoryMap = useMemo(() => {
@@ -136,6 +167,10 @@ const CategorySelector = ({
   // Synchronize active level selections with currently selected value when opened
   useEffect(() => {
     if (isOpen) {
+      updateDropdownPlacement();
+      window.addEventListener("resize", updateDropdownPlacement);
+      window.addEventListener("scroll", updateDropdownPlacement, true);
+
       if (selectedPath.length > 0) {
         if (selectedPath[0]) setActiveLevel1Id(String(selectedPath[0].id || selectedPath[0]._id));
         if (selectedPath[1]) setActiveLevel2Id(String(selectedPath[1].id || selectedPath[1]._id));
@@ -146,10 +181,15 @@ const CategorySelector = ({
       if (searchInputRef.current) {
         setTimeout(() => searchInputRef.current?.focus(), 150);
       }
+
+      return () => {
+        window.removeEventListener("resize", updateDropdownPlacement);
+        window.removeEventListener("scroll", updateDropdownPlacement, true);
+      };
     } else {
       setSearchQuery("");
     }
-  }, [isOpen]);
+  }, [isOpen, updateDropdownPlacement]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -300,17 +340,39 @@ const CategorySelector = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[45] md:hidden"
             />
 
             {/* Main Dropdown Panel */}
             <motion.div
               ref={dropdownRef}
-              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              initial={{
+                opacity: 0,
+                y: placement.openUpward ? -8 : 8,
+                scale: 0.98,
+              }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              exit={{
+                opacity: 0,
+                y: placement.openUpward ? -6 : 6,
+                scale: 0.98,
+              }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="fixed inset-x-3 bottom-3 top-20 md:static md:inset-auto md:absolute md:top-full md:left-0 md:right-0 md:mt-2 z-50 bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col md:max-w-4xl md:w-[720px] lg:w-[840px]"
+              style={{
+                maxHeight:
+                  typeof window !== "undefined" && window.innerWidth >= 768
+                    ? `${placement.maxHeight}px`
+                    : "calc(100vh - 4.5rem)",
+              }}
+              className={`fixed inset-x-2 bottom-2 top-14 sm:top-16 z-50 md:absolute ${
+                placement.openUpward
+                  ? "md:bottom-full md:top-auto md:mb-2"
+                  : "md:top-full md:bottom-auto md:mt-2"
+              } ${
+                placement.alignRight
+                  ? "md:right-0 md:left-auto"
+                  : "md:left-0 md:right-auto"
+              } bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden flex flex-col w-auto md:w-[720px] lg:w-[820px] max-w-[calc(100vw-1.5rem)]`}
             >
               {/* Header with Search */}
               <div className="p-3 border-b border-slate-100 bg-slate-50/80 flex items-center gap-2 shrink-0">
@@ -338,7 +400,8 @@ const CategorySelector = ({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="md:hidden p-2 text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-xl"
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                  title="Close category picker"
                 >
                   <FiX className="w-5 h-5" />
                 </button>
@@ -347,7 +410,7 @@ const CategorySelector = ({
               {/* BODY: Search Results View OR Multi-Level Browser */}
               {searchQuery.trim() ? (
                 /* ── Search Results List ── */
-                <div className="overflow-y-auto max-h-[380px] p-2 divide-y divide-slate-50 scrollbar-category">
+                <div className="overflow-y-auto flex-1 min-h-[160px] p-2 divide-y divide-slate-50 scrollbar-category">
                   {searchResults.length === 0 ? (
                     <div className="py-12 text-center">
                       <FiFolder className="w-8 h-8 text-slate-300 mx-auto mb-2" />
@@ -390,7 +453,7 @@ const CategorySelector = ({
                 /* ── Normal Cascading Navigation ── */
                 <>
                   {/* DESKTOP 3-COLUMN VIEW (Hidden on Mobile) */}
-                  <div className="hidden md:grid md:grid-cols-3 divide-x divide-slate-100 h-[360px] min-h-[320px] max-h-[400px] overflow-hidden">
+                  <div className="hidden md:grid md:grid-cols-3 divide-x divide-slate-100 flex-1 min-h-[220px] overflow-hidden">
                     
                     {/* COLUMN 1: Root Categories */}
                     <div className="flex flex-col h-full min-h-0 overflow-hidden bg-slate-50/40">

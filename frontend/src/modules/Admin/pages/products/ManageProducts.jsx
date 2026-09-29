@@ -520,11 +520,13 @@ const ManageProducts = () => {
       {/* Quick Edit Modal */}
       {quickEditModal.isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           onClick={() => !isQuickSaving && setQuickEditModal({ isOpen: false, product: null, type: null })}
         >
           <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+            className={`bg-white rounded-2xl shadow-2xl w-full p-4 sm:p-6 space-y-4 my-auto transition-all ${
+              quickEditModal.type === "category" ? "max-w-3xl lg:max-w-4xl" : "max-w-lg"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
