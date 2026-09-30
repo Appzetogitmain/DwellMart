@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { FiSave, FiX, FiUpload } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import TagInput from "../../../shared/components/TagInput";
 import { useCategoryStore } from "../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../shared/store/brandStore";
 import {
@@ -812,7 +814,9 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const selectedVendorWholesaleEnabled =
     selectedVendor?.sellingChannels?.wholesale?.enabled === true;
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -823,7 +827,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-[10000]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[10000]"
           />
 
           {/* Modal Content - Mobile: Slide up from bottom, Desktop: Center with scale */}
@@ -831,8 +835,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className={`fixed inset-0 z-[10000] flex ${isAppRoute ? "items-start pt-[10px]" : "items-end"
-              } sm:items-center justify-center p-4 pointer-events-none`}>
+            className={`fixed inset-0 z-[10001] flex ${isAppRoute ? "items-start pt-[10px]" : "items-end"
+              } sm:items-center justify-center p-3 sm:p-6 overflow-y-auto pointer-events-none`}>
             <motion.div
               variants={{
                 hidden: {
@@ -867,10 +871,10 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               exit="exit"
               onClick={(e) => e.stopPropagation()}
               className={`bg-white ${isAppRoute ? "rounded-b-3xl" : "rounded-t-3xl"
-                } sm:rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col pointer-events-auto`}
+                } sm:rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] my-auto flex flex-col pointer-events-auto border border-gray-100`}
               style={{ willChange: "transform" }}>
               {/* Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0 bg-white sm:rounded-t-2xl">
                 <div>
                   <h2 className="text-xl font-bold text-gray-800">
                     {isEdit ? "Edit Product" : "Create Product"}
@@ -1705,24 +1709,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
 
                   {/* Tags */}
                   <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3">
                       Tags
                     </h3>
-                    <div>
-                      <input
-                        type="text"
-                        value={(formData.tags || []).join(", ")}
-                        onChange={(e) => {
-                          const tags = e.target.value
-                            .split(",")
-                            .map((t) => t.trim())
-                            .filter((t) => t);
-                          setFormData({ ...formData, tags });
-                        }}
-                        placeholder="tag1, tag2, tag3"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
+                    <TagInput
+                      tags={formData.tags || []}
+                      onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+                      placeholder="Type tag and press comma or Enter..."
+                    />
                   </div>
 
                   {/* Product FAQs */}
@@ -1932,7 +1926,8 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

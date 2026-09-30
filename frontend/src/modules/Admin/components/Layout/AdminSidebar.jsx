@@ -130,6 +130,7 @@ export const CHILD_PERMISSION_MAP = {
 
   // Offers & Marketing
   "Home Sliders": "offers.view",
+  "Homepage Sections": "offers.view",
   "Festival Offers": "offers.view",
   "Campaigns": "offers.view",
   "Push Notifications": "dashboard.view",
@@ -219,6 +220,7 @@ const getChildRoute = (parentRoute, childName) => {
     },
     "/admin/offers": {
       "Home Sliders": "/admin/offers/home-sliders",
+      "Homepage Sections": "/admin/offers/homepage-sections",
       "Festival Offers": "/admin/offers/festival-offers",
       "Campaigns": "/admin/campaigns",
     },

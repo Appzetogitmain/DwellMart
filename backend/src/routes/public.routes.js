@@ -72,6 +72,7 @@ import { evaluateCouponEligibility, computeCouponDiscount } from '../services/co
 import { sendEmail } from '../services/email.service.js';
 
 import { getPublicGeneralSettings, getPublicSettingsByCategory } from '../modules/admin/controllers/settings.controller.js';
+import { getHomepageSections } from '../services/homepageSections.service.js';
 
 const router = Router();
 const listCache = cacheResponse({ ttlSeconds: 30, maxEntries: 1000 });
@@ -150,7 +151,8 @@ const toPublicVendor = (vendorDoc) => {
 };
 
 const activeCampaignWindowQuery = (now = new Date()) => {
-    // Be more inclusive: check if it's within the day
+    // Campaign dates entered in the admin UI are calendar days. Preserve the
+    // existing inclusive-day behavior for catalog and deal visibility.
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
     const endOfToday = new Date(now);
@@ -527,12 +529,12 @@ const listProducts = asyncHandler(async (req, res) => {
     const { filter } = await buildCatalogQueryFilter(req);
 
     const sortMap = {
-        newest: { createdAt: -1 },
-        oldest: { createdAt: 1 },
+        newest: { createdAt: -1, _id: -1 },
+        oldest: { createdAt: 1, _id: 1 },
         'price-asc': { price: 1 },
         'price-desc': { price: -1 },
-        popular: { reviewCount: -1 },
-        rating: { rating: -1 },
+        popular: { reviewCount: -1, rating: -1, createdAt: -1, _id: -1 },
+        rating: { rating: -1, reviewCount: -1, createdAt: -1, _id: -1 },
     };
 
     const countCacheKey = getCatalogCountCacheKey(filter);
@@ -790,6 +792,33 @@ router.get('/products', listCache, listProducts);
 router.get('/products/facets', listCache, getProductFacets);
 router.get('/facets', listCache, getProductFacets);
 
+// Pins are explicitly chosen by an administrator, so they only require an
+// active product. Automatic rows still use the normal public catalog guard.
+router.get('/homepage/sections', asyncHandler(async (req, res) => {
+    const config = await getHomepageSections();
+    const pinnedIds = [...new Set(config.sections.flatMap((section) => section.pinnedIds || []))];
+    if (!pinnedIds.length) {
+        return res.json(new ApiResponse(200, { ...config, pinnedProducts: {} }, 'Homepage sections fetched.'));
+    }
+
+    const products = await Product.find({ _id: { $in: pinnedIds }, isActive: true })
+        .select(PRODUCT_LIST_SELECT)
+        .populate('categoryId', 'name')
+        .populate('brandId', 'name')
+        .populate('vendorId', 'storeName')
+        .lean();
+    const byId = new Map(products.map((product) => [String(product._id), product]));
+    const pinnedProducts = {};
+    for (const section of config.sections) {
+        pinnedProducts[section.key] = (section.pinnedIds || []).flatMap((id) => {
+            const product = byId.get(String(id));
+            if (!product) return [];
+            return [product];
+        });
+    }
+    res.json(new ApiResponse(200, { ...config, pinnedProducts }, 'Homepage sections fetched.'));
+}));
+
 // GET /api/products/flash-sale
 router.get('/flash-sale', marketingCache, asyncHandler(async (req, res) => {
     const flashSaleProductIds = await getActiveSaleProductIds('flash_sale');
@@ -820,6 +849,48 @@ router.get('/flash-sale', marketingCache, asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, products, 'Flash sale products.'));
 }));
 
+// The homepage and the Daily Deals listing share this campaign-backed source.
+router.get('/daily-deals', marketingCache, asyncHandler(async (req, res) => {
+    const campaigns = await Campaign.find({
+        ...activeCampaignWindowQuery(),
+        type: 'daily_deal',
+    }).select('productIds endDate').lean();
+    const productIds = collectCampaignProductIds(campaigns);
+    if (productIds.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], 'Daily deal products.'));
+    }
+
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+    const filter = { ...guard.filter };
+    andCondition(filter, { _id: { $in: productIds } });
+    const products = await Product.find(filter)
+        .select(PRODUCT_LIST_SELECT)
+        .populate('categoryId', 'name')
+        .populate('brandId', 'name')
+        .populate('vendorId', 'storeName')
+        .sort({ createdAt: -1, _id: -1 })
+        .lean();
+
+    const endsByProduct = new Map();
+    for (const campaign of campaigns) {
+        if (!campaign.endDate) continue;
+        const effectiveEnd = new Date(campaign.endDate);
+        effectiveEnd.setHours(23, 59, 59, 999);
+        for (const id of collectCampaignProductIds([campaign])) {
+            const previous = endsByProduct.get(id);
+            if (!previous || effectiveEnd < previous) endsByProduct.set(id, effectiveEnd);
+        }
+    }
+    const deals = products.map((product) => ({
+        ...product,
+        dealEndsAt: endsByProduct.get(String(product._id)) || null,
+    }));
+    res.status(200).json(new ApiResponse(200, deals, 'Daily deal products.'));
+}));
+
 // GET /api/products/new-arrivals
 router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
     const {
@@ -844,7 +915,7 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
         sellingChannel: req.query?.sellingChannel,
     });
 
-    const filter = { ...guard.filter, isNewArrival: true };
+    const filter = { ...guard.filter };
     const searchQuery = String(search || q || '').trim();
     if (searchQuery) {
         const safeRegex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -867,52 +938,45 @@ router.get('/new-arrivals', listCache, asyncHandler(async (req, res) => {
     }
 
     const sortMap = {
-        newest: { createdAt: -1 },
-        oldest: { createdAt: 1 },
+        newest: { createdAt: -1, _id: -1 },
+        oldest: { createdAt: 1, _id: 1 },
         'price-asc': { price: 1 },
         'price-desc': { price: -1 },
-        popular: { reviewCount: -1 },
-        rating: { rating: -1 },
+        popular: { reviewCount: -1, rating: -1, createdAt: -1, _id: -1 },
+        rating: { rating: -1, reviewCount: -1, createdAt: -1, _id: -1 },
     };
 
-    let [products, total] = await Promise.all([
-        Product.find(filter)
-            .select(PRODUCT_LIST_SELECT)
-            .populate('categoryId', 'name')
-            .populate('brandId', 'name')
-            .populate('vendorId', 'storeName')
-            .sort(sortMap[sort] || sortMap.newest)
-            .skip(skip)
-            .limit(numericLimit)
-            .lean(),
-        Product.countDocuments(filter),
+    // Marked products lead; the rest of the same eligible catalog fills all pages.
+    const flaggedFilter = { ...filter, isNewArrival: true };
+    const unflaggedFilter = { ...filter, isNewArrival: { $ne: true } };
+    const [flaggedTotal, unflaggedTotal] = await Promise.all([
+        Product.countDocuments(flaggedFilter),
+        Product.countDocuments(unflaggedFilter),
     ]);
-
-    // If explicit isNewArrival count is low, backfill with recent products.
-    // The backfill must reuse the SAME eligibility guard — it previously
-    // dropped to a bare `{ isActive: true }` filter, which is how 60 of 100
-    // results came from vendors with no active retail channel.
-    if (products.length < numericLimit && numericPage === 1) {
-        const existingIds = new Set(products.map((p) => String(p._id)));
-        const fallbackFilter = { ...guard.filter };
-        andCondition(fallbackFilter, {
-            _id: { $nin: [...activeSaleProductIds, ...Array.from(existingIds)] },
-        });
-        const needed = numericLimit - products.length;
-        const fallbackProducts = await Product.find(fallbackFilter)
-            .select(PRODUCT_LIST_SELECT)
-            .populate('categoryId', 'name')
-            .populate('brandId', 'name')
-            .populate('vendorId', 'storeName')
-            .sort({ createdAt: -1 })
-            .limit(needed)
-            .lean();
-
-        products = [...products, ...fallbackProducts];
-        const totalActive = await Product.countDocuments(guard.filter);
-        total = Math.max(total, totalActive);
-    }
-
+    const flaggedSkip = Math.min(skip, flaggedTotal);
+    const flaggedLimit = Math.min(numericLimit, Math.max(0, flaggedTotal - flaggedSkip));
+    const flaggedProducts = flaggedLimit ? await Product.find(flaggedFilter)
+        .select(PRODUCT_LIST_SELECT)
+        .populate('categoryId', 'name')
+        .populate('brandId', 'name')
+        .populate('vendorId', 'storeName')
+        .sort(sortMap[sort] || sortMap.newest)
+        .skip(flaggedSkip)
+        .limit(flaggedLimit)
+        .lean() : [];
+    const unflaggedLimit = numericLimit - flaggedProducts.length;
+    const unflaggedSkip = Math.max(0, skip - flaggedTotal);
+    const unflaggedProducts = unflaggedLimit ? await Product.find(unflaggedFilter)
+        .select(PRODUCT_LIST_SELECT)
+        .populate('categoryId', 'name')
+        .populate('brandId', 'name')
+        .populate('vendorId', 'storeName')
+        .sort(sortMap[sort] || sortMap.newest)
+        .skip(unflaggedSkip)
+        .limit(unflaggedLimit)
+        .lean() : [];
+    const products = [...flaggedProducts, ...unflaggedProducts];
+    const total = flaggedTotal + unflaggedTotal;
     res.status(200).json(new ApiResponse(200, {
         products,
         total,
@@ -1681,13 +1745,7 @@ router.get('/campaigns', marketingCache, asyncHandler(async (req, res) => {
     const parsedLimit = Math.max(parseInt(limit, 10) || 20, 1);
     const now = new Date();
 
-    const query = {
-        isActive: true,
-        $and: [
-            { $or: [{ startDate: null }, { startDate: { $exists: false } }, { startDate: { $lte: now } }] },
-            { $or: [{ endDate: null }, { endDate: { $exists: false } }, { endDate: { $gte: now } }] }
-        ]
-    };
+    const query = activeCampaignWindowQuery(now);
     if (type) {
         const types = String(type).split(',').map(t => t.trim()).filter(Boolean);
         if (types.length > 1) {
@@ -1715,10 +1773,14 @@ router.get('/campaigns/:slug', detailCache, asyncHandler(async (req, res) => {
     if (!campaign) throw new ApiError(404, 'Campaign not found.');
 
     const now = new Date();
-    if (campaign.startDate && campaign.startDate > now) {
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+    if (campaign.startDate && campaign.startDate > endOfToday) {
         throw new ApiError(404, 'Campaign is not active yet.');
     }
-    if (campaign.endDate && campaign.endDate < now) {
+    if (campaign.endDate && campaign.endDate < startOfToday) {
         throw new ApiError(404, 'Campaign has ended.');
     }
 
@@ -1731,13 +1793,13 @@ router.get('/campaigns/:slug', detailCache, asyncHandler(async (req, res) => {
     // Removed redundant getActiveSaleProductIds filtering here to ensure products assigned to this campaign 
     // are visible as long as the campaign itself is active and within its own date window.
 
-    const products = await Product.find({
-        _id: { $in: productIds },
-        isActive: true,
-        isVisible: { $ne: false },
-        isDeleted: { $ne: true },
-        publicationStatus: 'LIVE',
-    })
+    const guard = await buildPublicCatalogGuard({
+        experience: getRequestExperience(req),
+        sellingChannel: req.query?.sellingChannel,
+    });
+    const productFilter = { ...guard.filter };
+    andCondition(productFilter, { _id: { $in: productIds } });
+    const products = await Product.find(productFilter)
         .select(PRODUCT_LIST_SELECT)
         .populate('categoryId', 'name')
         .populate('brandId', 'name')

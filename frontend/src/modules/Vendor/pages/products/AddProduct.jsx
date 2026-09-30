@@ -13,6 +13,7 @@ import WholesalePricingSection from "../../../../shared/components/WholesalePric
 import ShippingSection from "../../components/ProductSections/ShippingSection";
 import VisibilitySection from "../../components/ProductSections/VisibilitySection";
 import QuickCommerceProductSection from "../../../../shared/components/QuickCommerceProductSection";
+import TagInput from "../../../../shared/components/TagInput";
 import toast from "react-hot-toast";
 import {
   emptyWholesaleState,
@@ -1258,24 +1259,11 @@ const AddProduct = () => {
         {/* Tags */}
         <div>
           <h2 className="text-base font-bold text-gray-800 mb-2">Tags</h2>
-          <div>
-            <input
-              type="text"
-              value={(formData.tags || []).join(", ")}
-              onChange={(e) => {
-                const tags = e.target.value
-                  .split(",")
-                  .map((t) => t.trim())
-                  .filter((t) => t);
-                setFormData({ ...formData, tags });
-              }}
-              placeholder="tag1, tag2, tag3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Separate tags with commas
-            </p>
-          </div>
+          <TagInput
+            tags={formData.tags || []}
+            onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+            placeholder="Type tag and press comma or Enter..."
+          />
         </div>
 
         {/* Options */}

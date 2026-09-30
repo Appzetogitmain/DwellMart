@@ -78,42 +78,12 @@ const MobileDailyDeals = () => {
     const loadDeals = async () => {
       setIsLoadingInitial(true);
       try {
-        const campaignList = await api.get("/campaigns", {
-          params: { type: "daily_deal", limit: 20 },
-        });
-        const campaignsPayload = campaignList?.data ?? campaignList;
-        const slugs = Array.isArray(campaignsPayload)
-          ? campaignsPayload
-            .map((c) => String(c?.slug || "").trim())
-            .filter(Boolean)
+        const response = await api.get("/daily-deals");
+        const payload = response?.data ?? response;
+        const products = Array.isArray(payload)
+          ? payload.map(normalizeProduct).filter((product) => product.id)
           : [];
-
-        if (!slugs.length) {
-          if (!cancelled) {
-            setAllDeals([]);
-            setIsLoadingInitial(false);
-          }
-          return;
-        }
-
-        const details = await Promise.allSettled(
-          [...new Set(slugs)].map((slug) => api.get(`/campaigns/${slug}`))
-        );
-
-        const map = new Map();
-        details
-          .filter((result) => result.status === "fulfilled")
-          .forEach((result) => {
-            const payload = result.value?.data ?? result.value;
-            const products = Array.isArray(payload?.products) ? payload.products : [];
-            products.forEach((product) => {
-              const normalized = normalizeProduct(product);
-              if (!normalized.id) return;
-              if (!map.has(normalized.id)) map.set(normalized.id, normalized);
-            });
-          });
-
-        if (!cancelled) setAllDeals(Array.from(map.values()));
+        if (!cancelled) setAllDeals(products);
       } catch {
         if (!cancelled) setAllDeals([]);
       } finally {

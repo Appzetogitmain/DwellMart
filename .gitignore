@@ -103,10 +103,11 @@ backend/scripts/crops/
 **/*.spec.js
 **/*.spec.mjs
 **/*.spec.cjs
+!frontend/tests/homeSections.test.mjs
+!backend/tests/integration/homeDiscovery.test.mjs
 
 # Operational Archives, Backups & Local Storage (Important for ops, not for code repo)
 *.zip
 backend/*.zip
 backend/backups/
 backend/storage/
-

@@ -91,6 +91,7 @@
         "route": "/admin/offers",
         "children": [
           "Home Sliders",
+          "Homepage Sections",
           "Festival Offers",
           "Campaigns"
         ]

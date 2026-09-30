@@ -67,9 +67,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     "Added to wishlist",
     "OFF",
     "Hot Deal",
-    "Ending Soon",
-    "Available",
-    "Sold",
     "Remove",
     "Out of Stock",
     "Adding...",
@@ -358,8 +355,6 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
     }
   };
 
-  const soldPercentage = product.stockQuantity ? Math.min(95, Math.floor(100 - (product.stockQuantity / 2))) : 75;
-
   const currentVariantConfig = PRODUCT_CARD_VARIANTS[variant] || PRODUCT_CARD_VARIANTS.default;
 
   return (
@@ -461,30 +456,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false, variant
                 </span>
               </div>
             )}
-            {isFlashSale && (
-              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-tighter hidden md:inline">
-                {t('Ending Soon')}
-              </span>
-            )}
           </div>
-
-          {/* Flash Sale Progress Bar */}
-          {isFlashSale && (
-            <div className="mb-2 space-y-0.5">
-              <div className="flex justify-between text-[8px] md:text-[10px] font-bold">
-                <span className="text-textColor-muted uppercase">{t('Available')}</span>
-                <span className="text-brand-primary">{soldPercentage}% {t('Sold')}</span>
-              </div>
-              <div className="h-1.5 w-full bg-borderToken-light rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${soldPercentage}%` }}
-                  transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-brand-primary"
-                />
-              </div>
-            </div>
-          )}
 
           {/* Responsive Flexible Price Row */}
           <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mb-2 mt-auto leading-none w-full min-w-0">

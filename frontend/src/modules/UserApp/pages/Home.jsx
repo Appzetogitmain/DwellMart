@@ -16,15 +16,10 @@ import MarketplaceTrustSection from "../components/Mobile/MarketplaceTrustSectio
 import TestimonialsSection from "../components/Mobile/TestimonialsSection";
 import LazyImage from "../../../shared/components/LazyImage";
 import {
-  getMostPopular,
-  getTrending,
-  getFlashSale,
-  getDailyDeals,
-  getAllNewArrivals,
-  getRecommendedProducts,
   getApprovedVendors,
   getCatalogBrands,
 } from "../data/catalogData";
+import { DEFAULT_HOME_SECTIONS, selectHomeSections } from "../data/homeSections";
 import PageTransition from "../../../shared/components/PageTransition";
 import usePullToRefresh from "../hooks/usePullToRefresh";
 import toast from "react-hot-toast";
@@ -145,21 +140,6 @@ const normalizeTestimonial = (raw) => ({
   isActive: raw?.isActive !== false,
 });
 
-const deriveDailyDeals = (products = []) => {
-  const flash = products.filter((p) => p.flashSale);
-  const discounted = products.filter(
-    (p) =>
-      p.originalPrice !== undefined &&
-      toNumber(p.originalPrice, 0) > toNumber(p.price, 0) &&
-      !p.flashSale
-  );
-  const merged = [...flash, ...discounted];
-  return merged.filter(
-    (p, index, arr) =>
-      index === arr.findIndex((x) => normalizeId(x.id) === normalizeId(p.id))
-  );
-};
-
 const DEFAULT_HERO_SLIDES = [
   { image: heroSlide1 },
   { image: heroSlide2 },
@@ -229,7 +209,7 @@ const isSafeInternalPath = (target) => String(target || "").startsWith("/");
 
 const MobileHome = () => {
   const navigate = useNavigate();
-  const { translateObject } = useDynamicTranslation();
+  const { translateObject, translateArray } = useDynamicTranslation();
   const { getTranslatedText: t } = usePageTranslation([
     "PREMIUM",
     "Exclusive Collection",
@@ -269,67 +249,75 @@ const MobileHome = () => {
   const [slides, setSlides] = useState(DEFAULT_HERO_SLIDES);
   const [promoBanners, setPromoBanners] = useState([]);
   const [sideBanner, setSideBanner] = useState(null);
-  const [catalogProducts, setCatalogProducts] = useState([]);
+  const [selectedSections, setSelectedSections] = useState(() => selectHomeSections({}));
+  const [homeSectionConfig, setHomeSectionConfig] = useState(DEFAULT_HOME_SECTIONS);
+  const [catalogTotal, setCatalogTotal] = useState(0);
   const [homeVendors, setHomeVendors] = useState([]);
   const [homeBrands, setHomeBrands] = useState([]);
   const [homeTestimonials, setHomeTestimonials] = useState([]);
 
-  const fallbackMostPopular = getMostPopular();
-  const fallbackTrending = getTrending();
-  const fallbackFlashSale = getFlashSale();
-  const fallbackNewArrivals = getAllNewArrivals().slice(0, 6);
-  const fallbackDailyDeals = getDailyDeals().slice(0, 6);
-  const fallbackRecommended = getRecommendedProducts(6);
   const fallbackVendors = getApprovedVendors();
   const fallbackBrands = getCatalogBrands().slice(0, 10);
 
-  const computedNewArrivals = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackNewArrivals;
-    const flaggedNew = catalogProducts.filter((p) => p.isNew);
-    if (flaggedNew.length >= 6) return flaggedNew.slice(0, 6);
-    const flaggedIds = new Set(flaggedNew.map((p) => p.id));
-    const unflagged = catalogProducts.filter((p) => !flaggedIds.has(p.id));
-    return [...flaggedNew, ...unflagged].slice(0, 6);
-  }, [catalogProducts, fallbackNewArrivals]);
+  const computedNewArrivals = selectedSections.newArrivals;
+  const computedDailyDeals = selectedSections.dailyDeals;
+  const computedRecommended = selectedSections.recommended;
+  const computedMostPopular = selectedSections.mostPopular;
+  const computedTrending = selectedSections.trending;
+  const computedFlashSale = selectedSections.flashSale;
 
-  const computedDailyDeals = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackDailyDeals;
-    return deriveDailyDeals(catalogProducts).slice(0, 6);
-  }, [catalogProducts, fallbackDailyDeals]);
+  const sectionProducts = {
+    newArrivals: computedNewArrivals,
+    mostPopular: computedMostPopular,
+    dailyDeals: computedDailyDeals,
+    flashSale: computedFlashSale,
+    trending: computedTrending,
+    recommended: computedRecommended,
+  };
 
-  const computedRecommended = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackRecommended;
-    return [...catalogProducts]
-      .sort((a, b) => toNumber(b.rating, 0) - toNumber(a.rating, 0))
-      .slice(0, 6);
-  }, [catalogProducts, fallbackRecommended]);
+  const sectionLinks = {
+    newArrivals: "/new-arrivals",
+    mostPopular: "/search?sort=popular",
+    dailyDeals: "/daily-deals",
+    flashSale: "/flash-sale",
+    trending: "/search?sort=rating",
+    recommended: "/search?sort=rating",
+  };
 
-  const computedMostPopular = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackMostPopular.slice(0, 6);
-    return [...catalogProducts]
-      .sort((a, b) => {
-        const reviewsDiff = toNumber(b.reviewCount, 0) - toNumber(a.reviewCount, 0);
-        if (reviewsDiff !== 0) return reviewsDiff;
-        return toNumber(b.rating, 0) - toNumber(a.rating, 0);
-      })
-      .slice(0, 6);
-  }, [catalogProducts, fallbackMostPopular]);
-
-  const computedTrending = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackTrending.slice(0, 6);
-    return [...catalogProducts]
-      .sort((a, b) => {
-        const ratingDiff = toNumber(b.rating, 0) - toNumber(a.rating, 0);
-        if (ratingDiff !== 0) return ratingDiff;
-        return toNumber(b.reviewCount, 0) - toNumber(a.reviewCount, 0);
-      })
-      .slice(0, 6);
-  }, [catalogProducts, fallbackTrending]);
-
-  const computedFlashSale = useMemo(() => {
-    if (catalogProducts.length === 0) return fallbackFlashSale.slice(0, 6);
-    return catalogProducts.filter((product) => product.flashSale).slice(0, 6);
-  }, [catalogProducts, fallbackFlashSale]);
+  const renderHomepageSection = (section) => {
+    const products = sectionProducts[section.key] || [];
+    if (!section.enabled || products.length === 0) return null;
+    if (section.key === "newArrivals") {
+      return <NewArrivalsSection key={section.key} products={products} title={section.title} subtitle={section.subtitle} />;
+    }
+    if (section.key === "dailyDeals") {
+      return <DailyDealsSection key={section.key} products={products} title={section.title} subtitle={section.subtitle} />;
+    }
+    if (section.key === "recommended") {
+      return <RecommendedSection key={section.key} products={products} title={section.title} subtitle={section.subtitle} />;
+    }
+    const isFlashSale = section.key === "flashSale";
+    return (
+      <div key={section.key} className={isFlashSale ? "px-4 py-4 bg-surface-muted border-y border-border" : "px-4 py-4"}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-content">{t(section.title)}</h2>
+            {section.subtitle && <p className="text-xs text-content-secondary">{t(section.subtitle)}</p>}
+          </div>
+          <Link to={sectionLinks[section.key]} className="text-sm text-brand-primary font-semibold hover:underline">
+            {t("See All")}
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-4">
+          {products.map((product, index) => (
+            <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+              <ProductCard product={product} isFlashSale={isFlashSale} />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const computedVendors = useMemo(() => {
     if (homeVendors.length === 0) return fallbackVendors;
@@ -346,30 +334,56 @@ const MobileHome = () => {
 
   const fetchHomeData = useCallback(async () => {
     try {
-      const [productsRes, vendorsRes, brandsRes, bannersRes, testimonialsRes] =
+      const [newRes, dealsRes, flashRes, popularRes, ratedRes, vendorsRes, brandsRes, bannersRes, testimonialsRes, sectionsRes] =
         await Promise.allSettled([
-          api.get("/products", { params: { page: 1, limit: 36 } }),
+          api.get("/new-arrivals", { params: { page: 1, limit: 36 } }),
+          api.get("/daily-deals"),
+          api.get("/flash-sale"),
+          api.get("/products", { params: { page: 1, limit: 48, sort: "popular" } }),
+          api.get("/products", { params: { page: 1, limit: 72, sort: "rating" } }),
           api.get("/vendors/best-sellers", {
             params: { limit: 8 },
           }),
           api.get("/brands/all"),
           api.get("/banners"),
           api.get("/testimonials"),
+          api.get("/homepage/sections"),
         ]);
 
-      if (productsRes.status === "fulfilled") {
-        const payload = extractResponseData(productsRes.value);
-        const productsSource = asList(payload?.products);
-        const normalizedProducts = productsSource
-          .map(normalizeProduct)
-          .filter((product) => product.id && product.isActive !== false);
-        
-        // Dynamic Translation for Products
-        const translatedProducts = await Promise.all(
-          normalizedProducts.map(p => translateObject(p, ['name', 'description']))
-        );
-        setCatalogProducts(translatedProducts);
-      }
+      const productPayload = (result) => result.status === "fulfilled"
+        ? extractResponseData(result.value)
+        : null;
+      const newPayload = productPayload(newRes);
+      const popularPayload = productPayload(popularRes);
+      const ratedPayload = productPayload(ratedRes);
+      const sourceList = (payload) => asList(payload?.products ?? payload);
+      const normalizeProducts = (payload) => sourceList(payload)
+        .map(normalizeProduct)
+        .filter((product) => product?.id && product.isActive !== false);
+      const topRated = normalizeProducts(ratedPayload);
+      const sectionsPayload = productPayload(sectionsRes);
+      const config = Array.isArray(sectionsPayload?.sections) ? sectionsPayload.sections : DEFAULT_HOME_SECTIONS;
+      const pinned = Object.fromEntries(config.map((section) => [section.key,
+        normalizeProducts(sectionsPayload?.pinnedProducts?.[section.key]),
+      ]));
+      const selected = selectHomeSections({
+        newArrivals: normalizeProducts(newPayload),
+        dailyDeals: normalizeProducts(productPayload(dealsRes)),
+        flashSale: normalizeProducts(productPayload(flashRes)),
+        mostPopular: normalizeProducts(popularPayload),
+        trending: topRated,
+        recommended: topRated,
+      }, config, pinned);
+      const translated = await translateArray(Object.values(selected).flat(), ["name", "description"]);
+      const translatedById = new Map(translated.map((product) => [product.id, product]));
+      setSelectedSections(Object.fromEntries(
+        Object.entries(selected).map(([section, products]) => [
+          section,
+          products.map((product) => translatedById.get(product.id) || product),
+        ])
+      ));
+      setHomeSectionConfig(config);
+      setCatalogTotal(toNumber(popularPayload?.total, 0));
 
       if (vendorsRes.status === "fulfilled") {
         const payload = extractResponseData(vendorsRes.value);
@@ -477,7 +491,7 @@ const MobileHome = () => {
     } catch {
       return false;
     }
-  }, [translateObject]);
+  }, [translateObject, translateArray]);
 
   useEffect(() => {
     fetchHomeData();
@@ -721,102 +735,14 @@ const MobileHome = () => {
           {/* Animated Banner */}
           <AnimatedBanner banners={promoBanners} />
 
-          {/* New Arrivals */}
-          <NewArrivalsSection products={computedNewArrivals} />
-
-
-
-          {/* Most Popular */}
-          <div className="px-4 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-content">{t("Most Popular")}</h2>
-              <Link
-                to="/search"
-                className="text-sm text-brand-primary font-semibold hover:underline">
-                {t("See All")}
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-              {computedMostPopular.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  className={index === 5 ? "xl:hidden" : ""}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}>
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* Daily Deals */}
-          <DailyDealsSection products={computedDailyDeals} />
-
-
-
-          {/* Flash Sale */}
-          {computedFlashSale.length > 0 && (
-            <div className="px-4 py-4 bg-surface-muted border-y border-border">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-content">
-                    {t("Flash Sale")}
-                  </h2>
-                  <p className="text-xs text-content-secondary">{t("Limited time offers")}</p>
-                </div>
-                <Link
-                  to="/flash-sale"
-                  className="text-sm text-brand-primary font-semibold hover:underline">
-                  {t("See All")}
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                {computedFlashSale.map((product, index) => (
-                  <motion.div
-                    key={product.id}
-                    className={index === 5 ? "xl:hidden" : ""}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}>
-                    <ProductCard product={product} isFlashSale={true} />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Trending Items */}
-          <div className="px-4 py-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-content">{t("Trending Now")}</h2>
-              <Link
-                to="/search"
-                className="text-sm text-brand-primary font-semibold hover:underline">
-                {t("See All")}
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-              {computedTrending.map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  className={index === 5 ? "hidden xl:block 2xl:hidden" : ""}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}>
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recommended for You */}
-          <RecommendedSection products={computedRecommended} />
+          {/* Product rows are server-configured by the admin, while the existing
+              source-specific See All routes and eligibility rules stay intact. */}
+          {homeSectionConfig.map(renderHomepageSection)}
 
           {/* Marketplace Trust & Assurance Section */}
           <MarketplaceTrustSection
             vendorCount={computedVendors.length}
-            productCount={catalogProducts.length}
+            productCount={catalogTotal}
           />
 
           <TestimonialsSection testimonials={homeTestimonials} />

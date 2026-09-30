@@ -12,6 +12,7 @@ import * as reviewController from '../controllers/review.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as reportController from '../controllers/report.controller.js';
 import * as marketingController from '../controllers/marketing.controller.js';
+import * as homepageSectionsController from '../controllers/homepageSections.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import { broadcastPush } from '../controllers/broadcastPush.controller.js';
 import * as customMessageController from '../controllers/customMessage.controller.js';
@@ -53,6 +54,7 @@ import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
 import { refreshTokenSchema, logoutSchema, changePasswordSchema } from '../validators/auth.validator.js';
 import { PERMISSIONS } from '../../../constants/permissions.js';
+import { homepageSectionsSchema } from '../validators/homepageSections.validator.js';
 import {
     createSubAdminSchema,
     updateSubAdminSchema,
@@ -344,6 +346,9 @@ router.delete('/reviews/:id', ...perm(PERMISSIONS.PRODUCTS_DELETE), reviewContro
 router.post('/uploads/image', ...adminAuth, uploadSingle('image'), uploadController.uploadImage);
 
 // ─── Marketing & Promotions ──────────────────────────────────────────────────
+router.get('/marketing/homepage-sections', ...perm(PERMISSIONS.OFFERS_VIEW), homepageSectionsController.getAdminHomepageSections);
+router.put('/marketing/homepage-sections', ...perm(PERMISSIONS.OFFERS_EDIT), validate(homepageSectionsSchema), homepageSectionsController.updateAdminHomepageSections);
+router.get('/marketing/homepage-products', ...perm(PERMISSIONS.OFFERS_VIEW), homepageSectionsController.searchHomepageProducts);
 router.get('/marketing/coupons', ...perm(PERMISSIONS.PROMOCODES_VIEW), marketingController.getAllCoupons);
 router.post('/marketing/coupons', ...perm(PERMISSIONS.PROMOCODES_EDIT), marketingController.createCoupon);
 router.put('/marketing/coupons/:id', ...perm(PERMISSIONS.PROMOCODES_EDIT), validate(marketingIdParamSchema, 'params'), marketingController.updateCoupon);

@@ -77,6 +77,7 @@ const TrustAssuranceManagement = lazy(() => import("./modules/Admin/pages/TrustA
 const PayoutRequests = lazy(() => import("./modules/Admin/pages/PayoutRequests"));
 // Offers & Sliders child pages
 const HomeSliders = lazy(() => import("./modules/Admin/pages/offers/HomeSliders"));
+const HomepageSections = lazy(() => import("./modules/Admin/pages/offers/HomepageSections"));
 const FestivalOffers = lazy(() => import("./modules/Admin/pages/offers/FestivalOffers"));
 // Notifications child pages
 const PushNotifications = lazy(() => import("./modules/Admin/pages/notifications/PushNotifications"));
@@ -689,6 +690,7 @@ const AppRoutes = () => {
 
         <Route path="offers" element={<HomeSliders />} />
         <Route path="offers/home-sliders" element={<HomeSliders />} />
+        <Route path="offers/homepage-sections" element={<AdminRouteGuard permission="offers.view"><HomepageSections /></AdminRouteGuard>} />
         <Route path="offers/festival-offers" element={<FestivalOffers />} />
         <Route path="promocodes" element={<PromoCodes />} />
         <Route path="notifications" element={<AllNotifications />} />
