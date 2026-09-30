@@ -1,3 +1,5 @@
+import TagInput from "../../../../shared/components/TagInput";
+
 /**
  * TagsAndFAQsSection — product tags + FAQ accordion
  */
@@ -6,20 +8,11 @@ const TagsAndFAQsSection = ({ formData, setFormData, handleFaqChange, addFaq, re
     {/* Tags */}
     <div>
       <h2 className="text-base font-bold text-gray-800 mb-2">Tags</h2>
-      <input
-        type="text"
-        value={(formData.tags || []).join(", ")}
-        onChange={(e) => {
-          const tags = e.target.value
-            .split(",")
-            .map((t) => t.trim())
-            .filter((t) => t);
-          setFormData((prev) => ({ ...prev, tags }));
-        }}
-        placeholder="tag1, tag2, tag3"
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+      <TagInput
+        tags={formData.tags || []}
+        onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+        placeholder="Type tag and press comma or Enter..."
       />
-      <p className="mt-1 text-xs text-gray-500">Separate tags with commas</p>
     </div>
 
     {/* FAQs */}
