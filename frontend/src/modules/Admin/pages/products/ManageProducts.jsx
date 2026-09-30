@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud, FiX, FiFolder } from "react-icons/fi";
+import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud, FiX, FiFolder, FiRefreshCw } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
@@ -441,6 +441,23 @@ const ManageProducts = () => {
             />
 
 
+
+            {(searchQuery || selectedStatus !== "all" || selectedCategory !== "all" || selectedBrand !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedStatus("all");
+                  setSelectedCategory("all");
+                  setSelectedBrand("all");
+                  setCurrentPage(1);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                title="Clear all filters and reset pagination">
+                <FiRefreshCw className="text-xs" />
+                <span>Clear Filters</span>
+              </button>
+            )}
 
             <div className="w-full sm:w-auto">
               <ExportButton

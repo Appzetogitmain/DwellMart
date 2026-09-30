@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   FiSearch,
   FiEye,
@@ -413,18 +413,28 @@ const OrderActionsDropdown = ({
 
 const AllOrders = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read current query parameters from URL
+  const pageParam = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+  const itemsPerPageParam = searchParams.get("limit") || "50";
+  const itemsPerPage = String(itemsPerPageParam).toLowerCase() === "all" ? "All" : (parseInt(itemsPerPageParam, 10) || 50);
+
+  const selectedStatus = searchParams.get("status") || "all";
+  const selectedExperience = searchParams.get("experience") || "all";
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
+  const queryParam = searchParams.get("search") || "";
+
+  // Local search input for instant typing responsiveness
+  const [searchInput, setSearchInput] = useState(queryParam);
+  useEffect(() => {
+    setSearchInput(queryParam);
+  }, [queryParam]);
+
   const [orders, setOrders] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedExperience, setSelectedExperience] = useState("all");
-  const [dateRange, setDateRange] = useState({
-    startDate: "",
-    endDate: "",
-  });
-  const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
-  
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
@@ -473,49 +483,137 @@ const AllOrders = () => {
     fetchStats();
   }, []);
 
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params = {
-        status: selectedStatus === "all" ? undefined : selectedStatus,
-        search: searchQuery,
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        limit: itemsPerPage,
-        page: currentPage,
-      };
+  // Update filters in URL: atomic update, reset page to 1 when a filter changes
+  const updateFilters = useCallback((updates, resetPage = false) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val === undefined || val === null || val === "" || val === "all") {
+          next.delete(key);
+        } else {
+          next.set(key, String(val));
+        }
+      });
+      if (resetPage) {
+        next.delete("page");
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
-      const response = await getAllOrders(params);
+  // Debounced search query update to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchInput.trim() !== queryParam) {
+        updateFilters({ search: searchInput.trim() }, true);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput, queryParam, updateFilters]);
 
-      // Normalize data to match existing UI structure
-      const normalizedOrders = response.data.orders.map(order => ({
-        ...order,
-        id: order.orderId || order._id,
-        customer: {
-          name: order.userId?.name || 'Unknown',
-          email: order.userId?.email || ''
-        },
-        date: order.createdAt,
-        finalTotal: order.total
-      }));
-
-      setOrders(normalizedOrders);
-      setTotalItems(response.data.total || 0);
-    } catch (error) {
-      console.error("Failed to fetch orders:", error);
-      // adminService interceptor already handles error toasts
-    } finally {
-      setIsLoading(false);
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchInput.trim() !== queryParam) {
+        updateFilters({ search: searchInput.trim() }, true);
+      }
     }
-  }, [selectedStatus, searchQuery, dateRange, currentPage, itemsPerPage]);
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedStatus, searchQuery, dateRange]);
+  const handlePageChange = useCallback((newPage) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newPage > 1) {
+        next.set("page", String(newPage));
+      } else {
+        next.delete("page");
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
+  const handlePageSizeChange = useCallback((newSize) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (String(newSize).toLowerCase() !== "50") {
+        next.set("limit", String(newSize));
+      } else {
+        next.delete("limit");
+      }
+      next.delete("page");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchInput("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams();
+      const currentLimit = prev.get("limit");
+      if (currentLimit && currentLimit !== "50") {
+        next.set("limit", currentLimit);
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const hasActiveFilters = Boolean(
+    queryParam ||
+    (selectedStatus && selectedStatus !== "all") ||
+    (selectedExperience && selectedExperience !== "all") ||
+    startDate ||
+    endDate
+  );
+
+  // Fetch orders whenever URL parameters change
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    let cancelled = false;
+    setIsLoading(true);
+
+    const numericLimit = String(itemsPerPage).toLowerCase() === "all" ? 1000 : Number(itemsPerPage);
+    const params = {
+      page: currentPage,
+      limit: numericLimit,
+      status: selectedStatus === "all" ? undefined : selectedStatus,
+      experience: selectedExperience === "all" ? undefined : selectedExperience,
+      search: queryParam || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    };
+
+    getAllOrders(params)
+      .then((response) => {
+        if (!cancelled) {
+          const rawOrders = response.data?.orders || [];
+          const normalizedOrders = rawOrders.map((order) => ({
+            ...order,
+            id: order.orderId || order._id,
+            customer: {
+              name: order.userId?.name || "Unknown",
+              email: order.userId?.email || "",
+            },
+            date: order.createdAt,
+            finalTotal: order.total,
+          }));
+          setOrders(normalizedOrders);
+          setTotalItems(response.data?.total || 0);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Failed to fetch orders:", error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, itemsPerPage, selectedStatus, selectedExperience, queryParam, startDate, endDate]);
 
   // Helper function to format payment method
   const formatPaymentMethod = (method) => {
@@ -773,8 +871,9 @@ const AllOrders = () => {
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
               placeholder="Search by ID, name, or email..."
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
             />
@@ -782,7 +881,10 @@ const AllOrders = () => {
 
           <AnimatedSelect
             value={selectedExperience}
-            onChange={(e) => setSelectedExperience(e.target.value)}
+            onChange={(val) => {
+              const newExp = typeof val === "object" && val?.target ? val.target.value : val;
+              updateFilters({ experience: newExp }, true);
+            }}
             options={[
               { value: "all", label: "All Experiences" },
               { value: "marketplace", label: "Marketplace" },
@@ -794,7 +896,10 @@ const AllOrders = () => {
 
           <AnimatedSelect
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(val) => {
+              const newStatus = typeof val === "object" && val?.target ? val.target.value : val;
+              updateFilters({ status: newStatus }, true);
+            }}
             options={[
               { value: "all", label: "All Status" },
               { value: "pending", label: "Pending" },
@@ -814,11 +919,11 @@ const AllOrders = () => {
                 <FiCalendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <input
                   type="date"
-                  value={dateRange.startDate}
+                  value={startDate}
                   onChange={(e) =>
-                    setDateRange({ ...dateRange, startDate: e.target.value })
+                    updateFilters({ startDate: e.target.value }, true)
                   }
-                  max={dateRange.endDate || undefined}
+                  max={endDate || undefined}
                   className="w-full sm:w-auto pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base min-w-[140px]"
                   placeholder="Start Date"
                 />
@@ -827,18 +932,19 @@ const AllOrders = () => {
               <div className="relative flex-1 sm:flex-initial">
                 <input
                   type="date"
-                  value={dateRange.endDate}
+                  value={endDate}
                   onChange={(e) =>
-                    setDateRange({ ...dateRange, endDate: e.target.value })
+                    updateFilters({ endDate: e.target.value }, true)
                   }
-                  min={dateRange.startDate || undefined}
+                  min={startDate || undefined}
                   className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base min-w-[140px]"
                   placeholder="End Date"
                 />
               </div>
-              {(dateRange.startDate || dateRange.endDate) && (
+              {(startDate || endDate) && (
                 <button
-                  onClick={() => setDateRange({ startDate: "", endDate: "" })}
+                  type="button"
+                  onClick={() => updateFilters({ startDate: "", endDate: "" }, true)}
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Clear Date Range">
                   <FiX className="text-lg" />
@@ -846,6 +952,17 @@ const AllOrders = () => {
               )}
             </div>
           </div>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+              title="Clear all filters and reset pagination">
+              <FiRefreshCw className="text-xs" />
+              <span>Clear Filters</span>
+            </button>
+          )}
 
           <div className="w-full sm:w-auto">
             <ExportButton
@@ -888,30 +1005,22 @@ const AllOrders = () => {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 text-center text-gray-500">
-          Loading orders...
-        </div>
-      ) : (
-        <DataTable
-          data={orders}
-          columns={columns}
-          pagination={true}
-          serverSidePagination={true}
-          totalItems={totalItems}
-          totalPages={Math.ceil(totalItems / (String(itemsPerPage).toLowerCase() === 'all' ? (totalItems || 1) : Number(itemsPerPage)))}
-          currentPage={currentPage}
-          itemsPerPage={itemsPerPage}
-          onPageChange={(page) => setCurrentPage(page)}
-          showSizeChanger={true}
-          onPageSizeChange={(newSize) => {
-            setItemsPerPage(newSize);
-            setCurrentPage(1);
-          }}
-          pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
-          sortable={false}
-        />
-      )}
+      <DataTable
+        data={orders}
+        columns={columns}
+        loading={isLoading}
+        pagination={true}
+        serverSidePagination={true}
+        totalItems={totalItems}
+        totalPages={Math.max(1, Math.ceil(totalItems / (String(itemsPerPage).toLowerCase() === "all" ? (totalItems || 1) : Number(itemsPerPage))))}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        showSizeChanger={true}
+        onPageSizeChange={handlePageSizeChange}
+        pageSizeOptions={[25, 50, 100, 250, 500, "All"]}
+        sortable={false}
+      />
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

@@ -25,6 +25,7 @@ import { cancelDtdcShipment } from '../../../services/shipping/dtdcShipment.serv
 import { reverseCouponUsage } from '../../../services/coupon.service.js';
 import { restoreOrderInventory } from '../../../services/inventoryRestoration.service.js';
 import { parsePagination } from '../../../utils/pagination.js';
+import { orderChannelFilter } from '../../../services/orderChannel.service.js';
 
 /**
  * GET /api/admin/orders/quick-commerce/unassigned
@@ -110,48 +111,100 @@ export const retryQuickCommerceAssignment = asyncHandler(async (req, res) => {
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
-    const { status, search, startDate, endDate, userId } = req.query;
+    const { status, experience, search, startDate, endDate, userId, sortBy, sortOrder } = req.query;
     const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
-    const filter = { isDeleted: { $ne: true } };
+    const andConditions = [{ isDeleted: { $ne: true } }];
 
-    if (status && status !== 'all') filter.status = status;
-    if (String(req.query.assignableOnly || '') === 'true' && !filter.status) {
-        filter.status = { $in: ['pending', 'processing', 'shipped'] };
+    if (status && status !== 'all') {
+        andConditions.push({ status });
     }
-    if (search) {
-        const regex = new RegExp(search, 'i');
+    if (String(req.query.assignableOnly || '') === 'true' && (!status || status === 'all')) {
+        andConditions.push({ status: { $in: ['pending', 'processing', 'shipped'] } });
+    }
+
+    if (experience && experience !== 'all') {
+        const exp = String(experience).toLowerCase().trim();
+        const channelKey = exp === 'marketplace' ? 'retail' : exp;
+        const channelQuery = orderChannelFilter(channelKey);
+        const expOr = [
+            { experience: exp },
+            ...(channelQuery.$or || (Object.keys(channelQuery).length > 0 ? [channelQuery] : [])),
+        ];
+        andConditions.push({ $or: expOr });
+    }
+
+    if (search && String(search).trim()) {
+        const cleanSearch = String(search).trim();
+        const escaped = cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escaped, 'i');
+
         const matchedUsers = await User.find({
             $or: [{ name: regex }, { email: regex }, { phone: regex }]
         }).select('_id').limit(200).lean();
         const matchedUserIds = matchedUsers.map((u) => u._id);
 
-        filter.$or = [
+        const searchOr = [
             { orderId: regex },
             { 'shippingAddress.name': regex },
             { 'shippingAddress.email': regex },
+            { 'shippingAddress.phone': regex },
             ...(matchedUserIds.length > 0 ? [{ userId: { $in: matchedUserIds } }] : []),
         ];
+
+        if (mongoose.Types.ObjectId.isValid(cleanSearch)) {
+            searchOr.push({ _id: new mongoose.Types.ObjectId(cleanSearch) });
+        }
+
+        andConditions.push({ $or: searchOr });
     }
+
     if (startDate || endDate) {
-        filter.createdAt = {};
-        if (startDate) filter.createdAt.$gte = new Date(startDate);
-        if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        const dateCondition = {};
+        if (startDate) {
+            const start = new Date(startDate);
+            if (!isNaN(start.getTime())) {
+                start.setHours(0, 0, 0, 0);
+                dateCondition.$gte = start;
+            }
+        }
+        if (endDate) {
+            const end = new Date(endDate);
+            if (!isNaN(end.getTime())) {
+                end.setHours(23, 59, 59, 999);
+                dateCondition.$lte = end;
+            }
+        }
+        if (Object.keys(dateCondition).length > 0) {
+            andConditions.push({ createdAt: dateCondition });
+        }
     }
+
     if (req.query.vendorId) {
-        filter['vendorItems.vendorId'] = req.query.vendorId;
+        andConditions.push({ 'vendorItems.vendorId': req.query.vendorId });
     }
     if (userId) {
-        filter.userId = userId;
+        andConditions.push({ userId });
     }
     if (String(req.query.onlyUnassigned || '') === 'true') {
-        filter.deliveryBoyId = null;
+        andConditions.push({ deliveryBoyId: null });
     }
+
+    const filter = andConditions.length > 1 ? { $and: andConditions } : (andConditions[0] || {});
+
+    const allowedSortFields = {
+        createdAt: 'createdAt',
+        total: 'total',
+        orderId: 'orderId',
+        status: 'status',
+    };
+    const sortField = allowedSortFields[sortBy] || 'createdAt';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
     const [orders, total] = await Promise.all([
         Order.find(filter)
             .populate('userId', 'name email phone')
             .populate('deliveryBoyId', 'name phone')
-            .sort({ createdAt: -1 })
+            .sort({ [sortField]: sortDirection })
             .skip(skip)
             .limit(limit)
             .lean(),

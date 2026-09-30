@@ -16,9 +16,12 @@ import { DataTable as DSDataTable } from '../../../shared/components/Dashboard/D
 const DataTable = ({
   data = [],
   columns = [],
+  loading = false,
   pagination = true,
   itemsPerPage = 10,
   sortable = true,
+  sortConfig,
+  onSortChange,
   onRowClick,
   className = '',
   serverSidePagination = false,
@@ -42,12 +45,15 @@ const DataTable = ({
     <DSDataTable
       columns={mappedColumns}
       data={data}
+      loading={loading}
       pageSize={itemsPerPage}
       className={className}
       emptyTitle="No data available"
       emptyDescription="There are no items to display."
       searchable={false}
       pagination={pagination}
+      sortConfig={sortConfig}
+      onSortChange={onSortChange}
       currentPage={externalCurrentPage}
       onPageChange={onPageChange}
       serverSidePagination={serverSidePagination}

@@ -8,6 +8,7 @@ import {
   FiDollarSign,
   FiTrash2,
   FiEdit,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
@@ -26,16 +27,22 @@ const ManageVendors = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { admin, can } = useAdminAuthStore();
-  const { vendors, initialize, updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
+  const { vendors, isLoading, initialize, updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
     useVendorStore();
 
   const urlPage = parseInt(searchParams.get("page") || "1", 10);
-  const initialPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
-  const [currentPage, setCurrentPage] = useState(initialPage);
-  const [pageSize, setPageSize] = useState(50);
+  const currentPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
+  const pageSizeParam = searchParams.get("pageSize") || "50";
+  const pageSize = String(pageSizeParam).toLowerCase() === "all" ? "All" : (parseInt(pageSizeParam, 10) || 50);
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const selectedStatus = searchParams.get("status") || "all";
+  const queryParam = searchParams.get("search") || "";
+
+  const [searchInput, setSearchInput] = useState(queryParam);
+  useEffect(() => {
+    setSearchInput(queryParam);
+  }, [queryParam]);
+
   const [actionModal, setActionModal] = useState({
     isOpen: false,
     type: null, // 'approve', 'activate', 'suspend', 'commission', 'hard_delete', 'email'
@@ -47,17 +54,43 @@ const ManageVendors = () => {
   const [newVendorEmail, setNewVendorEmail] = useState("");
   const [deleteConfirmationInput, setDeleteConfirmationInput] = useState("");
 
-  // Sync state if URL changes (e.g. back/forward button)
+  const updateFilters = useCallback((updates, resetPage = false) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val === undefined || val === null || val === "" || val === "all") {
+          next.delete(key);
+        } else {
+          next.set(key, String(val));
+        }
+      });
+      if (resetPage) {
+        next.delete("page");
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  // Debounce search query update to URL
   useEffect(() => {
-    const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
-    const validPage = isNaN(pageFromUrl) || pageFromUrl < 1 ? 1 : pageFromUrl;
-    if (validPage !== currentPage) {
-      setCurrentPage(validPage);
+    const timer = setTimeout(() => {
+      if (searchInput.trim() !== queryParam) {
+        updateFilters({ search: searchInput.trim() }, true);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchInput, queryParam, updateFilters]);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchInput.trim() !== queryParam) {
+        updateFilters({ search: searchInput.trim() }, true);
+      }
     }
-  }, [searchParams]);
+  };
 
   const handlePageChange = useCallback((newPage) => {
-    setCurrentPage(newPage);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (newPage > 1) {
@@ -68,6 +101,35 @@ const ManageVendors = () => {
       return next;
     });
   }, [setSearchParams]);
+
+  const handlePageSizeChange = useCallback((newSize) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (String(newSize).toLowerCase() !== "50") {
+        next.set("pageSize", String(newSize));
+      } else {
+        next.delete("pageSize");
+      }
+      next.delete("page");
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchInput("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams();
+      const currentSize = prev.get("pageSize");
+      if (currentSize && currentSize !== "50") {
+        next.set("pageSize", currentSize);
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  const hasActiveFilters = Boolean(
+    queryParam || (selectedStatus && selectedStatus !== "all")
+  );
 
   useEffect(() => {
     initialize();
@@ -87,12 +149,13 @@ const ManageVendors = () => {
   const filteredVendors = useMemo(() => {
     let filtered = vendors;
 
-    if (searchQuery) {
+    if (queryParam) {
+      const lower = queryParam.toLowerCase();
       filtered = filtered.filter(
         (vendor) =>
-          vendor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          vendor.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          vendor.storeName?.toLowerCase().includes(searchQuery.toLowerCase())
+          vendor.name?.toLowerCase().includes(lower) ||
+          vendor.email?.toLowerCase().includes(lower) ||
+          vendor.storeName?.toLowerCase().includes(lower)
       );
     }
 
@@ -101,7 +164,16 @@ const ManageVendors = () => {
     }
 
     return filtered;
-  }, [vendors, searchQuery, selectedStatus]);
+  }, [vendors, queryParam, selectedStatus]);
+
+  // Safe clamping only when data has loaded
+  const numericPageSize = String(pageSize).toLowerCase() === "all" ? 1000 : Number(pageSize);
+  const totalPages = Math.max(1, Math.ceil(filteredVendors.length / (numericPageSize || 1)));
+  useEffect(() => {
+    if (!isLoading && filteredVendors.length > 0 && currentPage > totalPages) {
+      handlePageChange(totalPages);
+    }
+  }, [isLoading, filteredVendors.length, currentPage, totalPages, handlePageChange]);
 
   const columns = [
     {
@@ -624,11 +696,9 @@ const ManageVendors = () => {
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  handlePageChange(1);
-                }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
                 placeholder="Search vendors..."
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
               />
@@ -638,8 +708,7 @@ const ManageVendors = () => {
               value={selectedStatus}
               onChange={(val) => {
                 const newStatus = typeof val === 'object' && val?.target ? val.target.value : val;
-                setSelectedStatus(newStatus);
-                handlePageChange(1);
+                updateFilters({ status: newStatus }, true);
               }}
               options={[
                 { value: "all", label: "All Status" },
@@ -650,6 +719,17 @@ const ManageVendors = () => {
               ]}
               className="w-full sm:w-auto min-w-[140px]"
             />
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+                title="Clear all filters and reset pagination">
+                <FiRefreshCw className="text-xs" />
+                <span>Clear Filters</span>
+              </button>
+            )}
 
             <div className="w-full sm:w-auto">
               <ExportButton
@@ -682,15 +762,13 @@ const ManageVendors = () => {
         <DataTable
           data={filteredVendors}
           columns={columns}
+          loading={isLoading}
           pagination={true}
           itemsPerPage={pageSize}
           currentPage={currentPage}
           onPageChange={handlePageChange}
           showSizeChanger={true}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            handlePageChange(1);
-          }}
+          onPageSizeChange={handlePageSizeChange}
           pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) => navigate(`/admin/vendors/${row.id}`)}
         />

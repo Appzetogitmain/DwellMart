@@ -305,6 +305,21 @@ const ReturnRequests = () => {
             className="w-full sm:w-auto min-w-[140px]"
           />
 
+          {(searchQuery || selectedStatus !== 'all' || dateFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedStatus('all');
+                setDateFilter('all');
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+              title="Clear all filters">
+              <FiRefreshCw className="text-xs" />
+              <span>Clear Filters</span>
+            </button>
+          )}
+
           {/* Export Button */}
           <div className="w-full sm:w-auto">
             <ExportButton

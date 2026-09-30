@@ -22,10 +22,13 @@ export const DataTable = ({
   showSizeChanger = false,
   onPageSizeChange = null,
   pageSizeOptions = [25, 50, 100, 250, 500, 'All'],
+  sortConfig: externalSortConfig,
+  onSortChange: externalOnSortChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [internalPage, setInternalPage] = useState(1);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [internalSortConfig, setInternalSortConfig] = useState({ key: null, direction: 'asc' });
+  const sortConfig = externalSortConfig !== undefined ? externalSortConfig : internalSortConfig;
 
   const currentPage = externalCurrentPage !== undefined ? externalCurrentPage : internalPage;
 
@@ -73,10 +76,12 @@ export const DataTable = ({
   }, [serverSidePagination, data, isAll, sortedData, currentPage, numericPageSize]);
 
   const handleSort = (key) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
+    const nextDirection = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    const nextSort = { key, direction: nextDirection };
+    if (externalOnSortChange) {
+      externalOnSortChange(nextSort);
+    }
+    setInternalSortConfig(nextSort);
   };
 
   return (
