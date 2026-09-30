@@ -58,6 +58,7 @@ const ProfileSettings = () => {
     try {
       await updateProfile({
         name: formData.name,
+        email: formData.email,
         phone: formData.phone,
       });
       toast.success('Profile updated successfully');
@@ -196,17 +197,17 @@ const ProfileSettings = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email
+                    Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     name="email"
-                    value={formData.email || vendor?.email || ''}
-                    disabled
-                    readOnly
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-800"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Your registered vendor account email address.</p>
+                  <p className="text-xs text-gray-500 mt-1">Your registered vendor account email address used for login.</p>
                 </div>
 
                 <div>

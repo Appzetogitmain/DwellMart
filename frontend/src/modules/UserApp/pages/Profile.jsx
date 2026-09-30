@@ -139,6 +139,7 @@ const MobileProfile = () => {
     try {
       await updateProfile({
         name: data?.name,
+        email: data?.email,
         phone: data?.phone,
       });
       toast.success(t('Profile updated successfully!'));
@@ -491,17 +492,13 @@ const MobileProfile = () => {
                               validate: (value) =>
                                 isValidEmail(value) || t('Please enter a valid email'),
                             })}
-                            readOnly
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.email
                               ? 'border-status-error focus:border-status-error'
                               : 'border-border focus:border-brand-primary'
-                              } focus:outline-none transition-colors text-base bg-surface-muted text-content-muted cursor-not-allowed`}
+                              } focus:outline-none transition-colors text-base bg-surface text-content`}
                             placeholder={t('your.email@example.com')}
                           />
                         </div>
-                        <p className="mt-1 text-xs text-content-muted">
-                          {t('Email cannot be changed from profile settings.')}
-                        </p>
                         <AnimatePresence>
                           {personalErrors.email && (
                             <motion.p

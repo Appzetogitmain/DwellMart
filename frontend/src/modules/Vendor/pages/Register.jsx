@@ -174,6 +174,21 @@ const VendorRegister = () => {
     await syncFromStatus(email, availablePlans);
   };
 
+  // Track Meta Pixel custom event for Vendor Register page visit
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.fbq === 'function') {
+      if (!window.__vendorRegisterPixelTracked) {
+        window.fbq('trackCustom', 'VendorRegisterPageVisit');
+        window.__vendorRegisterPixelTracked = true;
+      }
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.__vendorRegisterPixelTracked = false;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {

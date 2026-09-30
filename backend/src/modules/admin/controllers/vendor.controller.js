@@ -702,3 +702,39 @@ export const getVendorDocuments = asyncHandler(async (req, res) => {
     const documents = await VendorDocument.find({ vendorId: id }).sort({ createdAt: -1 });
     res.status(200).json(new ApiResponse(200, documents, 'Vendor documents fetched.'));
 });
+
+// PATCH /api/admin/vendors/:id/email
+export const updateVendorEmail = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    if (!normalizedEmail) {
+        throw new ApiError(400, 'Valid email address is required.');
+    }
+
+    const vendor = await Vendor.findById(id);
+    if (!vendor) {
+        throw new ApiError(404, 'Vendor not found.');
+    }
+
+    if (vendor.email === normalizedEmail) {
+        return res.status(200).json(new ApiResponse(200, vendor, 'Vendor email is already up to date.'));
+    }
+
+    const existingVendor = await Vendor.findOne({
+        email: normalizedEmail,
+        _id: { $ne: id },
+    });
+    if (existingVendor) {
+        throw new ApiError(409, 'This email address is already in use by another vendor.');
+    }
+
+    const updatedVendor = await Vendor.findByIdAndUpdate(
+        id,
+        { email: normalizedEmail },
+        { new: true, runValidators: true }
+    ).select('-password');
+
+    res.status(200).json(new ApiResponse(200, updatedVendor, 'Vendor email updated successfully.'));
+});

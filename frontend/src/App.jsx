@@ -779,7 +779,7 @@ const AppRoutes = () => {
       </Route>
       {/* Vendor Routes */}
       <Route path="/vendor/login" element={<VendorLogin />} />
-      <Route path="/vendor/register" element={<VendorRegister />} />
+      <Route path="/vendor/register" element={<RouteWrapper><VendorRegister /></RouteWrapper>} />
       <Route
         path="/vendor/forgot-password"
         element={<VendorForgotPassword />}

@@ -235,8 +235,8 @@ router.put('/pickup-locations/:id', ...vendorAuth, pickupLocationController.upda
 router.patch('/pickup-locations/:id/default', ...vendorAuth, pickupLocationController.setDefaultPickupLocation);
 router.delete('/pickup-locations/:id', ...vendorAuth, pickupLocationController.deletePickupLocation);
 
-// Uploads (Cloudinary via temp local multer upload)
+// Uploads (VPS storage via temp local multer upload)
 router.post('/uploads/image', ...vendorAuth, uploadSingle('image'), uploadController.uploadImage);
-router.post('/uploads/images', ...vendorAuth, uploadMultiple('images', 8), uploadController.uploadImages);
+router.post('/uploads/images', ...vendorAuth, uploadMultiple('images', 3), uploadController.uploadImages);
 
 export default router;

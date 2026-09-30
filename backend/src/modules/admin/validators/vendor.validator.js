@@ -52,3 +52,10 @@ export const vendorCommissionsQuerySchema = Joi.object({
     limit: Joi.number().integer().min(1).max(200).optional(),
     status: Joi.string().valid('all', 'pending', 'paid', 'cancelled').optional(),
 });
+
+export const updateVendorEmailSchema = Joi.object({
+    email: Joi.string().email().required().trim().lowercase().messages({
+        'string.email': 'Please provide a valid email address.',
+        'any.required': 'Email is required.',
+    }),
+});

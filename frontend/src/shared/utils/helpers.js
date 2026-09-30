@@ -80,8 +80,17 @@ export const getImageUrl = (image, fallback = null) => {
   if (!image || typeof image !== "string" || !image.trim()) return defaultPlaceholder;
   
   const trimmed = image.trim();
+
+  // Normalize legacy localhost:5000 URLs when running in production
+  let normalizedImage = trimmed;
+  if (normalizedImage.startsWith("http://localhost:5000/") || normalizedImage.startsWith("https://localhost:5000/")) {
+    if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+      normalizedImage = normalizedImage.replace(/^https?:\/\/localhost:5000\//, "/");
+    }
+  }
+
   // If it's already a full URL or a data URI, return as is
-  if (trimmed.startsWith("data:") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  if (normalizedImage.startsWith("data:") || normalizedImage.startsWith("http://") || normalizedImage.startsWith("https://")) return normalizedImage;
   
   // Skip prepending for local frontend assets (Vite dev server or public folder)
   // Check for common Vite patterns and relative paths

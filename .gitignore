@@ -98,7 +98,15 @@ backend/scripts/crops/
 # Test files
 **/*.test.js
 **/*.test.mjs
+!backend/tests/unit/*.test.mjs
 **/*.test.cjs
 **/*.spec.js
 **/*.spec.mjs
 **/*.spec.cjs
+
+# Operational Archives, Backups & Local Storage (Important for ops, not for code repo)
+*.zip
+backend/*.zip
+backend/backups/
+backend/storage/
+

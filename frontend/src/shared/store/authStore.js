@@ -266,6 +266,7 @@ export const useAuthStore = create(
         try {
           const response = await api.put('/user/auth/profile', {
             name: profileData?.name,
+            email: profileData?.email,
             phone: profileData?.phone,
           });
           const payload = response?.data ?? response;
@@ -273,7 +274,7 @@ export const useAuthStore = create(
           const updatedUser = {
             ...currentUser,
             ...payload,
-            email: currentUser.email || payload.email,
+            email: payload.email || profileData?.email || currentUser.email,
           };
 
           set({

@@ -585,6 +585,7 @@ export const getProfile = asyncHandler(async (req, res) => {
 export const updateProfile = asyncHandler(async (req, res) => {
     const allowed = [
         'name',
+        'email',
         'phone',
         'country',
         'storeName',
@@ -603,6 +604,29 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
     if (updates.address?.country && !updates.country) {
         updates.country = updates.address.country;
+    }
+
+    if (req.body.email) {
+        const normalizedEmail = String(req.body.email).trim().toLowerCase();
+        const currentVendor = await Vendor.findById(req.user.id).select('email');
+        if (!currentVendor) throw new ApiError(404, 'Vendor not found.');
+
+        if (normalizedEmail !== currentVendor.email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(normalizedEmail)) {
+                throw new ApiError(400, 'Please provide a valid email address.');
+            }
+            const existing = await Vendor.findOne({
+                email: normalizedEmail,
+                _id: { $ne: req.user.id },
+            });
+            if (existing) {
+                throw new ApiError(409, 'This email address is already in use by another vendor.');
+            }
+            updates.email = normalizedEmail;
+        } else {
+            delete updates.email;
+        }
     }
 
     const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true })

@@ -283,6 +283,9 @@ export const updateVendorQuickCommerce = (id, payload) =>
 export const updateCommissionRate = (id, commissionRate) =>
     api.patch(`/admin/vendors/${id}/commission`, { commissionRate });
 
+export const updateVendorEmail = (id, email) =>
+    api.patch(`/admin/vendors/${id}/email`, { email });
+
 export const getVendorCommissions = (id, params = {}) =>
     api.get(`/admin/vendors/${id}/commissions`, { params });
 

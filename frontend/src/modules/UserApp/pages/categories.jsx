@@ -151,7 +151,9 @@ const MobileCategories = () => {
     "No products found",
     "No matching products",
     "Try adjusting your filters or search query.",
-    "There are no products available in this category at the moment."
+    "There are no products available in this category at the moment.",
+    "Searching in",
+    "Clear search",
   ]);
 
   const { translateArray } = useDynamicTranslation();
@@ -274,11 +276,20 @@ const MobileCategories = () => {
   const filterButtonRef = useRef(null);
   const [isInitialMount, setIsInitialMount] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [brandSearch, setBrandSearch] = useState("");
   const [categoryProductsFeed, setCategoryProductsFeed] = useState([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+
+  // Debounce search query to avoid unnecessary API requests while typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Lock body scroll when filter drawer is open
   useEffect(() => {
@@ -318,7 +329,12 @@ const MobileCategories = () => {
     let cancelled = false;
 
     const fetchCategoryProducts = async () => {
-      const targetCategoryId = normalizeId(selectedSubcategory || selectedDepartmentId || selectedCategoryId);
+      const isSearchActive = Boolean(debouncedSearchQuery);
+      // When searching, scope to the entire selected root category (or department) so results from any subcategory are found
+      const targetCategoryId = isSearchActive
+        ? normalizeId(selectedDepartmentId || selectedCategoryId)
+        : normalizeId(selectedSubcategory || selectedDepartmentId || selectedCategoryId);
+
       if (!targetCategoryId) {
         if (!cancelled) {
           setCategoryProductsFeed([]);
@@ -329,14 +345,19 @@ const MobileCategories = () => {
 
       setIsLoadingInitial(true);
       try {
+        const queryParams = {
+          category: targetCategoryId,
+          page: 1,
+          limit: 200,
+          sort: "newest",
+          experience: currentExperience,
+        };
+        if (isSearchActive) {
+          queryParams.q = debouncedSearchQuery;
+        }
+
         const response = await api.get("/products", {
-          params: {
-            category: targetCategoryId,
-            page: 1,
-            limit: 200,
-            sort: "newest",
-            experience: currentExperience,
-          },
+          params: queryParams,
         });
         const payload = response?.data ?? response;
         const products = Array.isArray(payload?.products) ? payload.products : [];
@@ -360,6 +381,16 @@ const MobileCategories = () => {
           );
           const productParentId = getParentId(productCategory);
 
+          if (isSearchActive) {
+            const matchesCategory = productCategoryId === selectedId || productParentId === selectedId;
+            const q = debouncedSearchQuery.toLowerCase();
+            const matchesQuery =
+              String(product.name || "").toLowerCase().includes(q) ||
+              String(product.brandName || "").toLowerCase().includes(q) ||
+              String(product.description || "").toLowerCase().includes(q);
+            return matchesCategory && matchesQuery;
+          }
+
           if (selectedSubId) return productCategoryId === selectedSubId;
           return productCategoryId === selectedId || productParentId === selectedId;
         });
@@ -380,7 +411,7 @@ const MobileCategories = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedCategoryId, selectedDepartmentId, selectedSubcategory, categories, translateArray]);
+  }, [selectedCategoryId, selectedDepartmentId, selectedSubcategory, debouncedSearchQuery, categories, translateArray, currentExperience]);
 
   // Extract available brands dynamically from products
   const availableBrands = useMemo(() => {
@@ -589,6 +620,7 @@ const MobileCategories = () => {
 
   const handleCategorySelect = (categoryId) => {
     setSelectedCategoryId(categoryId);
+    setSearchQuery("");
   };
 
   const handleFilterChange = (name, value) => {
@@ -908,6 +940,29 @@ const MobileCategories = () => {
                         })}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Active Search Banner */}
+                {searchQuery.trim() && (
+                  <div className="mb-3 flex items-center justify-between bg-amber-50 border border-amber-200 p-2.5 px-3.5 rounded-xl text-xs text-amber-900 shadow-xs">
+                    <div className="flex items-center gap-2 font-medium">
+                      <FiSearch className="text-amber-600 text-sm flex-shrink-0" />
+                      <span>
+                        {t("Searching in")}{" "}
+                        <strong className="text-amber-950">
+                          {selectedCategory?.name}
+                        </strong>
+                        : &ldquo;{searchQuery}&rdquo; ({filteredProducts.length}{" "}
+                        {filteredProducts.length === 1 ? t("product") : t("products")})
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="text-amber-700 hover:text-amber-900 font-bold ml-2 underline cursor-pointer text-xs flex-shrink-0"
+                    >
+                      {t("Clear search")}
+                    </button>
                   </div>
                 )}
 

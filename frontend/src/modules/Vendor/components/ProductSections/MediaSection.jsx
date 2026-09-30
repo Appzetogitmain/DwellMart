@@ -66,10 +66,15 @@ const MediaSection = ({
 
       {/* Gallery */}
       <div className="bg-white rounded-lg p-3 border border-primary-200">
-        <h3 className="text-sm font-semibold text-gray-800 mb-2">Product Gallery</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-800">Product Gallery</h3>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-100 text-primary-800">
+            {formData.images?.length || 0}/3 images
+          </span>
+        </div>
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Upload Gallery Images (Multiple)
+            Upload Gallery Images (Max 3, Total 4 including Main Image)
           </label>
           <div className="relative">
             <input
@@ -79,14 +84,22 @@ const MediaSection = ({
               onChange={handleGalleryUpload}
               className="hidden"
               id="gallery-upload"
-              disabled={isUploadingMedia}
+              disabled={isUploadingMedia || (formData.images || []).length >= 3}
             />
             <label
-              htmlFor="gallery-upload"
-              className="flex items-center justify-center gap-2 w-full px-3 py-2 border-2 border-dashed border-primary-300 rounded-lg cursor-pointer hover:border-primary-500 hover:bg-primary-50 transition-colors bg-white"
+              htmlFor={(formData.images || []).length >= 3 ? undefined : "gallery-upload"}
+              className={`flex items-center justify-center gap-2 w-full px-3 py-2 border-2 border-dashed rounded-lg transition-colors bg-white ${
+                (formData.images || []).length >= 3
+                  ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                  : "border-primary-300 cursor-pointer hover:border-primary-500 hover:bg-primary-50"
+              }`}
             >
-              <FiUpload className="text-base text-primary-600" />
-              <span className="text-xs font-medium text-gray-700">Choose Gallery Images</span>
+              <FiUpload className={`text-base ${(formData.images || []).length >= 3 ? "text-gray-400" : "text-primary-600"}`} />
+              <span className="text-xs font-medium text-gray-700">
+                {(formData.images || []).length >= 3
+                  ? "Gallery Limit Reached (3/3) - Remove an image to change"
+                  : "Choose Gallery Images (Max 3)"}
+              </span>
             </label>
           </div>
           {formData.images?.length > 0 && (

@@ -334,9 +334,20 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     }
   };
 
+  const MAX_GALLERY_IMAGES = 3;
+
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
+
+    const currentCount = (formData.images || []).length;
+    const remainingSlots = MAX_GALLERY_IMAGES - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum ${MAX_GALLERY_IMAGES} gallery images allowed (4 total including main image).`);
+      e.target.value = "";
+      return;
+    }
 
     // Validate all files
     const validFiles = files.filter((file) => {
@@ -351,12 +362,21 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return true;
     });
 
-    if (validFiles.length === 0) return;
+    if (validFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
+
+    let filesToUpload = validFiles;
+    if (validFiles.length > remainingSlots) {
+      toast.error(`You can only add ${remainingSlots} more gallery image(s). Only the first ${remainingSlots} will be uploaded.`);
+      filesToUpload = validFiles.slice(0, remainingSlots);
+    }
 
     setIsUploadingGallery(true);
     try {
       const uploadResults = await Promise.allSettled(
-        validFiles.map((file) => uploadAdminImage(file, "products"))
+        filesToUpload.map((file) => uploadAdminImage(file, "products"))
       );
 
       const successfulUrls = uploadResults
@@ -367,7 +387,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       if (successfulUrls.length > 0) {
         setFormData((prev) => ({
           ...prev,
-          images: [...(prev.images || []), ...successfulUrls],
+          images: [...(prev.images || []), ...successfulUrls].slice(0, MAX_GALLERY_IMAGES),
         }));
         toast.success(`${successfulUrls.length} image(s) added to gallery`);
       }
@@ -659,6 +679,11 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
       return;
     }
 
+    if ((formData.images || []).length > 3) {
+      toast.error("You can upload a maximum of 3 gallery images (4 total including main image).");
+      return;
+    }
+
     const hasInvalidFaq = (formData.faqs || []).some((faq) => {
       const question = String(faq?.question || "").trim();
       const answer = String(faq?.answer || "").trim();
@@ -882,8 +907,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           value={formData.name}
                           onChange={handleChange}
                           required
-                          disabled={isVendorProductEdit}
-                          className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${isVendorProductEdit ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                       </div>
 
@@ -908,7 +932,6 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           subcategoryId={formData.subcategoryId}
                           onChange={handleChange}
                           required
-                          disabled={isVendorProductEdit}
                         />
                       </div>
 
@@ -1182,12 +1205,17 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
 
                       {/* Product Gallery */}
                       <div className="bg-white rounded-lg p-4 border border-primary-200">
-                        <h4 className="text-lg font-semibold text-gray-800 mb-4">
-                          Product Gallery
-                        </h4>
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            Product Gallery
+                          </h4>
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-100 text-primary-800">
+                            {(formData.images || []).length}/3 images
+                          </span>
+                        </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Upload Gallery Images (Multiple)
+                            Upload Gallery Images (Max 3, Total 4 including Main Image)
                           </label>
                           <div className="relative">
                             <input
@@ -1197,16 +1225,24 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                               onChange={handleGalleryUpload}
                               className="hidden"
                               id="gallery-upload-modal"
-                              disabled={isUploadingGallery}
+                              disabled={isUploadingGallery || (formData.images || []).length >= 3}
                             />
                             <label
-                              htmlFor="gallery-upload-modal"
-                              className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-primary-300 rounded-lg transition-colors bg-white ${isUploadingGallery ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary-500 hover:bg-primary-50"}`}>
-                              <FiUpload className="text-lg text-primary-600" />
+                              htmlFor={(formData.images || []).length >= 3 ? undefined : "gallery-upload-modal"}
+                              className={`flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed rounded-lg transition-colors bg-white ${
+                                (formData.images || []).length >= 3
+                                  ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                  : isUploadingGallery
+                                    ? "cursor-not-allowed opacity-60 border-primary-300"
+                                    : "border-primary-300 cursor-pointer hover:border-primary-500 hover:bg-primary-50"
+                              }`}>
+                              <FiUpload className={`text-lg ${(formData.images || []).length >= 3 ? "text-gray-400" : "text-primary-600"}`} />
                               <span className="text-sm font-medium text-gray-700">
-                                {isUploadingGallery
-                                  ? "Uploading Gallery Images..."
-                                  : "Choose Gallery Images"}
+                                {(formData.images || []).length >= 3
+                                  ? "Gallery Limit Reached (3/3) - Remove an image to change"
+                                  : isUploadingGallery
+                                    ? "Uploading Gallery Images..."
+                                    : "Choose Gallery Images (Max 3)"}
                               </span>
                             </label>
                           </div>
