@@ -256,6 +256,7 @@ export const importBrandsApi = (formData) =>
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export const getAllVendors = (params = {}) =>
     api.get('/admin/vendors', { params });
+export const getVendors = getAllVendors;
 
 export const getVendorById = (id) =>
     api.get(`/admin/vendors/${id}`);
@@ -299,6 +300,7 @@ export const getVendorDocuments = (id) =>
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const getAllCustomers = (params = {}) =>
     api.get('/admin/customers', { params });
+export const getCustomers = getAllCustomers;
 
 export const getCustomerById = (id) =>
     api.get(`/admin/customers/${id}`);
@@ -417,6 +419,9 @@ export const getSalesReport = (params = {}) =>
 
 export const getInventoryReport = (params = {}) =>
     api.get('/admin/reports/inventory', { params });
+
+export const getTdsReport = (params = {}) =>
+    api.get('/admin/finance/tax-reports/tds', { params });
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 export const getSettings = () =>

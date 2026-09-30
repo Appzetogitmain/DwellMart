@@ -3,6 +3,7 @@ import { FiCalendar, FiTrendingUp } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import DataTable from '../../components/DataTable';
 import ExportButton from '../../components/ExportButton';
+import SalesTrendChart from '../../components/Analytics/SalesTrendChart';
 import { formatPrice } from '../../../../shared/utils/helpers';
 import * as adminService from '../../services/adminService';
 import toast from 'react-hot-toast';
@@ -10,6 +11,7 @@ import toast from 'react-hot-toast';
 const SalesReport = () => {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [orders, setOrders] = useState([]);
+  const [trend, setTrend] = useState([]);
   const [summary, setSummary] = useState({ totalSales: 0, totalOrders: 0, averageOrderValue: 0 });
   const [loading, setLoading] = useState(false);
   const [pageSize, setPageSize] = useState(25);
@@ -33,6 +35,7 @@ const SalesReport = () => {
         allOrders.push(...(payload.orders || []));
         if (page === 1) {
           setSummary(payload.summary || { totalSales: 0, totalOrders: 0, averageOrderValue: 0 });
+          setTrend(payload.trend || []);
         }
         totalPages = payload.pages || 1;
         page += 1;
@@ -173,6 +176,8 @@ const SalesReport = () => {
           </div>
         </div>
       </div>
+
+      <SalesTrendChart data={trend} loading={loading} />
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         {loading ? (
