@@ -2,6 +2,12 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Notification from '../../../models/Notification.model.js';
+import Admin from '../../../models/Admin.model.js';
+
+const canReviewProducts = async (adminId) => {
+    const admin = await Admin.findById(adminId).select('role permissions').lean();
+    return admin?.role === 'superadmin' || admin?.permissions?.includes('products.edit');
+};
 
 // GET /api/admin/notifications
 export const getAdminNotifications = asyncHandler(async (req, res) => {
@@ -19,8 +25,14 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
             { recipientId: req.user.id, recipientType: 'admin' }
         ]
     };
+    if (!(await canReviewProducts(req.user.id))) {
+        filter.type = { $ne: 'vendor_product_review' };
+    }
 
     if (type) {
+        if (type === 'vendor_product_review' && !(await canReviewProducts(req.user.id))) {
+            throw new ApiError(403, 'Products edit permission is required.');
+        }
         filter.type = type;
     }
 
@@ -50,8 +62,10 @@ export const markAsRead = asyncHandler(async (req, res) => {
     // Scoped to admin notifications. Previously `findByIdAndUpdate(id, ...)`
     // with no filter, so an admin — or a sub-admin holding only dashboard.view —
     // could mark any customer's, vendor's or rider's notification as read.
+    const scope = { _id: id, recipientType: 'admin' };
+    if (!(await canReviewProducts(req.user.id))) scope.type = { $ne: 'vendor_product_review' };
     const notification = await Notification.findOneAndUpdate(
-        { _id: id, recipientType: 'admin' },
+        scope,
         { isRead: true },
         { new: true }
     );
@@ -73,6 +87,7 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
         ],
         isRead: false
     };
+    if (!(await canReviewProducts(req.user.id))) filter.type = { $ne: 'vendor_product_review' };
 
     await Notification.updateMany(filter, { isRead: true });
 

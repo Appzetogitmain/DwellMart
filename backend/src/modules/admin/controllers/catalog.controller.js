@@ -25,6 +25,12 @@ import {
 } from '../../../services/brandImport.service.js';
 import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
 import { applyCatalogSearchFilter } from '../../../utils/catalogSearch.js';
+import {
+    changeProductPublicationStatus,
+    bulkChangeProductPublicationStatus,
+} from '../../../services/productPublication.service.js';
+import { PRODUCT_PUBLICATION_STATUSES } from '../../../constants/productPublication.js';
+import { clearResponseCache } from '../../../middlewares/responseCache.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
     if (!vendorId) return false;
@@ -253,7 +259,7 @@ const sanitizeBrandPayload = (payload = {}) => {
 
 // GET /api/admin/products
 export const getAllProducts = asyncHandler(async (req, res) => {
-    const { search, vendorId, categoryId, brandId, brand, status, includeInactive = 'false' } = req.query;
+    const { search, vendorId, categoryId, brandId, brand, status, publicationStatus, includeInactive = 'false' } = req.query;
     const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const filter = {
         isDeleted: { $ne: true },
@@ -276,6 +282,13 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     }
     if (status && status !== 'all') {
         filter.stock = status;
+    }
+    if (publicationStatus && publicationStatus !== 'all') {
+        const normalizedPublicationStatus = String(publicationStatus).toUpperCase();
+        if (!PRODUCT_PUBLICATION_STATUSES.includes(normalizedPublicationStatus)) {
+            throw new ApiError(400, 'Invalid publicationStatus filter.');
+        }
+        filter.publicationStatus = normalizedPublicationStatus;
     }
     if (String(includeInactive) !== 'true') {
         filter.isActive = { $ne: false };
@@ -310,6 +323,42 @@ export const getProductById = asyncHandler(async (req, res) => {
 
     if (!product) throw new ApiError(404, 'Product not found.');
     res.status(200).json(new ApiResponse(200, product, 'Product fetched.'));
+});
+
+// PATCH /api/admin/products/:id/publication-status
+export const updateProductPublicationStatus = asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw new ApiError(400, 'Invalid product ID.');
+    const product = await Product.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+    if (!product) throw new ApiError(404, 'Product not found.');
+
+    const result = await changeProductPublicationStatus({
+        product,
+        status: req.body?.status,
+        adminId: req.user.id,
+        source: 'ADMIN_SINGLE',
+    });
+    if (result.changed) clearResponseCache();
+    res.status(200).json(new ApiResponse(200, {
+        product: result.product,
+        updated: result.changed,
+    }, result.changed ? `Product is now ${result.product.publicationStatus}.` : `Product is already ${result.product.publicationStatus}.`));
+});
+
+// PATCH /api/admin/products/bulk-publication-status
+export const bulkUpdateProductPublicationStatus = asyncHandler(async (req, res) => {
+    const productIds = req.body?.productIds;
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+        throw new ApiError(400, 'productIds must be a non-empty array.');
+    }
+    if (productIds.length > 500) throw new ApiError(400, 'A maximum of 500 products may be updated at once.');
+
+    const result = await bulkChangeProductPublicationStatus({
+        productIds,
+        status: req.body?.status,
+        adminId: req.user.id,
+    });
+    if (result.updatedCount > 0) clearResponseCache();
+    res.status(200).json(new ApiResponse(200, result, 'Bulk publication status update completed.'));
 });
 
 // POST /api/admin/products

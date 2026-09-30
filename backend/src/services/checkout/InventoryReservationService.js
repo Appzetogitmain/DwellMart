@@ -97,7 +97,13 @@ const resolveVariantKeys = async (items = []) => {
     const ids = [...new Set(
         items.map((i) => String(i?.productId || i?.id || '')).filter((id) => mongoose.isValidObjectId(id))
     )];
-    const products = await Product.find({ _id: { $in: ids } })
+    const products = await Product.find({
+        _id: { $in: ids },
+        publicationStatus: 'LIVE',
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+    })
         .select('_id variants price name')
         .lean();
     const byId = new Map(products.map((p) => [String(p._id), p]));
@@ -213,6 +219,10 @@ export const reserveStock = async (items, sessionId, dbSession = null) => {
 
         const filter = {
             _id: productId,
+            publicationStatus: 'LIVE',
+            isActive: true,
+            isVisible: { $ne: false },
+            isDeleted: { $ne: true },
             $expr: {
                 $gte: [
                     { $subtract: ['$stockQuantity', { $ifNull: ['$reservedQuantity', 0] }] },
@@ -419,6 +429,10 @@ export const commitReservation = async (sessionId, items = [], dbSession = null)
 
         const filter = {
             _id: productId,
+            publicationStatus: 'LIVE',
+            isActive: true,
+            isVisible: { $ne: false },
+            isDeleted: { $ne: true },
             $expr: {
                 $gte: [
                     { $subtract: ['$stockQuantity', { $ifNull: ['$reservedQuantity', 0] }] },

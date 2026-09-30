@@ -350,7 +350,13 @@ export const splitAndCreateOrders = async ({
     // ── 1. Batch-fetch all required documents ──────────────────────────────
     const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
     const [rawProducts, wholesaleEnabled] = await Promise.all([
-        Product.find({ _id: { $in: productIds } })
+        Product.find({
+            _id: { $in: productIds },
+            publicationStatus: 'LIVE',
+            isActive: true,
+            isVisible: { $ne: false },
+            isDeleted: { $ne: true },
+        })
             .select('_id name images price taxRate taxIncluded retailEnabled wholesaleEnabled quickCommerceEnabled wholesale shipping vendorId stock stockQuantity codAllowed returnable cancelable')
             .lean(),
         isWholesaleMarketplaceEnabled(),
@@ -761,6 +767,10 @@ export const calculateCheckoutSessionSummary = async ({
 }) => {
     const rawProducts = await Product.find({
         _id: { $in: items.map((i) => i.productId || i.id).filter(Boolean) },
+        publicationStatus: 'LIVE',
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
     }).lean();
     const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 

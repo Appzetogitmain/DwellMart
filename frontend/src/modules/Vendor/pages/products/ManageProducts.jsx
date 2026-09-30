@@ -203,8 +203,18 @@ const ManageProducts = () => {
       ),
     },
     {
+      key: "publicationStatus",
+      label: "Admin Approval",
+      sortable: true,
+      render: (value = "PENDING_REVIEW") => {
+        const variants = { LIVE: "success", PENDING_REVIEW: "warning", OFFLINE: "info", REJECTED: "error" };
+        const labels = { LIVE: "Live", PENDING_REVIEW: "Pending Admin Approval", OFFLINE: "Offline", REJECTED: "Rejected" };
+        return <Badge variant={variants[value] || "warning"}>{labels[value] || value}</Badge>;
+      },
+    },
+    {
       key: "publishing",
-      label: "Publishing",
+      label: "Channel",
       sortable: false,
       render: (_, row) => {
         const flag = workspace === 'quick_commerce' ? 'quickCommerceEnabled' : `${workspace}Enabled`;
@@ -461,6 +471,12 @@ const ManageProducts = () => {
                     <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                       <StatusBadge status={stockStatus} size="xs" />
                       <StatusBadge status={isPublished ? "published" : "unpublished"} size="xs" />
+                      <Badge
+                        size="xs"
+                        variant={product.publicationStatus === "LIVE" ? "success" : product.publicationStatus === "REJECTED" ? "error" : product.publicationStatus === "OFFLINE" ? "info" : "warning"}
+                      >
+                        {product.publicationStatus === "LIVE" ? "Live" : product.publicationStatus === "OFFLINE" ? "Offline" : product.publicationStatus === "REJECTED" ? "Rejected" : "Pending Admin Approval"}
+                      </Badge>
                       <span className="text-[10px] font-mono text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
                         #{String(product._id ?? product.id).slice(-6).toUpperCase()}
                       </span>

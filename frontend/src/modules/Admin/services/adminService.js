@@ -119,6 +119,12 @@ export const createProduct = (data) =>
 export const updateProduct = (id, data) =>
     api.put(`/admin/products/${id}`, data);
 
+export const updateProductPublicationStatus = (id, status) =>
+    api.patch(`/admin/products/${id}/publication-status`, { status });
+
+export const bulkUpdateProductPublicationStatus = (productIds, status) =>
+    api.patch('/admin/products/bulk-publication-status', { productIds, status });
+
 export const deleteProduct = (id) =>
     api.delete(`/admin/products/${id}`);
 

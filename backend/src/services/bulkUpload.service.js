@@ -4,12 +4,14 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import Product from '../models/Product.model.js';
 import Category from '../models/Category.model.js';
 import Brand from '../models/Brand.model.js';
 import Vendor from '../models/Vendor.model.js';
 import BulkImportHistory from '../models/BulkImportHistory.model.js';
 import { resolveCatalogScope, catalogScopeFilter } from '../utils/catalogScope.js';
+import { notifyAdminsOfVendorProducts } from './notification.service.js';
 import {
     parsePriceTiersCell,
     serializePriceTiers,
@@ -1075,7 +1077,10 @@ export const startBulkUploadJob = async ({
         progressPercent: 0,
         errors: [],
         validRowsSaved: [],
+        reviewProductIds: [],
         workspace,
+        uploaderRole: user.role,
+        vendorId: jobScope.vendorId ? String(jobScope.vendorId) : null,
     };
 
     activeJobs.set(jobId, jobState);
@@ -1171,6 +1176,9 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 quickCommerceEnabled: isQcActive,
                                 ...(isQcActive ? { ...(qcCategoryId ? { quickCommerceCategoryId: qcCategoryId } : {}), quickCommerce: qcData } : {}),
                             };
+                const moderationFields = jobState.uploaderRole === 'vendor'
+                    ? { publicationStatus: 'PENDING_REVIEW', publicationStatusUpdatedAt: new Date() }
+                    : {};
 
                 // Auto create brand if requested
                 let finalBrandId = row.brandId;
@@ -1222,6 +1230,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                         tags: row.tags.length > 0 ? row.tags : existingProduct.tags,
                                         images: row.images.length > 0 ? row.images : existingProduct.images,
                                         image: row.image || existingProduct.image,
+                                        ...moderationFields,
                                         ...updateChannelFields,
                                     },
                                 },
@@ -1234,6 +1243,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                         bulkOperations.push({
                             insertOne: {
                                 document: {
+                                    _id: new mongoose.Types.ObjectId(),
                                     name: `${row.name} (Copy)`,
                                     slug,
                                     description: row.description,
@@ -1256,6 +1266,8 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                     tags: row.tags,
                                     images: row.images,
                                     image: row.image,
+                                    publicationStatus: 'PENDING_REVIEW',
+                                    publicationStatusUpdatedAt: new Date(),
                                     ...insertChannelFields,
                                 },
                             },
@@ -1266,6 +1278,7 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                     bulkOperations.push({
                         insertOne: {
                             document: {
+                                _id: new mongoose.Types.ObjectId(),
                                 name: row.name,
                                 slug,
                                 description: row.description,
@@ -1289,6 +1302,8 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                                 tags: row.tags,
                                 images: row.images,
                                 image: row.image,
+                                publicationStatus: 'PENDING_REVIEW',
+                                publicationStatusUpdatedAt: new Date(),
                                 ...insertChannelFields,
                             },
                         },
@@ -1308,10 +1323,16 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
         }
 
         if (bulkOperations.length > 0) {
+            const operationProductIds = bulkOperations.map((operation) =>
+                operation.insertOne?.document?._id || operation.updateOne?.filter?._id || null
+            );
             try {
                 const writeResult = await Product.bulkWrite(bulkOperations, { ordered: false });
                 jobState.importedCount += (writeResult.insertedCount || 0) + (writeResult.upsertedCount || 0);
                 jobState.updatedCount += (writeResult.modifiedCount || 0);
+                operationProductIds.forEach((productId) => {
+                    if (productId && jobState.uploaderRole === 'vendor') jobState.reviewProductIds.push(productId);
+                });
             } catch (bulkErr) {
                 if (bulkErr.name === 'MongoBulkWriteError' || bulkErr.writeErrors) {
                     const inserted = (bulkErr.result?.nInserted || bulkErr.result?.insertedCount || 0) + (bulkErr.result?.nUpserted || bulkErr.result?.upsertedCount || 0);
@@ -1321,6 +1342,12 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
                     const errorsCount = bulkErr.writeErrors?.length || 1;
                     jobState.failedCount += errorsCount;
                     if (bulkErr.writeErrors) {
+                        const failedOperationIndexes = new Set(bulkErr.writeErrors.map((writeError) => writeError.index));
+                        operationProductIds.forEach((productId, operationIndex) => {
+                            if (!failedOperationIndexes.has(operationIndex) && productId && jobState.uploaderRole === 'vendor') {
+                                jobState.reviewProductIds.push(productId);
+                            }
+                        });
                         bulkErr.writeErrors.forEach((we) => {
                             failedRowsList.push({
                                 row: batch[we.index]?.rowNumber || 'Unknown',
@@ -1397,6 +1424,23 @@ const executeJobInBatches = async (jobState, validatedRows, duplicateMode, autoC
             },
         }
     );
+
+    // One post-commit notification per vendor import. Updating an existing SKU
+    // does not create a new review item and is deliberately excluded.
+    if (jobState.uploaderRole === 'vendor' && jobState.reviewProductIds.length > 0 && jobState.vendorId) {
+        try {
+            const vendor = await Vendor.findById(jobState.vendorId).select('storeName name').lean();
+            await notifyAdminsOfVendorProducts({
+                vendorId: jobState.vendorId,
+                vendorName: vendor?.storeName || vendor?.name || 'A vendor',
+                productIds: [...new Set(jobState.reviewProductIds.map(String))],
+                bulk: true,
+                uploadedAt: new Date(startTime),
+            });
+        } catch (error) {
+            console.warn(`[Bulk Product Review Notification] ${error.message}`);
+        }
+    }
 
     activeJobs.set(jobState.jobId, jobState);
 };

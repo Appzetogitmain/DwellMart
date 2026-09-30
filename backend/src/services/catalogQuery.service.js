@@ -1,4 +1,5 @@
 import { EXPERIENCES, normalizeExperience } from '../constants/experiences.js';
+import { PRODUCT_PUBLICATION_STATUS } from '../constants/productPublication.js';
 
 /**
  * Shared catalog query builder.
@@ -44,6 +45,8 @@ export const buildCatalogFilter = ({
     if (activeOnly) {
         filter.isActive = true;
         filter.isVisible = { $ne: false };
+        filter.isDeleted = { $ne: true };
+        filter.publicationStatus = PRODUCT_PUBLICATION_STATUS.LIVE;
     }
 
     if (resolvedExperience === EXPERIENCES.QUICK_COMMERCE) {

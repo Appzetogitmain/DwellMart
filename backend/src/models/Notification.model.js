@@ -33,7 +33,7 @@ const notificationSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['order', 'payment', 'system', 'promotion', 'bulk_order', 'return', 'refund', 'settlement', 'delivery', 'support', 'vendor_approval', 'test_push', 'welcome_test'],
+            enum: ['order', 'payment', 'system', 'promotion', 'bulk_order', 'return', 'refund', 'settlement', 'delivery', 'support', 'vendor_approval', 'vendor_product_review', 'test_push', 'welcome_test'],
             default: 'system',
         },
         priority: {

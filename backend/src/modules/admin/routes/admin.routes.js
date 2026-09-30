@@ -250,6 +250,8 @@ router.get('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_VIEW), ca
 // Literal path MUST precede '/products/:id' — Express matches in
 // declaration order and would otherwise read this as a product id.
 router.get('/products/missing-shipping', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.listProductsMissingShipping);
+router.patch('/products/bulk-publication-status', ...perm(PERMISSIONS.PRODUCTS_EDIT), catalogController.bulkUpdateProductPublicationStatus);
+router.patch('/products/:id/publication-status', ...perm(PERMISSIONS.PRODUCTS_EDIT), catalogController.updateProductPublicationStatus);
 router.get('/products/:id', ...perm(PERMISSIONS.PRODUCTS_VIEW), catalogController.getProductById);
 router.post('/products', ...perm(PERMISSIONS.PRODUCTS_ADD), validate(createProductSchema), catalogController.createProduct);
 router.put('/products/tax-pricing-rules', ...perm(PERMISSIONS.PRODUCTS_EDIT), validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);

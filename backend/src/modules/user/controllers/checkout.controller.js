@@ -148,7 +148,13 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
                 const Product = (await import('../../../models/Product.model.js')).default;
                 const { resolveVariantSelection } = await import('../../../services/pricingEngine.service.js');
                 const productIds = items.map((i) => i.productId || i.id).filter(Boolean);
-                const rawProducts = await Product.find({ _id: { $in: productIds } }).lean();
+                const rawProducts = await Product.find({
+                    _id: { $in: productIds },
+                    isActive: true,
+                    isVisible: { $ne: false },
+                    isDeleted: { $ne: true },
+                    publicationStatus: 'LIVE',
+                }).lean();
                 const productMap = new Map(rawProducts.map((p) => [String(p._id), p]));
 
                 const cartTotal = items.reduce((s, i) => {

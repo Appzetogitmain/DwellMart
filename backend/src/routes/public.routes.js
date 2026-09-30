@@ -88,8 +88,8 @@ const marketingCache = cacheResponse({ ttlSeconds: 30, maxEntries: 300 });
 // `costPrice` is the vendor's buying price and must never reach a storefront
 // response — it is newly persisted (it was silently dropped before) so every
 // public projection has to exclude it explicitly.
-const PRODUCT_LIST_SELECT = '-faqs -relatedProducts -__v -costPrice';
-const PRODUCT_DETAIL_SELECT = '-__v -costPrice';
+const PRODUCT_LIST_SELECT = '-faqs -relatedProducts -__v -costPrice -publishedBy -unpublishedBy -rejectionReason';
+const PRODUCT_DETAIL_SELECT = '-__v -costPrice -publishedBy -unpublishedBy -rejectionReason';
 const EXCLUSIVE_SALE_CAMPAIGN_TYPES = ['flash_sale', 'daily_deal', 'special_offer', 'festival'];
 
 const toPublicVendor = (vendorDoc) => {
@@ -943,7 +943,13 @@ router.get('/popular', marketingCache, asyncHandler(async (req, res) => {
 
 // GET /api/products/similar/:id
 router.get('/similar/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id).select('_id categoryId vendorId quickCommerceEnabled wholesaleEnabled retailEnabled').lean();
+    const product = await Product.findOne({
+        _id: req.params.id,
+        publicationStatus: 'LIVE',
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+    }).select('_id categoryId vendorId quickCommerceEnabled wholesaleEnabled retailEnabled').lean();
     if (!product) throw new ApiError(404, 'Product not found.');
     const activeSaleProductIds = await getActiveSaleProductIds();
 
@@ -983,7 +989,13 @@ router.get('/similar/:id([a-fA-F0-9]{24})', detailCache, asyncHandler(async (req
 }));
 
 const getProductDetail = asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findOne({
+        _id: req.params.id,
+        publicationStatus: 'LIVE',
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+    })
         .select(PRODUCT_DETAIL_SELECT)
         .populate('categoryId', 'name')
         .populate('brandId', 'name')
@@ -1058,6 +1070,8 @@ const getPublicCategoriesHandler = asyncHandler(async (req, res) => {
 
     // Compute product counts filtered by experience
     let categoryMatch = { isActive: true };
+    categoryMatch.publicationStatus = 'LIVE';
+    categoryMatch.isDeleted = { $ne: true };
     const categoryIdField = exp === EXPERIENCES.QUICK_COMMERCE ? '$quickCommerceCategoryId' : '$categoryId';
 
     if (exp === EXPERIENCES.QUICK_COMMERCE) {
@@ -1127,6 +1141,7 @@ router.get(['/brands', '/brands/all'], catalogCache, asyncHandler(async (req, re
             $match: {
                 isActive: { $ne: false },
                 isDeleted: { $ne: true },
+                publicationStatus: 'LIVE',
                 brandId: { $ne: null }
             }
         },
@@ -1186,6 +1201,7 @@ const getVendorProductCountsMap = async (vendorIds = []) => {
                 vendorId: { $in: validObjectIds },
                 isActive: { $ne: false },
                 isDeleted: { $ne: true },
+                publicationStatus: 'LIVE',
             }
         },
         {
@@ -1576,7 +1592,13 @@ router.post('/shipping/estimate', asyncHandler(async (req, res) => {
         );
     }
 
-    const products = await Product.find({ _id: { $in: productIds }, isActive: true })
+    const products = await Product.find({
+        _id: { $in: productIds },
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+        publicationStatus: 'LIVE',
+    })
         .populate('vendorId', 'shippingEnabled defaultShippingRate freeShippingThreshold channels')
         .select('_id vendorId price variants.prices retailEnabled wholesaleEnabled wholesale')
         .lean();
@@ -1711,7 +1733,10 @@ router.get('/campaigns/:slug', detailCache, asyncHandler(async (req, res) => {
 
     const products = await Product.find({
         _id: { $in: productIds },
-        isActive: true
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+        publicationStatus: 'LIVE',
     })
         .select(PRODUCT_LIST_SELECT)
         .populate('categoryId', 'name')

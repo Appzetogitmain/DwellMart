@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Notification from '../models/Notification.model.js';
 import { dispatchPushNotification } from './push.service.js';
 import { emitToRoom, emitToUserRoom } from '../socket.js';
+import Admin from '../models/Admin.model.js';
 
 /**
  * Unified notification dispatch service
@@ -23,6 +24,8 @@ export const createNotification = async ({
     actionType = '',
     data = {},
     metadata = {},
+    sendPush = true,
+    broadcastToAdminRoom = true,
 }) => {
     try {
         const finalBody = body || message;
@@ -65,10 +68,10 @@ export const createNotification = async ({
 
         // 3. Emit real-time Socket.IO event
         try {
-            if (normalizedRecipientType === 'admin') {
+            if (normalizedRecipientType === 'admin' && broadcastToAdminRoom) {
                 emitToRoom('admin', 'notification:new', socketPayload);
                 emitToRoom('admin', 'notification:count', { unreadCount, recipientType: 'admin' });
-            } else {
+            } else if (normalizedRecipientType !== 'admin') {
                 emitToUserRoom(recipientId, normalizedRecipientType, 'notification:new', socketPayload);
                 emitToUserRoom(recipientId, normalizedRecipientType, 'notification:count', { unreadCount, recipientType: normalizedRecipientType });
             }
@@ -77,7 +80,7 @@ export const createNotification = async ({
         }
 
         // 4. Dispatch FCM Push Notification async (never blocks flow)
-        dispatchPushNotification({
+        if (sendPush) dispatchPushNotification({
             recipientId,
             recipientType: normalizedRecipientType,
             title,
@@ -118,7 +121,7 @@ export const createNotification = async ({
  * @param {object} params
  * @param {string} [params.anchorId] Related entity id, used as the recipient anchor.
  */
-export const notifyAdmins = async ({ anchorId = null, title, message, type = 'system', category = 'SYSTEM', priority = 'HIGH', actionUrl = '', data = {} }) => {
+export const notifyAdmins = async ({ anchorId = null, title, message, type = 'system', category = 'SYSTEM', priority = 'HIGH', actionUrl = '', data = {}, metadata = {}, sendPush = true, broadcastToAdminRoom = true }) => {
     const recipientId = anchorId && mongoose.isValidObjectId(anchorId)
         ? anchorId
         : new mongoose.Types.ObjectId();
@@ -133,7 +136,78 @@ export const notifyAdmins = async ({ anchorId = null, title, message, type = 'sy
         priority,
         actionUrl,
         data,
+        metadata,
+        sendPush,
+        broadcastToAdminRoom,
     });
+};
+
+export const notifyAdminsOfVendorProducts = async ({ vendorId, vendorName, productIds, productName = '', bulk = false, uploadedAt = new Date() }) => {
+    const ids = (productIds || []).map(String);
+    if (!ids.length) return null;
+    const count = ids.length;
+    const actionUrl = `/admin/products?publicationStatus=PENDING_REVIEW&vendorId=${encodeURIComponent(String(vendorId))}`;
+    const notification = await notifyAdmins({
+        anchorId: vendorId,
+        title: bulk ? 'Products Awaiting Approval' : 'New Product Awaiting Approval',
+        message: bulk
+            ? `${vendorName} uploaded ${count} products. Review them in Admin.`
+            : `${vendorName} uploaded '${productName}'. Review and make it live.`,
+        type: 'vendor_product_review',
+        category: 'INFO',
+        priority: 'HIGH',
+        sendPush: false,
+        broadcastToAdminRoom: false,
+        actionUrl,
+        metadata: { requiredPermission: 'products.edit' },
+        data: {
+            vendorId: String(vendorId),
+            vendorName: String(vendorName),
+            productIds: ids.join(','),
+            productCount: String(count),
+            uploadedAt: new Date(uploadedAt).toISOString(),
+            publicationStatus: 'PENDING_REVIEW',
+        },
+    });
+    // The generic admin stream is broadcast for backward compatibility, but
+    // review pushes are targeted only to active admins authorized to edit products.
+    const authorizedAdmins = await Admin.find({
+        status: 'active',
+        isActive: { $ne: false },
+        $or: [
+            { role: 'superadmin' },
+            { permissions: 'products.edit' },
+        ],
+    }).select('_id').lean();
+    const unreadCount = await getUnreadCount(null, 'admin');
+    authorizedAdmins.forEach((admin) => {
+        try {
+            emitToUserRoom(admin._id, 'admin', 'notification:new', {
+                notification: notification.toObject(),
+                unreadCount,
+            });
+            emitToUserRoom(admin._id, 'admin', 'notification:count', { unreadCount, recipientType: 'admin' });
+        } catch (socketError) {
+            console.warn(`[Product Review Notification Socket] ${socketError.message}`);
+        }
+    });
+    await Promise.allSettled(authorizedAdmins.map((admin) => dispatchPushNotification({
+        recipientId: admin._id,
+        recipientType: 'admin',
+        title: bulk ? 'Products Awaiting Approval' : 'New Product Awaiting Approval',
+        body: bulk
+            ? `${vendorName} uploaded ${count} products. Review them in Admin.`
+            : `${vendorName} uploaded '${productName}'. Review and make it live.`,
+        data: {
+            notificationId: String(notification._id),
+            type: 'vendor_product_review',
+            category: 'INFO',
+            actionUrl,
+            vendorId: String(vendorId),
+            publicationStatus: 'PENDING_REVIEW',
+        },
+    })));
+    return notification;
 };
 
 /**

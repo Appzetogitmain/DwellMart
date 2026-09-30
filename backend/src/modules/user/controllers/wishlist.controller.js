@@ -6,12 +6,17 @@ import Product from '../../../models/Product.model.js';
 import mongoose from 'mongoose';
 
 const wishlistPopulate = 'items.productId';
-const wishlistSelect = 'name price image stock unit rating originalPrice isActive';
+const wishlistSelect = 'name price image stock unit rating originalPrice isActive publicationStatus isDeleted';
 
 // GET /api/user/wishlist
 export const getWishlist = asyncHandler(async (req, res) => {
     const wishlist = await Wishlist.findOne({ userId: req.user.id }).populate(wishlistPopulate, wishlistSelect);
-    const items = (wishlist?.items || []).filter((item) => item?.productId && item?.productId?.isActive !== false);
+    const items = (wishlist?.items || []).filter((item) =>
+        item?.productId
+        && item.productId.isActive !== false
+        && item.productId.isDeleted !== true
+        && item.productId.publicationStatus === 'LIVE'
+    );
     res.status(200).json(new ApiResponse(200, items, 'Wishlist fetched.'));
 });
 
@@ -23,7 +28,12 @@ export const addToWishlist = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Invalid product id.');
     }
 
-    const product = await Product.findOne({ _id: normalizedProductId, isActive: true }).select('_id');
+    const product = await Product.findOne({
+        _id: normalizedProductId,
+        isActive: true,
+        isDeleted: { $ne: true },
+        publicationStatus: 'LIVE',
+    }).select('_id');
     if (!product) {
         throw new ApiError(404, 'Product not found.');
     }

@@ -102,7 +102,13 @@ export const validateCart = async ({ items = [], customerLocation = null, strict
     // ── 1. Batch-fetch Products & Vendors ──────────────────────────────────
     const productIds = [...new Set(items.map((i) => (i.productId || i.id) ? new mongoose.Types.ObjectId(String(i.productId || i.id)) : null).filter(Boolean))];
     const [rawProducts, wholesaleEnabled, quickCommerceEnabled] = await Promise.all([
-        Product.find({ _id: { $in: productIds } })
+        Product.find({
+            _id: { $in: productIds },
+            publicationStatus: 'LIVE',
+            isActive: true,
+            isVisible: { $ne: false },
+            isDeleted: { $ne: true },
+        })
             .select('_id name isActive isVisible stock stockQuantity lowStockThreshold vendorId '
                 + 'quickCommerceEnabled retailEnabled wholesaleEnabled quickCommerce wholesale '
                 + 'variants price taxRate taxIncluded codAllowed returnable cancelable')

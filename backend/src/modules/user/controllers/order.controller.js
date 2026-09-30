@@ -129,7 +129,13 @@ export const placeOrder = asyncHandler(async (req, res) => {
     const productIds = items.map((i) => i.productId).filter(Boolean);
     if (!productIds.length) throw new ApiError(400, 'Cart is empty.');
 
-    const rawProducts = await Product.find({ _id: { $in: productIds } }).select(
+    const rawProducts = await Product.find({
+        _id: { $in: productIds },
+        isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+        publicationStatus: 'LIVE',
+    }).select(
         '_id name image vendorId price stock stockQuantity taxRate taxIncluded ' +
         'quickCommerceEnabled retailEnabled wholesaleEnabled category experience ' +
         'quickCommerce variants wholesale codAllowed returnable cancelable'
@@ -592,6 +598,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 const variantPath = item.variantKey ? `variants.stockMap.${item.variantKey}` : null;
                 const baseFilter = {
                     _id: item.productId,
+                    publicationStatus: 'LIVE',
+                    isActive: true,
+                    isDeleted: { $ne: true },
                     stock: { $ne: 'out_of_stock' },
                     stockQuantity: { $gte: Number(item.quantity || 0) },
                 };

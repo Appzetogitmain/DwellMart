@@ -12,6 +12,15 @@ import {
 } from '../../../services/pricingValidation.service.js';
 import { channelToProductFlag, isChannelWritable } from '../../../constants/vendorChannels.js';
 import { parsePagination } from '../../../utils/pagination.js';
+import { notifyAdminsOfVendorProducts } from '../../../services/notification.service.js';
+
+const stripAdminPublicationFields = (payload = {}) => {
+    [
+        'publicationStatus', 'publicationStatusUpdatedAt', 'publishedAt',
+        'publishedBy', 'unpublishedAt', 'unpublishedBy', 'rejectionReason',
+    ].forEach((field) => delete payload[field]);
+    return payload;
+};
 
 /**
  * Derive which selling channels this vendor supports.
@@ -279,6 +288,7 @@ export const getVendorProductById = asyncHandler(async (req, res) => {
 // POST /api/vendor/products
 export const createProduct = asyncHandler(async (req, res) => {
     const { name, ...rest } = req.body;
+    stripAdminPublicationFields(rest);
     if (!name) throw new ApiError(400, 'Product name is required.');
     const slug = slugify(name) + '-' + Date.now();
     const stockQuantity = Number(rest.stockQuantity ?? 0);
@@ -359,12 +369,23 @@ export const createProduct = asyncHandler(async (req, res) => {
         ...resolvedQuickCommerce,
         isActive: true,
         isDeleted: false,
+        publicationStatus: 'PENDING_REVIEW',
+        publicationStatusUpdatedAt: new Date(),
     });
+    Vendor.findById(req.user.id).select('storeName name').lean()
+        .then((vendor) => notifyAdminsOfVendorProducts({
+            vendorId: req.user.id,
+            vendorName: vendor?.storeName || vendor?.name || 'A vendor',
+            productIds: [product._id],
+            productName: product.name,
+        }))
+        .catch((error) => console.warn(`[Product Review Notification] ${error.message}`));
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
 
 // PUT /api/vendor/products/:id
 export const updateProduct = asyncHandler(async (req, res) => {
+    stripAdminPublicationFields(req.body);
     const currentFlag = channelToProductFlag(req.vendorWorkspace);
     const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id, isDeleted: { $ne: true } });
     if (!product) throw new ApiError(404, 'Product not found or access denied.');

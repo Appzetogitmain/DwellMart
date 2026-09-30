@@ -17,7 +17,7 @@ import { formatPrice, getPlaceholderImage } from "../../../../shared/utils/helpe
 
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
-import { getAllProducts, deleteProduct, exportProductsCatalog, getProductsMissingShipping, updateProduct } from "../../services/adminService";
+import { getAllProducts, getAllVendors, deleteProduct, exportProductsCatalog, getProductsMissingShipping, updateProduct, updateProductPublicationStatus, bulkUpdateProductPublicationStatus } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageProducts = () => {
@@ -51,6 +51,8 @@ const ManageProducts = () => {
   const selectedStatus = searchParams.get("status") || "all";
   const selectedCategory = searchParams.get("categoryId") || searchParams.get("category") || "all";
   const selectedBrand = searchParams.get("brandId") || searchParams.get("brand") || "all";
+  const selectedVendor = searchParams.get("vendorId") || "all";
+  const selectedPublicationStatus = searchParams.get("publicationStatus") || "all";
   const queryParam = searchParams.get("search") || "";
 
   const [searchQuery, setSearchQuery] = useState(queryParam);
@@ -80,6 +82,16 @@ const ManageProducts = () => {
     subcategoryId: "",
   });
   const [isQuickSaving, setIsQuickSaving] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [publicationModal, setPublicationModal] = useState({ isOpen: false, status: null, product: null, ids: [] });
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  useEffect(() => {
+    getAllVendors({ limit: 1000 })
+      .then((response) => setVendors(response?.data?.vendors || response?.data || []))
+      .catch(() => setVendors([]));
+  }, []);
 
   const handleOpenQuickEdit = (product, type) => {
     setQuickEditModal({ isOpen: true, product, type });
@@ -169,6 +181,8 @@ const ManageProducts = () => {
       if (selectedStatus !== "all") params.status = selectedStatus;
       if (selectedCategory !== "all") params.categoryId = selectedCategory;
       if (selectedBrand !== "all") params.brandId = selectedBrand;
+      if (selectedVendor !== "all") params.vendorId = selectedVendor;
+      if (selectedPublicationStatus !== "all") params.publicationStatus = selectedPublicationStatus;
 
       const response = await getAllProducts(params);
       const pageProducts = Array.isArray(response.data)
@@ -195,9 +209,91 @@ const ManageProducts = () => {
 
   useEffect(() => {
     loadProducts();
-  }, [currentPage, pageSize, queryParam, selectedStatus, selectedCategory, selectedBrand]);
+  }, [currentPage, pageSize, queryParam, selectedStatus, selectedCategory, selectedBrand, selectedVendor, selectedPublicationStatus]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [currentPage, pageSize, queryParam, selectedStatus, selectedCategory, selectedBrand, selectedVendor, selectedPublicationStatus]);
+
+  const allPageSelected = products.length > 0 && products.every((product) => selectedIds.has(product.id));
+  const somePageSelected = products.some((product) => selectedIds.has(product.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(allPageSelected ? new Set() : new Set(products.map((product) => product.id)));
+  };
+  const toggleSelected = (id) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const openPublicationModal = (status, product = null) => {
+    const ids = product ? [product.id] : Array.from(selectedIds);
+    if (!ids.length) return;
+    setPublicationModal({ isOpen: true, status, product, ids });
+  };
+
+  const confirmPublicationChange = async () => {
+    const { status, product, ids } = publicationModal;
+    try {
+      setIsPublishing(true);
+      if (product) {
+        await updateProductPublicationStatus(product.id, status);
+        toast.success(status === "LIVE" ? "Product is now live." : "Product is now offline.");
+      } else {
+        const response = await bulkUpdateProductPublicationStatus(ids, status);
+        const result = response?.data || {};
+        const updated = Number(result.updatedCount || 0);
+        const failed = Number(result.failedCount || 0);
+        if (failed) {
+          toast.error(`${updated} product${updated === 1 ? " was" : "s were"} updated. ${failed} could not be updated.`);
+        } else {
+          toast.success(`${updated} product${updated === 1 ? " is" : "s are"} now ${status === "LIVE" ? "live" : "offline"}.`);
+        }
+        setSelectedIds(new Set());
+      }
+      setPublicationModal({ isOpen: false, status: null, product: null, ids: [] });
+      await loadProducts();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error?.message || "Failed to update publication status");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   const columns = [
+    {
+      key: "selection",
+      label: (
+        <input
+          type="checkbox"
+          aria-label="Select all products on this page"
+          checked={allPageSelected}
+          ref={(node) => { if (node) node.indeterminate = somePageSelected && !allPageSelected; }}
+          onChange={toggleSelectAll}
+          onClick={(event) => event.stopPropagation()}
+          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        />
+      ),
+      sortable: false,
+      render: (_, row) => (
+        <input
+          type="checkbox"
+          aria-label={`Select ${row.name}`}
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelected(row.id)}
+          onClick={(event) => event.stopPropagation()}
+          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        />
+      ),
+    },
+    {
+      key: "vendorId",
+      label: "Vendor",
+      sortable: false,
+      render: (value) => value?.storeName || "Unknown vendor",
+    },
     {
       key: "id",
       label: "ID",
@@ -281,7 +377,7 @@ const ManageProducts = () => {
     },
     {
       key: "stock",
-      label: "Status",
+      label: "Stock Status",
       sortable: true,
       render: (value) => (
         <Badge
@@ -297,12 +393,30 @@ const ManageProducts = () => {
       ),
     },
     {
+      key: "publicationStatus",
+      label: "Publication",
+      sortable: true,
+      render: (value = "PENDING_REVIEW") => {
+        const variants = { LIVE: "success", PENDING_REVIEW: "warning", OFFLINE: "info", REJECTED: "error" };
+        return <Badge variant={variants[value] || "info"}>{String(value).replaceAll("_", " ")}</Badge>;
+      },
+    },
+    {
       key: "actions",
       label: "Actions",
       sortable: false,
       render: (_, row) => (
         <div className="flex items-center gap-2">
           <PermissionGuard permission="products.edit">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openPublicationModal(row.publicationStatus === "LIVE" ? "OFFLINE" : "LIVE", row);
+              }}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors ${row.publicationStatus === "LIVE" ? "text-amber-700 bg-amber-50 hover:bg-amber-100" : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"}`}
+            >
+              {row.publicationStatus === "LIVE" ? "Make Offline" : "Make Live"}
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -425,6 +539,20 @@ const ManageProducts = () => {
             </div>
 
             <AnimatedSelect
+              value={selectedPublicationStatus}
+              onChange={(e) => updateFilters({ publicationStatus: e.target.value }, true)}
+              options={[
+                { value: "all", label: "All Publication" },
+                { value: "PENDING_REVIEW", label: "Pending Review" },
+                { value: "LIVE", label: "Live" },
+                { value: "OFFLINE", label: "Offline" },
+                { value: "REJECTED", label: "Rejected" },
+              ]}
+              direction="down"
+              className="w-full sm:w-auto min-w-[160px]"
+            />
+
+            <AnimatedSelect
               value={selectedStatus}
               onChange={(e) => updateFilters({ status: e.target.value }, true)}
               options={[
@@ -435,6 +563,19 @@ const ManageProducts = () => {
               ]}
               direction="down"
               className="w-full sm:w-auto min-w-[140px]"
+            />
+
+            <AnimatedSelect
+              value={selectedVendor}
+              onChange={(e) => updateFilters({ vendorId: e.target.value }, true)}
+              options={[
+                { value: "all", label: "All Vendors" },
+                ...vendors.map((vendor) => ({ value: String(vendor._id || vendor.id), label: vendor.storeName || vendor.name || vendor.email })),
+              ]}
+              searchable={true}
+              searchPlaceholder="Search vendors..."
+              direction="down"
+              className="w-full sm:w-auto min-w-[170px]"
             />
 
             <AnimatedSelect
@@ -467,7 +608,7 @@ const ManageProducts = () => {
               className="w-full sm:w-auto min-w-[170px]"
             />
 
-            {(queryParam || selectedStatus !== "all" || selectedCategory !== "all" || selectedBrand !== "all") && (
+            {(queryParam || selectedStatus !== "all" || selectedPublicationStatus !== "all" || selectedVendor !== "all" || selectedCategory !== "all" || selectedBrand !== "all") && (
               <button
                 type="button"
                 onClick={() => {
@@ -503,6 +644,16 @@ const ManageProducts = () => {
         </div>
 
         {/* DataTable */}
+        {selectedIds.size > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3">
+            <span className="text-sm font-semibold text-primary-900">{selectedIds.size} product{selectedIds.size === 1 ? "" : "s"} selected</span>
+            <PermissionGuard permission="products.edit">
+              <button type="button" onClick={() => openPublicationModal("LIVE")} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Make Live</button>
+              <button type="button" onClick={() => openPublicationModal("OFFLINE")} className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700">Make Offline</button>
+            </PermissionGuard>
+            <button type="button" onClick={() => setSelectedIds(new Set())} className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Clear Selection</button>
+          </div>
+        )}
         <DataTable
           data={products}
           columns={columns}
@@ -521,6 +672,19 @@ const ManageProducts = () => {
           }
         />
       </div>
+
+      <ConfirmModal
+        isOpen={publicationModal.isOpen}
+        onClose={() => !isPublishing && setPublicationModal({ isOpen: false, status: null, product: null, ids: [] })}
+        onConfirm={confirmPublicationChange}
+        title={publicationModal.status === "LIVE" ? `Make ${publicationModal.ids.length > 1 ? `${publicationModal.ids.length} Products` : "Product"} Live?` : `Take ${publicationModal.ids.length > 1 ? `${publicationModal.ids.length} Products` : "Product"} Offline?`}
+        message={publicationModal.status === "LIVE"
+          ? `${publicationModal.product ? `${publicationModal.product.name}. ` : ""}Once live, ${publicationModal.ids.length > 1 ? "these products" : "this product"} will become visible to customers wherever eligible.`
+          : `${publicationModal.product ? `${publicationModal.product.name}. ` : ""}${publicationModal.ids.length > 1 ? "These products" : "This product"} will no longer be available in customer-facing product listings.`}
+        confirmText={publicationModal.status === "LIVE" ? "Make Live" : "Take Offline"}
+        type={publicationModal.status === "LIVE" ? "success" : "danger"}
+        isLoading={isPublishing}
+      />
 
       <ConfirmModal
         isOpen={deleteModal.isOpen}

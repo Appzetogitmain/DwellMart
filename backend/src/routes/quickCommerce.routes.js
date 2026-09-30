@@ -277,6 +277,9 @@ router.post('/checkout/estimate', asyncHandler(async (req, res) => {
     const products = await Product.find({
         _id: { $in: productIds },
         isActive: true,
+        isVisible: { $ne: false },
+        isDeleted: { $ne: true },
+        publicationStatus: 'LIVE',
         quickCommerceEnabled: true,
     })
         .select('_id vendorId price variants.prices retailEnabled wholesaleEnabled wholesale')

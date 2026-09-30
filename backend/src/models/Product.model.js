@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { PRODUCT_PUBLICATION_STATUSES } from '../constants/productPublication.js';
 
 const productSchema = new mongoose.Schema(
     {
@@ -154,6 +155,21 @@ const productSchema = new mongoose.Schema(
         isFeatured: { type: Boolean, default: false, index: true },
         isActive: { type: Boolean, default: true, index: true },
         isVisible: { type: Boolean, default: true },
+        // Admin-controlled customer publication state. Inventory/channel flags
+        // remain independent and cannot grant customer visibility by themselves.
+        publicationStatus: {
+            type: String,
+            enum: PRODUCT_PUBLICATION_STATUSES,
+            default: 'PENDING_REVIEW',
+            required: true,
+            index: true,
+        },
+        publicationStatusUpdatedAt: { type: Date, default: Date.now },
+        publishedAt: { type: Date },
+        publishedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+        unpublishedAt: { type: Date },
+        unpublishedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+        rejectionReason: { type: String, trim: true },
         codAllowed: { type: Boolean, default: true },
         returnable: { type: Boolean, default: true },
         cancelable: { type: Boolean, default: true },
@@ -174,6 +190,8 @@ const productSchema = new mongoose.Schema(
 );
 
 productSchema.index({ vendorId: 1, isActive: 1 });
+productSchema.index({ publicationStatus: 1, isActive: 1, isDeleted: 1, createdAt: -1 });
+productSchema.index({ vendorId: 1, publicationStatus: 1, createdAt: -1 });
 productSchema.index({ categoryId: 1, isActive: 1 });
 productSchema.index({ isActive: 1, createdAt: -1 });
 productSchema.index({ isActive: 1, price: 1 });
