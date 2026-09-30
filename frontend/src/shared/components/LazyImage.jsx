@@ -5,6 +5,10 @@ const LazyImage = ({
   src,
   alt,
   className,
+  imageClassName,
+  wrapperClassName,
+  style,
+  imgStyle,
   onError,
   placeholderWidth = 200,
   placeholderHeight = 200,
@@ -74,8 +78,16 @@ const LazyImage = ({
     }
   };
 
+  // Determine wrapper vs image classes cleanly
+  const resolvedWrapperClass = wrapperClassName || className || "";
+  const resolvedImageClass = imageClassName || className || "";
+  const resolvedImgStyle = {
+    ...(style || {}),
+    ...(imgStyle || {})
+  };
+
   return (
-    <div className={`relative overflow-hidden ${className || ""}`} ref={imgRef}>
+    <div className={`relative overflow-hidden ${resolvedWrapperClass}`} ref={imgRef}>
       {/* Placeholder/Blur effect */}
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
@@ -88,7 +100,8 @@ const LazyImage = ({
           alt={alt}
           className={`transition-opacity duration-300 ${
             isLoaded ? "opacity-100" : "opacity-0"
-          } ${className || ""}`}
+          } ${resolvedImageClass}`}
+          style={resolvedImgStyle}
           onLoad={handleLoad}
           onError={handleError}
           loading="lazy"

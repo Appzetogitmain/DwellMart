@@ -54,22 +54,24 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
       <div className="w-full flex flex-col gap-3 sm:gap-4">
         {/* Main Image */}
         <div
-          className="relative w-full aspect-[4/3] sm:aspect-square bg-gray-50/50 rounded-2xl p-2 sm:p-4 shadow-xs border border-gray-100 overflow-hidden flex items-center justify-center"
+          className="relative w-full aspect-square bg-white rounded-2xl p-2 sm:p-4 shadow-xs border border-gray-100 overflow-hidden flex items-center justify-center"
           data-gallery>
           <motion.div
             key={selectedIndex}
-            className="w-full h-full"
+            className="w-full h-full flex items-center justify-center cursor-zoom-in"
             onClick={handleImageClick}
             onTouchStart={swipeHandlers.onTouchStart}
             onTouchMove={swipeHandlers.onTouchMove}
             onTouchEnd={swipeHandlers.onTouchEnd}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}>
+            transition={{ duration: 0.25 }}>
             <LazyImage
               src={imageArray[selectedIndex]}
               alt={`${productName} - Image ${selectedIndex + 1}`}
-              className="w-full h-full object-contain mix-blend-multiply"
+              className="w-full h-full flex items-center justify-center"
+              imageClassName="w-full h-full max-h-full max-w-full object-contain select-none"
+              imgStyle={{ objectFit: "contain" }}
               fallbackImage={getPlaceholderImage(500, 500, "Product Image")}
             />
           </motion.div>
@@ -99,21 +101,23 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
         {/* Action Buttons / Badge Area (Injected via children) */}
         {children}
 
-        {/* Thumbnails Grid (3 Columns) */}
+        {/* Thumbnails */}
         {imageArray.length > 1 && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto py-1 scrollbar-none">
             {imageArray.map((image, index) => (
               <button
                 key={index}
                 onClick={() => handleThumbnailClick(index)}
-                className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-300 ${selectedIndex === index
+                className={`w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 aspect-square rounded-xl sm:rounded-2xl overflow-hidden border-2 p-1 bg-white transition-all duration-300 flex items-center justify-center ${selectedIndex === index
                   ? "border-primary-600 ring-2 ring-primary-50 ring-offset-2"
-                  : "border-transparent hover:border-gray-300"
+                  : "border-gray-200 hover:border-gray-300"
                   }`}>
                 <LazyImage
                   src={image}
                   alt={`${productName} thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full flex items-center justify-center"
+                  imageClassName="w-full h-full max-h-full max-w-full object-contain"
+                  imgStyle={{ objectFit: "contain" }}
                   fallbackImage={getPlaceholderImage(100, 100, "Thumbnail")}
                 />
               </button>
@@ -143,11 +147,12 @@ const ImageGallery = ({ images, productName = "Product", children }) => {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative max-w-7xl max-h-[90vh] w-full">
+                className="relative max-w-7xl max-h-[90vh] w-full flex items-center justify-center">
                 <img
                   src={imageArray[selectedIndex]}
                   alt={`${productName} - Full view`}
-                  className="w-full h-full object-contain max-h-[90vh] rounded-lg"
+                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg mx-auto"
+                  style={{ objectFit: "contain" }}
                   onError={(e) => {
                     e.target.src = getPlaceholderImage(800, 800, "Product Image");
                   }}

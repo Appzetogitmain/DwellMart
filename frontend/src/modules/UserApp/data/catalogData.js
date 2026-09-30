@@ -60,7 +60,12 @@ const normalizeProduct = (raw) => {
 
   const rawImage = raw?.image || raw?.mainImage || raw?.thumbnail || raw?.images?.[0] || "";
   const image = getImageUrl(rawImage);
-  const images = (Array.isArray(raw?.images) ? raw.images : [rawImage])
+  const rawImagesList = Array.isArray(raw?.images) && raw.images.length > 0 ? raw.images : [];
+  const combinedRawImages = [
+    ...(rawImage ? [rawImage] : []),
+    ...rawImagesList.filter(img => String(img).trim() !== String(rawImage).trim())
+  ];
+  const images = (combinedRawImages.length > 0 ? combinedRawImages : [rawImage])
     .filter(Boolean)
     .map(img => getImageUrl(img));
 
