@@ -1,17 +1,13 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiTag, FiArrowRight } from "react-icons/fi";
-import { getNewArrivals } from "../../data/catalogData";
 import { usePageTranslation } from "../../../../hooks/usePageTranslation";
 import ProductCard from "../../../../shared/components/ProductCard";
 import { Button } from "../../../../shared/components/ui";
 
-const NewArrivalsSection = ({ products = null }) => {
+const NewArrivalsSection = ({ products = [], title = "New Arrivals", subtitle = "Fresh products just added" }) => {
   const { getTranslatedText: t } = usePageTranslation(["New Arrivals", "Fresh products just added", "See All"]);
-  const fallback = getNewArrivals(6);
-  const newArrivals = Array.isArray(products) && products.length > 0
-    ? products.slice(0, 6)
-    : fallback;
+  const newArrivals = Array.isArray(products) ? products.slice(0, 6) : [];
 
   if (newArrivals.length === 0) {
     return null;
@@ -65,10 +61,10 @@ const NewArrivalsSection = ({ products = null }) => {
               <motion.h2
                 className="text-xl sm:text-2xl md:text-3xl font-black bg-gradient-to-r from-brand-primary via-amber-200 to-brand-primary bg-clip-text text-transparent drop-shadow-md tracking-tight"
               >
-                {t("New Arrivals")}
+                {t(title)}
               </motion.h2>
               <p className="text-xs sm:text-sm text-textColor-muted font-medium">
-                {t("Fresh products just added")}
+                {t(subtitle)}
               </p>
             </div>
           </div>

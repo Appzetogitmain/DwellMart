@@ -8,6 +8,10 @@
  */
 import api from '../../../shared/utils/api';
 
+export const getAdminHomepageSections = () => api.get('/admin/marketing/homepage-sections');
+export const publishAdminHomepageSections = (sections) =>
+    api.put('/admin/marketing/homepage-sections', { sections });
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const adminLogin = (email, password) =>
     api.post('/admin/auth/login', { email, password });

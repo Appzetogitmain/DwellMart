@@ -78,41 +78,11 @@ const MobileFlashSale = () => {
     const loadFlashSale = async () => {
       setIsLoadingInitial(true);
       try {
-        const campaignList = await api.get("/campaigns", {
-          params: { type: "flash_sale", limit: 20 },
-        });
-        const campaignsPayload = campaignList?.data ?? campaignList;
-        const slugs = Array.isArray(campaignsPayload)
-          ? campaignsPayload
-            .map((c) => String(c?.slug || "").trim())
-            .filter(Boolean)
+        const response = await api.get("/flash-sale");
+        const payload = response?.data ?? response;
+        const products = Array.isArray(payload)
+          ? payload.map(normalizeProduct).filter((product) => product.id)
           : [];
-
-        let products = [];
-        if (slugs.length) {
-          const details = await Promise.allSettled(
-            [...new Set(slugs)].map((slug) => api.get(`/campaigns/${slug}`))
-          );
-
-          const map = new Map();
-          details
-            .filter((result) => result.status === "fulfilled")
-            .forEach((result) => {
-              const payload = result.value?.data ?? result.value;
-              const campaignProducts = Array.isArray(payload?.products) ? payload.products : [];
-              campaignProducts.forEach((product) => {
-                const normalized = normalizeProduct(product);
-                if (!normalized.id) return;
-                if (!map.has(normalized.id)) map.set(normalized.id, normalized);
-              });
-            });
-          products = Array.from(map.values());
-        } else {
-          const response = await api.get("/flash-sale");
-          const payload = response?.data ?? response;
-          products = Array.isArray(payload) ? payload.map(normalizeProduct) : [];
-        }
-
         if (!cancelled) setAllFlashSale(products);
       } catch {
         if (!cancelled) setAllFlashSale([]);
