@@ -158,7 +158,7 @@ const MobileCategories = () => {
 
   const { translateArray } = useDynamicTranslation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { experience: activeExp } = useExperienceStore();
   const currentExperience = searchParams.get('experience') || activeExp || EXPERIENCES.MARKETPLACE;
   const {
@@ -218,9 +218,16 @@ const MobileCategories = () => {
     translateRoots();
   }, [categories, getRootCategories, translateArray]);
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+  // Initialize from URL params so navigation back from ProductDetail restores state
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    () => searchParams.get('cat') || null
+  );
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(
+    () => searchParams.get('dept') || null
+  );
+  const [selectedSubcategory, setSelectedSubcategory] = useState(
+    () => searchParams.get('sub') || null
+  );
 
   // Check if active Level 1 root category has 3 levels
   const is3TierCategory = useMemo(() => {
@@ -235,7 +242,19 @@ const MobileCategories = () => {
   }, [selectedCategoryId, is3TierCategory, categories, getCategoriesByParent]);
 
   // Automatically select first department when root category changes
+  // Only auto-select first department when NOT restoring from URL
+  const restoredDeptRef = useRef(searchParams.get('dept') || null);
   useEffect(() => {
+    if (restoredDeptRef.current) {
+      const exists = departments.some(
+        (d) => normalizeId(d.id || d._id) === normalizeId(restoredDeptRef.current)
+      );
+      if (exists) {
+        restoredDeptRef.current = null;
+        return;
+      }
+      restoredDeptRef.current = null;
+    }
     if (is3TierCategory && departments.length > 0) {
       setSelectedDepartmentId(departments[0].id || departments[0]._id);
     } else {
@@ -275,8 +294,12 @@ const MobileCategories = () => {
   const activeCategoryRef = useRef(null);
   const filterButtonRef = useRef(null);
   const [isInitialMount, setIsInitialMount] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get('q') || ""
+  );
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(
+    () => searchParams.get('q') || ""
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
   const [brandSearch, setBrandSearch] = useState("");
@@ -305,19 +328,55 @@ const MobileCategories = () => {
   useEffect(() => {
     if (!translatedRootCategories.length) return;
     if (!selectedCategoryId) {
-      setSelectedCategoryId(translatedRootCategories[0].id);
+      // Auto-select first category and also write it to URL
+      const firstId = translatedRootCategories[0].id;
+      setSelectedCategoryId(firstId);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('cat', String(firstId));
+          return next;
+        },
+        { replace: true }
+      );
       return;
     }
     const exists = translatedRootCategories.some(
       (cat) => normalizeId(cat.id) === normalizeId(selectedCategoryId)
     );
     if (!exists) {
-      setSelectedCategoryId(translatedRootCategories[0].id);
+      const firstId = translatedRootCategories[0].id;
+      setSelectedCategoryId(firstId);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('cat', String(firstId));
+          next.delete('dept');
+          next.delete('sub');
+          return next;
+        },
+        { replace: true }
+      );
     }
   }, [translatedRootCategories, selectedCategoryId]);
 
   // Reset selected subcategory when department or category changes
+  // Only auto-select first subcategory when NOT restoring from URL
+  const restoredSubRef = useRef(searchParams.get('sub') || null);
   useEffect(() => {
+    if (restoredSubRef.current) {
+      // On first run after restoration, check if the restored sub still exists in the new list
+      const exists = translatedSubcategories.some(
+        (s) => normalizeId(s.id) === normalizeId(restoredSubRef.current)
+      );
+      if (exists) {
+        // Keep the restored value — don't override it
+        restoredSubRef.current = null;
+        return;
+      }
+      // Restored sub no longer valid; fall through to auto-select
+      restoredSubRef.current = null;
+    }
     if (translatedSubcategories.length > 0) {
       setSelectedSubcategory(translatedSubcategories[0].id);
     } else {
@@ -618,13 +677,78 @@ const MobileCategories = () => {
     }
   }, [selectedCategoryId]);
 
+
   const handleCategorySelect = (categoryId) => {
     setSelectedCategoryId(categoryId);
     setSearchQuery("");
+    // Reset dept and sub when switching root category
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('cat', String(categoryId));
+        next.delete('dept');
+        next.delete('sub');
+        next.delete('q');
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const handleFilterChange = (name, value) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Sync subcategory selection to URL
+  const handleSubcategorySelect = (subcategoryId) => {
+    setSelectedSubcategory(subcategoryId);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (subcategoryId) {
+          next.set('sub', String(subcategoryId));
+        } else {
+          next.delete('sub');
+        }
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  // Sync department selection to URL
+  const handleDepartmentSelect = (deptId) => {
+    setSelectedDepartmentId(deptId);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (deptId) {
+          next.set('dept', String(deptId));
+        } else {
+          next.delete('dept');
+        }
+        next.delete('sub');
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  // Sync search query to URL
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value.trim()) {
+          next.set('q', value.trim());
+        } else {
+          next.delete('q');
+        }
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const toggleBrand = (brandName) => {
@@ -744,13 +868,15 @@ const MobileCategories = () => {
                     <button
                       onClick={() => setShowFilters(true)}
                       className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer font-bold text-xs border shadow-xs ${
-                        hasActiveFilters
+                        showFilters
+                          ? "bg-brand-primary/20 text-brand-primary border-brand-primary ring-1 ring-brand-primary font-extrabold"
+                          : hasActiveFilters
                           ? "bg-brand-primary text-black border-brand-primary font-extrabold"
                           : "bg-surface-muted hover:bg-border text-content-secondary border-border"
                       }`}
                       title={t("Filters")}>
                       <FiFilter className="text-base" />
-                      <span>{t("Filters")}</span>
+                      <span>{t("Filters")}{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}</span>
                       {activeFiltersCount > 0 && (
                         <span className="w-5 h-5 rounded-full bg-black text-white text-[10px] flex items-center justify-center font-extrabold ml-0.5">
                           {activeFiltersCount}
@@ -768,12 +894,12 @@ const MobileCategories = () => {
                   type="text"
                   placeholder={t("Search in category...")}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full pl-10 pr-10 py-2.5 bg-surface-muted rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-brand-primary shadow-inner placeholder:text-content-muted border border-border/50 text-content"
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => handleSearchChange("")}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-content-muted hover:text-content p-1 cursor-pointer"
                   >
                     <FiX className="text-sm" />
@@ -871,7 +997,7 @@ const MobileCategories = () => {
                             <motion.button
                               key={deptId}
                               whileTap={{ scale: 0.97 }}
-                              onClick={() => setSelectedDepartmentId(deptId)}
+                              onClick={() => handleDepartmentSelect(deptId)}
                               className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs cursor-pointer ${
                                 isDeptActive
                                   ? "bg-amber-400 text-black border-amber-400 shadow-md scale-102 font-bold"
@@ -915,7 +1041,7 @@ const MobileCategories = () => {
                             <motion.button
                               key={subcategory.id}
                               onClick={() =>
-                                setSelectedSubcategory(subcategory.id)
+                                handleSubcategorySelect(subcategory.id)
                               }
                               whileTap={{ scale: 0.97 }}
                               className={`flex-shrink-0 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap border flex items-center gap-2.5 shadow-xs cursor-pointer ${
@@ -958,7 +1084,7 @@ const MobileCategories = () => {
                       </span>
                     </div>
                     <button
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => handleSearchChange("")}
                       className="text-amber-700 hover:text-amber-900 font-bold ml-2 underline cursor-pointer text-xs flex-shrink-0"
                     >
                       {t("Clear search")}
