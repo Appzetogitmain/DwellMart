@@ -24,6 +24,7 @@ import {
     processBrandImport,
 } from '../../../services/brandImport.service.js';
 import { EXPERIENCES, normalizeExperience } from '../../../constants/experiences.js';
+import { applyCatalogSearchFilter } from '../../../utils/catalogSearch.js';
 
 const isVendorWholesaleEnabled = async (vendorId) => {
     if (!vendorId) return false;
@@ -252,15 +253,36 @@ const sanitizeBrandPayload = (payload = {}) => {
 
 // GET /api/admin/products
 export const getAllProducts = asyncHandler(async (req, res) => {
-    const { search, vendorId, categoryId, status, includeInactive = 'false' } = req.query;
+    const { search, vendorId, categoryId, brandId, brand, status, includeInactive = 'false' } = req.query;
     const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
-    const filter = {};
-    if (search) filter.$text = { $search: search };
-    if (vendorId) filter.vendorId = vendorId;
-    if (categoryId) filter.categoryId = categoryId;
-    if (status) filter.stock = status;
+    const filter = {
+        isDeleted: { $ne: true },
+    };
+
+    const targetBrand = brandId || brand;
+    if (targetBrand && targetBrand !== 'all') {
+        if (mongoose.Types.ObjectId.isValid(targetBrand)) {
+            filter.brandId = new mongoose.Types.ObjectId(targetBrand);
+        } else {
+            filter.brandId = targetBrand;
+        }
+    }
+
+    if (vendorId && vendorId !== 'all') {
+        filter.vendorId = mongoose.Types.ObjectId.isValid(vendorId) ? new mongoose.Types.ObjectId(vendorId) : vendorId;
+    }
+    if (categoryId && categoryId !== 'all') {
+        filter.categoryId = mongoose.Types.ObjectId.isValid(categoryId) ? new mongoose.Types.ObjectId(categoryId) : categoryId;
+    }
+    if (status && status !== 'all') {
+        filter.stock = status;
+    }
     if (String(includeInactive) !== 'true') {
         filter.isActive = { $ne: false };
+    }
+
+    if (search) {
+        applyCatalogSearchFilter(filter, search);
     }
 
     const [products, total] = await Promise.all([

@@ -14,7 +14,7 @@ const PublicPageLayout = ({ children, className = '' }) => {
       <MobileHeader />
 
       {/* Main Content Slot */}
-      <main className={`flex-1 w-full ${className}`}>
+      <main className={`flex-1 w-full pt-16 md:pt-0 ${className}`}>
         {children}
       </main>
 

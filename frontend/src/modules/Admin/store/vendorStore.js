@@ -20,8 +20,28 @@ const normalizeVendor = (vendor) => {
 
 export const useVendorStore = create((set, get) => ({
   vendors: [],
+  totalVendors: 0,
+  totalPages: 1,
   selectedVendor: null,
   isLoading: false,
+
+  fetchVendors: async (params = {}) => {
+    set({ isLoading: true });
+    try {
+      const response = await getAllVendors(params);
+      const payload = response?.data ?? response;
+      const vendors = Array.isArray(payload?.vendors)
+        ? payload.vendors.map(normalizeVendor)
+        : [];
+      const total = typeof payload?.total === "number" ? payload.total : vendors.length;
+      const pages = Math.max(Number(payload?.pages) || 1, 1);
+      set({ vendors, totalVendors: total, totalPages: pages, isLoading: false });
+      return { vendors, total, pages };
+    } catch {
+      set({ vendors: [], totalVendors: 0, totalPages: 1, isLoading: false });
+      return { vendors: [], total: 0, pages: 1 };
+    }
+  },
 
   initialize: async () => {
     set({ isLoading: true });

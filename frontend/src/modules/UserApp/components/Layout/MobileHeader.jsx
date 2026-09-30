@@ -39,9 +39,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
     endX: 0,
     endY: 0,
   });
-  const [isTopRowVisible, setIsTopRowVisible] = useState(true);
   const [topRowHeight, setTopRowHeight] = useState(70);
-  const lastScrollYRef = useRef(0);
   const topRowRef = useRef(null);
   const userMenuRef = useRef(null);
   const logoRef = useRef(null);
@@ -126,41 +124,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
     return () => window.removeEventListener("resize", measureTopRow);
   }, []);
 
-  // Handle scroll to hide/show top row with smooth hysteresis threshold to prevent glitching
-  useEffect(() => {
-    let ticking = false;
-    const SCROLL_THRESHOLD = 15; // Minimum scroll delta before toggling header visibility
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          const lastScrollY = lastScrollYRef.current;
-          const diff = currentScrollY - lastScrollY;
-
-          // Always visible near top of page
-          if (currentScrollY <= 15) {
-            setIsTopRowVisible(true);
-            lastScrollYRef.current = currentScrollY;
-          } else if (diff > SCROLL_THRESHOLD && currentScrollY > 60) {
-            // Scrolling down past threshold -> hide header
-            setIsTopRowVisible(false);
-            lastScrollYRef.current = currentScrollY;
-          } else if (diff < -SCROLL_THRESHOLD) {
-            // Scrolling up past threshold -> show header
-            setIsTopRowVisible(true);
-            lastScrollYRef.current = currentScrollY;
-          }
-
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Mobile header remains persistently visible at top: 0 while scrolling
 
   // Calculate animation positions after component mounts
   useEffect(() => {
@@ -267,37 +231,17 @@ const MobileHeader = ({ hideSellButton = false }) => {
   ) : null;
 
   const headerContent = (
-    <motion.header
+    <header
       key="mobile-header" // Stable key to prevent re-mounting
       className="fixed top-0 left-0 right-0 z-[9999] shadow-lg overflow-visible md:hidden h-16"
       style={{
         background: headerBackground,
-        transition: "background 0.5s ease-in-out",
-      }}
-      initial={false}
-      animate={{
-        y: isTopRowVisible ? 0 : -(topRowHeight + 12),
-      }}
-      transition={{
-        duration: 0.25,
-        ease: [0.25, 0.1, 0.25, 1.0],
       }}>
       <div className="px-4 h-full flex items-center overflow-visible">
         {/* First Row: Logo and Actions */}
-        <motion.div
+        <div
           ref={topRowRef}
-          className="flex items-center justify-between w-full gap-3 overflow-visible"
-          initial={false}
-          animate={{
-            opacity: isTopRowVisible ? 1 : 0,
-          }}
-          transition={{
-            duration: 0.2,
-            ease: "easeInOut",
-          }}
-          style={{
-            pointerEvents: isTopRowVisible ? "auto" : "none",
-          }}>
+          className="flex items-center justify-between w-full gap-3 overflow-visible">
           {/* Hamburger Menu Icon */}
           <button
             onClick={() => setIsMenuOpen(true)}
@@ -375,11 +319,11 @@ const MobileHeader = ({ hideSellButton = false }) => {
 
 
           </div>
-        </motion.div>
+        </div>
 
 
       </div>
-    </motion.header>
+    </header>
   );
 
   // Use portal to render outside of transformed containers (like PageTransition)

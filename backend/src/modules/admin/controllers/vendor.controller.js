@@ -63,7 +63,7 @@ const toApiVendor = (vendorDoc) => {
 
 // GET /api/admin/vendors
 export const getAllVendors = asyncHandler(async (req, res) => {
-    const { status, search } = req.query;
+    const { status, search, vendorType } = req.query;
     const { page, limit, skip, calculatePages } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 1000 });
     const filter = {};
 
@@ -72,10 +72,32 @@ export const getAllVendors = asyncHandler(async (req, res) => {
         filter.status = status;
     }
 
+    const conditions = [];
+
     const trimmedSearch = String(search || '').trim();
     if (trimmedSearch) {
         const safeRegex = new RegExp(escapeRegex(trimmedSearch), 'i');
-        filter.$or = [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }];
+        conditions.push({
+            $or: [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }]
+        });
+    }
+
+    if (vendorType && vendorType !== 'all') {
+        const normalizedType = normalizeVendorChannel(vendorType);
+        if (normalizedType) {
+            const path = vendorChannelPath(normalizedType);
+            conditions.push({
+                $or: [
+                    { vendorType: normalizedType },
+                    { [`channels.${path}.status`]: 'active' },
+                    { [`sellingChannels.${path}.enabled`]: true }
+                ]
+            });
+        }
+    }
+
+    if (conditions.length > 0) {
+        filter.$and = conditions;
     }
 
     const [vendors, total] = await Promise.all([

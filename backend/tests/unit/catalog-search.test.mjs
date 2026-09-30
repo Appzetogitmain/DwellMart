@@ -82,3 +82,26 @@ test('applyCatalogSearchFilter: safely appends to existing $and in filter', () =
     applyCatalogSearchFilter(filter, 'foundation concealer');
     assert.equal(filter.$and.length, 2);
 });
+
+test('applyCatalogSearchFilter: preserves brandId and merges with AND semantics', () => {
+    const brandObjectId = new mongoose.Types.ObjectId('6aa14afd843b1a1321a760b4');
+    const categoryObjectId = new mongoose.Types.ObjectId('6ab4d3426fedc375437ad0cb');
+    const filter = {
+        isDeleted: { $ne: true },
+        brandId: brandObjectId,
+        categoryId: categoryObjectId,
+        stock: 'in_stock',
+        isActive: { $ne: false },
+    };
+
+    applyCatalogSearchFilter(filter, 'quilted hand bag');
+
+    assert.equal(filter.brandId, brandObjectId);
+    assert.equal(filter.categoryId, categoryObjectId);
+    assert.equal(filter.stock, 'in_stock');
+    assert.deepEqual(filter.isActive, { $ne: false });
+    assert.deepEqual(filter.isDeleted, { $ne: true });
+    assert.ok(filter.$and, 'Multi-token search should create an $and array');
+    assert.equal(filter.$and.length, 3, 'Should have 3 tokens for quilted, hand, bag');
+});
+

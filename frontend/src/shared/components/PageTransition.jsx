@@ -3,16 +3,16 @@ import { useLocation } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
 
 const pageVariants = {
-  initial: (direction) => ({
+  initial: {
     opacity: 0,
-    x: direction === 'forward' ? 100 : direction === 'back' ? -100 : 0,
-    y: direction === 'forward' || direction === 'back' ? 0 : 20,
-  }),
+  },
   animate: {
     opacity: 1,
-    x: 0,
-    y: 0
-  }
+    transitionEnd: {
+      transform: 'none',
+      willChange: 'auto',
+    },
+  },
 };
 
 const pageTransition = {
@@ -66,7 +66,6 @@ const PageTransition = ({ children }) => {
         animate="animate"
         variants={pageVariants}
         transition={pageTransition}
-        style={{ willChange: 'transform, opacity', transform: 'translateZ(0)' }}
         className="w-full"
       >
         {children}

@@ -22,13 +22,21 @@ import { useAdminAuthStore } from "../../store/adminStore";
 import { PERMISSIONS } from "../../config/permissions";
 import toast from "react-hot-toast";
 import { VendorWholesaleBadge } from "../../../../shared/components/WholesaleBadge";
+import { VendorTypes, VENDOR_TYPE_LABELS } from "../../../../shared/config/vendorCapabilities";
+import { getAllVendors } from "../../services/adminService";
 
 const ManageVendors = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { admin, can } = useAdminAuthStore();
-  const { vendors, isLoading, initialize, updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
+  const { updateVendorStatus, updateCommissionRate, updateVendorEmail, deleteVendor } =
     useVendorStore();
+
+  const [vendors, setVendors] = useState([]);
+  const [totalVendors, setTotalVendors] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [exportVendors, setExportVendors] = useState([]);
 
   const urlPage = parseInt(searchParams.get("page") || "1", 10);
   const currentPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
@@ -36,6 +44,7 @@ const ManageVendors = () => {
   const pageSize = String(pageSizeParam).toLowerCase() === "all" ? "All" : (parseInt(pageSizeParam, 10) || 50);
 
   const selectedStatus = searchParams.get("status") || "all";
+  const selectedVendorType = searchParams.get("vendorType") || "all";
   const queryParam = searchParams.get("search") || "";
 
   const [searchInput, setSearchInput] = useState(queryParam);
@@ -128,16 +137,94 @@ const ManageVendors = () => {
   }, [setSearchParams]);
 
   const hasActiveFilters = Boolean(
-    queryParam || (selectedStatus && selectedStatus !== "all")
+    queryParam ||
+    (selectedStatus && selectedStatus !== "all") ||
+    (selectedVendorType && selectedVendorType !== "all")
   );
 
+  const fetchVendorList = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const numericLimit = String(pageSize).toLowerCase() === "all" ? 1000 : Number(pageSize);
+      const params = {
+        page: currentPage,
+        limit: numericLimit,
+        status: selectedStatus !== "all" ? selectedStatus : undefined,
+        vendorType: selectedVendorType !== "all" ? selectedVendorType : undefined,
+        search: queryParam.trim() || undefined,
+      };
+      const response = await getAllVendors(params);
+      const payload = response?.data ?? response;
+      const list = Array.isArray(payload?.vendors)
+        ? payload.vendors.map((v) => ({
+            ...v,
+            id: String(v.id || v._id || ""),
+            _id: String(v._id || v.id || ""),
+          }))
+        : [];
+      setVendors(list);
+      setTotalVendors(typeof payload?.total === "number" ? payload.total : list.length);
+      setTotalPages(Math.max(Number(payload?.pages) || 1, 1));
+    } catch (err) {
+      console.error("Failed to load vendors:", err);
+      setVendors([]);
+      setTotalVendors(0);
+      setTotalPages(1);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, selectedStatus, selectedVendorType, queryParam]);
+
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    fetchVendorList();
+  }, [fetchVendorList]);
+
+  // Maintain full filtered list for CSV Export
+  useEffect(() => {
+    let active = true;
+    const fetchFullExport = async () => {
+      try {
+        const params = {
+          page: 1,
+          limit: 1000,
+          status: selectedStatus !== "all" ? selectedStatus : undefined,
+          vendorType: selectedVendorType !== "all" ? selectedVendorType : undefined,
+          search: queryParam.trim() || undefined,
+        };
+        const res = await getAllVendors(params);
+        const payload = res?.data ?? res;
+        const list = Array.isArray(payload?.vendors)
+          ? payload.vendors.map((v) => ({
+              ...v,
+              id: String(v.id || v._id || ""),
+              _id: String(v._id || v.id || ""),
+            }))
+          : [];
+        if (active) {
+          setExportVendors(list);
+        }
+      } catch {
+        if (active) {
+          setExportVendors(vendors);
+        }
+      }
+    };
+    fetchFullExport();
+    return () => {
+      active = false;
+    };
+  }, [selectedStatus, selectedVendorType, queryParam, vendors]);
+
+  // Safe clamping only when data has loaded
+  useEffect(() => {
+    if (!isLoading && totalVendors > 0 && currentPage > totalPages) {
+      handlePageChange(totalPages);
+    }
+  }, [isLoading, totalVendors, currentPage, totalPages, handlePageChange]);
 
   // Get vendor statistics
   const getVendorStats = (vendorId) => {
-    const vendor = vendors.find((v) => String(v.id) === String(vendorId));
+    const vendor = vendors.find((v) => String(v.id || v._id) === String(vendorId));
     return {
       totalOrders: vendor?.totalOrders || 0,
       totalEarnings: vendor?.totalEarnings || 0,
@@ -145,35 +232,6 @@ const ManageVendors = () => {
       commissionRate: vendor?.commissionRate || 0,
     };
   };
-
-  const filteredVendors = useMemo(() => {
-    let filtered = vendors;
-
-    if (queryParam) {
-      const lower = queryParam.toLowerCase();
-      filtered = filtered.filter(
-        (vendor) =>
-          vendor.name?.toLowerCase().includes(lower) ||
-          vendor.email?.toLowerCase().includes(lower) ||
-          vendor.storeName?.toLowerCase().includes(lower)
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((vendor) => vendor.status === selectedStatus);
-    }
-
-    return filtered;
-  }, [vendors, queryParam, selectedStatus]);
-
-  // Safe clamping only when data has loaded
-  const numericPageSize = String(pageSize).toLowerCase() === "all" ? 1000 : Number(pageSize);
-  const totalPages = Math.max(1, Math.ceil(filteredVendors.length / (numericPageSize || 1)));
-  useEffect(() => {
-    if (!isLoading && filteredVendors.length > 0 && currentPage > totalPages) {
-      handlePageChange(totalPages);
-    }
-  }, [isLoading, filteredVendors.length, currentPage, totalPages, handlePageChange]);
 
   const columns = [
     {
@@ -441,6 +499,7 @@ const ManageVendors = () => {
         vendorId: null,
         vendorName: null,
       });
+      fetchVendorList();
     }
   };
 
@@ -454,6 +513,7 @@ const ManageVendors = () => {
         vendorId: null,
         vendorName: null,
       });
+      fetchVendorList();
     }
   };
 
@@ -472,6 +532,7 @@ const ManageVendors = () => {
         vendorName: null,
       });
       setStatusReason("");
+      fetchVendorList();
     }
   };
 
@@ -490,6 +551,7 @@ const ManageVendors = () => {
         vendorName: null,
       });
       setDeleteConfirmationInput("");
+      fetchVendorList();
     } catch (err) {
       toast.error(err?.response?.data?.message || err?.message || "Failed to delete vendor");
     }
@@ -511,6 +573,7 @@ const ManageVendors = () => {
         vendorName: null,
       });
       setCommissionRate("");
+      fetchVendorList();
     } else {
       toast.error("Failed to update commission rate");
     }
@@ -533,7 +596,7 @@ const ManageVendors = () => {
           vendorName: null,
         });
         setNewVendorEmail("");
-        initialize();
+        fetchVendorList();
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || err?.message || "Failed to update vendor email");
@@ -720,6 +783,21 @@ const ManageVendors = () => {
               className="w-full sm:w-auto min-w-[140px]"
             />
 
+            <AnimatedSelect
+              value={selectedVendorType}
+              onChange={(val) => {
+                const newType = typeof val === 'object' && val?.target ? val.target.value : val;
+                updateFilters({ vendorType: newType }, true);
+              }}
+              options={[
+                { value: "all", label: "All Vendor Types" },
+                { value: VendorTypes.RETAIL, label: VENDOR_TYPE_LABELS[VendorTypes.RETAIL] },
+                { value: VendorTypes.WHOLESALE, label: VENDOR_TYPE_LABELS[VendorTypes.WHOLESALE] },
+                { value: VendorTypes.QUICK_COMMERCE, label: VENDOR_TYPE_LABELS[VendorTypes.QUICK_COMMERCE] },
+              ]}
+              className="w-full sm:w-auto min-w-[170px]"
+            />
+
             {hasActiveFilters && (
               <button
                 type="button"
@@ -733,7 +811,7 @@ const ManageVendors = () => {
 
             <div className="w-full sm:w-auto">
               <ExportButton
-                data={filteredVendors}
+                data={exportVendors.length > 0 ? exportVendors : vendors}
                 headers={[
                   {
                     label: "Store Name",
@@ -742,6 +820,16 @@ const ManageVendors = () => {
                   { label: "Email", accessor: (row) => row.email },
                   { label: "Status", accessor: (row) => row.status },
                   {
+                    label: "Vendor Type",
+                    accessor: (row) => {
+                      const types = [];
+                      if (row.channels?.retail?.status === 'active' || row.sellingChannels?.retail?.enabled || row.vendorType === 'retail') types.push('Retail');
+                      if (row.channels?.wholesale?.status === 'active' || row.sellingChannels?.wholesale?.enabled || row.vendorType === 'wholesale') types.push('Wholesale');
+                      if (row.channels?.quickCommerce?.status === 'active' || row.sellingChannels?.quickCommerce?.enabled || row.vendorType === 'quick_commerce') types.push('Quick Commerce');
+                      return types.join(', ') || row.vendorType || 'N/A';
+                    },
+                  },
+                  {
                     label: "Commission Rate",
                     accessor: (row) =>
                       `${((row.commissionRate || 0) * 100).toFixed(1)}%`,
@@ -749,7 +837,7 @@ const ManageVendors = () => {
                   {
                     label: "Join Date",
                     accessor: (row) =>
-                      row.joinDate ? new Date(row.joinDate).toLocaleDateString() : "N/A",
+                      row.createdAt || row.joinDate ? new Date(row.createdAt || row.joinDate).toLocaleDateString() : "N/A",
                   },
                 ]}
                 filename="vendors"
@@ -760,10 +848,13 @@ const ManageVendors = () => {
 
         {/* DataTable */}
         <DataTable
-          data={filteredVendors}
+          data={vendors}
           columns={columns}
           loading={isLoading}
           pagination={true}
+          serverSidePagination={true}
+          totalItems={totalVendors}
+          totalPages={totalPages}
           itemsPerPage={pageSize}
           currentPage={currentPage}
           onPageChange={handlePageChange}

@@ -6,8 +6,9 @@ const objectId = Joi.string().trim().hex().length(24);
 export const vendorListQuerySchema = Joi.object({
     status: Joi.string().valid('all', 'pending', 'approved', 'suspended', 'rejected').optional(),
     search: Joi.string().trim().allow('').optional(),
+    vendorType: Joi.string().valid('all', 'retail', 'wholesale', 'quick_commerce', 'quickCommerce').optional(),
     page: Joi.number().integer().min(1).optional(),
-    limit: Joi.number().integer().min(1).max(500).optional(),
+    limit: Joi.number().integer().min(1).max(1000).optional(),
 });
 
 export const vendorIdParamSchema = Joi.object({

@@ -49,7 +49,7 @@ const AdminLayout = () => {
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className="h-screen w-full bg-gray-50 flex overflow-hidden">
+    <div className="h-screen max-h-screen w-full bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <AdminSidebar
         isOpenMobile={isMobileOpen}
@@ -59,7 +59,7 @@ const AdminLayout = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col h-screen min-w-0 max-w-full overflow-hidden transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-full min-h-0 min-w-0 max-w-full overflow-hidden transition-all duration-300 ${
           isDesktopOpen ? 'lg:ml-64' : 'lg:ml-0'
         }`}
       >
@@ -71,7 +71,7 @@ const AdminLayout = () => {
 
         {/* Page Content */}
         <main 
-          className="flex-1 bg-gray-50 px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 overflow-y-auto overflow-x-hidden scrollbar-admin w-full min-w-0"
+          className="relative z-0 flex-1 bg-gray-50 px-4 sm:px-6 lg:px-10 xl:px-12 py-6 sm:py-8 overflow-y-auto overflow-x-hidden scrollbar-admin w-full min-w-0"
           style={{
             paddingBottom: `calc(${Math.max(bottomPadding, 64)}px + env(safe-area-inset-bottom, 0px))`,
           }}

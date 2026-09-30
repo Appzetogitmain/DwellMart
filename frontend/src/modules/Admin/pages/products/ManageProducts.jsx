@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FiSearch, FiEdit, FiTrash2, FiPlus, FiDownload, FiList, FiUploadCloud, FiX, FiFolder, FiRefreshCw } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
@@ -21,6 +22,7 @@ import toast from "react-hot-toast";
 
 const ManageProducts = () => {
   const PRODUCT_IMAGE_PLACEHOLDER = getPlaceholderImage(50, 50, "Product");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   /**
    * How much of the courier-eligible catalogue is booking at an estimate.
@@ -40,13 +42,22 @@ const ManageProducts = () => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedBrand, setSelectedBrand] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+  const currentPage = isNaN(urlPage) || urlPage < 1 ? 1 : urlPage;
+  const pageSizeParam = searchParams.get("pageSize") || "50";
+  const pageSize = String(pageSizeParam).toLowerCase() === "all" ? "All" : (parseInt(pageSizeParam, 10) || 50);
+
+  const selectedStatus = searchParams.get("status") || "all";
+  const selectedCategory = searchParams.get("categoryId") || searchParams.get("category") || "all";
+  const selectedBrand = searchParams.get("brandId") || searchParams.get("brand") || "all";
+  const queryParam = searchParams.get("search") || "";
+
+  const [searchQuery, setSearchQuery] = useState(queryParam);
+  useEffect(() => {
+    setSearchQuery(queryParam);
+  }, [queryParam]);
+
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,17 +126,37 @@ const ManageProducts = () => {
     }
   };
 
+  const updateFilters = useCallback((updates, resetPage = false) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val === undefined || val === null || val === "" || val === "all") {
+          next.delete(key);
+        } else {
+          next.set(key, String(val));
+        }
+      });
+      if (resetPage) {
+        next.delete("page");
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   useEffect(() => {
     initCategories();
     initBrands();
   }, []);
 
+  // Debounce search query update to URL
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
+      if (searchQuery.trim() !== queryParam) {
+        updateFilters({ search: searchQuery.trim() }, true);
+      }
+    }, 350);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, queryParam, updateFilters]);
 
   const loadProducts = async () => {
     try {
@@ -134,7 +165,7 @@ const ManageProducts = () => {
         page: currentPage,
         limit: pageSize,
       };
-      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (queryParam.trim()) params.search = queryParam.trim();
       if (selectedStatus !== "all") params.status = selectedStatus;
       if (selectedCategory !== "all") params.categoryId = selectedCategory;
       if (selectedBrand !== "all") params.brandId = selectedBrand;
@@ -164,7 +195,7 @@ const ManageProducts = () => {
 
   useEffect(() => {
     loadProducts();
-  }, [currentPage, pageSize, debouncedSearch, selectedStatus, selectedCategory, selectedBrand]);
+  }, [currentPage, pageSize, queryParam, selectedStatus, selectedCategory, selectedBrand]);
 
   const columns = [
     {
@@ -379,9 +410,14 @@ const ManageProducts = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (searchQuery.trim() !== queryParam) {
+                      updateFilters({ search: searchQuery.trim() }, true);
+                    }
+                  }
                 }}
                 placeholder="Search products..."
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
@@ -390,10 +426,7 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => updateFilters({ status: e.target.value }, true)}
               options={[
                 { value: "all", label: "All Status" },
                 { value: "in_stock", label: "In Stock" },
@@ -406,10 +439,7 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => updateFilters({ categoryId: e.target.value }, true)}
               options={[
                 { value: "all", label: "All Categories" },
                 ...categories
@@ -424,10 +454,7 @@ const ManageProducts = () => {
 
             <AnimatedSelect
               value={selectedBrand}
-              onChange={(e) => {
-                setSelectedBrand(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => updateFilters({ brandId: e.target.value }, true)}
               options={[
                 { value: "all", label: "All Brands" },
                 ...brands
@@ -440,17 +467,12 @@ const ManageProducts = () => {
               className="w-full sm:w-auto min-w-[170px]"
             />
 
-
-
-            {(searchQuery || selectedStatus !== "all" || selectedCategory !== "all" || selectedBrand !== "all") && (
+            {(queryParam || selectedStatus !== "all" || selectedCategory !== "all" || selectedBrand !== "all") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
-                  setSelectedStatus("all");
-                  setSelectedCategory("all");
-                  setSelectedBrand("all");
-                  setCurrentPage(1);
+                  setSearchParams({}, { replace: true });
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
                 title="Clear all filters and reset pagination">
@@ -465,6 +487,8 @@ const ManageProducts = () => {
                 headers={[
                   { label: "ID", accessor: (row) => row.id },
                   { label: "Name", accessor: (row) => row.name },
+                  { label: "Category", accessor: (row) => row.categoryId?.name || (typeof row.categoryId === 'string' ? row.categoryId : 'Uncategorized') },
+                  { label: "Brand", accessor: (row) => row.brandId?.name || (typeof row.brandId === 'string' ? row.brandId : 'N/A') },
                   {
                     label: "Price",
                     accessor: (row) => formatPrice(row.price),
@@ -488,12 +512,9 @@ const ManageProducts = () => {
           currentPage={currentPage}
           totalItems={totalItems}
           totalPages={totalPages}
-          onPageChange={(page) => setCurrentPage(page)}
+          onPageChange={(page) => updateFilters({ page }, false)}
           showSizeChanger={true}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setCurrentPage(1);
-          }}
+          onPageSizeChange={(newSize) => updateFilters({ pageSize: newSize }, true)}
           pageSizeOptions={[25, 50, 100, 250, 500, 'All']}
           onRowClick={(row) =>
             setProductFormModal({ isOpen: true, productId: row.id })

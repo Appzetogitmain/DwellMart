@@ -5,14 +5,20 @@ import { useState, useEffect } from 'react';
  * This is useful for adding padding-top to mobile page content
  */
 const useMobileHeaderHeight = () => {
-  const [headerHeight, setHeaderHeight] = useState(64); // Default to 64px (pt-16)
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const [headerHeight, setHeaderHeight] = useState(isDesktop ? 0 : 64);
 
   useEffect(() => {
     const calculateHeight = () => {
+      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+        setHeaderHeight(0);
+        return;
+      }
       const header = document.querySelector('header[class*="fixed"]');
-      
-      if (header) {
+      if (header && header.offsetHeight > 0) {
         setHeaderHeight(header.offsetHeight);
+      } else {
+        setHeaderHeight(64);
       }
     };
 
