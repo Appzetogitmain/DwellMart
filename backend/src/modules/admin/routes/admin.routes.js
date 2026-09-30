@@ -366,6 +366,8 @@ router.delete('/marketing/campaigns/:id', ...perm(PERMISSIONS.OFFERS_EDIT), vali
 // ─── Reports ──────────────────────────────────────────────────────────────────
 router.get('/reports/sales', ...perm(PERMISSIONS.REPORTS_VIEW), reportController.getSalesReport);
 router.get('/reports/inventory', ...perm(PERMISSIONS.REPORTS_VIEW), reportController.getInventoryReport);
+router.get('/reports/tds', ...permAny(PERMISSIONS.WALLET_VIEW, PERMISSIONS.REPORTS_VIEW), reportController.getTdsReport);
+router.get('/finance/tax-reports/tds', ...permAny(PERMISSIONS.WALLET_VIEW, PERMISSIONS.REPORTS_VIEW), reportController.getTdsReport);
 
 // ─── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', ...perm(PERMISSIONS.DASHBOARD_VIEW), notificationController.getAdminNotifications);
