@@ -167,6 +167,7 @@ const MobileCategories = () => {
     getCategoriesByParent,
     getRootCategories,
     hasSubDepartments,
+    isLoading: isStoreLoading,
   } = useCategoryStore();
 
   // Initialize store on mount or experience change
@@ -186,12 +187,18 @@ const MobileCategories = () => {
       try {
         const rootCats = getRootCategories();
         let list = rootCats;
-        if (list.length === 0 && fallbackCategories?.length) {
-          list = fallbackCategories.map((fc) => ({
-            ...fc,
-            id: fc.id || fc._id,
-            isActive: true,
-          }));
+        if (list.length === 0) {
+          if (isStoreLoading) {
+            // Wait for real categories to finish fetching from backend
+            return;
+          }
+          if (fallbackCategories?.length) {
+            list = fallbackCategories.map((fc) => ({
+              ...fc,
+              id: fc.id || fc._id,
+              isActive: true,
+            }));
+          }
         } else {
           list = rootCats.map((cat) => {
             const fallbackCat = fallbackCategories?.find(
@@ -216,7 +223,7 @@ const MobileCategories = () => {
       }
     };
     translateRoots();
-  }, [categories, getRootCategories, translateArray]);
+  }, [categories, getRootCategories, translateArray, isStoreLoading]);
 
   // Initialize from URL params so navigation back from ProductDetail restores state
   const [selectedCategoryId, setSelectedCategoryId] = useState(
@@ -326,7 +333,8 @@ const MobileCategories = () => {
   }, [showFilters]);
 
   useEffect(() => {
-    if (!translatedRootCategories.length) return;
+    // Wait until real categories are loaded from the store before validating URL category ID
+    if (!translatedRootCategories.length || isStoreLoading || categories.length === 0) return;
     if (!selectedCategoryId) {
       // Auto-select first category and also write it to URL
       const firstId = translatedRootCategories[0].id;
@@ -358,7 +366,7 @@ const MobileCategories = () => {
         { replace: true }
       );
     }
-  }, [translatedRootCategories, selectedCategoryId]);
+  }, [translatedRootCategories, selectedCategoryId, isStoreLoading, categories.length]);
 
   // Reset selected subcategory when department or category changes
   // Only auto-select first subcategory when NOT restoring from URL
@@ -790,8 +798,6 @@ const MobileCategories = () => {
   const selectedCategory = translatedRootCategories.find(
     (cat) => normalizeId(cat.id) === normalizeId(selectedCategoryId)
   );
-
-  const { isLoading: isStoreLoading } = useCategoryStore();
 
   if (translatedRootCategories.length === 0) {
     if (isStoreLoading || isTranslatingRoots) {

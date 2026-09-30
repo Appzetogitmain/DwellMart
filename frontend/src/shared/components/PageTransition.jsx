@@ -53,8 +53,9 @@ const PageTransition = ({ children }) => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location.pathname]);
 
-  // Memoize the unique key to ensure it updates when location changes
-  const uniqueKey = useMemo(() => location.pathname + location.search, [location.pathname, location.search]);
+  // Memoize the unique key to ensure it updates when route path changes
+  // Query parameters (e.g., search, filters, category tabs) should update in-place without destroying DOM
+  const uniqueKey = useMemo(() => location.pathname, [location.pathname]);
 
   // Use a regular div with key to ensure proper remounting, then wrap with motion
   // This prevents motion.div from interfering with React Router's remounting mechanism

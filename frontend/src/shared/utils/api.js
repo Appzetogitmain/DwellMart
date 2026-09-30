@@ -175,6 +175,13 @@ const runRefresh = async (scope) => {
 
       return nextAccessToken;
     })
+    .catch((err) => {
+      // If the refresh token itself is expired or invalid (401/403), the session is dead
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        clearScopeAuth(scope);
+      }
+      throw err;
+    })
     .finally(() => {
       refreshInFlight[scope] = null;
     });
@@ -238,6 +245,21 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // ── Handle token refresh race condition ──────────────────────────────────
+    // If another concurrent request already refreshed the token in localStorage
+    // while this request was in flight with the old expired token, retry immediately
+    // with the new token instead of triggering a duplicate refresh.
+    const storedToken = localStorage.getItem(AUTH_SCOPES[scope]?.accessKey || '');
+    const sentAuth = originalRequest.headers?.Authorization || originalRequest.headers?.authorization || '';
+    const sentToken = typeof sentAuth === 'string' ? sentAuth.replace(/^Bearer\s+/i, '').trim() : '';
+
+    if (error.response?.status === 401 && storedToken && sentToken && storedToken !== sentToken && !originalRequest._retry) {
+      originalRequest._retry = true;
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${storedToken}`;
+      return api(originalRequest);
+    }
+
     if (shouldAttemptRefresh(error, scope)) {
       try {
         const nextAccessToken = await runRefresh(scope);
@@ -275,12 +297,8 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       const activeScope = pathScope;
-      clearScopeAuth(scope);
-      if (scope !== activeScope) {
-        return Promise.reject(error);
-      }
-
       const routeConfig = AUTH_SCOPES[scope];
+
       if (scope === 'user') {
         // Only redirect to login when the user is on a PROTECTED page.
         // Public pages (/search, /product/*, /, /category/*, etc.) should
@@ -293,15 +311,29 @@ api.interceptors.response.use(
           currentPath === '/verification' ||
           currentPath === '/forgot-password' ||
           currentPath === '/reset-password';
+
+        // Only clear customer auth if on a protected page, an explicit retry failed,
+        // or there is no refresh token left in storage.
+        const hasRefreshToken = Boolean(localStorage.getItem(AUTH_SCOPES.user.refreshKey));
+        if (isProtectedPage || originalRequest._retry || !hasRefreshToken) {
+          clearScopeAuth(scope);
+        }
+
         if (isProtectedPage && !isAuthPage) {
           redirectTo(routeConfig.loginPath);
         }
-      } else if (currentPath.startsWith(routeConfig.areaPrefix) && currentPath !== routeConfig.loginPath) {
-        if (!error._toastShown) {
-          toastService.error('Session expired. Please login again.');
-          error._toastShown = true;
+      } else {
+        clearScopeAuth(scope);
+        if (scope !== activeScope) {
+          return Promise.reject(error);
         }
-        redirectTo(routeConfig.loginPath);
+        if (currentPath.startsWith(routeConfig.areaPrefix) && currentPath !== routeConfig.loginPath) {
+          if (!error._toastShown) {
+            toastService.error('Session expired. Please login again.');
+            error._toastShown = true;
+          }
+          redirectTo(routeConfig.loginPath);
+        }
       }
     }
 
