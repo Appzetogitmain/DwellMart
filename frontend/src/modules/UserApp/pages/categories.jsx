@@ -225,7 +225,7 @@ const MobileCategories = () => {
     translateRoots();
   }, [categories, getRootCategories, translateArray, isStoreLoading]);
 
-  // Initialize from URL params so navigation back from ProductDetail restores state
+  // Initialize state from URL params
   const [selectedCategoryId, setSelectedCategoryId] = useState(
     () => searchParams.get('cat') || null
   );
@@ -235,6 +235,29 @@ const MobileCategories = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState(
     () => searchParams.get('sub') || null
   );
+
+  // Helper to atomically update the URL without race conditions
+  const updateCategoryUrl = (catId, deptId, subId, query = searchQuery) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (catId) next.set('cat', String(catId));
+        else next.delete('cat');
+
+        if (deptId) next.set('dept', String(deptId));
+        else next.delete('dept');
+
+        if (subId) next.set('sub', String(subId));
+        else next.delete('sub');
+
+        if (query && query.trim()) next.set('q', query.trim());
+        else next.delete('q');
+
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   // Check if active Level 1 root category has 3 levels
   const is3TierCategory = useMemo(() => {
@@ -247,27 +270,6 @@ const MobileCategories = () => {
     if (!selectedCategoryId || !is3TierCategory) return [];
     return getCategoriesByParent(selectedCategoryId).filter((cat) => cat.isActive !== false);
   }, [selectedCategoryId, is3TierCategory, categories, getCategoriesByParent]);
-
-  // Automatically select first department when root category changes
-  // Only auto-select first department when NOT restoring from URL
-  const restoredDeptRef = useRef(searchParams.get('dept') || null);
-  useEffect(() => {
-    if (restoredDeptRef.current) {
-      const exists = departments.some(
-        (d) => normalizeId(d.id || d._id) === normalizeId(restoredDeptRef.current)
-      );
-      if (exists) {
-        restoredDeptRef.current = null;
-        return;
-      }
-      restoredDeptRef.current = null;
-    }
-    if (is3TierCategory && departments.length > 0) {
-      setSelectedDepartmentId(departments[0].id || departments[0]._id);
-    } else {
-      setSelectedDepartmentId(null);
-    }
-  }, [selectedCategoryId, is3TierCategory, departments]);
 
   // Leaf subcategories
   const rawSubcategories = useMemo(() => {
@@ -300,6 +302,9 @@ const MobileCategories = () => {
   const categoryListRef = useRef(null);
   const activeCategoryRef = useRef(null);
   const filterButtonRef = useRef(null);
+  const productsContainerRef = useRef(null);
+  const activeSubRef = useRef(null);
+  const activeDeptRef = useRef(null);
   const [isInitialMount, setIsInitialMount] = useState(true);
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get('q') || ""
@@ -332,65 +337,54 @@ const MobileCategories = () => {
     }
   }, [showFilters]);
 
+  // Atomic, single-pass URL parameter resolution and initial state restoration on mount / back navigation
+  const isInitializedRef = useRef(false);
   useEffect(() => {
-    // Wait until real categories are loaded from the store before validating URL category ID
-    if (!translatedRootCategories.length || isStoreLoading || categories.length === 0) return;
-    if (!selectedCategoryId) {
-      // Auto-select first category and also write it to URL
-      const firstId = translatedRootCategories[0].id;
-      setSelectedCategoryId(firstId);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set('cat', String(firstId));
-          return next;
-        },
-        { replace: true }
-      );
-      return;
-    }
-    const exists = translatedRootCategories.some(
-      (cat) => normalizeId(cat.id) === normalizeId(selectedCategoryId)
-    );
-    if (!exists) {
-      const firstId = translatedRootCategories[0].id;
-      setSelectedCategoryId(firstId);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set('cat', String(firstId));
-          next.delete('dept');
-          next.delete('sub');
-          return next;
-        },
-        { replace: true }
-      );
-    }
-  }, [translatedRootCategories, selectedCategoryId, isStoreLoading, categories.length]);
+    if (isStoreLoading || categories.length === 0 || isInitializedRef.current) return;
 
-  // Reset selected subcategory when department or category changes
-  // Only auto-select first subcategory when NOT restoring from URL
-  const restoredSubRef = useRef(searchParams.get('sub') || null);
-  useEffect(() => {
-    if (restoredSubRef.current) {
-      // On first run after restoration, check if the restored sub still exists in the new list
-      const exists = translatedSubcategories.some(
-        (s) => normalizeId(s.id) === normalizeId(restoredSubRef.current)
-      );
-      if (exists) {
-        // Keep the restored value — don't override it
-        restoredSubRef.current = null;
-        return;
+    const rootCats = getRootCategories();
+    if (!rootCats.length) return;
+
+    const urlCat = searchParams.get('cat');
+    const urlDept = searchParams.get('dept');
+    const urlSub = searchParams.get('sub');
+
+    // 1. Resolve Category
+    let resolvedCatId = urlCat && rootCats.some((c) => normalizeId(c.id || c._id) === normalizeId(urlCat))
+      ? urlCat
+      : (rootCats[0].id || rootCats[0]._id);
+
+    // 2. Resolve Department & Subcategory
+    let resolvedDeptId = null;
+    let resolvedSubId = null;
+
+    const is3Tier = hasSubDepartments(resolvedCatId);
+    if (is3Tier) {
+      const catDepts = getCategoriesByParent(resolvedCatId).filter((cat) => cat.isActive !== false);
+      if (catDepts.length > 0) {
+        const matchingDept = urlDept && catDepts.find((d) => normalizeId(d.id || d._id) === normalizeId(urlDept));
+        resolvedDeptId = matchingDept ? (matchingDept.id || matchingDept._id) : (catDepts[0].id || catDepts[0]._id);
+
+        const deptSubs = getCategoriesByParent(resolvedDeptId).filter((cat) => cat.isActive !== false);
+        if (deptSubs.length > 0) {
+          const matchingSub = urlSub && deptSubs.find((s) => normalizeId(s.id || s._id) === normalizeId(urlSub));
+          resolvedSubId = matchingSub ? (matchingSub.id || matchingSub._id) : (deptSubs[0].id || deptSubs[0]._id);
+        }
       }
-      // Restored sub no longer valid; fall through to auto-select
-      restoredSubRef.current = null;
-    }
-    if (translatedSubcategories.length > 0) {
-      setSelectedSubcategory(translatedSubcategories[0].id);
     } else {
-      setSelectedSubcategory(null);
+      const catSubs = getCategoriesByParent(resolvedCatId).filter((cat) => cat.isActive !== false);
+      if (catSubs.length > 0) {
+        const matchingSub = urlSub && catSubs.find((s) => normalizeId(s.id || s._id) === normalizeId(urlSub));
+        resolvedSubId = matchingSub ? (matchingSub.id || matchingSub._id) : (catSubs[0].id || catSubs[0]._id);
+      }
     }
-  }, [selectedCategoryId, selectedDepartmentId, translatedSubcategories]);
+
+    setSelectedCategoryId(resolvedCatId);
+    setSelectedDepartmentId(resolvedDeptId);
+    setSelectedSubcategory(resolvedSubId);
+    updateCategoryUrl(resolvedCatId, resolvedDeptId, resolvedSubId, searchParams.get('q') || "");
+    isInitializedRef.current = true;
+  }, [categories, isStoreLoading, getRootCategories, hasSubDepartments, getCategoriesByParent]);
 
   useEffect(() => {
     let cancelled = false;
@@ -685,22 +679,71 @@ const MobileCategories = () => {
     }
   }, [selectedCategoryId]);
 
+  // Smooth scroll active subcategory pill into view
+  useEffect(() => {
+    if (activeSubRef.current) {
+      activeSubRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }, [selectedSubcategory, translatedSubcategories.length]);
+
+  // Smooth scroll active department pill into view
+  useEffect(() => {
+    if (activeDeptRef.current) {
+      activeDeptRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }, [selectedDepartmentId, departments.length]);
+
+  const scrollKey = useMemo(() => {
+    return `cat_scroll_${selectedCategoryId || ''}_${selectedDepartmentId || ''}_${selectedSubcategory || ''}`;
+  }, [selectedCategoryId, selectedDepartmentId, selectedSubcategory]);
+
+  const handleProductsScroll = () => {
+    if (productsContainerRef.current) {
+      sessionStorage.setItem(scrollKey, String(productsContainerRef.current.scrollTop));
+    }
+  };
+
+  // Restore scroll position when products finish loading
+  useEffect(() => {
+    if (!isLoadingInitial && categoryProductsFeed.length > 0 && productsContainerRef.current) {
+      const savedScroll = sessionStorage.getItem(scrollKey);
+      if (savedScroll !== null) {
+        requestAnimationFrame(() => {
+          if (productsContainerRef.current) {
+            productsContainerRef.current.scrollTop = Number(savedScroll);
+          }
+        });
+      }
+    }
+  }, [isLoadingInitial, categoryProductsFeed.length, scrollKey]);
 
   const handleCategorySelect = (categoryId) => {
     setSelectedCategoryId(categoryId);
     setSearchQuery("");
-    // Reset dept and sub when switching root category
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('cat', String(categoryId));
-        next.delete('dept');
-        next.delete('sub');
-        next.delete('q');
-        return next;
-      },
-      { replace: true }
-    );
+
+    let newDeptId = null;
+    let newSubId = null;
+
+    const is3Tier = hasSubDepartments(categoryId);
+    if (is3Tier) {
+      const childDepts = getCategoriesByParent(categoryId).filter((cat) => cat.isActive !== false);
+      if (childDepts.length > 0) {
+        newDeptId = childDepts[0].id || childDepts[0]._id;
+        const childSubs = getCategoriesByParent(newDeptId).filter((cat) => cat.isActive !== false);
+        if (childSubs.length > 0) {
+          newSubId = childSubs[0].id || childSubs[0]._id;
+        }
+      }
+    } else {
+      const childSubs = getCategoriesByParent(categoryId).filter((cat) => cat.isActive !== false);
+      if (childSubs.length > 0) {
+        newSubId = childSubs[0].id || childSubs[0]._id;
+      }
+    }
+
+    setSelectedDepartmentId(newDeptId);
+    setSelectedSubcategory(newSubId);
+    updateCategoryUrl(categoryId, newDeptId, newSubId, "");
   };
 
   const handleFilterChange = (name, value) => {
@@ -710,53 +753,24 @@ const MobileCategories = () => {
   // Sync subcategory selection to URL
   const handleSubcategorySelect = (subcategoryId) => {
     setSelectedSubcategory(subcategoryId);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (subcategoryId) {
-          next.set('sub', String(subcategoryId));
-        } else {
-          next.delete('sub');
-        }
-        return next;
-      },
-      { replace: true }
-    );
+    updateCategoryUrl(selectedCategoryId, selectedDepartmentId, subcategoryId, searchQuery);
   };
 
   // Sync department selection to URL
   const handleDepartmentSelect = (deptId) => {
     setSelectedDepartmentId(deptId);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (deptId) {
-          next.set('dept', String(deptId));
-        } else {
-          next.delete('dept');
-        }
-        next.delete('sub');
-        return next;
-      },
-      { replace: true }
-    );
+
+    const childSubs = getCategoriesByParent(deptId).filter((cat) => cat.isActive !== false);
+    const newSubId = childSubs.length > 0 ? (childSubs[0].id || childSubs[0]._id) : null;
+
+    setSelectedSubcategory(newSubId);
+    updateCategoryUrl(selectedCategoryId, deptId, newSubId, searchQuery);
   };
 
   // Sync search query to URL
   const handleSearchChange = (value) => {
     setSearchQuery(value);
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value.trim()) {
-          next.set('q', value.trim());
-        } else {
-          next.delete('q');
-        }
-        return next;
-      },
-      { replace: true }
-    );
+    updateCategoryUrl(selectedCategoryId, selectedDepartmentId, selectedSubcategory, value);
   };
 
   const toggleBrand = (brandName) => {
@@ -982,6 +996,8 @@ const MobileCategories = () => {
 
             {/* Right Panel - Products Grid */}
             <div
+              ref={productsContainerRef}
+              onScroll={handleProductsScroll}
               className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-surface overscroll-contain"
               style={{
                 maxHeight: `calc(${contentHeight} - ${headerSectionHeight}px)`,
@@ -1002,6 +1018,7 @@ const MobileCategories = () => {
                           return (
                             <motion.button
                               key={deptId}
+                              ref={isDeptActive ? activeDeptRef : null}
                               whileTap={{ scale: 0.97 }}
                               onClick={() => handleDepartmentSelect(deptId)}
                               className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 whitespace-nowrap border flex items-center gap-2 shadow-xs cursor-pointer ${
@@ -1046,6 +1063,7 @@ const MobileCategories = () => {
                           return (
                             <motion.button
                               key={subcategory.id}
+                              ref={isActive ? activeSubRef : null}
                               onClick={() =>
                                 handleSubcategorySelect(subcategory.id)
                               }
