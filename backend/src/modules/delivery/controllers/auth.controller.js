@@ -63,7 +63,11 @@ export const requestRegistrationOTP = asyncHandler(async (req, res) => {
         throw new ApiError(409, 'This mobile number is already registered. Please login instead.');
     }
 
-    const result = await sendPhoneVerification(phoneE164);
+    const otpOverride = getDeliveryLoginOtpOverride(phoneE164);
+    const result = await sendPhoneVerification(
+        phoneE164,
+        otpOverride ? { otpOverride, skipDelivery: true } : undefined
+    );
     res.status(200).json(new ApiResponse(200, {
         channel: result.channel,
         expiresInMinutes: result.expiresInMinutes,
@@ -73,7 +77,18 @@ export const requestRegistrationOTP = asyncHandler(async (req, res) => {
 /** POST /api/delivery/auth/verify-registration-otp */
 export const verifyRegistrationOTP = asyncHandler(async (req, res) => {
     const { phone, otp } = req.body;
-    const { phoneE164 } = await confirmPhoneVerification(phone, otp);
+    const phoneE164 = requireE164(phone);
+    const otpOverride = getDeliveryLoginOtpOverride(phoneE164);
+
+    if (otpOverride && String(otp ?? '').trim() === otpOverride) {
+        await PhoneVerification.findOneAndUpdate(
+            { phoneE164 },
+            { phoneE164, isVerified: true, $unset: { otp: '' } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+    } else {
+        await confirmPhoneVerification(phone, otp);
+    }
     res.status(200).json(new ApiResponse(
         200,
         { phone: phoneE164, isVerified: true },
