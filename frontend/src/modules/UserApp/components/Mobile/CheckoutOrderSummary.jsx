@@ -204,11 +204,13 @@ const OrderSummary = ({
                                     🚫 Non-Cancelable
                                   </span>
                                 )}
+                                {/* TEMPORARILY COMMENTED OUT FROM UI: Online Payment Only badge
                                 {item.codAllowed === false && (
                                   <span className="inline-flex items-center text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                     💳 Online Payment Only
                                   </span>
                                 )}
+                                */}
                               </div>
                             )}
                           </div>

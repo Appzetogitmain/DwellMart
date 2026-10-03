@@ -174,6 +174,9 @@ const SellOnDwellmart = () => {
     { step: '05', title: 'Go Live', desc: 'Upload catalog, manage stock, and receive payouts.', icon: FiTrendingUp },
   ];
 
+  // TEMPORARILY COMMENTED OUT FROM UI: Sell on Dwellmart page UI
+  return null;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-[#ffc101]/30 selection:text-black pb-16 md:pb-0">
       {/* ── Desktop & Mobile Headers ── */}

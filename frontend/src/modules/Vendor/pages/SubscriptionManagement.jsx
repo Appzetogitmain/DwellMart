@@ -318,10 +318,12 @@ const SubscriptionManagement = () => {
                 <p className="text-xs font-semibold uppercase text-slate-400">Started</p>
                 <p className="mt-1 font-bold text-slate-800">{formatDate(subscription?.current_period_start)}</p>
               </div>
+              {/* TEMPORARILY COMMENTED OUT: Gateway display
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-xs font-semibold uppercase text-slate-400">Gateway</p>
                 <p className="mt-1 font-bold uppercase text-slate-800">{gateway}</p>
               </div>
+              */}
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-xs font-semibold uppercase text-slate-400">Payment</p>
                 <p className="mt-1 font-bold capitalize text-slate-800">{subscription?.latest_payment_status || 'pending'}</p>
@@ -423,6 +425,7 @@ const SubscriptionManagement = () => {
                     ))}
                   </ul>
 
+                  {/* TEMPORARILY COMMENTED OUT: Online Payment Gateway Plan Change Button
                   <button
                     type="button"
                     onClick={() => handlePlanChange(plan)}
@@ -436,6 +439,10 @@ const SubscriptionManagement = () => {
                     <FiCreditCard />
                     {getPlanActionLabel(plan)}
                   </button>
+                  */}
+                  <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-center text-xs font-semibold text-amber-800">
+                    Payment gateway is temporarily disabled
+                  </div>
                 </div>
               );
             })}

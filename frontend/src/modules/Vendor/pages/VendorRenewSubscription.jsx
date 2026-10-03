@@ -197,6 +197,7 @@ const VendorRenewSubscription = () => {
           <>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            {/* TEMPORARILY COMMENTED OUT: Online Payment Gateway Plan Update Button
             <button
               type="button"
               onClick={handleSubmit}
@@ -206,6 +207,10 @@ const VendorRenewSubscription = () => {
               {isSubmitting ? <FiLoader className="animate-spin" /> : <FiCheckCircle />}
               {isSubmitting ? 'Updating plan...' : 'Confirm Plan Update'}
             </button>
+            */}
+            <div className="flex items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 px-6 py-3 text-sm font-semibold text-amber-800">
+              Online payment gateway is temporarily disabled
+            </div>
             <button
               type="button"
               onClick={() => navigate(isLoggedIn ? '/vendor/dashboard' : '/vendor/login')}

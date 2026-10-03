@@ -275,6 +275,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
           {/* Right Side Actions */}
           <div className="flex items-center gap-2">
             {/* Sell Button */}
+            {/* TEMPORARILY COMMENTED OUT: Sell On Dwell Mart link
             {!hideSellButton && (
               <Link
                 to="/sell-on-dwellmart"
@@ -283,6 +284,7 @@ const MobileHeader = ({ hideSellButton = false }) => {
                 {t("Sell On Dwell Mart")}
               </Link>
             )}
+            */}
 
             {/* Cart Button */}
             <motion.button

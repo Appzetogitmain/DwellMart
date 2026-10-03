@@ -167,7 +167,7 @@ const ContactUs = () => {
                   </div>
                 </div>
 
-                {/* Vendor Banner */}
+                {/* TEMPORARILY COMMENTED OUT: Vendor Banner (Sell on DwellMart)
                 <div className="bg-surface-elevated border border-brand-primary/30 rounded-2xl p-6">
                   <h4 className="text-lg font-bold text-content">Are you a merchant or brand?</h4>
                   <p className="text-sm text-content-secondary mt-1">
@@ -180,6 +180,7 @@ const ContactUs = () => {
                     Register as Vendor
                   </Link>
                 </div>
+                */}
               </div>
 
               {/* Contact Form */}

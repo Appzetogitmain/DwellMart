@@ -860,6 +860,7 @@ const SubscriptionOnboardingWizard = ({
 
 
                 <div className="mt-6 flex flex-col gap-3">
+                  {/* TEMPORARILY COMMENTED OUT: Online Payment Gateway Checkout Button for Paid Plans
                   <button
                     type="button"
                     onClick={handlePayment}
@@ -869,6 +870,22 @@ const SubscriptionOnboardingWizard = ({
                     {isLoading ? <FiLoader className="animate-spin text-lg" /> : (selectedPlan?.isFree ? <FiCheck /> : <FiCreditCard />)}
                     {isLoading ? (selectedPlan?.isFree ? t('Activating...') : t('Preparing checkout...')) : paymentState === 'processing' ? t('Checking payment status...') : paymentState === 'checkout_open' ? t('Payment window open') : (selectedPlan?.isFree ? t('Activate free plan') : t('Start secure payment'))}
                   </button>
+                  */}
+                  {selectedPlan?.isFree ? (
+                    <button
+                      type="button"
+                      onClick={handlePayment}
+                      disabled={isLoading || paymentState === 'processing'}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffc101] px-4 py-3.5 sm:py-4 font-extrabold text-black transition hover:bg-[#ffd042] disabled:opacity-60 shadow-lg shadow-amber-500/20 text-sm sm:text-base cursor-pointer"
+                    >
+                      {isLoading ? <FiLoader className="animate-spin text-lg" /> : <FiCheck />}
+                      {isLoading ? t('Activating...') : t('Activate free plan')}
+                    </button>
+                  ) : (
+                    <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-xs sm:text-sm font-bold text-amber-800">
+                      {t('Online payment gateway is temporarily disabled.')}
+                    </div>
+                  )}
 
                   <button type="button" onClick={() => setStep(1)} className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer">{t('Back to registration')}</button>
                 </div>

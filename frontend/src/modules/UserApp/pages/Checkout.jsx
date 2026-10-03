@@ -192,7 +192,8 @@ const MobileCheckout = () => {
     zipCode: "",
     state: "",
     country: "",
-    paymentMethod: "card",
+    // TEMPORARILY COMMENTED OUT GATEWAYS: Defaulting to cash (COD)
+    paymentMethod: "cash",
   });
 
   useEffect(() => {
@@ -242,12 +243,15 @@ const MobileCheckout = () => {
           if (currentMethod === 'bank') isCurrentMethodEnabled = false;
           
           if (!isCurrentMethodEnabled) {
-             const availableMethods = ["card", "upi", "wallet", "cash"].filter(method => {
+             // TEMPORARILY COMMENTED OUT: Online Payment Gateways from fallback methods
+             const availableMethods = ["cash"/*, "card", "upi", "wallet"*/].filter(method => {
                 if (method === 'cash') return payload.codEnabled !== false;
+                /*
                 if (!onlineAllowed) return false;
                 if (method === 'card') return payload.cardEnabled !== false;
                 if (method === 'upi') return payload.upiEnabled !== false;
                 if (method === 'wallet') return payload.walletEnabled !== false;
+                */
                 return true;
              });
              if (availableMethods.length > 0) {
@@ -1322,13 +1326,16 @@ const MobileCheckout = () => {
                       {t('Payment Method')}
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["card", "cash", "wallet", "upi"].filter(method => {
+                      {/* TEMPORARILY COMMENTED OUT: Online Payment Gateways from UI (Card, Wallet, UPI) */}
+                      {["cash"/*, "card", "wallet", "upi"*/].filter(method => {
                         if (!paymentSettings) return true; // Show all until loaded
                         if (method === 'cash') return paymentSettings.codEnabled !== false;
+                        /*
                         if (!hasOnlineGateway) return false;
                         if (method === 'card') return paymentSettings.cardEnabled !== false;
                         if (method === 'wallet') return paymentSettings.walletEnabled !== false;
                         if (method === 'upi') return paymentSettings.upiEnabled !== false;
+                        */
                         return true;
                       }).map((method) => {
                         const isPincodeCodDisabled = method === 'cash' && !isQuickCommerce && deliverabilityVerdict?.codAvailable === false;
@@ -1383,7 +1390,7 @@ const MobileCheckout = () => {
                       })}
                     </div>
 
-                    {/* COD Advance Payment Notice */}
+                    {/* COD Advance Payment Notice - TEMPORARILY COMMENTED OUT FROM UI
                     {formData.paymentMethod === 'cash' && advanceRequired > 0 && (
                       <div className="mb-6 p-4 bg-amber-50/90 border-2 border-amber-300 rounded-xl text-xs space-y-2 text-amber-950 shadow-xs">
                         <div className="font-extrabold flex items-center gap-2 text-amber-900 text-sm">
@@ -1398,6 +1405,7 @@ const MobileCheckout = () => {
                         </div>
                       </div>
                     )}
+                    */}
 
 
                     {/* Per-Fulfillment Group Delivery Promises Breakdown */}

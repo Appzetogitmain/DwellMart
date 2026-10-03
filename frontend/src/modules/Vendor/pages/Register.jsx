@@ -1032,6 +1032,7 @@ const VendorRegister = () => {
 
                 <div className="mt-6 flex flex-col gap-3">
 
+                  {/* TEMPORARILY COMMENTED OUT: Online Payment Gateway Checkout for Paid Plans
                   {!selectedPlan?.isFree && !selectedPlan?.isTrial ? (
                     <button
                       type="button"
@@ -1041,6 +1042,12 @@ const VendorRegister = () => {
                     >
                       {isLoading ? 'Preparing Checkout...' : paymentState === 'processing' ? 'Checking Payment Status...' : paymentState === 'checkout_open' ? 'Payment Window Open' : 'Start Secure Payment'}
                     </button>
+                  ) : (
+                  */}
+                  {!selectedPlan?.isFree && !selectedPlan?.isTrial ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-sm font-semibold text-amber-800">
+                      Online payment gateway is temporarily disabled.
+                    </div>
                   ) : (
                     <button
                       type="button"

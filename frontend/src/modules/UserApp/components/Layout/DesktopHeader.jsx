@@ -122,6 +122,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
               className="hidden xl:inline-block text-gray-300 hover:text-[#ffc101] font-medium text-xs lg:text-sm xl:text-[14px] transition-colors">
               {t("Track Order")}
             </Link>
+            {/* TEMPORARILY COMMENTED OUT: Sell On Dwell Mart link
             {!hideSellButton && (
               <Link
                 to="/sell-on-dwellmart"
@@ -129,6 +130,7 @@ const DesktopHeader = ({ hideSellButton = false }) => {
                 {t("Sell On Dwell Mart")}
               </Link>
             )}
+            */}
           </nav>
         </div>
 

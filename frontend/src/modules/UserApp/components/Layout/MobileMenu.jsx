@@ -55,7 +55,8 @@ const MobileMenu = ({ isOpen, onClose }) => {
   ];
 
   const secondaryLinks = [
-    { label: t("Become a Seller"), icon: FiTag, path: "/sell-on-dwellmart", highlight: true },
+    // TEMPORARILY COMMENTED OUT: Become a Seller / Sell on DwellMart
+    // { label: t("Become a Seller"), icon: FiTag, path: "/sell-on-dwellmart", highlight: true },
     { label: t("Help Center"), icon: FiHelpCircle, path: "/support" },
   ];
 

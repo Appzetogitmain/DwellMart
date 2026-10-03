@@ -462,6 +462,7 @@ const AppRoutes = () => {
           </RouteWrapper>
         }
       />
+      {/* TEMPORARILY COMMENTED OUT: Sell on Dwellmart route
       <Route
         path="/sell-on-dwellmart"
         element={
@@ -470,6 +471,7 @@ const AppRoutes = () => {
           </RouteWrapper>
         }
       />
+      */}
       <Route
         path="/shop-with-confidence"
         element={
