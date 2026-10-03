@@ -3,8 +3,6 @@ temp_auto_push.bat
 temp_interactive_push.bat
 
 # ─── Environment / Secrets ────────────────────────────────────────────────────
-.env
-.env.*
 !.env.example
 *.env
 serviceAccountKey.json
@@ -35,7 +33,6 @@ build/
 # ─── OS / IDE ─────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-.vscode/
 .idea/
 *.log
 *.postman_collection.json
@@ -111,3 +108,4 @@ backend/scripts/crops/
 backend/*.zip
 backend/backups/
 backend/storage/
+config.bat
